@@ -112,6 +112,15 @@ export default function OperatorDashboard({
   isSyncingMembers = false,
   onUpdatePhoto
 }: OperatorDashboardProps) {
+  const isMainAdmin = !!(user?.email && [
+    'kmabarikiyafoods@gmail.com',
+    'hcrsindia@gmail.com',
+    'admin@hcrs.society',
+    '9645934571@hcrs.society',
+    'mabarikiyafoods@gmail.com',
+    'hcrskerala@gmail.com'
+  ].some(email => email.toLowerCase() === user.email.toLowerCase()));
+
   const [searchTerm, setSearchTerm] = useState('');
   const [orgSettings, setOrgSettings] = useState<OrgSettings>(defaultSettings);
   const [editingMember, setEditingMember] = useState<UserProfile | null>(null);
@@ -657,19 +666,27 @@ export default function OperatorDashboard({
                     <Input 
                       id="edit-name" 
                       value={editingMember.name || ""} 
-                      className="h-12 bg-slate-50 border-slate-200 rounded-xl font-bold text-sm"
+                      className={`h-12 rounded-xl font-bold text-sm ${!isMainAdmin ? 'bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed' : 'bg-slate-50 border-slate-200'}`}
                       onChange={e => setEditingMember({...editingMember, name: e.target.value})}
+                      disabled={!isMainAdmin}
                     />
+                    {!isMainAdmin && (
+                      <p className="text-[9px] text-amber-600 font-bold uppercase mt-1">⚠️ പേര് മാറ്റാൻ Main Admin-ന് മാത്രമേ സാധിക്കൂ</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="edit-mobile" className="text-[10px] font-black text-slate-400 uppercase ml-1">Mobile Number</Label>
                     <Input 
                       id="edit-mobile" 
                       value={editingMember.mobile || ""} 
-                      className="h-12 bg-slate-50 border-slate-200 rounded-xl font-bold font-mono text-sm"
+                      className={`h-12 rounded-xl font-bold font-mono text-sm ${!isMainAdmin ? 'bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed' : 'bg-slate-50 border-slate-200'}`}
                       onChange={e => setEditingMember({...editingMember, mobile: e.target.value.replace(/\D/g, '')})}
                       maxLength={10}
+                      disabled={!isMainAdmin}
                     />
+                    {!isMainAdmin && (
+                      <p className="text-[9px] text-amber-600 font-bold uppercase mt-1">⚠️ മൊബൈൽ മാറ്റാൻ Main Admin-ന് മാത്രമേ സാധിക്കൂ</p>
+                    )}
                   </div>
                 </div>
 
@@ -1085,19 +1102,27 @@ export default function OperatorDashboard({
                     <Input 
                       id="edit-name" 
                       value={editingMember.name || ""} 
-                      className="h-12 bg-slate-50 border-slate-200 rounded-xl font-bold"
+                      className={`h-12 rounded-xl font-bold ${!isMainAdmin ? 'bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed' : 'bg-slate-50 border-slate-200'}`}
                       onChange={e => setEditingMember({...editingMember, name: e.target.value})}
+                      disabled={!isMainAdmin}
                     />
+                    {!isMainAdmin && (
+                      <p className="text-[9px] text-amber-600 font-bold uppercase mt-1">⚠️ പേര് മാറ്റാൻ Main Admin-ന് മാത്രമേ സാധിക്കൂ</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="edit-mobile" className="text-[10px] font-black text-slate-400 uppercase ml-1">Mobile Number</Label>
                     <Input 
                       id="edit-mobile" 
                       value={editingMember.mobile || ""} 
-                      className="h-12 bg-slate-50 border-slate-200 rounded-xl font-bold"
+                      className={`h-12 rounded-xl font-bold ${!isMainAdmin ? 'bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed' : 'bg-slate-50 border-slate-200'}`}
                       onChange={e => setEditingMember({...editingMember, mobile: e.target.value.replace(/\D/g, '')})}
                       maxLength={10}
+                      disabled={!isMainAdmin}
                     />
+                    {!isMainAdmin && (
+                      <p className="text-[9px] text-amber-600 font-bold uppercase mt-1">⚠️ മൊബൈൽ മാറ്റാൻ Main Admin-ന് മാത്രമേ സാധിക്കൂ</p>
+                    )}
                   </div>
                 </div>
 

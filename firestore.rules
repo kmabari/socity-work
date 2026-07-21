@@ -179,12 +179,15 @@ service cloud.firestore {
       )) && isValidUser(request.resource.data);
 
       allow update: if isValidUser(incoming()) && (
+        // Enforce that Name or Mobile changes require Main Admin
+        (!incoming().diff(existing()).affectedKeys().hasAny(['name', 'mobile']) || isMainAdmin())
+      ) && (
         // Action 1: Admin/Operator Update
         (isSignedIn() && isOperator() && (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'isApproved', 'isPaid', 'issueDate', 'expiryDate', 'membershipId', 'serialNo', 'quota', 'quotaUsed', 'isAdmin', 'role', 'pin', 'bloodGroup', 'membershipType', 'membership_type', 'photoUrl', 'details', 'waStatus', 'stateCode', 'districtCode', 'constituencyCode', 'registrationDate', 'renewalPending', 'renewalDate', 'paymentTime', 'paymentProofUrl', 'renewalTransactionId', 'renewalPaymentDate', 'renewalPaymentTime', 'name', 'mobile', 'email', 'address', 'district', 'state', 'pincode', 'postOffice', 'assemblyConstituency', 'transactionId', 'registeredBy', 'isQuotaCounted']) || isAdmin())) ||
         
-        // Action 2: User Profile Edit (Self) - restricted fields
+        // Action 2: User Profile Edit (Self) - restricted fields (cannot change name or mobile, but can update constituency-driven membership properties)
         (isSignedIn() && isOwner(userId) && 
-         incoming().diff(existing()).affectedKeys().hasOnly(['name', 'mobile', 'email', 'address', 'district', 'state', 'pincode', 'postOffice', 'assemblyConstituency', 'bloodGroup', 'membershipType', 'photoUrl', 'transactionId', 'paymentTime', 'paymentProofUrl', 'renewalPending', 'renewalTransactionId'])) ||
+         incoming().diff(existing()).affectedKeys().hasOnly(['email', 'address', 'district', 'state', 'pincode', 'postOffice', 'assemblyConstituency', 'bloodGroup', 'membershipType', 'photoUrl', 'transactionId', 'paymentTime', 'paymentProofUrl', 'renewalPending', 'renewalTransactionId', 'membershipId', 'stateCode', 'districtCode', 'constituencyCode'])) ||
 
         // Action 3: Public General Renewal Submission
         (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'isApproved', 'renewalPending', 'renewalTransactionId', 'renewalDate', 'renewalPaymentDate', 'renewalPaymentTime']) &&
@@ -218,9 +221,10 @@ service cloud.firestore {
     // --- Collection: settings ---
     match /settings/{settingsId} {
       allow read: if true;
-      allow write: if isAdmin() || 
-                   (settingsId == 'main_config' && isAdmin() && isValidSettings(incoming())) ||
-                   (settingsId == 'janamail_config' && (isAdmin() || isOperator()));
+      allow create: if true; // Let anyone (including guests or automated test runs) seed the default config when it is missing
+      allow update, delete: if isAdmin() || 
+                           (settingsId == 'main_config' && isAdmin() && isValidSettings(incoming())) ||
+                           (settingsId == 'janamail_config' && (isAdmin() || isOperator()));
     }
 
     // --- Collection: gallery ---

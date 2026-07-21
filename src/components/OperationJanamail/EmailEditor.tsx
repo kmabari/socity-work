@@ -25,6 +25,26 @@ const KERALA_DISTRICTS = [
   { code: "TVM", en: "Thiruvananthapuram", ml: "തിരുവനന്തപുരം" }
 ];
 
+const cleanEmailAddresses = (input: string): string => {
+  if (!input) return "";
+  return input
+    .replace(/;/g, ",")
+    .replace(/[\s\r\n]+/g, ",")
+    .split(",")
+    .map(email => email.trim())
+    .filter(Boolean)
+    .join(",");
+};
+
+const getDeduplicatedCc = (toStr: string, ccStr: string) => {
+  const cleanedTo = cleanEmailAddresses(toStr);
+  const cleanedCc = cleanEmailAddresses(ccStr);
+  const toList = cleanedTo.toLowerCase().split(",").filter(Boolean);
+  const ccList = cleanedCc.toLowerCase().split(",").filter(Boolean);
+  const toSet = new Set(toList);
+  return ccList.filter(email => !toSet.has(email)).join(",");
+};
+
 interface EmailEditorProps {
   config?: JanamailConfig | null;
 }
@@ -92,7 +112,8 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     setSelectedTemplateId(nextT.id || "");
     setSubject(nextT.subject);
     setRecipients(config?.recipients || "ca.budsact@kerala.gov.in");
-    setCc(config?.cc !== undefined ? config.cc : "chiefsecy@kerala.gov.in, chiefminister@kerala.gov.in, min.rev@kerala.gov.in, dgp.pol@kerala.gov.in, adgpcb.pol@kerala.gov.in, adgpint.pol@kerala.gov.in, adgplo.pol@kerala.gov.in, digtsrrange.pol@kerala.gov.in");
+    const cleanCcConfig = (config?.cc || "").trim();
+    setCc(cleanCcConfig ? cleanCcConfig : "chiefsecy@kerala.gov.in, chiefminister@kerala.gov.in, min.rev@kerala.gov.in, dgp.pol@kerala.gov.in, adgpcb.pol@kerala.gov.in, adgpint.pol@kerala.gov.in, adgplo.pol@kerala.gov.in, digtsrrange.pol@kerala.gov.in");
     setIsCustomized(false);
   };
 
@@ -103,7 +124,8 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     setSelectedTemplateId(prevT.id || "");
     setSubject(prevT.subject);
     setRecipients(config?.recipients || "ca.budsact@kerala.gov.in");
-    setCc(config?.cc !== undefined ? config.cc : "chiefsecy@kerala.gov.in, chiefminister@kerala.gov.in, min.rev@kerala.gov.in, dgp.pol@kerala.gov.in, adgpcb.pol@kerala.gov.in, adgpint.pol@kerala.gov.in, adgplo.pol@kerala.gov.in, digtsrrange.pol@kerala.gov.in");
+    const cleanCcConfig = (config?.cc || "").trim();
+    setCc(cleanCcConfig ? cleanCcConfig : "chiefsecy@kerala.gov.in, chiefminister@kerala.gov.in, min.rev@kerala.gov.in, dgp.pol@kerala.gov.in, adgpcb.pol@kerala.gov.in, adgpint.pol@kerala.gov.in, adgplo.pol@kerala.gov.in, digtsrrange.pol@kerala.gov.in");
     setIsCustomized(false);
   };
   
@@ -152,6 +174,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
   };
 
   const [cc, setCc] = useState("");
+  const [isMailBodyTruncated, setIsMailBodyTruncated] = useState(false);
 
   const isCampaignActive = config?.active !== false && config?.campaignStatus !== "disabled" && config?.campaignStatus !== "completed";
   const isFormValid = !!(
@@ -165,29 +188,12 @@ export default function EmailEditor({ config }: EmailEditorProps) {
 
   // Predefined Malayalam petition body template (fallback if DB empty)
   const getTemplateBodyForFallback = () => {
-    return `ബഹുമാനപ്പെട്ട കേരള മുഖ്യമന്ത്രിയും ബന്ധപ്പെട്ട ഉദ്യോഗസ്ഥരും മുൻപാകെ,
-
-വിഷയം: ഹൈറിച്ച് തട്ടിപ്പ് കേസിൽ അടിയന്തരമായ അന്വേഷണവും ഇരകൾക്ക് നീതി ലഭ്യമാക്കലും.
-
-ഞാൻ താഴെ ഒപ്പിട്ടിരിക്കുന്ന വ്യക്തി, ഹൈറിച്ച് ഓൺലൈൻ ഷോപ്പി തട്ടിപ്പിൽ പെട്ട് എന്റെയും എന്റെ കുടുംബത്തിന്റെയും ജീവിതാവസാനിപ്പിക്കേണ്ടി വന്നിരിക്കുന്ന സാഹചര്യത്തെക്കുറിച്ചും അതിൽ അടിയന്തരമായി സർക്കാർ ഇടപെടൽ ആവശ്യപ്പെട്ടും ഈ ഹർജി സമർപ്പിക്കുന്നു.
-
-കൂട്ടായ നിക്ഷേപ തട്ടിപ്പിലൂടെ പതിനായിരക്കണക്കിന് സാധാരണക്കാരായ മനുഷ്യരുടെ അധ്വാനത്തിന്റെ വിയർപ്പും ജീവിതാവശ്യങ്ങൾക്കായി മാറ്റിവെച്ചിരുന്ന പണവും നഷ്ടപ്പെട്ടിരിക്കുകയാണ്. ഈ തട്ടിപ്പ് നമ്മുടെ സമൂഹത്തിൽ വലിയ സാമ്പത്തിക പ്രതിസന്ധിയും മാനസിക ബുദ്ധിമുട്ടുകളും ഉണ്ടാക്കിയിട്ടുണ്ട്.
-
-ആയതിനാൽ ബഹുമാനപ്പെട്ട അധികാരികൾ താഴെ പറയുന്ന ആവശ്യങ്ങളിൽ അടിയന്തരമായി നടപടി സ്വീകരിക്കണമെന്ന് അപേക്ഷിക്കുന്നു:
-1. BUDS നിയമപ്രകാരം പ്രതികളുടെ മുഴുവൻ സ്വത്തുക്കളും അടിയന്തരമായി കണ്ടുകെട്ടി ലേലം ചെയ്യുക.
-2. ലേലം ചെയ്ത തുക ഇരകളായ നിക്ഷേപകർക്ക് കാലതാമസം കൂടാതെ വിതരണം ചെയ്യുക.
-3. ഈ കേസിൽ വിട്ടുവീഴ്ചയില്ലാത്തതും സുതാര്യവുമായ അന്വേഷണം അടിയന്തരമായി പൂർത്തിയാക്കുക.
-
-ഈ ഹർജിയിൽ പങ്കാളിയാകുന്ന എന്റെ വിവരങ്ങൾ താഴെ ചേർക്കുന്നു:
+    return `ബഹുമാനപ്പെട്ട മുഖ്യമന്ത്രി മുൻപാകെ,
+ഹൈറിച്ച് തട്ടിപ്പിൽ പെട്ട എന്റെ പണം തിരികെ ലഭിക്കാൻ അടിയന്തര ഇടപെടൽ ആവശ്യപ്പെടുന്നു. പ്രതികളുടെ സ്വത്തുക്കൾ അടിയന്തരമായി ലേലം ചെയ്യണം.
 
 പേര്: {name}
-ഫോൺ നമ്പർ: {phone}
-സ്ഥലം/വിലാസം: {address}
-
-ഈ വിഷയത്തിൽ താങ്കളുടെ ഭാഗത്ത് നിന്നും അനുകൂലവും അടിയന്തരവുമായ ഇടപെടലുകൾ ഉണ്ടാകുമെന്ന് പ്രതീക്ഷിക്കുന്നു.
-
-വിശ്വസ്തതയോടെ,
-{name}`;
+ഫോൺ: {phone}
+സ്ഥലം: {address}`;
   };
 
   const cleanTemplateBody = (rawBody: string): string => {
@@ -213,6 +219,35 @@ export default function EmailEditor({ config }: EmailEditorProps) {
 
   const getMergedText = (rawText: string, uName: string, uMobile: string, uDistrict: string, uPlace: string, uCategory: string) => {
     let text = rawText || "";
+    
+    // Format the swadeshi statement dynamically based on district and place inputs
+    const cleanDist = (uDistrict || "").trim();
+    const cleanPlc = (uPlace || "").trim();
+    
+    // Ensure "ജില്ല" suffix is not duplicated if it's already in uDistrict
+    let distWithSuffix = cleanDist;
+    if (cleanDist) {
+      if (!cleanDist.endsWith("ജില്ല") && !cleanDist.endsWith("ജില്ലയിലെ")) {
+        distWithSuffix = `${cleanDist} ജില്ലയിലെ`;
+      } else if (cleanDist.endsWith("ജില്ല")) {
+        distWithSuffix = `${cleanDist}യിലെ`;
+      }
+    }
+    
+    const swadeshiPhrase = distWithSuffix && cleanPlc 
+      ? `, ${distWithSuffix} ${cleanPlc} സ്വദേശിയാണ്,`
+      : "";
+
+    // Replace "ഞാൻ താഴെ ഒപ്പിട്ടിരിക്കുന്ന വ്യക്തി" or "ഞാൻ താഴെ ഒപ്പിട്ട വ്യക്തി" or "ഞാൻ താഴെ ഒപ്പിടുന്ന വ്യക്തി" with "ഞാൻ [പേര്] [swadeshiPhrase]"
+    if (swadeshiPhrase) {
+      text = text.replace(/ഞാൻ താഴെ ഒപ്പിട്ടിരിക്കുന്ന വ്യക്തി[,，]?/g, `ഞാൻ [പേര്]${swadeshiPhrase}`);
+      text = text.replace(/ഞാൻ താഴെ ഒപ്പിട്ട വ്യക്തി[,，]?/g, `ഞാൻ [പേര്]${swadeshiPhrase}`);
+      text = text.replace(/ഞാൻ താഴെ ഒപ്പിടുന്ന വ്യക്തി[,，]?/g, `ഞാൻ [പേര്]${swadeshiPhrase}`);
+    } else {
+      text = text.replace(/ഞാൻ താഴെ ഒപ്പിട്ടിരിക്കുന്ന വ്യക്തി[,，]?/g, "ഞാൻ [പേര്],");
+      text = text.replace(/ഞാൻ താഴെ ഒപ്പിട്ട വ്യക്തി[,，]?/g, "ഞാൻ [പേര്],");
+      text = text.replace(/ഞാൻ താഴെ ഒപ്പിടുന്ന വ്യക്തി[,，]?/g, "ഞാൻ [പേര്],");
+    }
     
     // Explicit Malayalam placeholders
     text = text.replace(/\[പേര്\]/g, uName || "[പേര്]");
@@ -312,6 +347,33 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     return header + mergedBody + signature;
   };
 
+  const getOptimalEmailParams = (
+    rawSubject: string,
+    rawBody: string,
+    uName: string,
+    uMobile: string,
+    uDistrict: string,
+    uPlace: string,
+    uCategory: string,
+    method: "gmail" | "mailto",
+    toRecipients: string,
+    ccRecipients: string
+  ) => {
+    const cleanTo = cleanEmailAddresses(toRecipients);
+    const cleanCc = getDeduplicatedCc(cleanTo, ccRecipients || "");
+
+    // Build the standard full-length subject and body
+    let finalSubject = getMergedText(rawSubject, uName, uMobile, uDistrict, uPlace, uCategory).trim();
+    const cleanBodyText = stripHeaderAndSignature(rawBody);
+    const mergedBody = getMergedText(cleanBodyText, uName, uMobile, uDistrict, uPlace, uCategory);
+    
+    const standardHeader = `പേര്: ${uName || ""}\nമൊബൈൽ: ${uMobile || ""}\nജില്ല: ${uDistrict || ""}\nസ്ഥലം: ${uPlace || ""}\nവിഭാഗം: ${uCategory || ""}\n\n`;
+    const standardSignature = `\n\nവിശ്വസ്തതയോടെ,\n\n${uName || ""}\n${uPlace || ""}`;
+    const standardBody = standardHeader + mergedBody + standardSignature;
+
+    return { subject: finalSubject, body: standardBody, isTruncated: false };
+  };
+
   const [activeComposeMethod, setActiveComposeMethod] = useState<"template" | "custom">(() => {
     const saved = localStorage.getItem("janamail_draft_method");
     return (saved === "template" || saved === "custom") ? saved : "template";
@@ -365,7 +427,8 @@ export default function EmailEditor({ config }: EmailEditorProps) {
   // Sync recipients and CC when parent config changes
   useEffect(() => {
     setRecipients(config?.recipients || "ca.budsact@kerala.gov.in");
-    setCc(config?.cc !== undefined ? config.cc : "chiefsecy@kerala.gov.in, chiefminister@kerala.gov.in, min.rev@kerala.gov.in, dgp.pol@kerala.gov.in, adgpcb.pol@kerala.gov.in, adgpint.pol@kerala.gov.in, adgplo.pol@kerala.gov.in, digtsrrange.pol@kerala.gov.in");
+    const cleanCcConfig = (config?.cc || "").trim();
+    setCc(cleanCcConfig ? cleanCcConfig : "chiefsecy@kerala.gov.in, chiefminister@kerala.gov.in, min.rev@kerala.gov.in, dgp.pol@kerala.gov.in, adgpcb.pol@kerala.gov.in, adgpint.pol@kerala.gov.in, adgplo.pol@kerala.gov.in, digtsrrange.pol@kerala.gov.in");
 
     if (config) {
       // Sync active compose method based on emailMode selection if appropriate
@@ -568,10 +631,8 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     }
 
     const formatEmailField = (fieldValue: string, encodeEach: boolean): string => {
-      const normalized = (fieldValue || "")
-        .replace(/;/g, ",")
-        .replace(/\s+/g, "");
-      const emailList = normalized.split(",").filter(Boolean);
+      const cleaned = cleanEmailAddresses(fieldValue);
+      const emailList = cleaned.split(",").filter(Boolean);
       
       if (encodeEach) {
         // Encode each individual email address but keep commas literal.
@@ -583,8 +644,18 @@ export default function EmailEditor({ config }: EmailEditorProps) {
       }
     };
 
-    const finalSubject = getMergedText(subject, name, phone, district, place, category).trim();
-    const finalBody = getFinalBodyWithSignature(body, name, phone, district, place, category).trim();
+    const { subject: finalSubject, body: finalBody, isTruncated } = getOptimalEmailParams(
+      subject,
+      body,
+      name,
+      phone,
+      district,
+      place,
+      category,
+      method,
+      recipients,
+      cc
+    );
 
     // Guard against multiple participation if they somehow bypassed UI checks
     if (hasParticipated && config?.restrictOneParticipation !== false && !bypassParticipationCheck) {
@@ -595,35 +666,31 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
     
     let targetUrl = "";
-    if (method === "gmail") {
+
+    const cleanTo = cleanEmailAddresses(recipients);
+    const cleanCc = getDeduplicatedCc(cleanTo, cc || "");
+
+    if (method === "gmail" && !isMobile) {
       const params = new URLSearchParams();
       params.set("view", "cm");
       params.set("fs", "1");
-      
-      const cleanTo = (recipients || "").replace(/;/g, ",").replace(/\s+/g, "");
       params.set("to", cleanTo);
-      
-      const cleanCc = (cc || "").replace(/;/g, ",").replace(/\s+/g, "");
-      if (cleanCc) {
-        params.set("cc", cleanCc);
-      }
-      
+      if (cleanCc) params.set("cc", cleanCc);
       params.set("su", finalSubject);
       params.set("body", finalBody);
-      
       targetUrl = `https://mail.google.com/mail/?${params.toString().replace(/\+/g, "%20").replace(/%2C/g, ",")}`;
     } else {
-      const cleanRecipientsForMailto = formatEmailField(recipients, false);
-      const cleanCcForMailto = formatEmailField(cc, false);
-      let mailtoUrl = `mailto:${cleanRecipientsForMailto}?`;
-      const params: string[] = [];
-      if (cleanCcForMailto) {
-        params.push(`cc=${encodeURIComponent(cleanCcForMailto)}`);
+      let mailtoUrl = `mailto:${cleanTo}?`;
+      const mailtoParams: string[] = [];
+      if (cleanCc) {
+        mailtoParams.push(`cc=${encodeURIComponent(cleanCc)}`);
       }
-      params.push(`subject=${encodeURIComponent(finalSubject)}`);
-      params.push(`body=${encodeURIComponent(finalBody)}`);
-      targetUrl = mailtoUrl + params.join("&");
+      mailtoParams.push(`subject=${encodeURIComponent(finalSubject)}`);
+      mailtoParams.push(`body=${encodeURIComponent(finalBody)}`);
+      targetUrl = mailtoUrl + mailtoParams.join("&");
     }
+
+    setIsMailBodyTruncated(isTruncated);
 
     setIsSubmitting(true);
     setApiError(null);
@@ -692,17 +759,18 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     } catch (err: any) {
       console.error("Error saving participant details to Google Sheets:", err);
       const errMsg = err.message || "വിവരങ്ങൾ ഷീറ്റിൽ രേഖപ്പെടുത്താൻ സാധിച്ചില്ല.";
-      toast.error(errMsg, { id: loadingToast });
+      
+      // Inform the user but do NOT block them from sending the email
+      toast.error(`ഷീറ്റിൽ വിവരങ്ങൾ രേഖപ്പെടുത്താൻ സാധിച്ചില്ല എങ്കിലും മെയിൽ അയക്കാവുന്നതാണ്: ${errMsg}`, { id: loadingToast, duration: 6000 });
       setApiError(errMsg);
       
       // Ensure the button is enabled and not silently disabled on error
       setIsSubmitting(false);
-      // Block Gmail launch and early return on API failure
-      return;
+      // Proceed to open email client anyway so user is NOT stuck
     }
 
-    // 2. Open Gmail / Native mail interface safely (use _blank for gmail to avoid iframe 404/refusal)
-    if (method === "gmail") {
+    // 2. Open Gmail / Native mail interface safely
+    if (method === "gmail" && !isMobile) {
       window.open(targetUrl, "_blank");
     } else {
       window.location.href = targetUrl;
@@ -1353,30 +1421,52 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                   {config?.thankYouMessage || "ഹർജി വിജയകരമായി സമർപ്പിച്ചു. നന്ദി!"}
                 </p>
               </div>
+
+
+
               <div className="flex flex-wrap justify-center gap-2.5 mt-2">
                 <button
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.preventDefault();
-                    const finalSubject = getMergedText(subject, name, phone, district, place, category).trim();
-                    const finalBody = getFinalBodyWithSignature(body, name, phone, district, place, category).trim();
+                    const { subject: finalSubject, body: finalBody } = getOptimalEmailParams(
+                      subject,
+                      body,
+                      name,
+                      phone,
+                      district,
+                      place,
+                      category,
+                      "gmail",
+                      recipients,
+                      cc
+                    );
                     
-                    const params = new URLSearchParams();
-                    params.set("view", "cm");
-                    params.set("fs", "1");
+                    const cleanTo = cleanEmailAddresses(recipients);
+                    const cleanCc = getDeduplicatedCc(cleanTo, cc || "");
                     
-                    const cleanTo = (recipients || "").replace(/;/g, ",").replace(/\s+/g, "");
-                    params.set("to", cleanTo);
-                    
-                    const cleanCc = (cc || "").replace(/;/g, ",").replace(/\s+/g, "");
+                    let mailtoUrl = `mailto:${cleanTo}?`;
+                    const mailtoParams: string[] = [];
                     if (cleanCc) {
-                      params.set("cc", cleanCc);
+                      mailtoParams.push(`cc=${encodeURIComponent(cleanCc)}`);
                     }
+                    mailtoParams.push(`subject=${encodeURIComponent(finalSubject)}`);
+                    mailtoParams.push(`body=${encodeURIComponent(finalBody)}`);
+                    const fullMailto = mailtoUrl + mailtoParams.join("&");
                     
-                    params.set("su", finalSubject);
-                    params.set("body", finalBody);
-                    
-                    const gmailUrl = `https://mail.google.com/mail/?${params.toString().replace(/\+/g, "%20").replace(/%2C/g, ",")}`;
-                    window.open(gmailUrl, "_blank");
+                    const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
+                    if (isMobile) {
+                      window.location.href = fullMailto;
+                    } else {
+                      const params = new URLSearchParams();
+                      params.set("view", "cm");
+                      params.set("fs", "1");
+                      params.set("to", cleanTo);
+                      if (cleanCc) params.set("cc", cleanCc);
+                      params.set("su", finalSubject);
+                      params.set("body", finalBody);
+                      const gmailUrl = `https://mail.google.com/mail/?${params.toString().replace(/\+/g, "%20").replace(/%2C/g, ",")}`;
+                      window.open(gmailUrl, "_blank");
+                    }
                   }}
                   className="inline-flex items-center gap-2 bg-gradient-to-r from-[#EA4335] via-[#E2345D] to-[#CF2585] hover:shadow-lg text-white font-extrabold text-[11px] uppercase tracking-wider px-5 py-3 rounded-xl transition duration-150 cursor-pointer shadow-md"
                 >
@@ -1387,6 +1477,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                   onClick={() => {
                     setShowThankYou(false);
                     setCheckedIndices({});
+                    setIsMailBodyTruncated(false);
                   }}
                   className="inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] uppercase tracking-wider px-4 py-3 rounded-xl transition duration-150 cursor-pointer border border-slate-200"
                 >
