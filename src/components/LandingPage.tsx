@@ -302,28 +302,28 @@ export default function LandingPage({
   return (
     <div className="min-h-screen bg-transparent text-slate-100 font-sans selection:bg-[#1a2b5c]/10 relative overflow-x-hidden pb-12">
       {/* Subtle Ambient Backglows inspired by Reference #2's premium orange/blue gradient glow */}
-      <div className="absolute top-0 left-1/4 w-[40rem] h-[35rem] bg-gradient-to-br from-[#1a2b5c]/5 to-transparent rounded-full blur-[100px] pointer-events-none -z-10" />
-      <div className="absolute top-20 right-1/4 w-[35rem] h-[35rem] bg-gradient-to-br from-[#c9a227]/4 to-transparent rounded-full blur-[110px] pointer-events-none -z-10" />
+      <div className="absolute top-0 left-1/4 w-[40rem] h-[35rem] bg-gradient-to-br from-[#1a2b5c]/5 to-transparent rounded-full blur-[100px] pointer-events-none -z-10 max-md:hidden" />
+      <div className="absolute top-20 right-1/4 w-[35rem] h-[35rem] bg-gradient-to-br from-[#c9a227]/4 to-transparent rounded-full blur-[110px] pointer-events-none -z-10 max-md:hidden" />
 
       {/* Navigation Bar */}
       <nav 
-        className="fixed top-0 left-0 right-0 z-50 bg-white/85 backdrop-blur-md border-b border-slate-100 shadow-premium px-4 md:px-8 py-3 transition-all duration-300"
+        className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-premium px-3 sm:px-6 md:px-8 py-2.5 sm:py-3 transition-all duration-300"
       >
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
           <div 
-            className="flex items-center gap-3 cursor-pointer group" 
+            className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group shrink-0" 
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           >
-            <div className="bg-white p-1.5 rounded-xl shadow-premium border border-slate-100 group-hover:scale-105 transition-all duration-300">
-              <Logo size="sm" className="h-[34px] w-auto" />
+            <div className="bg-white p-1 sm:p-1.5 rounded-xl shadow-premium border border-slate-100 group-hover:scale-105 transition-all duration-300">
+              <Logo size="sm" className="h-9 sm:h-11 md:h-12 w-auto" />
             </div>
             <div>
-              <h1 className="text-xs font-bold text-[#1a2b5c] uppercase tracking-wider leading-none font-heading">HCRS Portal</h1>
-              <p className="text-[9px] font-black text-[#c9a227] uppercase tracking-widest mt-1.5">Kerala Division</p>
+              <h1 className="text-xs sm:text-sm font-bold text-[#1a2b5c] uppercase tracking-wider leading-none font-heading">HCRS Portal</h1>
+              <p className="text-[9px] sm:text-[10px] font-black text-[#c9a227] uppercase tracking-widest mt-1">Kerala Division</p>
             </div>
           </div>
 
-          <div className="hidden md:flex items-center gap-10">
+          <div className="hidden lg:flex items-center gap-8 xl:gap-10">
             <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-[11px] font-bold uppercase tracking-wider text-slate-600 hover:text-[#1a2b5c] transition-colors duration-200">
               {t('nav_home', 'Home')}
             </button>
@@ -342,17 +342,17 @@ export default function LandingPage({
             </button>
           </div>
 
-          <div className="flex items-center gap-3 md:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 md:gap-4 shrink-0">
             <LanguageSwitcher />
             <Button 
               variant="outline" 
               onClick={onLoginClick}
-              className="text-[11px] font-extrabold uppercase tracking-widest text-[#1a2b5c] border-2 border-[#1a2b5c]/20 hover:border-[#1a2b5c]/40 hover:bg-[#1a2b5c]/5 rounded-full h-10 px-6 transition-all duration-300 shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-95"
+              className="text-[10px] sm:text-xs font-extrabold uppercase tracking-widest text-[#1a2b5c] border-2 border-[#1a2b5c]/20 hover:border-[#1a2b5c]/40 hover:bg-[#1a2b5c]/5 rounded-full h-9 sm:h-10 px-3.5 sm:px-5 md:px-6 transition-all duration-300 shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-95 shrink-0"
             >
               {t('nav_sign_in', 'Sign In')}
             </Button>
             <Button 
-              className="bg-[#1a2b5c] hover:bg-[#233875] text-white rounded-full px-6 h-10 font-extrabold uppercase text-[11px] tracking-widest shadow-sm hover:shadow-md transition-all border border-[#1a2b5c] hover:border-[#233875] hover:scale-[1.02] active:scale-95 duration-300"
+              className="bg-[#1a2b5c] hover:bg-[#233875] text-white rounded-full px-3.5 sm:px-5 md:px-6 h-9 sm:h-10 font-extrabold uppercase text-[10px] sm:text-xs tracking-widest shadow-sm hover:shadow-md transition-all border border-[#1a2b5c] hover:border-[#233875] hover:scale-[1.02] active:scale-95 duration-300 shrink-0"
               onClick={onRenew}
             >
               {t('nav_get_id_card', 'Get ID Card')}
@@ -362,15 +362,15 @@ export default function LandingPage({
       </nav>
 
       {/* Main Showcase / Hero Cover - Reference #2 White Card with Ambient Background Glow */}
-      <div className="w-full max-w-6xl mx-auto pt-28 pb-16 px-4">
+      <div className="w-full max-w-6xl mx-auto pt-24 sm:pt-28 pb-12 sm:pb-16 px-3 sm:px-4 md:px-6">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className="relative bg-white border border-slate-200/70 rounded-[28px] p-8 md:p-16 overflow-hidden shadow-projected"
+          className="relative bg-white border border-slate-200/80 rounded-2xl sm:rounded-3xl md:rounded-[32px] p-5 sm:p-10 md:p-16 overflow-hidden shadow-projected"
         >
           {/* Subtle grid mesh decoration */}
-          <div className="absolute inset-0 opacity-[0.015] bg-[radial-gradient(#1a2b5c_1.5px,transparent_1.5px)] [background-size:20px_20px] pointer-events-none" />
+          <div className="absolute inset-0 opacity-[0.015] hidden md:block bg-[radial-gradient(#1a2b5c_1.5px,transparent_1.5px)] [background-size:20px_20px] pointer-events-none" />
           
           {/* Core Content */}
           <div className="relative flex flex-col items-center justify-center text-center w-full">
@@ -380,48 +380,49 @@ export default function LandingPage({
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.2 }}
-              className="inline-flex items-center justify-center gap-2 bg-white border border-slate-200/60 px-5 py-2 rounded-full shadow-md shadow-[#1a2b5c]/5 mb-8 transition-all duration-300 hover:border-[#1a2b5c]/20 hover:shadow-lg hover:shadow-[#1a2b5c]/10 cursor-default mx-auto"
+              className="inline-flex items-center justify-center gap-2 bg-white border border-slate-200/80 px-3.5 sm:px-5 py-2 rounded-full shadow-sm mb-5 sm:mb-7 transition-all duration-300 hover:border-[#1a2b5c]/20 hover:shadow-md cursor-default mx-auto text-center"
             >
               <div className="w-2 h-2 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
                 <div className="w-1 h-1 rounded-full bg-white animate-ping" />
               </div>
-              <span className="font-extrabold text-[10px] md:text-xs text-[#1a2b5c] uppercase tracking-wider">
+              <span className="font-extrabold text-[10px] sm:text-xs text-[#1a2b5c] uppercase tracking-wider leading-tight text-center">
                 {t('hero_reg_badge', 'Govt. Registered Society • Reg No: TSR/TC/93/2025')}
               </span>
             </motion.div>
  
-            {/* Logo container inspired by Reference #2's centered branding */}
+            {/* Increased Responsive Logo Container (+30% size on mobile) */}
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.3, duration: 0.5 }}
-              className="p-4 bg-white shadow-premium rounded-2xl border border-slate-100 mb-8 flex items-center justify-center mx-auto"
+              className="p-4 sm:p-5 md:p-6 bg-white shadow-premium rounded-2xl sm:rounded-3xl border border-slate-100 mb-5 sm:mb-8 flex items-center justify-center mx-auto"
             >
-              <Logo className="scale-100 flex items-center justify-center mx-auto" size="sm" />
+              <Logo className="w-32 h-32 sm:w-36 sm:h-36 md:w-40 md:h-40 lg:w-44 lg:h-44 flex items-center justify-center mx-auto" size="md" />
             </motion.div>
 
-            {/* Main Title & Subtitle with crisp, high-contrast, beautiful typography */}
-            <div className="max-w-4xl space-y-4 mb-8 flex flex-col items-center justify-center text-center mx-auto">
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-[#1a2b5c] tracking-tight uppercase leading-[1.2] font-heading text-center">
-                {t('hero_title_1', 'HIGHRICH COMMUNITY')}<br />
-                <span className="text-[#c9a227]">
+            {/* Main Title & Subtitle optimized for clean mobile wrapping */}
+            <div className="max-w-4xl space-y-4 sm:space-y-5 mb-6 sm:mb-10 flex flex-col items-center justify-center text-center mx-auto">
+              <h1 className="text-xl xs:text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-black text-[#1a2b5c] tracking-tight uppercase leading-snug sm:leading-[1.2] font-heading text-center px-4 sm:px-2">
+                <span className="block sm:inline">{t('hero_title_1', 'HIGHRICH COMMUNITY')}</span>{' '}
+                <span className="block sm:inline text-[#c9a227]">
                   {t('hero_title_2', 'REVIVAL SOCIETY')}
-                </span> <span className="text-slate-400">(HCRS)</span>
+                </span>{' '}
+                <span className="text-slate-400 font-extrabold inline-block mt-0.5 sm:mt-0">(HCRS)</span>
               </h1>
-              <p className="text-slate-500 font-medium text-sm sm:text-base md:text-lg max-w-2xl mx-auto leading-relaxed text-center">
+              <p className="text-slate-600 sm:text-slate-500 font-medium text-xs sm:text-base md:text-lg max-w-2xl mx-auto leading-relaxed text-center px-4 sm:px-6">
                 {t('hero_subtitle', 'A Registered Society Committed To Reviving & Supporting The Highrich Community')}
               </p>
             </div>
 
             {/* Horizontal Line divider */}
-            <div className="w-full max-w-xs h-0.5 bg-gradient-to-r from-transparent via-slate-200 to-transparent mb-10" />
+            <div className="w-full max-w-xs h-0.5 bg-gradient-to-r from-transparent via-slate-200 to-transparent mb-8 sm:mb-10" />
 
             {/* Core Pillars / Professional Icons Grid */}
             <div className="w-full max-w-5xl">
-              <p className="text-[10px] md:text-xs font-black text-[#c9a227] uppercase tracking-widest mb-8">
+              <p className="text-xs sm:text-sm font-black text-[#c9a227] uppercase tracking-widest mb-6 sm:mb-8 text-center">
                 {t('hero_core_pillars', 'Our Core Pillars')}
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 text-left">
                 {[
                   {
                     key: "community",
@@ -459,18 +460,18 @@ export default function LandingPage({
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.3 + i * 0.1 }}
-                      whileHover={{ y: -5, borderColor: "rgba(30, 90, 168, 0.25)" }}
-                      className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-premium transition-all duration-300 flex flex-col justify-between"
+                      whileHover={{ y: -4, borderColor: "rgba(30, 90, 168, 0.25)" }}
+                      className="bg-white border border-slate-200/80 rounded-2xl p-5 sm:p-6 shadow-premium transition-all duration-300 flex flex-col justify-between h-full"
                     >
                       <div>
-                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center border ${pillar.color} mb-5 shrink-0 shadow-sm`}>
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${pillar.color} mb-4 shrink-0 shadow-sm`}>
                           <IconComponent className="w-5 h-5 stroke-[2]" />
                         </div>
-                        <h3 className="text-[#1a2b5c] font-extrabold text-sm md:text-base leading-tight uppercase font-heading">
+                        <h3 className="text-[#1a2b5c] font-extrabold text-sm sm:text-base leading-snug uppercase font-heading">
                           {t(`pillar_${pillar.key}_title`, pillar.titleDefault)}
                         </h3>
                       </div>
-                      <p className="text-slate-500 text-xs font-normal leading-relaxed mt-3">
+                      <p className="text-slate-600 text-xs sm:text-sm font-normal leading-relaxed mt-2.5 sm:mt-3">
                         {t(`pillar_${pillar.key}_desc`, pillar.descDefault)}
                       </p>
                     </motion.div>
@@ -887,27 +888,27 @@ export default function LandingPage({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
               {/* Enrollment Card */}
               <div
-                className="group relative bg-white border border-slate-200 rounded-3xl p-8 md:p-10 shadow-premium hover:border-[#c9a227]/30 hover:shadow-projected transition-all duration-300 text-center flex flex-col items-center justify-between min-h-[400px] hover:-translate-y-1.5"
+                className="group relative bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 shadow-premium hover:border-[#c9a227]/30 hover:shadow-projected transition-all duration-300 text-center flex flex-col items-center justify-between min-h-[360px] sm:min-h-[400px] hover:-translate-y-1.5"
               >
-                <div className="flex flex-col items-center gap-6 w-full">
-                  <div className="bg-[#c9a227]/8 w-16 h-16 rounded-2xl flex items-center justify-center text-[#c9a227] group-hover:scale-105 transition-transform shadow-sm border border-[#c9a227]/10">
-                    <UserPlus className="w-8 h-8 stroke-[2]" />
+                <div className="flex flex-col items-center gap-4 sm:gap-6 w-full">
+                  <div className="bg-[#c9a227]/8 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-[#c9a227] group-hover:scale-105 transition-transform shadow-sm border border-[#c9a227]/10">
+                    <UserPlus className="w-7 h-7 sm:w-8 sm:h-8 stroke-[2]" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-extrabold text-[#1a2b5c] tracking-tight uppercase font-heading">
+                    <h2 className="text-lg sm:text-xl font-extrabold text-[#1a2b5c] tracking-tight uppercase font-heading">
                       {t('card_new_membership_title', 'New Membership')}
                     </h2>
-                    <span className="inline-flex mt-2.5 bg-[#c9a227]/8 text-[#c9a227] border border-[#c9a227]/15 font-extrabold text-[10px] tracking-wider uppercase px-4 py-1 rounded-full">
+                    <span className="inline-flex mt-2 sm:mt-2.5 bg-[#c9a227]/8 text-[#c9a227] border border-[#c9a227]/15 font-extrabold text-[10px] tracking-wider uppercase px-3.5 sm:px-4 py-1 rounded-full">
                       {t('card_new_membership_badge', 'ന്യൂ മെമ്പർഷിപ്പ് • ₹200')}
                     </span>
-                    <p className="text-slate-500 font-normal text-xs mt-4 leading-relaxed max-w-[280px]">
+                    <p className="text-slate-600 font-normal text-xs sm:text-sm mt-3 sm:mt-4 leading-relaxed max-w-[280px]">
                       {t('card_new_membership_desc', 'Register as an official active member to gain community credentials.')}
                     </p>
                   </div>
                 </div>
                 <Button 
                   onClick={() => setStage('guidelines')}
-                  className="w-full mt-8 h-12 rounded-xl text-xs font-bold bg-[#1a2b5c] text-white hover:bg-[#233875] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-premium hover:-translate-y-0.5 duration-200"
+                  className="w-full mt-6 sm:mt-8 h-11 sm:h-12 rounded-xl text-xs font-bold bg-[#1a2b5c] text-white hover:bg-[#233875] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-premium hover:-translate-y-0.5 duration-200"
                 >
                   {t('card_new_membership_btn', 'Register Now')}
                   <ChevronRight className="w-4 h-4" />
@@ -916,27 +917,27 @@ export default function LandingPage({
 
               {/* Renewal Card */}
               <div
-                className="group relative bg-white border border-slate-200 rounded-3xl p-8 md:p-10 shadow-premium hover:border-[#1a2b5c]/30 hover:shadow-projected transition-all duration-300 text-center flex flex-col items-center justify-between min-h-[400px] hover:-translate-y-1.5"
+                className="group relative bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 shadow-premium hover:border-[#1a2b5c]/30 hover:shadow-projected transition-all duration-300 text-center flex flex-col items-center justify-between min-h-[360px] sm:min-h-[400px] hover:-translate-y-1.5"
               >
-                <div className="flex flex-col items-center gap-6 w-full">
-                  <div className="bg-[#1a2b5c]/8 w-16 h-16 rounded-2xl flex items-center justify-center text-[#1a2b5c] group-hover:scale-105 transition-transform shadow-sm border border-[#1a2b5c]/10">
-                    <RefreshCw className="w-8 h-8 stroke-[2]" />
+                <div className="flex flex-col items-center gap-4 sm:gap-6 w-full">
+                  <div className="bg-[#1a2b5c]/8 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-[#1a2b5c] group-hover:scale-105 transition-transform shadow-sm border border-[#1a2b5c]/10">
+                    <RefreshCw className="w-7 h-7 sm:w-8 sm:h-8 stroke-[2]" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-extrabold text-[#1a2b5c] tracking-tight uppercase font-heading">
+                    <h2 className="text-lg sm:text-xl font-extrabold text-[#1a2b5c] tracking-tight uppercase font-heading">
                       {t('card_renew_membership_title', 'Renew card')}
                     </h2>
-                    <span className="inline-flex mt-2.5 bg-[#1a2b5c]/8 text-[#1a2b5c] border border-[#1a2b5c]/15 font-extrabold text-[10px] tracking-wider uppercase px-4 py-1 rounded-full">
+                    <span className="inline-flex mt-2 sm:mt-2.5 bg-[#1a2b5c]/8 text-[#1a2b5c] border border-[#1a2b5c]/15 font-extrabold text-[10px] tracking-wider uppercase px-3.5 sm:px-4 py-1 rounded-full">
                       {t('card_renew_membership_badge', 'അംഗത്വം പുതുക്കൽ • ₹100')}
                     </span>
-                    <p className="text-slate-500 font-normal text-xs mt-4 leading-relaxed max-w-[280px]">
+                    <p className="text-slate-600 font-normal text-xs sm:text-sm mt-3 sm:mt-4 leading-relaxed max-w-[280px]">
                       {t('card_renew_membership_desc', 'Renew your existing membership card easily with quick online processing.')}
                     </p>
                   </div>
                 </div>
                 <Button 
                   onClick={onRenew}
-                  className="w-full mt-8 h-12 rounded-xl text-xs font-bold bg-[#1a2b5c] text-white hover:bg-[#233875] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-premium hover:-translate-y-0.5 duration-200"
+                  className="w-full mt-6 sm:mt-8 h-11 sm:h-12 rounded-xl text-xs font-bold bg-[#1a2b5c] text-white hover:bg-[#233875] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-premium hover:-translate-y-0.5 duration-200"
                 >
                   {t('card_renew_membership_btn', 'Renew Card Now')}
                   <ChevronRight className="w-4 h-4" />
@@ -945,14 +946,14 @@ export default function LandingPage({
 
               {/* Information Registry Card */}
               <div
-                className="group relative bg-white border border-slate-200 rounded-3xl p-8 md:p-10 shadow-premium hover:border-[#c9a227]/30 hover:shadow-projected transition-all duration-300 text-center flex flex-col items-center justify-between min-h-[400px] hover:-translate-y-1.5"
+                className="group relative bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 shadow-premium hover:border-[#c9a227]/30 hover:shadow-projected transition-all duration-300 text-center flex flex-col items-center justify-between min-h-[360px] sm:min-h-[400px] hover:-translate-y-1.5"
               >
-                <div className="flex flex-col items-center gap-6 w-full">
-                  <div className="bg-[#1a2b5c]/8 w-16 h-16 rounded-2xl flex items-center justify-center text-[#1a2b5c] group-hover:scale-105 transition-transform shadow-sm border border-[#1a2b5c]/10">
-                    <Info className="w-8 h-8 text-[#1a2b5c] stroke-[2]" />
+                <div className="flex flex-col items-center gap-4 sm:gap-6 w-full">
+                  <div className="bg-[#1a2b5c]/8 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-[#1a2b5c] group-hover:scale-105 transition-transform shadow-sm border border-[#1a2b5c]/10">
+                    <Info className="w-7 h-7 sm:w-8 sm:h-8 text-[#1a2b5c] stroke-[2]" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-extrabold text-[#1a2b5c] tracking-tight leading-snug uppercase font-heading">
+                    <h2 className="text-base sm:text-lg font-extrabold text-[#1a2b5c] tracking-tight leading-snug uppercase font-heading">
                       {t('card_registry_title', 'Member Financial Information Registry')}
                     </h2>
                     <div className="flex flex-col gap-1 items-center mt-2">
@@ -963,7 +964,7 @@ export default function LandingPage({
                         {t('card_registry_sub_badge', 'Verified Member Information Collection Portal')}
                       </span>
                     </div>
-                    <p className="text-slate-500 font-normal text-xs mt-4 leading-relaxed max-w-[280px]">
+                    <p className="text-slate-600 font-normal text-xs sm:text-sm mt-3 sm:mt-4 leading-relaxed max-w-[280px]">
                       {t('card_registry_desc', 'This portal is designed to collect and verify financial information from members for planning, coordination, and support purposes.')}
                     </p>
                   </div>
@@ -974,7 +975,7 @@ export default function LandingPage({
                     setClaimResult(null);
                     setStage('claim_check');
                   }}
-                  className="w-full mt-8 h-12 rounded-xl text-xs font-bold bg-[#c9a227] text-white hover:bg-[#ab851c] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-premium hover:-translate-y-0.5 duration-200"
+                  className="w-full mt-6 sm:mt-8 h-11 sm:h-12 rounded-xl text-xs font-bold bg-[#c9a227] text-white hover:bg-[#ab851c] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-premium hover:-translate-y-0.5 duration-200"
                 >
                   {t('card_registry_btn', 'Access Registry Portal')}
                   <ChevronRight className="w-4 h-4" />
@@ -995,7 +996,7 @@ export default function LandingPage({
             </div>
 
             {/* About HCRS & Our Mission Section - Redesigned to exact specifications */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 max-w-6xl mx-auto pt-6 text-left font-sans">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 max-w-6xl mx-auto pt-12 sm:pt-16 md:pt-20 text-left font-sans">
               
               {/* Left Column (lg:col-span-5): ABOUT HCRS */}
               <motion.div 
@@ -1006,51 +1007,51 @@ export default function LandingPage({
                 className="lg:col-span-5 space-y-6 flex flex-col justify-between"
               >
                 <div className="bg-white border border-slate-200/80 p-8 md:p-10 rounded-3xl shadow-premium relative h-full flex flex-col justify-between overflow-hidden">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-slate-50/50 rounded-full pointer-events-none" />
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-slate-50/50 rounded-full pointer-events-none max-md:hidden" />
                   
                   <div className="space-y-6">
                     <div className="inline-flex items-center gap-2 bg-[#c9a227]/6 text-[#c9a227] px-3.5 py-1.5 rounded-full border border-[#c9a227]/10">
                       <Building2 className="w-4 h-4 stroke-[2]" />
                       <span className="font-extrabold text-[10px] uppercase tracking-widest">About HCRS • ഞങ്ങളെക്കുറിച്ച്</span>
                     </div>
- 
+
                     <h2 className="text-2xl font-black text-[#1a2b5c] tracking-tight uppercase leading-none font-heading">
                       About <span className="text-[#c9a227]">HCRS</span>
                     </h2>
- 
-                    <div className="space-y-5 text-sm text-slate-650 font-normal leading-relaxed">
+
+                    <div className="space-y-5 text-sm text-slate-700 font-normal leading-relaxed">
                       <div className="flex gap-4 items-start group">
                         <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 text-[#1a2b5c] flex items-center justify-center shrink-0 shadow-sm">
                           <Building2 className="w-5 h-5 text-[#c9a227]" />
                         </div>
-                        <p className="pt-0.5 text-[13px] md:text-sm font-normal text-slate-650 leading-relaxed">
+                        <p className="pt-0.5 text-xs sm:text-sm md:text-base font-normal text-slate-700 leading-relaxed">
                           <strong className="text-[#1a2b5c] font-extrabold">HIGHRICH COMMUNITY REVIVAL SOCIETY (HCRS)</strong> is a legally registered non-profit organization formed in 2025 in Thrissur, Kerala.
                         </p>
                       </div>
- 
+
                       <div className="flex gap-4 items-start group">
                         <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 text-[#1a2b5c] flex items-center justify-center shrink-0 shadow-sm">
                           <Users className="w-5 h-5 text-[#1a2b5c]" />
                         </div>
-                        <p className="pt-0.5 text-[13px] md:text-sm font-normal text-slate-650 leading-relaxed">
+                        <p className="pt-0.5 text-xs sm:text-sm md:text-base font-normal text-slate-700 leading-relaxed">
                           HCRS was established as a <strong className="text-[#1a2b5c] font-extrabold">revival committee</strong> for the members of Highrich Online Shoppe.
                         </p>
                       </div>
- 
+
                       <div className="flex gap-4 items-start group">
                         <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 text-[#1a2b5c] flex items-center justify-center shrink-0 shadow-sm">
                           <HeartHandshake className="w-5 h-5 text-emerald-600" />
                         </div>
-                        <p className="pt-0.5 text-[13px] md:text-sm font-normal text-slate-650 leading-relaxed">
+                        <p className="pt-0.5 text-xs sm:text-sm md:text-base font-normal text-slate-700 leading-relaxed">
                           Efforts are ongoing to support affected community members through welfare initiatives, awareness programs, community support activities, and <strong className="text-[#1a2b5c] font-extrabold">lawful assistance mechanisms</strong>.
                         </p>
                       </div>
- 
+
                       <div className="flex gap-4 items-start group">
                         <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 text-[#1a2b5c] flex items-center justify-center shrink-0 shadow-sm">
                           <Sparkles className="w-5 h-5 text-amber-600" />
                         </div>
-                        <p className="pt-0.5 text-[13px] md:text-sm font-normal text-slate-650 leading-relaxed">
+                        <p className="pt-0.5 text-xs sm:text-sm md:text-base font-normal text-slate-700 leading-relaxed">
                           HCRS remains committed to helping members <strong className="text-[#1a2b5c] font-extrabold">rebuild confidence, stability, and opportunities</strong> through collective action.
                         </p>
                       </div>
@@ -1200,8 +1201,8 @@ export default function LandingPage({
             </div>
 
             {/* OUR KEY ACTIVITIES SECTION */}
-            <section className="space-y-10 max-w-6xl mx-auto pt-16">
-              <div className="text-center space-y-3 font-sans">
+            <section className="space-y-8 sm:space-y-10 max-w-6xl mx-auto pt-12 sm:pt-16 md:pt-20">
+              <div className="text-center space-y-3.5 sm:space-y-4 font-sans">
                 <div className="inline-flex items-center gap-2 bg-white/10 text-slate-100 px-3.5 py-1.5 rounded-full border border-white/20">
                   <Activity className="w-4 h-4 text-slate-100 stroke-[2]" />
                   <span className="font-extrabold text-[10px] uppercase tracking-widest">Operational Focus • പ്രധാന പ്രവർത്തനങ്ങൾ</span>
@@ -1209,7 +1210,7 @@ export default function LandingPage({
                 <h2 className="text-3xl md:text-3xl font-black text-white uppercase tracking-tight font-heading">
                   Our Key <span className="text-[#c9a227]">Activities</span>
                 </h2>
-                <p className="text-slate-300 font-medium text-xs md:text-sm max-w-xl mx-auto">
+                <p className="text-slate-300 font-medium text-xs md:text-sm max-w-xl mx-auto px-4 sm:px-6">
                   We are actively engaged in structured initiatives and programs to restore the community.
                 </p>
               </div>
@@ -1226,12 +1227,12 @@ export default function LandingPage({
                     <h3 className="text-lg font-extrabold text-[#1a2b5c] uppercase tracking-tight font-heading">
                       Membership Campaigns
                     </h3>
-                    <p className="text-slate-500 font-normal text-xs md:text-sm leading-relaxed">
+                    <p className="text-slate-700 font-normal text-xs sm:text-sm leading-relaxed">
                       HCRS Membership Campaigns unite members and supporters for welfare, awareness, revival initiatives, and community participation.
                     </p>
                   </div>
                   <div className="pt-6 border-t border-slate-100 mt-6 flex items-center justify-between text-[#1a2b5c]">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Uniting Members</span>
+                    <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-slate-600">Uniting Members</span>
                     <span className="w-2.5 h-2.5 rounded-full bg-[#1a2b5c]" />
                   </div>
                 </div>
@@ -1247,12 +1248,12 @@ export default function LandingPage({
                     <h3 className="text-lg font-extrabold text-[#1a2b5c] uppercase tracking-tight font-heading">
                       Welfare Activities
                     </h3>
-                    <p className="text-slate-500 font-normal text-xs md:text-sm leading-relaxed">
+                    <p className="text-slate-700 font-normal text-xs sm:text-sm leading-relaxed">
                       Supporting members through welfare programs, awareness campaigns, and compassionate assistance initiatives.
                     </p>
                   </div>
                   <div className="pt-6 border-t border-slate-100 mt-6 flex items-center justify-between text-[#c9a227]">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Active Relief</span>
+                    <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-slate-600">Active Relief</span>
                     <span className="w-2.5 h-2.5 rounded-full bg-[#c9a227]" />
                   </div>
                 </div>
@@ -1268,12 +1269,12 @@ export default function LandingPage({
                     <h3 className="text-lg font-extrabold text-[#1a2b5c] uppercase tracking-tight font-heading">
                       Financial Support
                     </h3>
-                    <p className="text-slate-500 font-normal text-xs md:text-sm leading-relaxed">
+                    <p className="text-slate-700 font-normal text-xs sm:text-sm leading-relaxed">
                       Providing support initiatives for education, medical needs, emergencies, and livelihood recovery efforts.
                     </p>
                   </div>
                   <div className="pt-6 border-t border-slate-100 mt-6 flex items-center justify-between text-[#233875]">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Essential Recovery</span>
+                    <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-slate-600">Essential Recovery</span>
                     <span className="w-2.5 h-2.5 rounded-full bg-[#233875]" />
                   </div>
                 </div>
@@ -1369,8 +1370,8 @@ export default function LandingPage({
             </section>
 
             {/* OUR JOURNEY SECTION */}
-            <section className="space-y-12 max-w-5xl mx-auto pt-20 pb-10">
-              <div className="text-center space-y-2 font-sans">
+            <section className="space-y-8 sm:space-y-12 max-w-5xl mx-auto pt-12 sm:pt-16 md:pt-20 pb-8 sm:pb-10">
+              <div className="text-center space-y-3 sm:space-y-4 font-sans">
                 <div className="inline-flex items-center gap-2 bg-amber-500/10 text-amber-400 px-3.5 py-1.5 rounded-full border border-amber-500/20">
                   <Compass className="w-4 h-4 text-amber-400" />
                   <span className="font-bold text-[10px] uppercase tracking-wider">The Timeline • ചരിത്രവഴി</span>
@@ -1378,7 +1379,7 @@ export default function LandingPage({
                 <h2 className="text-3xl md:text-3xl font-semibold text-white uppercase tracking-tight">
                   Our <span className="text-[#c9a227]">Journey</span>
                 </h2>
-                <p className="text-slate-300 font-normal text-xs md:text-sm max-w-xl mx-auto">
+                <p className="text-slate-300 font-normal text-xs md:text-sm max-w-xl mx-auto px-4 sm:px-6">
                   A timeline tracking our establishment, unity, and dedicated ongoing community efforts.
                 </p>
               </div>
@@ -1404,7 +1405,7 @@ export default function LandingPage({
                         <span className="w-2 h-2 rounded-full bg-[#c9a227]" />
                         Foundation In Thrissur
                       </h3>
-                      <p className="text-slate-650 font-normal text-xs md:text-sm leading-relaxed">
+                      <p className="text-slate-700 font-normal text-xs sm:text-sm md:text-base leading-relaxed">
                         The Highrich Community Revival Society (HCRS) was formed in 2025 in Thrissur, Kerala.
                       </p>
                     </div>
@@ -1430,7 +1431,7 @@ export default function LandingPage({
                         <span className="w-2 h-2 rounded-full bg-[#1a2b5c]" />
                         Unity & Welfare Mobilization
                       </h3>
-                      <p className="text-slate-650 font-normal text-xs md:text-sm leading-relaxed">
+                      <p className="text-slate-700 font-normal text-xs sm:text-sm md:text-base leading-relaxed">
                         The organization was established to unite members, promote community welfare, and provide support initiatives during difficult circumstances.
                       </p>
                     </div>
@@ -1456,7 +1457,7 @@ export default function LandingPage({
                         <span className="w-2 h-2 rounded-full bg-emerald-600" />
                         Continuous Support Platform
                       </h3>
-                      <p className="text-slate-650 font-normal text-xs md:text-sm leading-relaxed">
+                      <p className="text-slate-700 font-normal text-xs sm:text-sm md:text-base leading-relaxed">
                         Today HCRS continues to serve as a platform for awareness, welfare, support, and community engagement.
                       </p>
                     </div>
@@ -1466,7 +1467,7 @@ export default function LandingPage({
             </section>
 
             {/* OUR VISION & FOCUS AREAS SECTION */}
-            <section className="space-y-12 max-w-6xl mx-auto pt-20">
+            <section className="space-y-8 sm:space-y-12 max-w-6xl mx-auto pt-12 sm:pt-16 md:pt-20">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch font-sans">
                 {/* OUR VISION (Left 5-cols) */}
                 <motion.div 
@@ -1476,7 +1477,7 @@ export default function LandingPage({
                   transition={{ duration: 0.4 }}
                   className="lg:col-span-5 relative bg-[#1a2b5c] rounded-[10px] p-8 md:p-10 shadow-sm flex flex-col justify-between overflow-hidden text-left"
                 >
-                  <div className="absolute -left-16 -bottom-16 w-48 h-48 bg-white/5 rounded-full blur-3xl pointer-events-none" />
+                  <div className="absolute -left-16 -bottom-16 w-48 h-48 bg-white/5 rounded-full blur-3xl pointer-events-none max-md:hidden" />
 
                   <div className="space-y-6 relative max-w-sm font-sans text-white">
                     <div className="inline-flex items-center gap-2 bg-white/10 text-white px-3.5 py-1.5 rounded-[4px] border border-white/20">
@@ -1522,7 +1523,7 @@ export default function LandingPage({
                       Focus <span className="text-[#1a2b5c]">Areas</span>
                     </h2>
 
-                    <p className="text-slate-500 font-normal text-xs md:text-sm">
+                    <p className="text-slate-700 font-medium text-xs sm:text-sm md:text-base leading-relaxed">
                       We focus on critical development blocks to foster societal health and security.
                     </p>
 
@@ -1592,11 +1593,11 @@ export default function LandingPage({
                                   {area.title}
                                 </h4>
                                 <span className="text-[10px] text-[#c9a227] font-bold uppercase tracking-wider hidden sm:inline">•</span>
-                                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                                <span className="text-[10px] sm:text-[11px] text-slate-700 font-bold uppercase tracking-wider">
                                   {area.titleMl}
                                 </span>
                               </div>
-                              <p className="text-slate-500 text-xs font-normal leading-relaxed pt-1">{area.desc}</p>
+                              <p className="text-slate-700 text-xs sm:text-sm font-normal leading-relaxed pt-1">{area.desc}</p>
                             </div>
 
                             {/* Right Icon - inspired by Reference #7 */}
@@ -1613,8 +1614,8 @@ export default function LandingPage({
             </section>
 
             {/* OUR STATE & DISTRICT COMMITTEES SECTION */}
-            <section className="space-y-8 max-w-6xl mx-auto pt-20">
-              <div className="text-center space-y-2">
+            <section className="space-y-8 max-w-6xl mx-auto pt-12 sm:pt-16 md:pt-20">
+              <div className="text-center space-y-3 sm:space-y-4">
                 <div className="inline-flex items-center gap-2 bg-white/10 text-slate-100 px-3.5 py-1.5 rounded-full border border-white/20">
                   <Network className="w-4 h-4 text-slate-100" />
                   <span className="font-bold text-[10px] uppercase tracking-wider">Organizational leadership • കമ്മിറ്റികൾ</span>
@@ -1622,7 +1623,7 @@ export default function LandingPage({
                 <h2 className="text-2xl md:text-3xl font-semibold text-white uppercase tracking-tight">
                   HCRS Committee <span className="text-[#c9a227]">Members</span>
                 </h2>
-                <p className="text-slate-300 font-normal text-xs md:text-sm max-w-xl mx-auto">
+                <p className="text-slate-300 font-normal text-xs md:text-sm max-w-xl mx-auto px-4 sm:px-6">
                   സംസ്ഥാന, ജില്ലാ, മണ്ഡലം തലങ്ങളിലെ ഞങ്ങളുടെ നേതൃത്വ നിരയും ഭാരവാഹികളും താഴെ കാണാം.
                 </p>
               </div>
@@ -2020,8 +2021,8 @@ export default function LandingPage({
             </section>
 
             {/* HCRS MEMBERSHIP BENEFITS SECTION */}
-            <section className="space-y-8 max-w-6xl mx-auto pt-20">
-              <div className="text-center space-y-2">
+            <section className="space-y-8 max-w-6xl mx-auto pt-12 sm:pt-16 md:pt-20">
+              <div className="text-center space-y-3 sm:space-y-4">
                 <div className="inline-flex items-center gap-2 bg-white/10 text-slate-100 px-3.5 py-1.5 rounded-full border border-white/20">
                   <Award className="w-4 h-4 text-slate-100" />
                   <span className="font-bold text-[10px] uppercase tracking-wider">Member Privileges • അംഗത്വ ആനുകൂല്യങ്ങൾ</span>
@@ -2029,7 +2030,7 @@ export default function LandingPage({
                 <h2 className="text-3xl font-semibold text-white uppercase tracking-tight">
                   HCRS Membership <span className="text-[#c9a227]">Benefits</span>
                 </h2>
-                <p className="text-slate-300 font-normal text-xs md:text-sm max-w-xl mx-auto">
+                <p className="text-slate-300 font-normal text-xs md:text-sm max-w-xl mx-auto px-4 sm:px-6">
                   By joining our registered collective, you unlock vital community support systems, legal standing, and advocacy channels.
                 </p>
               </div>
@@ -2040,7 +2041,7 @@ export default function LandingPage({
                   whileHover={{ y: -4 }}
                   className="bg-white border border-slate-200 p-8 rounded-[10px] shadow-sm flex flex-col justify-between relative overflow-hidden group transition-all text-left font-sans"
                 >
-                  <div className="absolute top-0 right-0 w-20 h-20 bg-[#1a2b5c]/3 rounded-full pointer-events-none" />
+                  <div className="absolute top-0 right-0 w-20 h-20 bg-[#1a2b5c]/3 rounded-full pointer-events-none max-md:hidden" />
                   <div className="space-y-4">
                     <div className="w-12 h-12 rounded-[6px] bg-[#1a2b5c]/5 border border-[#1a2b5c]/10 text-[#1a2b5c] flex items-center justify-center shadow-sm transition-transform">
                       <Briefcase className="w-5 h-5" />
@@ -2053,12 +2054,12 @@ export default function LandingPage({
                         ജീവനമാർഗ്ഗ പുനരുദ്ധാരണം
                       </p>
                     </div>
-                    <p className="text-slate-500 font-normal text-xs leading-relaxed">
+                    <p className="text-slate-700 font-normal text-xs sm:text-sm leading-relaxed">
                       Working collectively to support members through awareness, welfare initiatives, and community revival efforts.
                     </p>
                   </div>
                   <div className="pt-4 border-t border-slate-100 mt-6 flex items-center justify-between text-[#1a2b5c]">
-                    <span className="text-[10px] font-bold uppercase tracking-wider">Life Recovery Block</span>
+                    <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">Life Recovery Block</span>
                     <span className="w-2 h-2 rounded-full bg-[#1a2b5c]" />
                   </div>
                 </motion.div>
@@ -2068,7 +2069,7 @@ export default function LandingPage({
                   whileHover={{ y: -4 }}
                   className="bg-white border border-slate-200 p-8 rounded-[10px] shadow-sm flex flex-col justify-between relative overflow-hidden group transition-all text-left font-sans"
                 >
-                  <div className="absolute top-0 right-0 w-20 h-20 bg-[#c9a227]/3 rounded-full pointer-events-none" />
+                  <div className="absolute top-0 right-0 w-20 h-20 bg-[#c9a227]/3 rounded-full pointer-events-none max-md:hidden" />
                   <div className="space-y-4">
                     <div className="w-12 h-12 rounded-[6px] bg-[#c9a227]/5 border border-[#c9a227]/10 text-[#c9a227] flex items-center justify-center shadow-sm transition-transform">
                       <Scale className="w-5 h-5" />
@@ -2077,16 +2078,16 @@ export default function LandingPage({
                       <h3 className="text-lg font-semibold text-slate-905 uppercase tracking-tight leading-tight">
                         Stand For Justice
                       </h3>
-                      <p className="text-[10px] text-[#c9a227] font-bold uppercase tracking-wider mt-1">
+                      <p className="text-[10px] sm:text-[11px] text-[#c9a227] font-bold uppercase tracking-wider mt-1">
                         നീതിക്കായുള്ള നിലകൊള്ളൽ
                       </p>
                     </div>
-                    <p className="text-slate-500 font-normal text-xs leading-relaxed">
+                    <p className="text-slate-700 font-normal text-xs sm:text-sm leading-relaxed">
                       Members can participate in lawful representation efforts, petitions, and community advocacy initiatives.
                     </p>
                   </div>
                   <div className="pt-4 border-t border-slate-100 mt-6 flex items-center justify-between text-[#c9a227]">
-                    <span className="text-[10px] font-bold uppercase tracking-wider">Advocacy Standing</span>
+                    <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">Advocacy Standing</span>
                     <span className="w-2 h-2 rounded-full bg-[#c9a227]" />
                   </div>
                 </motion.div>
@@ -2096,7 +2097,7 @@ export default function LandingPage({
                   whileHover={{ y: -4 }}
                   className="bg-white border border-slate-200 p-8 rounded-[10px] shadow-sm flex flex-col justify-between relative overflow-hidden group transition-all text-left font-sans"
                 >
-                  <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-50 rounded-full pointer-events-none" />
+                  <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-50 rounded-full pointer-events-none max-md:hidden" />
                   <div className="space-y-4">
                     <div className="w-12 h-12 rounded-[6px] bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center shadow-sm transition-transform">
                       <Shield className="w-5 h-5" />
@@ -2105,16 +2106,16 @@ export default function LandingPage({
                       <h3 className="text-lg font-semibold text-slate-905 uppercase tracking-tight leading-tight">
                         Guaranteed Privacy
                       </h3>
-                      <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider mt-1">
+                      <p className="text-[10px] sm:text-[11px] text-emerald-600 font-bold uppercase tracking-wider mt-1">
                         വ്യക്തിവിവര സുരക്ഷിതത്വം
                       </p>
                     </div>
-                    <p className="text-slate-500 font-normal text-xs leading-relaxed">
+                    <p className="text-slate-700 font-normal text-xs sm:text-sm leading-relaxed">
                       HCRS is committed to protecting member information through secure and responsible data handling practices.
                     </p>
                   </div>
                   <div className="pt-4 border-t border-slate-100 mt-6 flex items-center justify-between text-emerald-600">
-                    <span className="text-[10px] font-bold uppercase tracking-wider">Encrypted Safeguards</span>
+                    <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">Encrypted Safeguards</span>
                     <span className="w-2 h-2 rounded-full bg-emerald-500" />
                   </div>
                 </motion.div>
@@ -2124,7 +2125,7 @@ export default function LandingPage({
 
 
             {/* Gallery Archive Grid Redesign */}
-            <section className="space-y-8 max-w-6xl mx-auto pt-16" id="gallery-preview">
+            <section className="space-y-8 max-w-6xl mx-auto pt-12 sm:pt-16 md:pt-20" id="gallery-preview">
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 text-left">
                 <div className="space-y-2">
                   <div className="inline-flex items-center gap-2 bg-amber-500/10 text-amber-400 px-3.5 py-1.5 rounded-full border border-amber-500/20">
@@ -2172,23 +2173,23 @@ export default function LandingPage({
                 </div>
               ) : (
                 <div className="bg-white rounded-[10px] p-12 border border-slate-200 shadow-sm flex flex-col items-center text-center space-y-4">
-                   <div className="w-12 h-12 bg-slate-50 rounded-[6px] flex items-center justify-center text-slate-500 shadow-sm border border-slate-200">
+                   <div className="w-12 h-12 bg-slate-50 rounded-[6px] flex items-center justify-center text-slate-600 shadow-sm border border-slate-200">
                       <ImageIcon className="w-6 h-6" />
                    </div>
                    <div>
                      <h3 className="text-base font-semibold text-slate-900 uppercase tracking-tight font-sans">No Archive Photos Yet</h3>
-                     <p className="text-slate-500 font-normal text-xs max-w-sm mx-auto mt-1 leading-relaxed">Explore Secretariat updates once the administrators upload new event files.</p>
+                     <p className="text-slate-700 font-normal text-xs sm:text-sm max-w-sm mx-auto mt-1 leading-relaxed">Explore Secretariat updates once the administrators upload new event files.</p>
                    </div>
                 </div>
               )}
             </section>
 
             {/* Map & Address Section */}
-            <section id="contact-us" className="bg-white border border-slate-200 rounded-[10px] shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-2 max-w-6xl mx-auto pt-0 text-left font-sans">
+            <section id="contact-us" className="bg-white border border-slate-200 rounded-[10px] shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-2 max-w-6xl mx-auto mt-12 sm:mt-16 md:mt-20 text-left font-sans">
               <div className="p-8 md:p-12 space-y-10">
                 <div className="space-y-3">
                   <h2 className="text-3xl font-semibold text-slate-900 uppercase tracking-tight">Connect with HCRS</h2>
-                  <p className="text-slate-500 font-normal text-xs leading-relaxed max-w-md">For queries regarding registrations, identity verification or the financial context registry.</p>
+                  <p className="text-slate-700 font-normal text-xs sm:text-sm leading-relaxed max-w-md px-1 sm:px-0">For queries regarding registrations, identity verification or the financial context registry.</p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
@@ -2197,8 +2198,8 @@ export default function LandingPage({
                       <MapPin className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Headquarters</p>
-                      <p className="text-slate-700 text-xs font-normal leading-relaxed">{settings.address}</p>
+                      <p className="text-[10px] sm:text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Headquarters</p>
+                      <p className="text-slate-800 text-xs sm:text-sm font-normal leading-relaxed">{settings.address}</p>
                     </div>
                   </div>
 
@@ -2207,8 +2208,8 @@ export default function LandingPage({
                       <Phone className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Helpline</p>
-                      <p className="text-slate-700 text-xs font-normal">{settings.phone}</p>
+                      <p className="text-[10px] sm:text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Helpline</p>
+                      <p className="text-slate-800 text-xs sm:text-sm font-normal">{settings.phone}</p>
                     </div>
                   </div>
 
@@ -2217,8 +2218,8 @@ export default function LandingPage({
                       <Mail className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Email Office</p>
-                      <p className="text-slate-700 text-xs font-normal break-all leading-normal">{settings.email}</p>
+                      <p className="text-[10px] sm:text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Email Office</p>
+                      <p className="text-slate-800 text-xs sm:text-sm font-normal break-all leading-normal">{settings.email}</p>
                     </div>
                   </div>
 
@@ -2227,8 +2228,8 @@ export default function LandingPage({
                       <Globe className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Official Site</p>
-                      <a href={settings.website} target="_blank" rel="noreferrer" className="text-slate-700 text-xs font-normal hover:text-[#c9a227] transition-colors break-all leading-normal">{settings.website}</a>
+                      <p className="text-[10px] sm:text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Official Site</p>
+                      <a href={settings.website} target="_blank" rel="noreferrer" className="text-slate-800 text-xs sm:text-sm font-normal hover:text-[#c9a227] transition-colors break-all leading-normal">{settings.website}</a>
                     </div>
                   </div>
                 </div>
@@ -2241,7 +2242,7 @@ export default function LandingPage({
                   </div>
                   <div>
                     <h3 className="text-base font-semibold text-slate-900 uppercase tracking-tight">Active Districts</h3>
-                    <p className="text-slate-500 font-normal text-xs mt-2 leading-relaxed">{settings.districtDetails}</p>
+                    <p className="text-slate-700 font-normal text-xs sm:text-sm mt-2 leading-relaxed">{settings.districtDetails}</p>
                   </div>
                 </div>
               </div>
