@@ -122,6 +122,7 @@ export default function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isScreenshotMode, setIsScreenshotMode] = useState(false);
   const [prefilledMobile, setPrefilledMobile] = useState('');
   const [hasSubmittedClaim, setHasSubmittedClaim] = useState(false);
   const [submittedClaimsCount, setSubmittedClaimsCount] = useState(0);
@@ -2166,16 +2167,16 @@ export default function App() {
         setUser(prev => prev ? { ...prev, photoUrl } : null);
       }
       
-      // Also update members list if in admin view
+      // Also update members list if loaded
       setMembers(prev => prev.map(m => m.uid === uid ? { ...m, photoUrl } : m));
       
-      toast.success('Profile picture updated!', { id: loadingToast });
+      toast.success('Photo updated successfully!', { id: loadingToast });
     } catch (error) {
-      console.error("Photo upload error:", error);
-      toast.error('Upload failed. Please try again.', { id: loadingToast });
+      console.error("Error updating photo:", error);
+      toast.error('Failed to update photo', { id: loadingToast });
     }
   };
-  
+
   const handleUpdateDistrictQuota = async (districtCode: string, total: number) => {
     try {
       const quotaRef = doc(db, 'districtQuotas', districtCode);
@@ -2183,216 +2184,91 @@ export default function App() {
       await setDoc(quotaRef, {
         id: districtCode,
         districtName: district?.name || districtCode,
-        total,
-        used: districtQuotasUsed[districtCode] || 0
+        total
       }, { merge: true });
+      setDistrictQuotas(prev => ({ ...prev, [districtCode]: total }));
+      toast.success(`Quota updated for ${districtCode}`);
     } catch (error) {
-      console.error("Error updating quota:", error);
-      toast.error("Failed to update district quota");
+      console.error("Error updating district quota:", error);
+      toast.error('Failed to update quota');
     }
   };
 
   const handleSyncQuotas = async () => {
-    const loadingToast = toast.loading('Syncing all district quotas...');
+    const loadingToast = toast.loading('Syncing district quotas...');
     try {
       const counts: Record<string, number> = {};
-      DISTRICTS.forEach(d => counts[d.code] = 0);
+      DISTRICTS.forEach(d => { counts[d.code] = 0; });
 
-      // Fetch actual Main Admins UIDs from database to exclude them dynamically
-      const mainAdminUids = new Set<string>();
-      try {
-        const qAdmin = query(collection(db, 'users'), where('email', 'in', MAIN_ADMINS));
-        const adminSnap = await getDocs(qAdmin);
-        adminSnap.forEach(docSnap => {
-          mainAdminUids.add(docSnap.id.toLowerCase());
-        });
-      } catch (err) {
-        console.error("Error fetching main admin uids:", err);
-      }
-      
-      // Calculate from local members list
       members.forEach(m => {
-        if (m.district) {
-          const code = m.district.toUpperCase();
+        const dCode = m.district ? getDistrictCode(m.district) : null;
+        if (dCode && counts[dCode] !== undefined) {
+          if (m.status === 'deleted' || m.deletedAt) return;
           
-          // Exclude Life Members
           const mType = (m.membership_type || m.membershipType || '').toUpperCase();
-          if (mType === 'LIFE_MEMBER') return;
-          
-          // Exclude explicitly not counted
-          if (m.isQuotaCounted === false) return;
-          
-          // Exclude online self-registrations
-          if (!m.registeredBy || m.registeredBy === 'online' || m.registeredByName === 'Online Registration') return;
-          
-          // Exclude direct entries made by Main Admins
-          const creatorName = (m.registeredByName || '').toLowerCase();
-          const creatorUid = (m.registeredBy || '').toLowerCase();
-          
-          if (
-            creatorUid === 'super_admin' || 
-            creatorUid === 'admin' || 
-            mainAdminUids.has(creatorUid) ||
-            creatorName.includes('super admin') || 
-            creatorName === 'admin' ||
-            creatorName.includes('kmabarikiya') ||
-            creatorName.includes('hcrsindia') ||
-            creatorName.includes('mabarikiya') ||
-            creatorName.includes('9645934571') ||
-            MAIN_ADMINS.some(email => creatorName.includes(email.split('@')[0]))
-          ) {
-            return;
-          }
+          if (mType.includes('LIFE')) return;
 
-          counts[code] = (counts[code] || 0) + 1;
+          if (m.email && MAIN_ADMINS.includes(m.email.toLowerCase())) return;
+
+          if (counts[dCode] !== undefined) {
+            counts[dCode] += 1;
+          }
         }
       });
-      
-      // Update each district document
-      const updatePromises = Object.entries(counts).map(async ([code, count]) => {
-        const quotaRef = doc(db, 'districtQuotas', code);
-        try {
-          await updateDoc(quotaRef, { used: count });
-        } catch (e) {
-           // If doc doesn't exist, set it
-           const district = DISTRICTS.find(d => d.code === code);
-           await setDoc(quotaRef, { 
-             id: code, 
-             districtName: district?.name || code,
-             used: count,
-             total: 500
-           });
-        }
-      });
-      
-      await Promise.all(updatePromises);
-      toast.success('All district quotas synchronized!', { id: loadingToast });
+
+      for (const districtCode of Object.keys(counts)) {
+        const count = counts[districtCode];
+        const quotaRef = doc(db, 'districtQuotas', districtCode);
+        const district = DISTRICTS.find(d => d.code === districtCode);
+        await setDoc(quotaRef, {
+          id: districtCode,
+          districtName: district?.name || districtCode,
+          used: count
+        }, { merge: true });
+      }
+
+      setDistrictQuotasUsed(counts);
+      toast.success('District quotas synced!', { id: loadingToast });
     } catch (error) {
-      console.error("Sync error:", error);
+      console.error("Error syncing quotas:", error);
       toast.error('Failed to sync quotas', { id: loadingToast });
     }
   };
 
   if (view === 'loading') {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FAF9FC] p-8 text-center">
-        <div className="relative mb-10 w-24 h-24">
-          <RefreshCw className="w-full h-full text-brand-blue animate-spin" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-3 h-3 bg-brand-magenta rounded-full animate-pulse shadow-[0_0_15px_rgba(235,0,139,0.5)]" />
-          </div>
-        </div>
-        
-        <div className="space-y-2 mb-12">
-          <h2 className="text-3xl font-black text-brand-magenta uppercase tracking-tight">Syncing Security</h2>
-          <p className="text-slate-400 font-bold text-[11px] uppercase tracking-[0.2em]">HIGHRICH COMMUNITY REVIVAL SOCIETY</p>
-        </div>
-
+      <div className="min-h-screen bg-[#FAF9FC] flex items-center justify-center p-4">
         <div className="bg-white border-2 border-slate-100 p-8 rounded-[40px] shadow-xl shadow-slate-200/50 max-w-sm w-full space-y-6">
            <div className="flex items-center gap-4 text-left">
               <div className="w-10 h-10 rounded-2xl bg-brand-blue/10 flex items-center justify-center text-brand-blue">
                  <ShieldCheck className="w-5 h-5" />
               </div>
               <div>
-                 <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Protocol 01</p>
-                 <p className="text-xs font-bold text-slate-600">Secure Handshake ... OK</p>
+                 <p className="text-xs font-black text-slate-900 uppercase">Verifying Network</p>
+                 <p className="text-[10px] font-bold text-slate-400">Please wait while loading</p>
               </div>
-           </div>
-           
-           <div className="flex items-center gap-4 text-left">
-              <div className="w-10 h-10 rounded-2xl bg-brand-magenta/10 flex items-center justify-center text-brand-magenta">
-                 <Users className="w-5 h-5" />
-              </div>
-              <div>
-                 <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Protocol 02</p>
-                 <p className="text-xs font-bold text-slate-600">{loadingStatus}</p>
-              </div>
-           </div>
-
-           <div className="pt-4 px-2">
-              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                 <div className="h-full bg-brand-magenta animate-pulse w-full rounded-full" />
-              </div>
-              <p className="text-[9px] text-slate-400 font-bold uppercase mt-3 tracking-widest text-center">
-                Syncing with Database...
-              </p>
-           </div>
-        </div>
-
-        <div className="mt-16 space-y-4">
-           <p className="text-[10px] text-slate-300 font-bold uppercase tracking-widest leading-none">Experiencing issues?</p>
-           <div className="flex gap-4 justify-center">
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => window.location.reload()}
-                className="text-[10px] font-black uppercase text-brand-blue hover:bg-brand-blue/5 rounded-xl px-6"
-              >
-                Refresh
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => {
-                  setLoadingStatus('Resetting...');
-                  signOut(auth).then(() => {
-                    setView('landing');
-                    toast.info('Session reset. Please log in again.');
-                  }).catch(() => {
-                    setView('landing');
-                  });
-                }}
-                className="text-[10px] font-black uppercase text-red-500 border-red-100 hover:bg-red-50 rounded-xl px-6 h-10"
-              >
-                Reset & Try Again
-              </Button>
            </div>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen font-sans antialiased text-foreground selection:bg-brand-blue/20">
-      {isQuotaExceeded && (() => {
-        const isUserAdmin = user && (
-          user.isAdmin || 
-          user.role === 'admin' || 
-          user.role === 'operator' ||
-          MAIN_ADMINS.some(e => e.toLowerCase() === (user.email || '').toLowerCase()) ||
-          SECOND_ADMINS.some(e => e.toLowerCase() === (user.email || '').toLowerCase())
-        );
+  const maintenanceMode = orgSettings?.maintenanceMode;
 
-        if (isUserAdmin) {
-          return (
-            <div className="bg-amber-500 text-slate-900 px-4 py-2.5 font-sans font-semibold text-center text-xs md:text-sm flex flex-col sm:flex-row items-center justify-center gap-1.5 border-b border-amber-600/30 animate-in slide-in-from-top duration-500 sticky top-0 z-50 shadow-md">
-              <div className="flex items-center gap-1.5 justify-center">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-950 animate-pulse" />
-                <span>ഡാറ്റാബേസ് കണക്ഷൻ തടസ്സപ്പെട്ടു (Firestore Daily Free Read Quota Crossed).</span>
-              </div>
-              <span className="text-[10px] md:text-xs opacity-95">
-                നാളെ വീണ്ടും ശ്രമിക്കുക, അല്ലെങ്കിൽ{' '} 
-                <a 
-                  href="https://console.firebase.google.com/project/gen-lang-client-0932665202/firestore/databases/-default-/data?openUpgradeDialog=true" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="underline font-black text-amber-950 hover:text-white transition-colors"
-                >
-                  ഇവിടെ ക്ലിക്ക് ചെയ്ത് ബില്ലിംഗ് അപ്ഗ്രേഡ് ചെയ്യുക
-                </a>.
-              </span>
-            </div>
-          );
-        } else {
+  return (
+    <div className="min-h-screen bg-[#FAF9FC]">
+      {(() => {
+        if (maintenanceMode) {
           return (
             <div className="bg-slate-800 text-slate-100 px-4 py-2.5 font-sans font-semibold text-center text-xs md:text-sm flex flex-col sm:flex-row items-center justify-center gap-1.5 border-b border-slate-700 animate-in slide-in-from-top duration-500 sticky top-0 z-50 shadow-md">
               <div className="flex items-center gap-1.5 justify-center">
                 <AlertTriangle className="w-4 h-4 shrink-0 text-amber-500 animate-pulse" />
-                <span>സാങ്കേതിക തകരാർ കാരണം സർവീസ് താത്കാലികമായി ലഭ്യമല്ല. ദയവായി പിന്നീട് വീണ്ടും ശ്രമിക്കുക. (Service temporarily unavailable due to a technical error. Please try again later.)</span>
+                <span>സാങ്കേതിക തകരാർ കാരണം സർവീസ് താത്കാലികമായി ലഭ്യമല്ല. ദയവായി പിന്നീട് വീണ്ടും ശ്രമിക്കുക.</span>
               </div>
             </div>
           );
         }
+        return null;
       })()}
 
       {view === 'landing' && (
@@ -2478,6 +2354,255 @@ export default function App() {
         </div>
       )}
 
+      {view === 'card' && user && (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 min-h-screen flex flex-col items-center py-6 px-4">
+          {/* Dashboard Header with Logo */}
+          {!isScreenshotMode && (
+            <div className="w-full max-w-5xl mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-xl">
+              <div className="flex items-center gap-4 sm:gap-5">
+                <Logo size="sm" className="w-16 h-16 sm:w-20 sm:h-20 shrink-0" />
+                <div>
+                  <h1 className="text-sm sm:text-base md:text-lg font-black text-slate-900 tracking-wide uppercase leading-tight">HIGHRICH COMMUNITY REVIVAL SOCIETY</h1>
+                  <p className="text-xs sm:text-sm font-extrabold text-amber-600 uppercase tracking-widest mt-1">
+                    {String(user.membership_type || user.membershipType || '').toUpperCase().includes('LIFE') ? 'Life Member' : (user.isAdmin ? 'Admin Console' : 'Official Member')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isEditingProfile ? (
+            <div className="w-full max-w-lg">
+              <ProfileEditForm 
+                user={user} 
+                onSave={handleSaveProfile} 
+                onCancel={() => setIsEditingProfile(false)} 
+              />
+            </div>
+          ) : (
+            <div className={isScreenshotMode 
+              ? "w-full flex items-center justify-center"
+              : "w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-start justify-center mt-2 px-2"
+            }>
+              {/* Left Column/Panel for Information, Statuses, and Quick Actions */}
+              {!isScreenshotMode && (
+                <div className="lg:col-span-6 flex flex-col items-center lg:items-start text-center lg:text-left space-y-6 w-full max-w-sm mx-auto lg:mx-0">
+                  {/* Welcome / Header Badges */}
+                  <div className="w-full">
+                    {user.renewalPending ? (
+                      <div className="flex flex-col items-center lg:items-start animate-in fade-in zoom-in duration-700">
+                        <div className="bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-500/50 px-6 py-2 rounded-full text-[10px] font-black mb-4 tracking-[0.2em] uppercase flex items-center gap-1.5 w-fit">
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-600 dark:text-amber-300" /> Verification Pending
+                        </div>
+                        <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-none mb-2">Renewal <span className="text-amber-600 dark:text-[#ffd700] italic font-extrabold">Pending</span></h2>
+                        <p className="text-slate-700 dark:text-slate-200 text-[11px] font-black tracking-widest uppercase">Verification in Progress</p>
+                      </div>
+                    ) : isExpired ? (
+                      <div className="flex flex-col items-center lg:items-start animate-in fade-in zoom-in duration-700">
+                        <div className="bg-rose-100 dark:bg-rose-950/60 text-rose-900 dark:text-rose-300 border border-rose-500/50 px-6 py-2 rounded-full text-[10px] font-black mb-4 tracking-[0.2em] uppercase flex items-center gap-1.5 w-fit">
+                          <Clock className="w-3.5 h-3.5 animate-pulse text-rose-600 dark:text-rose-300" /> Expired (കാലാവധി കഴിഞ്ഞു)
+                        </div>
+                        <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-none mb-2">Renewal <span className="text-amber-600 dark:text-[#ffd700] italic font-extrabold">Required</span></h2>
+                        <p className="text-slate-700 dark:text-slate-200 text-[11px] font-black tracking-widest uppercase">Highrich Community Revival Society</p>
+                      </div>
+                    ) : (user.status === 'active' || user.status === 'offline' || user.isAdmin || user.role === 'admin' || user.role === 'operator') ? (
+                      <div className="flex flex-col items-center lg:items-start animate-in fade-in zoom-in duration-700">
+                        {showCelebration && (
+                          <div className="mb-4 animate-bounce">
+                            <Badge className="bg-brand-magenta text-slate-950 px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest font-sans">Congratulations!</Badge>
+                          </div>
+                        )}
+                        <div 
+                          className="px-6 py-2 rounded-full text-[10px] font-black mb-4 tracking-[0.2em] uppercase w-fit"
+                          style={{ color: '#064e3b', backgroundColor: '#d1fae5', border: '1px solid #10b981' }}
+                        >
+                          Verification Complete
+                        </div>
+                        <h2 className="text-4xl sm:text-5xl font-black tracking-tight leading-none mb-2" style={{ color: '#0f172a' }}>Welcome <span className="italic font-extrabold" style={{ color: '#d97706' }}>Home</span></h2>
+                        <p className="text-[11.5px] font-black tracking-widest uppercase px-3.5 py-1.5 rounded-xl" style={{ color: '#0f172a', backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1' }}>Verified Member of HCRS</p>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center lg:items-start animate-in fade-in slide-in-from-top-4 duration-500 text-center lg:text-left">
+                        {showCelebration && (
+                          <div className="mb-4 animate-bounce">
+                            <Badge className="bg-brand-magenta text-slate-950 px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest">Congratulations!</Badge>
+                          </div>
+                        )}
+                        <div className="bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-500/50 px-6 py-2 rounded-full text-[10px] font-black mb-4 tracking-[0.2em] uppercase w-fit">
+                          Registration Success
+                        </div>
+                        <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-none mb-2">Membership <br/> <span className="text-amber-600 dark:text-[#ffd700] italic font-extrabold">In Progress</span></h2>
+                        <p className="text-amber-100 text-xs font-black leading-relaxed max-w-xs mt-2 bg-amber-500/20 p-3.5 rounded-2xl border border-amber-500/40">
+                          നിങ്ങളുടെ രജിസ്ട്രേഷൻ പൂർത്തിയായി. അഡ്മിൻ പേയ്മെന്റ് വെരിഫൈ ചെയ്തുകഴിഞ്ഞാൽ നിങ്ങളുടെ ഒഫീഷ്യൽ കാർഡ് ഇവിടെ ലഭിക്കുന്നതാണ്.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                {/* Urgent Actions: Registration Alert / Financial Info Registry Banner */}
+                <div className="w-full">
+                  {user.renewalPending ? (
+                    <div className="w-full bg-amber-500/10 dark:bg-amber-950/20 rounded-[28px] border-2 border-amber-500/30 p-5 sm:p-6 text-center lg:text-left shadow-lg relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 blur-xl pointer-events-none" />
+                      <div className="h-10 w-10 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center mx-auto lg:mx-0 mb-3 text-amber-600 dark:text-amber-400">
+                        <Clock className="w-5 h-5 animate-pulse" />
+                      </div>
+                      <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight leading-tight">
+                        പുതുക്കൽ അപ്പ്രൂവലിനായി കാത്തിരിക്കുന്നു!
+                      </h3>
+                      <p className="text-[10px] sm:text-[11px] font-black tracking-widest text-amber-700 dark:text-amber-400 uppercase mt-1">RENEWAL PENDING APPROVAL</p>
+                      <p className="text-slate-850 dark:text-slate-100 font-black text-[13px] sm:text-[14px] leading-relaxed mt-3">
+                        താങ്കളുടെ ₹100 അതിവേഗ ഒഫീഷ്യൽ പുതുക്കൽ അടവ് പരിശോധിക്കുകയാണ്. ഇതുകഴിഞ്ഞാൽ ফിനാൻഷ്യൽ ഇൻഫോ രജിസ്ട്രി ഫോം ഉടൻ ലഭ്യമാകും.
+                      </p>
+                    </div>
+                  ) : user.status === 'pending' ? (
+                    <div className="w-full bg-amber-500/10 dark:bg-amber-950/20 rounded-[28px] border-2 border-amber-500/30 p-5 sm:p-6 text-center lg:text-left shadow-lg relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 blur-xl pointer-events-none" />
+                      <div className="h-10 w-10 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center mx-auto lg:mx-0 mb-3 text-amber-600 dark:text-amber-400">
+                        <Clock className="w-5 h-5 animate-pulse" />
+                      </div>
+                      <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight leading-tight">
+                        അംഗത്വ അപ്പ്രൂവലിനായി കാത്തിരിക്കുന്നു!
+                      </h3>
+                      <p className="text-[10px] sm:text-[11px] font-black tracking-widest text-amber-700 dark:text-amber-400 uppercase mt-1">MEMBERSHIP PENDING APPROVAL</p>
+                      <p className="text-slate-850 dark:text-slate-100 font-black text-[13px] sm:text-[14px] leading-relaxed mt-3">
+                        താങ്കളുടെ പുതിയ അംഗത്വ രജിസ്ട്രേഷൻ വിവരങ്ങളും പേയ്‌മെന്റും അഡ്മിൻ പാനലിൽ പരിശോധനയിലാണ്. വെരിഫിക്കേഷൻ പൂർത്തിയായാൽ ഇവിടെ കാർഡ് ആക്റ്റീവ് ആകുകയും വിവര രജിസ്ട്രി ഫോം ലഭ്യമാകുകയും ചെയ്യും.
+                      </p>
+                    </div>
+                  ) : isExpired ? (
+                    <div className="w-full bg-rose-500/10 dark:bg-rose-950/20 border-2 border-brand-magenta/40 p-5 sm:p-6 rounded-[28px] text-center lg:text-left shadow-xl relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-brand-magenta/5 blur-xl pointer-events-none" />
+                      <div className="h-10 w-10 rounded-full bg-rose-500/20 border border-rose-500/30 flex items-center justify-center mx-auto lg:mx-0 mb-3 text-rose-600 dark:text-rose-400">
+                        <AlertTriangle className="w-5 h-5 animate-bounce" />
+                      </div>
+                      <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight leading-none">
+                        അംഗത്വ കാലാവധി കഴിഞ്ഞിരിക്കുന്നു!
+                      </h3>
+                      <p className="text-[10px] sm:text-[11px] font-black tracking-widest text-brand-magenta uppercase mt-1">MEMBERSHIP EXPIRED</p>
+                      <p className="text-slate-850 dark:text-slate-100 font-black text-[13px] sm:text-[14px] leading-relaxed mt-3">
+                        താങ്കളുടെ അംഗത്വം കാലാവധി കഴിഞ്ഞിരിക്കുന്നു. വിവര രജിസ്ട്രി ഫോം ഉപയോഗിക്കുന്നതിനും ഐഡി കാർഡ് പുതുക്കുന്നതിനും ₹100 അടയ്ക്കുക.
+                      </p>
+                      <Button 
+                        onClick={() => {
+                          setPrefilledMobile(user.mobile);
+                          setView('renewal');
+                        }}
+                        className="w-full h-13 rounded-[18px] font-black bg-brand-magenta text-slate-950 shadow-md hover:bg-brand-magenta/95 hover:scale-[1.01] active:scale-95 transition-all mt-4 text-[11px] uppercase tracking-wider cursor-pointer border-b-4 border-[#9c7203]/55"
+                      >
+                        അംഗത്വം പുതുക്കുക ₹100 (Renew Now)
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      {submittedClaimsCount >= 4 ? (
+                        <div className="w-full bg-emerald-500/10 dark:bg-emerald-950/20 border-2 border-emerald-500/35 p-6 sm:p-8 pb-8 sm:pb-10 rounded-[28px] shadow-lg text-center lg:text-left flex flex-col gap-4">
+                          <Button 
+                            onClick={() => setView('support')}
+                            className="w-full h-15 rounded-2xl font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg hover:scale-[1.02] active:scale-95 transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-3 border-b-4 border-emerald-800 cursor-pointer"
+                          >
+                            <ShieldCheck className="w-5 h-5 animate-pulse" />
+                            Registry Saved ✓
+                          </Button>
+                          <div className="text-center lg:text-left space-y-2 mt-2 pt-3.5 border-t border-emerald-500/20">
+                            <p className="text-sm sm:text-base font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-[0.15em]">രജിസ്ട്രി പൂർത്തിയായി (4/4 Submitted)</p>
+                            <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white uppercase tracking-wide font-sans leading-relaxed">
+                              കുടുംബത്തിലെ എല്ലാവരുടെയും വിവരങ്ങൾ രേഖപ്പെടുത്തി
+                            </p>
+                          </div>
+                        </div>
+                      ) : submittedClaimsCount > 0 ? (
+                        <div className="w-full bg-amber-500/15 dark:bg-amber-950/30 border-2 border-amber-500/40 p-6 sm:p-8 pb-8 sm:pb-10 rounded-[28px] shadow-xl text-center lg:text-left flex flex-col gap-4">
+                          <Button 
+                            onClick={() => setView('support')}
+                            className="w-full h-15 rounded-2xl font-black bg-amber-600 hover:bg-amber-700 text-white shadow-lg hover:scale-[1.02] active:scale-95 transition-all text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-3 border-b-4 border-amber-800 cursor-pointer"
+                          >
+                            <Info className="w-5 h-5 animate-pulse" />
+                            REGISTRY STATUS: {submittedClaimsCount}/4 SAVED
+                          </Button>
+                          <div className="text-center lg:text-left space-y-2 mt-2 pt-3.5 border-t border-amber-500/30">
+                            <p className="text-sm sm:text-base font-black text-amber-900 dark:text-amber-400 uppercase tracking-[0.15em]">
+                              കൂടുതൽ വിവരങ്ങൾ നൽകാം (SLOTS OPEN)
+                            </p>
+                            <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-relaxed">
+                              {submittedClaimsCount} പേരുടെ വിവരങ്ങൾ നൽകി. ബാക്കി ചെയ്യാം.
+                            </p>
+                            <p className="text-sm sm:text-base font-black leading-relaxed" style={{ color: '#0f172a' }}>
+                              ശേഷിക്കുന്ന വിവരങ്ങൾ ചേർത്ത് രജിസ്ട്രി പൂർത്തിയാക്കുക.
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-full bg-rose-500/10 dark:bg-rose-950/20 border-2 border-brand-magenta/40 p-6 sm:p-8 pb-8 sm:pb-10 rounded-[28px] shadow-lg text-center lg:text-left flex flex-col gap-4">
+                          <Button 
+                            onClick={() => setView('support')}
+                            className="w-full h-15 rounded-2xl font-black bg-brand-magenta hover:bg-brand-magenta/90 text-slate-950 shadow-lg hover:scale-[1.02] active:scale-95 transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-3 border-b-4 border-[#9c7203]/70 cursor-pointer"
+                          >
+                            <Info className="w-5 h-5" />
+                            Financial Info Registry
+                          </Button>
+                          <div className="text-center lg:text-left space-y-2 mt-2 pt-3.5 border-t border-rose-500/20">
+                            <p className="text-sm sm:text-base font-black text-rose-800 dark:text-rose-400 uppercase tracking-[0.15em] animate-pulse">Action Required</p>
+                            <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white uppercase tracking-wide font-sans leading-relaxed">
+                              വിവര രജിസ്ട്രി ഫോം പൂരിപ്പിക്കാൻ ഇവിടെ ക്ലിക്ക് ചെയ്യുക
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Account Controls Buttons Group */}
+                <div className="flex flex-col gap-2.5 w-full mt-6">
+                  <Button 
+                    onClick={() => setIsEditingProfile(true)}
+                    className="w-full h-12 rounded-xl font-black bg-[#1a2b5c] dark:bg-[#1a2b5c] border-2 border-amber-400 text-amber-400 hover:bg-amber-400 hover:text-slate-950 uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-95 transition-all shadow-md"
+                  >
+                    <Pencil className="w-4 h-4 shrink-0 text-amber-400 group-hover:text-slate-950" /> Edit Profile Details
+                  </Button>
+                  {(user.role === 'admin' || user.role === 'operator' || user.isAdmin) && (
+                    <Button 
+                      onClick={() => setView(user.role === 'operator' ? 'operator' : 'admin')}
+                      className="w-full h-12 rounded-xl font-black bg-[#0054A6] hover:bg-[#004ca0] text-white uppercase tracking-widest text-[11px] shadow-sm cursor-pointer"
+                    >
+                      Open Dashboard
+                    </Button>
+                  )}
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setView('login')} 
+                    className="bg-white hover:bg-slate-100 w-full h-12 rounded-xl font-black border-2 border-slate-300 text-slate-900 uppercase tracking-widest text-[11px] transition-all shadow-sm"
+                  >
+                    Change Account
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    onClick={handleLogout} 
+                    className="w-full py-2 text-red-400 hover:text-red-300 font-black uppercase tracking-widest text-[11px] transition-colors"
+                  >
+                    Sign Out
+                  </Button>
+                </div>
+              </div>
+            )}
+
+              {/* Right Column/Panel for the physical PVC digital ID Card */}
+              <div className={isScreenshotMode ? "w-full flex items-center justify-center" : "lg:col-span-6 flex flex-col items-center justify-center w-full"}>
+                <div className={(!isScreenshotMode && user.status !== 'active' && user.status !== 'offline' && !user.isAdmin && user.role !== 'admin' && user.role !== 'operator') ? 'relative group w-full flex justify-center' : 'w-full flex justify-center'}>
+                  <MembershipCard 
+                    member={user} 
+                    showCelebration={showCelebration} 
+                    onUpdatePhoto={handleUpdatePhoto}
+                    onScreenshotModeChange={setIsScreenshotMode}
+                  />
+                </div>
+                {!isScreenshotMode && <PaymentReceipts user={user} />}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {view === 'support' && user && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 bg-white min-h-screen">
           {user.status === 'pending' ? (
@@ -2489,7 +2614,7 @@ export default function App() {
               <h2 className="text-2xl font-black text-slate-850 uppercase tracking-tight leading-none">
                 അംഗത്വ അപ്പ്രൂവലിനായി കാത്തിരിക്കുന്നു!
               </h2>
-              <p className="text-[10px] font-black tracking-widest text-amber-505 uppercase mt-1">MEMBERSHIP PENDING APPROVAL</p>
+              <p className="text-[10px] font-black tracking-widest text-amber-600 uppercase mt-1">MEMBERSHIP PENDING APPROVAL</p>
 
               <div className="bg-amber-50/50 border border-amber-500/15 p-5 rounded-2xl text-slate-600 font-semibold text-xs leading-relaxed text-left space-y-3">
                 <p>
@@ -2523,20 +2648,17 @@ export default function App() {
 
               <div className="bg-rose-50/50 border border-brand-magenta/15 p-5 rounded-2xl text-slate-600 font-semibold text-xs leading-relaxed text-left space-y-3">
                 <p>
-                  പ്രിയ അംഗമേ, താങ്കളുടെ പ്ലാൻ കാലാവധി കഴിഞ്ഞിരിക്കുകയാണ്. സപ്പോർട്ട് വിവരങ്ങൾ നൽകുന്നതിനുള്ള <strong>Financial Info Registry ഫോം ലഭിക്കുന്നതിനായി താങ്കളുടെ മെമ്പർഷിപ്പ് പുതുക്കേണ്ടതുണ്ട്.</strong>
-                </p>
-                <p className="text-[10.5px] text-slate-400 font-bold leading-normal uppercase">
-                  Your membership validity has expired. To access/submit the Financial Info Registry form, please renew your membership now (₹100).
+                  പ്രിയ അംഗമേ, താങ്കളുടെ പ്ലാൻ കാലാവധി കഴിഞ്ഞിരിക്കുകയാണ്. സപ്പോർട്ട് വിവരങ്ങൾ നൽകുന്നതിനുള്ള <strong>Financial Info Registry ഫോം ലഭിക്കുന്നതിനായി താങ്കളുടെ മെമ്പർഷിപ്പ് പുതുക്കുക.</strong>
                 </p>
               </div>
 
-              <div className="w-full space-y-3 pt-4">
+              <div className="w-full pt-4 space-y-3">
                 <Button 
                   onClick={() => {
                     setPrefilledMobile(user.mobile);
                     setView('renewal');
                   }}
-                  className="w-full h-14 rounded-2xl font-black bg-brand-magenta text-white shadow-xl shadow-brand-magenta/30 hover:scale-[1.01] active:scale-95 transition-all text-xs uppercase tracking-widest cursor-pointer"
+                  className="w-full h-13 rounded-xl bg-brand-magenta text-slate-950 font-black text-xs uppercase shadow-md hover:bg-brand-magenta/90"
                 >
                   അംഗത്വം പുതുക്കുക ₹100 (Renew Now)
                 </Button>
@@ -2552,296 +2674,11 @@ export default function App() {
           ) : (
             <SupportClaimForm 
               user={user} 
-              onClose={() => {
-                setClaimRefreshTrigger(prev => prev + 1);
+              onBack={() => setView('card')} 
+              onSubmitSuccess={() => {
                 setView('card');
-              }} 
+              }}
             />
-          )}
-        </div>
-      )}
-
-      {view === 'verify' && verifiedMember && (
-        <div className="min-h-screen flex flex-col items-center p-4 pb-20 w-full max-w-lg mx-auto animate-in fade-in duration-500">
-          {/* Dashboard Header with Logo */}
-          <div className="w-full mb-6 flex items-center justify-between bg-emerald-500/10 backdrop-blur-2xl p-5 rounded-3xl border border-emerald-500/20 shadow-2xl">
-            <div className="flex items-center gap-4">
-              <Logo size="sm" />
-              <div>
-                <h1 className="text-xs sm:text-sm md:text-base font-black text-foreground tracking-wider uppercase leading-none sm:leading-snug">HIGHRICH COMMUNITY REVIVAL SOCIETY</h1>
-                <p className="text-[10px] sm:text-xs font-bold text-emerald-500 uppercase tracking-[0.2em] mt-1.5 flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5 inline animate-pulse" /> Official Verification Portal
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="w-full flex flex-col items-center">
-            {/* Status Shield Info Plate */}
-            <div className="w-full max-w-sm mb-6 bg-gradient-to-r from-emerald-600/10 to-teal-600/10 border-2 border-emerald-500/35 p-5 rounded-[28px] text-center shadow-lg relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 blur-xl pointer-events-none" />
-              <div className="h-10 w-10 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mx-auto mb-3 text-emerald-500">
-                <ShieldCheck className="w-5 h-5 animate-bounce" />
-              </div>
-              <h3 className="text-md font-black text-slate-850 uppercase tracking-tight leading-none">
-                ഒഫീഷ്യൽ മെമ്പർ വെരിഫൈഡ് ✓
-              </h3>
-              <p className="text-[9px] font-black tracking-widest text-emerald-500 uppercase mt-1">HCRS VERIFIED MEMBER IDENTITY</p>
-              
-              <p className="text-slate-600 dark:text-slate-300 font-semibold text-[10px] leading-relaxed mt-2 p-3 bg-white/40 dark:bg-black/20 rounded-xl border border-emerald-500/10 shadow-inner">
-                ഈ ആളുടെ മെമ്പർഷിപ്പ് വിവരങ്ങൾ പൂർണ്ണമായും വെരിഫൈഡ് ആയതുമാണ്.
-                <br/>
-                <span className="text-[8px] text-slate-400 dark:text-slate-400 font-bold block mt-1 uppercase">This member profile and active digital identity are officially authenticated and active on the HCRS platform.</span>
-              </p>
-            </div>
-
-            {/* Read-only Member Card */}
-            <div className="relative">
-              <MembershipCard 
-                member={verifiedMember} 
-                showCelebration={false} 
-                isReadOnly={true}
-              />
-            </div>
-
-            {/* Controls to return home */}
-            <div className="flex flex-col gap-3 w-full max-w-xs mt-8 pb-10">
-              <Button 
-                onClick={() => {
-                  setVerifiedMember(null);
-                  setView('landing');
-                }}
-                className="w-full h-15 rounded-2xl font-black bg-brand-blue hover:bg-brand-blue/95 text-white uppercase tracking-wider shadow-xl flex items-center justify-center gap-2 border-b-4 border-brand-blue/40"
-              >
-                Go to Home Page
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {view === 'card' && user && (
-        <div className="min-h-screen flex flex-col items-center p-4 pb-20 w-full animate-in fade-in duration-500">
-          {/* Dashboard Header with Logo */}
-          <div className="w-full max-w-5xl mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-card/40 backdrop-blur-2xl p-5 rounded-3xl border border-white/10 shadow-2xl">
-            <div className="flex items-center gap-4">
-              <Logo size="sm" />
-              <div>
-                <h1 className="text-xs sm:text-sm md:text-base font-black text-foreground tracking-wider uppercase leading-none sm:leading-snug">HIGHRICH COMMUNITY REVIVAL SOCIETY</h1>
-                <p className="text-[10px] sm:text-xs font-bold text-brand-magenta uppercase tracking-[0.2em] mt-1.5">{user.isAdmin ? 'Admin Console' : 'Official Member'}</p>
-              </div>
-            </div>
-          </div>
-
-          {isEditingProfile ? (
-            <div className="w-full max-w-lg">
-              <ProfileEditForm 
-                user={user} 
-                onSave={handleSaveProfile} 
-                onCancel={() => setIsEditingProfile(false)} 
-              />
-            </div>
-          ) : (
-            <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-start justify-center mt-2 px-2">
-              {/* Left Column/Panel for Information, Statuses, and Quick Actions */}
-              <div className="lg:col-span-6 flex flex-col items-center lg:items-start text-center lg:text-left space-y-6 w-full max-w-sm mx-auto lg:mx-0">
-                
-                {/* Welcome / Header Badges */}
-                <div className="w-full">
-                  {user.renewalPending ? (
-                    <div className="flex flex-col items-center lg:items-start animate-in fade-in zoom-in duration-700">
-                      <div className="bg-amber-500/10 text-amber-500 border border-amber-500/20 px-6 py-2 rounded-full text-[10px] font-black shadow-md mb-4 tracking-[0.2em] uppercase flex items-center gap-1.5 w-fit">
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Verification Pending
-                      </div>
-                      <h2 className="text-3xl font-black text-brand-magenta tracking-tight leading-none mb-2">Renewal <span className="text-brand-blue italic">Pending</span></h2>
-                      <p className="text-foreground/40 text-[10px] font-black tracking-widest uppercase">Verification in Progress</p>
-                    </div>
-                  ) : isExpired ? (
-                    <div className="flex flex-col items-center lg:items-start animate-in fade-in zoom-in duration-700">
-                      <div className="bg-rose-500/10 text-rose-500 border border-rose-500/20 px-6 py-2 rounded-full text-[10px] font-black shadow-md mb-4 tracking-[0.2em] uppercase flex items-center gap-1.5 w-fit">
-                        <Clock className="w-3.5 h-3.5 animate-pulse" /> Expired (കാലാവധി കഴിഞ്ഞു)
-                      </div>
-                      <h2 className="text-3xl font-black text-brand-magenta tracking-tight leading-none mb-2">Renewal <span className="text-brand-blue italic">Required</span></h2>
-                      <p className="text-foreground/40 text-[10px] font-black tracking-widest uppercase">Highrich Community Revival Society</p>
-                    </div>
-                  ) : user.status === 'active' ? (
-                    <div className="flex flex-col items-center lg:items-start animate-in fade-in zoom-in duration-700">
-                      {showCelebration && (
-                        <div className="mb-4 animate-bounce">
-                          <Badge className="bg-brand-magenta text-white px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest shadow-xl font-sans">Congratulations!</Badge>
-                        </div>
-                      )}
-                      <div className="bg-green-500/10 text-green-400 border border-green-500/20 px-6 py-2 rounded-full text-[10px] font-black shadow-md mb-4 tracking-[0.2em] uppercase w-fit">
-                        Verification Complete
-                      </div>
-                      <h2 className="text-4xl font-black text-brand-magenta tracking-tight leading-none mb-2">Welcome <span className="text-brand-blue italic">Home</span></h2>
-                      <p className="text-foreground/40 text-[10px] font-black tracking-widest uppercase">Verified Member of HCRS</p>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center lg:items-start animate-in fade-in slide-in-from-top-4 duration-500 text-center lg:text-left">
-                      {showCelebration && (
-                        <div className="mb-4 animate-bounce">
-                          <Badge className="bg-brand-magenta text-white px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest shadow-xl">Congratulations!</Badge>
-                        </div>
-                      )}
-                      <div className="bg-amber-500/10 text-amber-500 border border-amber-500/20 px-6 py-2 rounded-full text-[10px] font-black shadow-md mb-4 tracking-[0.2em] uppercase w-fit shadow-md">
-                        Registration Success
-                      </div>
-                      <h2 className="text-3xl font-black text-brand-magenta tracking-tight leading-none mb-2">Membership <br/> <span className="text-brand-blue italic">In Progress</span></h2>
-                      <p className="text-foreground/50 text-xs font-bold leading-relaxed max-w-xs mt-2">
-                        നിങ്ങളുടെ രജിസ്ട്രേഷൻ പൂർത്തിയായി. അഡ്മിൻ പേയ്മെന്റ് വെരിഫൈ ചെയ്തുകഴിഞ്ഞാൽ നിങ്ങളുടെ ഒഫീഷ്യൽ കാർഡ് ഇവിടെ ലഭിക്കുന്നതാണ്.
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Urgent Actions: Registration Alert / Financial Info Registry Banner */}
-                <div className="w-full">
-                  {user.renewalPending ? (
-                    <div className="w-full bg-amber-50 rounded-[28px] border-2 border-amber-200/50 p-5 text-center lg:text-left shadow-lg relative overflow-hidden">
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 blur-xl pointer-events-none" />
-                      <div className="h-10 w-10 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto lg:mx-0 mb-3 text-amber-500">
-                        <Clock className="w-5 h-5 animate-pulse" />
-                      </div>
-                      <h3 className="text-sm font-black text-slate-850 uppercase tracking-tight leading-tight">
-                        പുതുക്കൽ അപ്പ്രൂവലിനായി കാത്തിരിക്കുന്നു!
-                      </h3>
-                      <p className="text-[9px] font-black tracking-widest text-amber-500 uppercase mt-1">RENEWAL PENDING APPROVAL</p>
-                      <p className="text-slate-600 font-semibold text-[10px] leading-relaxed mt-2.5">
-                        താങ്കളുടെ ₹100 അതിവേഗ ഒഫീഷ്യൽ പുതുക്കൽ അടവ് പരിശോധിക്കുകയാണ്. ഇതുകഴിഞ്ഞാൽ ഫിനാൻഷ്യൽ ഇൻഫോ രജിസ്ട്രി ഫോം ഉടൻ ലഭ്യമാകും.
-                      </p>
-                    </div>
-                  ) : user.status === 'pending' ? (
-                    <div className="w-full bg-amber-50 rounded-[28px] border-2 border-amber-200/50 p-5 text-center lg:text-left shadow-lg relative overflow-hidden">
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 blur-xl pointer-events-none" />
-                      <div className="h-10 w-10 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto lg:mx-0 mb-3 text-amber-500">
-                        <Clock className="w-5 h-5 animate-pulse" />
-                      </div>
-                      <h3 className="text-sm font-black text-slate-850 uppercase tracking-tight leading-tight">
-                        അംഗത്വ അപ്പ്രൂവലിനായി കാത്തിരിക്കുന്നു!
-                      </h3>
-                      <p className="text-[9px] font-black tracking-widest text-amber-500 uppercase mt-1">MEMBERSHIP PENDING APPROVAL</p>
-                      <p className="text-slate-600 font-semibold text-[10px] leading-relaxed mt-2.5">
-                        താങ്കളുടെ പുതിയ അംഗത്വ രജിസ്ട്രേഷൻ വിവരങ്ങളും പേയ്‌മെന്റും അഡ്മിൻ പാനലിൽ പരിശോധനയിലാണ്. വെരിഫിക്കേഷൻ പൂർത്തിയായാൽ ഇവിടെ കാർഡ് ആക്റ്റീവ് ആകുകയും വിവര രജിസ്ട്രി ഫോം ലഭ്യമാകുകയും ചെയ്യും.
-                      </p>
-                    </div>
-                  ) : isExpired ? (
-                    <div className="w-full bg-rose-50 border-2 border-brand-magenta/30 p-5 rounded-[28px] text-center lg:text-left shadow-xl relative overflow-hidden">
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-brand-magenta/5 blur-xl pointer-events-none" />
-                      <div className="h-10 w-10 rounded-full bg-brand-magenta/15 border border-brand-magenta/20 flex items-center justify-center mx-auto lg:mx-0 mb-3 text-brand-magenta">
-                        <AlertTriangle className="w-5 h-5 animate-bounce" />
-                      </div>
-                      <h3 className="text-md font-black text-slate-850 uppercase tracking-tight leading-none text-slate-800">
-                        അംഗത്വ കാലാവധി കഴിഞ്ഞിരിക്കുന്നു!
-                      </h3>
-                      <p className="text-[9px] font-black tracking-widest text-brand-magenta uppercase mt-1">MEMBERSHIP EXPIRED</p>
-                      <p className="text-slate-500 font-semibold text-[10px] leading-relaxed mt-2.5">
-                        താങ്കളുടെ അംഗത്വം കാലാവധി കഴിഞ്ഞിരിക്കുന്നു. വിവര രജിസ്ട്രി ഫോം ഉപയോഗിക്കുന്നതിനും ഐഡി കാർഡ് പുതുക്കുന്നതിനും ₹100 അടയ്ക്കുക.
-                      </p>
-                      <Button 
-                        onClick={() => {
-                          setPrefilledMobile(user.mobile);
-                          setView('renewal');
-                        }}
-                        className="w-full h-12 rounded-[18px] font-black bg-brand-magenta text-white shadow-md hover:scale-[1.01] active:scale-95 transition-all mt-4 text-[10px] uppercase tracking-wider cursor-pointer"
-                      >
-                        അംഗത്വം പുതുക്കുക ₹100 (Renew Now)
-                      </Button>
-                    </div>
-                  ) : (
-                    <>
-                      {submittedClaimsCount >= 4 ? (
-                        <div className="w-full space-y-3">
-                          <Button 
-                            onClick={() => setView('support')}
-                            className="w-full h-16 rounded-[22px] font-black bg-emerald-600 text-white shadow-lg hover:scale-[1.02] active:scale-95 transition-all text-[10px] uppercase tracking-wider flex items-center justify-center gap-3 border-b-4 border-emerald-700 cursor-pointer"
-                          >
-                            <ShieldCheck className="w-5 h-5" />
-                            Registry Saved ✓
-                          </Button>
-                          <div className="text-center lg:text-left">
-                            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.15em]">രജിസ്ട്രി പൂർത്തിയായി (4/4 Submitted)</p>
-                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider font-sans">കുടുംബത്തിലെ എല്ലാവരുടെയും വിവരങ്ങൾ രേഖപ്പെടുത്തി</p>
-                          </div>
-                        </div>
-                      ) : submittedClaimsCount > 0 ? (
-                        <div className="w-full space-y-3">
-                          <Button 
-                            onClick={() => setView('support')}
-                            className="w-full h-16 rounded-[22px] font-black bg-amber-500 text-white shadow-lg hover:scale-[1.02] active:scale-95 transition-all text-[10px] uppercase tracking-wider flex items-center justify-center gap-3 border-b-4 border-amber-600 cursor-pointer"
-                          >
-                            <Info className="w-5 h-5 animate-pulse" />
-                            Registry Status: {submittedClaimsCount}/4 Saved
-                          </Button>
-                          <div className="text-center lg:text-left">
-                            <p className="text-[10px] font-black text-amber-550 uppercase tracking-[0.15em]">കൂടുതൽ വിവരങ്ങൾ നൽകാം (Slots Open)</p>
-                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider font-sans">{submittedClaimsCount} പേരുടെ വിവരങ്ങൾ നൽകി. ബാക്കി ചെയ്യാം.</p>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="w-full space-y-3">
-                          <Button 
-                            onClick={() => setView('support')}
-                            className="w-full h-16 rounded-[22px] font-black bg-brand-magenta text-white shadow-lg hover:scale-[1.02] active:scale-95 transition-all text-[10px] uppercase tracking-wider flex items-center justify-center gap-3 border-b-4 border-brand-magenta/40 cursor-pointer"
-                          >
-                            <Info className="w-5 h-5" />
-                            Financial Info Registry
-                          </Button>
-                          <div className="text-center lg:text-left">
-                            <p className="text-[10px] font-black text-brand-magenta uppercase tracking-[0.15em] animate-pulse">Action Required</p>
-                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider font-sans">വിവര രജിസ്ട്രി ഫോം പൂരിപ്പിക്കാൻ ഇവിടെ ക്ലിക്ക് ചെയ്യുക</p>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                {/* Account Controls Buttons Group */}
-                <div className="flex flex-col gap-2.5 w-full mt-4">
-                  <Button 
-                    onClick={() => setIsEditingProfile(true)}
-                    className="w-full h-12 rounded-xl font-bold bg-brand-magenta/5 border border-brand-magenta/15 text-brand-magenta hover:bg-brand-magenta/10 uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-95 transition-all"
-                  >
-                    <Pencil className="w-3.5 h-3.5 text-brand-magenta" /> Edit Profile Details
-                  </Button>
-                  {(user.role === 'admin' || user.role === 'operator' || user.isAdmin) && (
-                    <Button 
-                      onClick={() => setView(user.role === 'operator' ? 'operator' : 'admin')}
-                      className="w-full h-12 rounded-xl font-bold bg-[#0054A6] hover:bg-[#004ca0] text-white uppercase tracking-widest text-[10px] shadow-sm cursor-pointer"
-                    >
-                      Open Dashboard
-                    </Button>
-                  )}
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setView('login')} 
-                    className="bg-card w-full h-12 rounded-xl font-bold border-slate-200 text-slate-700 uppercase tracking-widest text-[10px]"
-                  >
-                    Change Account
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    onClick={handleLogout} 
-                    className="w-full py-2 text-red-500 font-bold uppercase tracking-widest text-[9px]"
-                  >
-                    Sign Out
-                  </Button>
-                </div>
-              </div>
-
-              {/* Right Column/Panel for the physical PVC digital ID Card */}
-              <div className="lg:col-span-6 flex flex-col items-center justify-center w-full">
-                <div className={user.status !== 'active' ? 'relative group w-full flex justify-center' : 'w-full flex justify-center'}>
-                  <MembershipCard 
-                    member={user} 
-                    showCelebration={showCelebration} 
-                    onUpdatePhoto={handleUpdatePhoto}
-                  />
-                </div>
-                <PaymentReceipts user={user} />
-              </div>
-            </div>
           )}
         </div>
       )}
@@ -2890,7 +2727,7 @@ export default function App() {
         </div>
       )}
 
-      <AiChatSupport />
+      {!isScreenshotMode && view !== 'support' && <AiChatSupport />}
       <Toaster position="top-center" richColors theme="dark" />
     </div>
   );

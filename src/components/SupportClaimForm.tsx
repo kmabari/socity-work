@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import html2canvas from 'html2canvas';
+import { html2canvasOklchOnClone } from '../lib/imageUtils';
 import { 
   Building2, 
   ChevronRight, 
@@ -52,7 +53,7 @@ function ClaimSerialGuide() {
           സീരിയൽ നമ്പർ എവിടെ കാണാം? (Where is the Serial Number?)
         </h5>
       </div>
-      <p className="text-[11px] font-semibold text-slate-400 leading-relaxed text-left">
+      <p className="text-[11px] font-extrabold text-slate-200 leading-relaxed text-left">
         നിങ്ങൾ സമർപ്പിക്കുന്ന ഔദ്യോഗിക ക്ലെയിം ഫോമിലെ മുകളിൽ വലതു വശത്തുള്ള സീരിയൽ നമ്പർ താഴെ നൽകുക. (Please enter the serial number from the top-right of your official claim form).
       </p>
       
@@ -88,7 +89,9 @@ function ClaimSerialGuide() {
 
 interface SupportClaimFormProps {
   user: any;
-  onClose: () => void;
+  onClose?: () => void;
+  onBack?: () => void;
+  onSubmitSuccess?: () => void;
 }
 
 const CATEGORIES = [
@@ -593,7 +596,8 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
       const canvas = await html2canvas(cardElement, {
         scale: 3,
         useCORS: true,
-        backgroundColor: '#090D16'
+        backgroundColor: '#090D16',
+        onclone: html2canvasOklchOnClone
       });
       
       const imgData = canvas.toDataURL('image/png');
@@ -1036,38 +1040,38 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                     className="w-[340px] h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all border border-emerald-400/20"
                   >
                     <Download className="w-4 h-4 text-white animate-bounce" />
-                    <span>📸 സീരിയൽ നമ്പർ കാർഡ് സേവ് ചെയ്യുക</span>
+                    <span>സീരിയൽ നമ്പർ കാർഡ് സേവ് ചെയ്യുക</span>
                   </Button>
                 </div>
               );
             })}
           </div>
         )}
-
-        <div className="bg-emerald-50/50 border border-emerald-500/15 p-5 rounded-2xl text-slate-705 font-bold text-xs leading-relaxed text-left space-y-3 shadow-inner">
+        
+        <div className="bg-emerald-50/80 border border-emerald-300 p-5 rounded-2xl text-slate-800 font-bold text-xs leading-relaxed text-left space-y-3 shadow-sm">
           <p className="text-emerald-950 font-black text-sm">
             പ്രിയ അംഗമേ,
           </p>
-          <p className="text-slate-700 font-bold leading-relaxed">
+          <p className="text-slate-900 font-extrabold leading-relaxed">
             താങ്കൾ സമർപ്പിച്ച വിവരങ്ങൾ വിജയകരമായി സിസ്റ്റത്തിൽ രേഖപ്പെടുത്തി. {totalFilledNow > 0 && `ഇതുവരെ ആകെ ${totalFilledNow} വ്യക്തികളുടെ വിവരങ്ങൾ നൽകിയിട്ടുണ്ട്.`}
           </p>
           
           {remainingSlots > 0 ? (
-            <p className="text-amber-800 bg-amber-50/70 p-3 rounded-xl border border-amber-100 mt-2 font-black leading-relaxed">
+            <p className="text-amber-900 bg-amber-50 p-3 rounded-xl border border-amber-300 mt-2 font-extrabold leading-relaxed">
               താങ്കളുടെ കുടുംബാംഗങ്ങൾക്കായി ബാക്കിയുള്ള <strong>{remainingSlots} പേരുടെ ക്ലെയിം ഫോമുകൾ</strong> എപ്പോൾ വേണമെങ്കിലും പൂരിപ്പിച്ചു സമർപ്പിക്കാവുന്നതാണ്!
             </p>
           ) : (
-            <p className="text-emerald-800 bg-emerald-100/50 p-4 rounded-xl border border-emerald-200 mt-2 font-black">
+            <p className="text-emerald-900 bg-emerald-100 p-4 rounded-xl border border-emerald-300 mt-2 font-extrabold">
               താങ്കളുടെ ലോഗിൻ വഴിയുള്ള പരമാവധി 4 ക്ലെയിം കാർഡുകളും പൂർണ്ണമായി സമർപ്പിച്ചു കഴിഞ്ഞു.
             </p>
           )}
-          <p className="text-[10px] text-slate-500 font-medium leading-normal mt-2 pt-1 border-t border-slate-100">
-            സമ്മതപ്രകാരം വിവരങ്ങൾ അഡ്മിൻ ഒഡിറ്റിംഗ് പാനലിലും ലീഗൽ അഡ്വൈസർ കോപ്പിയിലുമായി ഉൾപ്പെടുത്തി തുടർനടപдികൾ സ്വീകരിക്കുന്നതാണ്.
+          <p className="text-[10px] text-slate-700 font-bold leading-normal mt-2 pt-1 border-t border-slate-200">
+            സമ്മതപ്രകാരം വിവരങ്ങൾ അഡ്മിൻ ഒഡിറ്റിംഗ് പാനലിലും ലീഗൽ അഡ്വൈസർ കോപ്പിയിലുമായി ഉൾപ്പെടുത്തി തുടർനടപടികൾ സ്വീകരിക്കുന്നതാണ്.
           </p>
         </div>
 
         <Button onClick={onClose} className="w-full h-12 rounded-xl bg-brand-blue hover:bg-brand-blue/90 text-white font-bold shadow-lg active:scale-95 transition-all text-xs uppercase tracking-wider">
-          തിриകെ ഡാഷ്‌ബോർഡിലേക്ക് (Back to Dashboard)
+          തിരികെ ഡാഷ്‌ബോർഡിലേക്ക് (Back to Dashboard)
         </Button>
       </div>
     );
@@ -1082,8 +1086,8 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
             <Users className="w-5 h-5 text-brand-blue" />
           </div>
           <div>
-             <h3 className="text-xs font-black text-brand-blue uppercase tracking-tight">ക്ലെയിം രജിസ്ട്രി ഫോം (Claim Registry)</h3>
-             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Register up to 3 direct family members</p>
+            <h3 className="text-xs font-black text-brand-blue uppercase tracking-tight">ക്ലെയിം രജിസ്ട്രി ഫോം (Claim Registry)</h3>
+            <p className="text-[9px] font-extrabold text-slate-600 uppercase tracking-widest">Register up to 3 direct family members</p>
           </div>
         </div>
         <Button variant="ghost" size="sm" onClick={onClose} className="rounded-full w-8 h-8 p-0 font-bold">✕</Button>
@@ -1092,22 +1096,22 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-8 max-w-2xl mx-auto w-full">
         
         {/* User Info Read-only */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-100 grid grid-cols-2 gap-4 shadow-sm">
+        <div className="bg-white rounded-2xl p-5 border border-slate-200 grid grid-cols-2 gap-4 shadow-sm">
             <div className="space-y-1">
-              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Active Account Member</p>
-              <p className="text-xs font-black text-slate-700 truncate">{user.name}</p>
+              <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Active Account Member</p>
+              <p className="text-xs font-black text-slate-900 truncate">{user.name}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Mobile Number</p>
-              <p className="text-xs font-black text-slate-700">{user.mobile}</p>
+              <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Mobile Number</p>
+              <p className="text-xs font-black text-slate-900">{user.mobile}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Membership ID</p>
+              <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Membership ID</p>
               <p className="text-xs font-black text-brand-blue truncate">{user.membershipId || 'Wait for approval'}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">District</p>
-              <p className="text-xs font-black text-slate-500 truncate">{user.district || 'N/A'}</p>
+              <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">District</p>
+              <p className="text-xs font-black text-slate-700 truncate">{user.district || 'N/A'}</p>
             </div>
         </div>
 
@@ -1127,12 +1131,12 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
         {/* Previously Submitted Claims and remaining count notice */}
         {submittedClaims.length > 0 && (
           <div className="space-y-4">
-            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 shadow-sm space-y-1.5">
-                <div className="flex items-start gap-2.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <div className="space-y-0.5">
-                    <h4 className="text-[10px] font-black text-emerald-800 uppercase tracking-wide">രജിസ്ട്രേഷൻ പുരോഗതി (Registry Status)</h4>
-                    <p className="text-slate-700 font-bold text-[11px] leading-relaxed">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 sm:p-6 pb-6 sm:pb-7 shadow-sm space-y-2">
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <h4 className="text-[11px] font-black text-emerald-900 uppercase tracking-wide">രജിസ്ട്രേഷൻ പുരോഗതി (Registry Status)</h4>
+                    <p className="text-slate-800 font-extrabold text-xs sm:text-sm leading-relaxed">
                       താങ്കളുടെ <strong>{submittedClaims.length} ക്ലെയിം ഫോം(കൾ)</strong> ഇതിനകം സമർപ്പിച്ചിട്ടുള്ളതാണ്.
                       {submittedClaims.length < 4 ? (
                         <> കുടുംബത്തിലെ ബാക്കി <strong>{4 - submittedClaims.length} വ്യക്തികൾക്കുള്ള ഫോം കൂടി</strong> താഴെ പൂരിപ്പിച്ചു സബ്മിറ്റ് ചെയ്യാവുന്നതാണ്.</>
@@ -1269,7 +1273,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ലഭ്യമായ കാറ്റഗറികൾ തിരഞ്ഞെടുക്കുക (Select Categories)</Label>
+                    <Label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">ലഭ്യമായ കാറ്റഗറികൾ തിരഞ്ഞെടുക്കുക (Select Categories)</Label>
                     <div className="flex flex-wrap gap-2">
                       {CATEGORIES.map(cat => {
                         const isSel = selfCategories.includes(cat.id);
@@ -1453,7 +1457,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ലഭ്യമായ കാറ്റഗറികൾ തിരഞ്ഞെടുക്കുക (Select Categories)</Label>
+                    <Label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">ലഭ്യമായ കാറ്റഗറികൾ തിരഞ്ഞെടുക്കുക (Select Categories)</Label>
                     <div className="flex flex-wrap gap-2">
                       {CATEGORIES.map(cat => {
                         const isSel = parentCategories.includes(cat.id);
@@ -1637,7 +1641,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ലഭ്യമായ കാറ്റഗറികൾ തിരഞ്ഞെടുക്കുക (Select Categories)</Label>
+                    <Label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">ലഭ്യമായ കാറ്റഗറികൾ തിരഞ്ഞെടുക്കുക (Select Categories)</Label>
                     <div className="flex flex-wrap gap-2">
                       {CATEGORIES.map(cat => {
                         const isSel = childCategories.includes(cat.id);
@@ -1821,7 +1825,7 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ലഭ്യമായ കാറ്റഗറികൾ തിരഞ്ഞെടുക്കുക (Select Categories)</Label>
+                    <Label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">ലഭ്യമായ കാറ്റഗറികൾ തിരഞ്ഞെടുക്കുക (Select Categories)</Label>
                     <div className="flex flex-wrap gap-2">
                       {CATEGORIES.map(cat => {
                         const isSel = spouseCategories.includes(cat.id);

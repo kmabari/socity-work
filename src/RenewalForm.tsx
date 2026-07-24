@@ -46,6 +46,11 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
 
   // Check if member has active validity
   const getMemberValidityInfo = (member: UserProfile) => {
+    const isLifeMember = String(member.membership_type || member.membershipType || '').toUpperCase().includes('LIFE');
+    if (isLifeMember) {
+      return { hasActiveValidity: true, message: 'താങ്കൾ ഒരു ലൈഫ് മെമ്പർ (Life Member) ആണ്. താങ്കൾക്ക് റിന്യൂ ചെയ്യേണ്ടതില്ല.' };
+    }
+
     if (member.role === 'admin' || member.role === 'operator' || member.isAdmin) {
       return { hasActiveValidity: true, message: 'താങ്കൾ ഒരു അഡ്മിൻ/ഓപ്പറേറ്റർ ആണ്. പുതുക്കൽ ആവശ്യമില്ല.' };
     }

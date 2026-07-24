@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Receipt, Printer, Download, Eye, X, ShieldCheck, FileDown, Image as ImageIcon } from 'lucide-react';
 import { LOGO_URL } from '../constants';
 import html2canvas from 'html2canvas';
+import { html2canvasOklchOnClone } from '../lib/imageUtils';
 import { jsPDF } from 'jspdf';
 import { toast } from 'sonner';
 
@@ -140,7 +141,8 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
       const canvas = await html2canvas(cardElement, {
         scale: 3,
         useCORS: true,
-        backgroundColor: '#FFFFFF'
+        backgroundColor: '#FFFFFF',
+        onclone: html2canvasOklchOnClone
       });
       
       const imgData = canvas.toDataURL('image/png');
@@ -168,7 +170,8 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
       const canvas = await html2canvas(cardElement, {
         scale: 3,
         useCORS: true,
-        backgroundColor: '#FFFFFF'
+        backgroundColor: '#FFFFFF',
+        onclone: html2canvasOklchOnClone
       });
       
       const imgWidth = canvas.width;
@@ -196,24 +199,27 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
   };
 
   return (
-    <Card className="w-full bg-white border border-slate-100 shadow-xl shadow-slate-100/50 rounded-3xl p-6 mt-6 overflow-hidden">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="bg-brand-magenta/10 p-2.5 rounded-2xl text-brand-magenta">
+    <Card className="w-full bg-white border border-slate-150/80 shadow-2xl shadow-slate-100/40 rounded-3xl p-6 mt-6 overflow-hidden">
+      <div className="flex items-center gap-3.5 mb-6 pb-4 border-b border-slate-100">
+        <div className="bg-brand-magenta/5 border border-brand-magenta/10 p-2.5 rounded-2xl text-brand-magenta shadow-sm">
           <Receipt className="w-5 h-5" />
         </div>
-        <div>
-          <h3 className="font-black text-slate-900 tracking-tight text-md">Payment Receipts (പേയ്‌മെന്റ് രസീതുകൾ)</h3>
-          <p className="text-xs text-slate-400 font-bold">Your official financial records with HCRS.</p>
+        <div className="flex-1">
+          <h3 className="font-black text-slate-900 tracking-tight text-sm sm:text-base flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 leading-tight">
+            <span>Payment Receipts</span>
+            <span className="text-[11px] sm:text-xs text-slate-700 font-extrabold sm:before:content-['•'] sm:before:mr-2">പേയ്‌മെന്റ് രസീതുകൾ</span>
+          </h3>
+          <p className="text-[10px] sm:text-xs text-slate-700 font-extrabold mt-0.5">Your official financial records with HCRS.</p>
         </div>
       </div>
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-10 text-slate-300">
           <span className="w-8 h-8 border-4 border-brand-magenta border-t-transparent rounded-full animate-spin"></span>
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-3">Loading Receipts...</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-3">Loading Receipts...</p>
         </div>
       ) : receipts.length === 0 ? (
-        <div className="text-center py-10 text-slate-400 font-bold text-xs">
+        <div className="text-center py-10 text-slate-500 font-bold text-xs">
           No receipts found.
         </div>
       ) : (
@@ -221,7 +227,7 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
           {receipts.map((receipt) => (
             <div
               key={receipt.id}
-              className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-2xl hover:border-brand-magenta/25 transition-all group"
+              className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-slate-100/30 border border-slate-100 rounded-2xl hover:border-brand-magenta/25 hover:from-white hover:to-white hover:shadow-md hover:shadow-slate-150/40 transition-all duration-300 group"
             >
               <div className="flex items-center gap-3.5">
                 <div className="bg-white p-2.5 rounded-xl border border-slate-200/60 shadow-sm text-slate-500 group-hover:text-brand-magenta transition-colors">
@@ -229,7 +235,7 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
                 </div>
                 <div>
                   <h4 className="font-extrabold text-slate-950 text-xs sm:text-sm">{receipt.receiptLabel}</h4>
-                  <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1 text-[10px] text-slate-400 font-bold">
+                  <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1 text-[10px] text-slate-600 font-extrabold">
                     <span>No: {receipt.receiptNo}</span>
                     <span className="hidden sm:inline">•</span>
                     <span>Date: {receipt.paymentDate}</span>
@@ -310,27 +316,27 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
                 {/* Grid Details */}
                 <div className="grid grid-cols-2 gap-y-3.5 gap-x-6 text-[11px] mb-5 border-b border-slate-100 pb-5">
                   <div>
-                    <span className="text-slate-400 font-bold uppercase text-[9px] block">Receipt Number</span>
+                    <span className="text-slate-700 font-extrabold uppercase text-[9px] block">Receipt Number</span>
                     <span className="font-extrabold text-slate-900 font-mono text-xs">{selectedReceipt.receiptNo}</span>
                   </div>
                   <div className="text-right">
-                    <span className="text-slate-400 font-bold uppercase text-[9px] block">Date of Payment</span>
+                    <span className="text-slate-700 font-extrabold uppercase text-[9px] block">Date of Payment</span>
                     <span className="font-extrabold text-slate-900 font-mono">{selectedReceipt.paymentDate}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 font-bold uppercase text-[9px] block">Received From (അംഗത്തിന്റെ പേര്)</span>
+                    <span className="text-slate-700 font-extrabold uppercase text-[9px] block">Received From (അംഗത്തിന്റെ പേര്)</span>
                     <span className="font-black text-slate-900 uppercase text-xs">{user.name}</span>
                   </div>
                   <div className="text-right">
-                    <span className="text-slate-400 font-bold uppercase text-[9px] block">Membership ID</span>
+                    <span className="text-slate-700 font-extrabold uppercase text-[9px] block">Membership ID</span>
                     <span className="font-extrabold text-brand-blue font-mono text-xs">{user.membershipId}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 font-bold uppercase text-[9px] block">Mobile Number</span>
+                    <span className="text-slate-700 font-extrabold uppercase text-[9px] block">Mobile Number</span>
                     <span className="font-extrabold text-slate-900 font-mono">{user.mobile}</span>
                   </div>
                   <div className="text-right">
-                    <span className="text-slate-400 font-bold uppercase text-[9px] block">District / Assembly</span>
+                    <span className="text-slate-700 font-extrabold uppercase text-[9px] block">District / Assembly</span>
                     <span className="font-extrabold text-slate-900 truncate">
                       {user.district} / {user.assemblyConstituency}
                     </span>
@@ -350,7 +356,7 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
                       <tr>
                         <td className="py-3 px-3">
                           <p className="font-black text-slate-900">{selectedReceipt.receiptLabel}</p>
-                          <p className="text-[9px] text-slate-400 font-medium mt-0.5">
+                          <p className="text-[9.5px] text-slate-600 font-bold mt-0.5">
                             {selectedReceipt.receiptType === 'Annual Renewal' 
                               ? `HCRS Annual Membership Subscription & Support Sinking Fund Renewal`
                               : `HCRS Lifetime/Standard Membership Registration Security Fee`}
@@ -359,7 +365,7 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
                         <td className="py-3 px-3 text-right text-slate-950 font-black">₹{selectedReceipt.amount}.00</td>
                       </tr>
                       <tr className="border-t border-slate-100 bg-slate-50/40 text-slate-900 text-[11px]">
-                        <td className="py-2.5 px-3 font-extrabold text-slate-500 uppercase text-[9px] text-right">Total Paid:</td>
+                        <td className="py-2.5 px-3 font-extrabold text-slate-700 uppercase text-[9px] text-right">Total Paid:</td>
                         <td className="py-2.5 px-3 text-right font-black text-brand-magenta text-xs">₹{selectedReceipt.amount}.00</td>
                       </tr>
                     </tbody>
@@ -367,8 +373,8 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
                 </div>
 
                 {/* Amount in words */}
-                <div className="mb-6 bg-slate-50 border border-slate-100 rounded-xl p-3 text-[10px] text-slate-600 font-semibold leading-relaxed">
-                  <span className="font-black text-slate-400 uppercase text-[8px] block mb-0.5">Amount in Words</span>
+                <div className="mb-6 bg-slate-50 border border-slate-100 rounded-xl p-3 text-[10px] text-slate-700 font-bold leading-relaxed">
+                  <span className="font-black text-slate-600 uppercase text-[8px] block mb-0.5">Amount in Words</span>
                   Rupees <span className="font-extrabold text-slate-900">{convertNumberToWords(selectedReceipt.amount)}Only</span>
                 </div>
 
@@ -381,12 +387,12 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
                   <div className="text-right">
                     {/* Fake stamp signature design */}
                     <div className="relative inline-block mb-1">
-                      <span className="font-black text-[9px] uppercase tracking-wider text-slate-400 block">Accounts Division</span>
+                      <span className="font-black text-[9px] uppercase tracking-wider text-slate-600 block">Accounts Division</span>
                       <div className="absolute -top-6 right-2 w-14 h-14 border-2 border-green-500/35 rounded-full flex items-center justify-center -rotate-12 pointer-events-none select-none">
                         <span className="text-[7px] text-green-500 font-black tracking-tighter uppercase leading-none text-center">HCRS<br/>PAID</span>
                       </div>
                     </div>
-                    <p className="text-[8px] font-bold text-slate-400">Authorized Signatory</p>
+                    <p className="text-[8px] font-extrabold text-slate-600">Authorized Signatory</p>
                   </div>
                 </div>
               </div>

@@ -16,7 +16,7 @@ export const Logo: React.FC<LogoProps> = ({ className, size = 'md' }) => {
   };
 
   return (
-    <div className={cn("flex flex-col items-center justify-center p-1", className, sizeClasses[size])}>
+    <div className={cn("flex flex-col items-center justify-center p-1", sizeClasses[size], className)}>
       <img 
         src={LOGO_URL} 
         alt="HCRS Society" 

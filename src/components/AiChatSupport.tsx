@@ -564,7 +564,7 @@ HCRS നിയമപരമായ സഹായങ്ങളും ഉപദേശ�
   return (
     <>
       {/* Floating support trigger */}
-      <div className="fixed bottom-6 right-6 z-50">
+      <div className="fixed bottom-6 left-6 xl:left-auto xl:right-[calc(50%-540px)] z-50">
         <motion.button
           id="ai-chatbot-trigger"
           whileHover={{ scale: 1.05 }}

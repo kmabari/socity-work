@@ -8,7 +8,7 @@ import { UserProfile } from '@/src/types';
 import { DISTRICTS, getAssemblyCode } from '@/src/constants';
 import confetti from 'canvas-confetti';
 import { motion } from 'motion/react';
-import { compressImage } from '@/src/lib/imageUtils';
+import { compressImage, html2canvasOklchOnClone } from '@/src/lib/imageUtils';
 import { getOrgSettings, OrgSettings, defaultSettings } from '@/src/lib/cms';
 import Logo from '../Logo';
 
@@ -32,6 +32,29 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
+  const exitScreenshotMode = () => {
+    setIsScreenshotMode(false);
+    if (typeof window !== 'undefined' && window.history.state?.screenshotMode) {
+      window.history.back();
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (isScreenshotMode) {
+      window.history.pushState({ screenshotMode: true }, '');
+      
+      const handlePopState = (e: PopStateEvent) => {
+        setIsScreenshotMode(false);
+      };
+      
+      window.addEventListener('popstate', handlePopState);
+      return () => {
+        window.removeEventListener('popstate', handlePopState);
+      };
+    }
+  }, [isScreenshotMode]);
+
   useEffect(() => {
     onScreenshotModeChange?.(isScreenshotMode);
   }, [isScreenshotMode, onScreenshotModeChange]);
@@ -44,8 +67,8 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
       for (const entry of entries) {
         const { width } = entry.contentRect;
         const targetWidth = 340;
-        const paddedWidth = width - 20; // account for container horizontal padding safely
-        const targetScale = paddedWidth < targetWidth ? Math.max(0.35, paddedWidth / targetWidth) : 1;
+        const availableWidth = width > 0 ? width - (isScreenshotMode ? 12 : 20) : (window.innerWidth - 24);
+        const targetScale = availableWidth < targetWidth ? Math.max(0.35, availableWidth / targetWidth) : 1;
         
         requestAnimationFrame(() => {
           setScale(targetScale);
@@ -54,7 +77,7 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
     });
     resizeObserver.observe(container);
     return () => resizeObserver.disconnect();
-  }, []);
+  }, [isScreenshotMode]);
 
   const handleGenerateImage = async () => {
     if (!cardRef.current) return;
@@ -70,7 +93,8 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
         scrollX: 0,
         scrollY: 0,
         windowWidth: 340,
-        windowHeight: 590
+        windowHeight: 590,
+        onclone: html2canvasOklchOnClone
       });
       const imgData = canvas.toDataURL('image/png');
       setGeneratedImage(imgData);
@@ -148,7 +172,7 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
     if (!cardRef.current) return;
     toast.info('Preparing for WhatsApp sharing...');
     try {
-      const canvas = await html2canvas(cardRef.current, { scale: 2, useCORS: true, backgroundColor: '#FFFFFF' });
+      const canvas = await html2canvas(cardRef.current, { scale: 2, useCORS: true, backgroundColor: '#FFFFFF', onclone: html2canvasOklchOnClone });
       canvas.toBlob(async (blob) => {
         if (!blob) return;
         const file = new File([blob], `HCRS_ID_${member.name}.png`, { type: 'image/png' });
@@ -169,7 +193,7 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
     if (!cardRef.current) return;
     const loadingToast = toast.loading('Building premium print-ready document...');
     try {
-      const canvas = await html2canvas(cardRef.current, { scale: 3.5, useCORS: true, backgroundColor: '#FFFFFF' });
+      const canvas = await html2canvas(cardRef.current, { scale: 3.5, useCORS: true, backgroundColor: '#FFFFFF', onclone: html2canvasOklchOnClone });
       const imgData = canvas.toDataURL('image/jpeg', 1.0);
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [54, 86] });
       pdf.addImage(imgData, 'JPEG', 0, 0, 54, 86, undefined, 'FAST');
@@ -269,13 +293,34 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
   ];
 
   return (
-    <div className="flex flex-col items-center gap-8 p-1 sm:p-4 selection:bg-brand-blue/10 animate-in fade-in zoom-in duration-500 w-full max-w-md mx-auto">
-      {showCelebration && (
+    <div 
+      onClick={isScreenshotMode ? exitScreenshotMode : undefined}
+      className={isScreenshotMode 
+        ? "fixed inset-0 z-50 bg-[#0d1b3e] flex flex-col items-center justify-center p-4 overflow-auto cursor-pointer animate-in fade-in duration-300"
+        : "flex flex-col items-center gap-8 p-1 sm:p-4 selection:bg-brand-blue/10 animate-in fade-in zoom-in duration-500 w-full max-w-md mx-auto"
+      }
+    >
+      {/* Subtle, floating top Exit Button */}
+      {isScreenshotMode && (
+        <div className="absolute top-4 right-4 z-50">
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              exitScreenshotMode();
+            }}
+            className="bg-black/60 hover:bg-black/80 text-white font-black text-xs px-4 py-2.5 rounded-full backdrop-blur-md transition-all active:scale-95 border border-white/10 flex items-center gap-1.5 cursor-pointer shadow-lg"
+          >
+            ✕ EXIT SCREENSHOT
+          </button>
+        </div>
+      )}
+
+      {showCelebration && !isScreenshotMode && (
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center space-y-2 mt-2">
-          <div className="bg-brand-blue/5 text-brand-blue px-5 py-1.5 rounded-full text-[10px] font-black border border-brand-blue/10 inline-flex items-center gap-1.5 uppercase tracking-widest">
-             <PartyPopper className="w-3.5 h-3.5" /> Registered Member
+          <div className="bg-brand-blue/20 text-blue-200 px-5 py-1.5 rounded-full text-[11px] font-black border border-blue-400/30 inline-flex items-center gap-1.5 uppercase tracking-widest">
+             <PartyPopper className="w-3.5 h-3.5 text-amber-300" /> Registered Member
           </div>
-          <h2 className="text-lg font-black text-brand-magenta uppercase tracking-tighter leading-none italic mt-1">
+          <h2 className="text-2xl sm:text-3xl font-black text-[#ffd700] uppercase tracking-tighter leading-none italic mt-1 drop-shadow-[0_2px_12px_rgba(255,215,0,0.6)]">
             Welcome to highrich family
           </h2>
         </motion.div>
@@ -284,36 +329,43 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
       {/* Screenshot Friendly Outer Backdrop Container - Enhanced with hyper-realistic Wooden Surface Mockup */}
       <div 
         ref={containerRef}
-        style={{ minHeight: '630px' }}
-        className="w-full bg-[#3c2517] p-2.5 sm:p-5 md:p-6 rounded-[32px] border-4 border-[#25150c] flex flex-col items-center justify-center relative overflow-hidden shrink-0 shadow-2xl transition-all duration-300"
+        style={{ minHeight: isScreenshotMode ? 'auto' : '630px' }}
+        className={isScreenshotMode 
+          ? "w-full max-w-sm sm:max-w-md bg-transparent p-1 border-0 flex flex-col items-center justify-center relative shrink-0 shadow-none animate-none"
+          : "w-full bg-[#3c2517] p-2.5 sm:p-5 md:p-6 rounded-[32px] border-4 border-[#25150c] flex flex-col items-center justify-center relative overflow-hidden shrink-0 shadow-2xl transition-all duration-300"
+        }
       >
         {/* Deep luxurious wood background, planks and lighting highlight */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#4a3121] to-[#25150c] pointer-events-none" />
-        <div className="absolute inset-0 opacity-[0.22] bg-[repeating-linear-gradient(0deg,#1c0d06_0px,#1c0d06_1px,transparent_1px,transparent_20px)] pointer-events-none" />
-        <div className="absolute inset-0 opacity-[0.12] bg-[repeating-linear-gradient(90deg,transparent_0px,transparent_45px,#000_45px,#000_46px)] pointer-events-none" />
-        {/* Soft radial overlay mimicking high-end restaurant/gallery lamp spot */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_30%,_rgba(0,0,0,0.85)_100%)] pointer-events-none" />
-        {/* Glossy varnish light streak reflection */}
-        <div className="absolute -top-[30%] -left-[20%] w-[150%] h-[150%] bg-gradient-to-tr from-transparent via-white/[0.03] to-white/[0.12] rotate-[22deg] pointer-events-none" />
+        {!isScreenshotMode && (
+          <>
+            <div className="absolute inset-0 bg-gradient-to-b from-[#4a3121] to-[#25150c] pointer-events-none" />
+            <div className="absolute inset-0 opacity-[0.22] bg-[repeating-linear-gradient(0deg,#1c0d06_0px,#1c0d06_1px,transparent_1px,transparent_20px)] pointer-events-none" />
+            <div className="absolute inset-0 opacity-[0.12] bg-[repeating-linear-gradient(90deg,transparent_0px,transparent_45px,#000_45px,#000_46px)] pointer-events-none" />
+            {/* Soft radial overlay mimicking high-end restaurant/gallery lamp spot */}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_30%,_rgba(0,0,0,0.85)_100%)] pointer-events-none" />
+            {/* Glossy varnish light streak reflection */}
+            <div className="absolute -top-[30%] -left-[20%] w-[150%] h-[150%] bg-gradient-to-tr from-transparent via-white/[0.03] to-white/[0.12] rotate-[22deg] pointer-events-none" />
+          </>
+        )}
 
         {/* Core Premium 3D PVC ID Card with Double Metallic Bevel Frame (Gold theme for Life Member, Slate theme for Adhoc Member) */}
         {(() => {
           const cardBorderClass = isLifeMember 
-            ? "border-[6px] border-[#D4AF37] shadow-[25px_30px_50px_rgba(0,0,0,0.95)] bg-gradient-to-br from-[#FFFEF6] via-[#FAF4DB] to-[#F1E5C0]"
-            : "border-[6px] border-[#818cf8]/50 shadow-[25px_30px_50px_rgba(0,0,0,0.9)] bg-gradient-to-br from-[#FAFBFD] via-[#F0F4F8] to-[#E2E8F0]";
+            ? "border-[6px] border-[#D4AF37] shadow-[12px_16px_36px_rgba(0,0,0,0.7)] bg-gradient-to-br from-[#FFFEF6] via-[#FAF4DB] to-[#F1E5C0]"
+            : "border-[6px] border-[#818cf8]/50 shadow-[12px_16px_36px_rgba(0,0,0,0.45)] bg-gradient-to-br from-[#FAFBFD] via-[#F0F4F8] to-[#E2E8F0]";
 
-          const itemPlateClass = `border-t border-b rounded-lg p-1.5 flex items-center justify-between transition-all ${
+          const itemPlateClass = `border-t border-b rounded-lg p-1.5 px-3 flex items-center justify-between transition-all ${
             isLifeMember 
               ? 'bg-gradient-to-b from-[#FFFDF2] via-[#F5D76E] to-[#C99E32] border-[#9A7D0A] shadow-[inset_0_1px_1px_rgba(255,255,255,0.95),0_2px_3px_rgba(0,0,0,0.4)] text-[#1a0f02]'
               : 'bg-gradient-to-b from-[#f8fafc] via-[#e2e8f0] to-[#cbd5e1] border-slate-350 shadow-[inset_0_1px_1px_white,0_2px_3px_rgba(0,0,0,0.22)] text-[#0f172a]'
           }`;
 
-          const textTitleClass = `text-[7.5px] font-black uppercase tracking-wider ${
-            isLifeMember ? 'text-amber-950/85 font-sans' : 'text-slate-700 font-sans'
+          const textTitleClass = `text-[10px] font-black uppercase tracking-wider ${
+            isLifeMember ? 'text-amber-950 font-sans' : 'text-slate-900 dark:text-slate-950 font-sans'
           }`;
 
-          const textValueClass = `text-[10px] font-black font-mono transition-all ${
-            isLifeMember ? 'text-[#180a01]' : 'text-[#0f172a]'
+          const textValueClass = `text-[12px] font-black font-mono transition-all ${
+            isLifeMember ? 'text-amber-950' : 'text-slate-950'
           }`;
 
           const qrPlateBg = isLifeMember
@@ -344,11 +396,10 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
             <div 
               style={{ 
                 width: `${340 * scale}px`, 
-                height: `${590 * scale}px`, 
-                position: 'relative', 
-                overflow: 'hidden'
+                height: `${610 * scale}px`, 
+                position: 'relative'
               }}
-              className="transition-all duration-150 shrink-0 select-none mx-auto flex items-center justify-center rounded-[24px]"
+              className="transition-all duration-150 shrink-0 select-none mx-auto flex items-center justify-center p-1"
             >
               <div 
                 style={{ 
@@ -358,12 +409,12 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
                   top: 0,
                   left: 0,
                   width: '340px',
-                  height: '590px'
+                  height: '610px'
                 }}
               >
                 <div 
                   ref={cardRef} 
-                  className={`w-[340px] h-[590px] rounded-[24px] text-slate-800 relative overflow-hidden font-sans flex flex-col justify-between shrink-0 select-none ${cardBorderClass}`}
+                  className={`w-[340px] h-[610px] rounded-[24px] text-slate-800 relative overflow-hidden font-sans flex flex-col justify-between shrink-0 select-none ${cardBorderClass}`}
                 >
               {/* Top Premium Card Margin strip - Gold or Magenta */}
               <div className={`h-1.5 w-full absolute top-0 left-0 z-30 shadow-[0_1px_3px_rgba(0,0,0,0.4)] ${isLifeMember ? 'bg-gradient-to-r from-amber-300 via-[#D4AF37] to-amber-800' : 'bg-gradient-to-r from-[#FF1493] via-[#ec008c] to-[#990055]'}`} />
@@ -422,28 +473,28 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
               )}
 
               {/* Header section with HCRS Logo Left + Metallic Embossed Panel Right */}
-              <div className="p-4 pt-5 shrink-0 flex items-center justify-between gap-3 relative">
+              <div className="p-3.5 pt-4 shrink-0 flex items-center justify-between gap-2.5 relative">
                 {/* Circular Frame for official logo */}
-                <div className={`p-1 rounded-full shadow-[inset_0_1.5px_2px_rgba(255,255,255,1),0_3px_6px_rgba(0,0,0,0.5)] w-[52px] h-[52px] flex items-center justify-center border shrink-0 ${logoRingClass}`}>
+                <div className={`p-1 rounded-full shadow-[inset_0_1.5px_2px_rgba(255,255,255,1),0_3px_6px_rgba(0,0,0,0.5)] w-[58px] h-[58px] flex items-center justify-center border shrink-0 ${logoRingClass}`}>
                   <div className="bg-white rounded-full p-0.5 w-full h-full flex items-center justify-center overflow-hidden">
                     <img 
                       src={settings.logoUrl || "https://i.ibb.co/My4KQNbH/1000072034-removebg-preview-1.png"} 
                       alt="HCRS Official Logo" 
-                      className="w-10 h-10 object-contain" 
+                      className="w-[46px] h-[46px] object-contain" 
                       crossOrigin="anonymous" 
                       referrerPolicy="no-referrer"
                     />
                   </div>
                 </div>
 
-                {/* Premium Embossed Header Panel */}
-                <div className={`flex-1 p-2 rounded-xl border-t border-b shadow-[inset_0_1.5px_1px_rgba(255,255,255,1),0_2.5px_4px_rgba(0,0,0,0.35)] text-center ${isLifeMember ? 'bg-gradient-to-b from-[#FFFDF5] via-[#F7DC6F] to-[#B7950B] border-amber-600' : 'bg-gradient-to-b from-[#ffffff] via-[#f1f5f9] to-[#cbd5e1] border-slate-300'}`}>
+                {/* Premium Embossed Header Panel (Gold metallic for Life Member, Silver metallic for Official Member) */}
+                <div className={`flex-1 py-1.5 px-2.5 rounded-xl border-t border-b shadow-[inset_0_1.5px_1px_rgba(255,255,255,1),0_2.5px_4px_rgba(0,0,0,0.35)] text-center ${isLifeMember ? 'bg-gradient-to-b from-[#FFFDF5] via-[#F7DC6F] to-[#B7950B] border-amber-600' : 'bg-gradient-to-b from-[#ffffff] via-[#f1f5f9] to-[#cbd5e1] border-slate-300'}`}>
                   <h1 className="text-slate-900 text-[11px] font-black leading-tight uppercase tracking-tight">
                     HIGHRICH COMMUNITY REVIVAL SOCIETY
                   </h1>
-                  <div className={`w-full h-[1px] my-1 ${isLifeMember ? 'bg-amber-800/35' : 'bg-slate-350'}`} />
-                  <p className={`text-[8.5px] font-black tracking-widest uppercase leading-none mt-0.5 italic ${isLifeMember ? 'text-amber-950 font-sans' : 'text-[#1a2b5c]'}`}>
-                    {isLifeMember ? "FOUNDING LIFE MEMBER" : "OFFICIAL MEMBER"}
+                  <div className={`w-full h-[1px] my-0.5 ${isLifeMember ? 'bg-amber-800/35' : 'bg-slate-350'}`} />
+                  <p className={`text-[8.5px] font-black tracking-widest uppercase leading-none italic ${isLifeMember ? 'text-amber-950 font-sans' : 'text-[#1a2b5c]'}`}>
+                    {isLifeMember ? "LIFE MEMBER" : "OFFICIAL MEMBER"}
                   </p>
                 </div>
               </div>
@@ -453,7 +504,7 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
                 {/* Circular picture formatted inside heavy-beveled gold/silver ring */}
                 <label className={`${isReadOnly ? 'cursor-default pointer-events-none' : 'cursor-pointer'} group block`}>
                   {!isReadOnly && <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />}
-                  <div className={`w-[102px] h-[102px] rounded-full p-1 border shadow-[0_4px_8px_rgba(0,0,0,0.4)] hover:scale-105 transition-transform duration-300 ${photoRingClass}`}>
+                  <div className={`w-[90px] h-[90px] rounded-full p-1 border shadow-[0_4px_8px_rgba(0,0,0,0.4)] hover:scale-105 transition-transform duration-300 ${photoRingClass}`}>
                     <div className="w-full h-full rounded-full overflow-hidden bg-slate-100 flex items-center justify-center relative border-4 border-white shadow-inner">
                       {previewUrl || member.photoUrl ? (
                         <>
@@ -467,7 +518,7 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
                         </>
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-100 relative">
-                           <User size={34} className="text-slate-400 shrink-0" />
+                           <User size={30} className="text-slate-400 shrink-0" />
                           {!isReadOnly && (
                             <div className="absolute inset-0 bg-brand-blue/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-1 backdrop-blur-[1.5px]">
                               <Camera size={14} className="text-white" />
@@ -481,20 +532,20 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
                 </label>
 
                 {/* Member Name Embossed Plate */}
-                <div className={`mt-2.5 w-[85%] mx-auto py-1 px-3 rounded-lg border-t border-b shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_2px_4px_rgba(0,0,0,0.3)] ${namePlateClass}`}>
-                  <h3 className="text-[11.5px] font-extrabold text-slate-900 uppercase leading-none tracking-tight truncate max-w-[240px] mx-auto">
+                <div className={`mt-2 w-[85%] mx-auto py-1 px-3 rounded-lg border-t border-b shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_2px_4px_rgba(0,0,0,0.3)] ${namePlateClass}`}>
+                  <h3 className="text-[13px] font-black text-slate-900 uppercase leading-none tracking-tight truncate max-w-[240px] mx-auto">
                     {member.name}
                   </h3>
                 </div>
 
                  {/* Membership Category Ribbon block */}
-                <div className="mt-2 flex items-center justify-center gap-1.5 flex-wrap">
+                <div className="mt-1.5 flex items-center justify-center gap-1.5 flex-wrap">
                   {isLifeMember ? (
-                    <span className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-550 to-amber-600 text-white text-[9.5px] font-black px-4.5 py-1.5 rounded-full uppercase tracking-widest shadow-lg border border-amber-300">
+                    <span className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-550 to-amber-600 text-white text-[9px] font-black px-4 py-1 rounded-full uppercase tracking-widest shadow-lg border border-amber-300">
                       👑 LIFE MEMBER
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 bg-[#1a2b5c] border border-slate-800 text-white text-[9.5px] font-black px-4.5 py-1.5 rounded-full uppercase tracking-widest shadow-md">
+                    <span className="inline-flex items-center gap-1 bg-[#1a2b5c] border border-slate-800 text-white text-[9px] font-black px-4 py-1 rounded-full uppercase tracking-widest shadow-md">
                       💼 OFFICIAL MEMBER
                     </span>
                   )}
@@ -509,13 +560,13 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
                 )}
 
                 {/* District & Mandalam (Assembly Constituency is Mandalam) */}
-                <p className={`text-[9.5px] font-black uppercase tracking-wider mt-2 font-sans ${isLifeMember ? 'text-amber-800' : 'text-slate-950'}`}>
+                <p className={`text-[9px] font-black uppercase tracking-wider mt-1 font-sans ${isLifeMember ? 'text-amber-800' : 'text-slate-950'}`}>
                   {districtName} DISTRICT - {member.constituencyCode || (member.assemblyConstituency ? getAssemblyCode(member.assemblyConstituency) : 'NA')}
                 </p>
               </div>
 
               {/* Member Details Columns Section styled as Stacked Premium Plates */}
-              <div className="px-5 space-y-1.5 py-1 shrink-0">
+              <div className="px-4 space-y-1 py-1 shrink-0">
                 {/* 1. MEMBER ID */}
                 <div className={itemPlateClass}>
                   <span className={textTitleClass}>MEMBER ID</span>
@@ -544,7 +595,7 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
                 <div className={itemPlateClass}>
                   <span className={textTitleClass}>{isLifeMember ? 'VALIDITY' : 'EXPIRY DATE'}</span>
                   <span className={`${textValueClass} ${!isLifeMember ? 'text-[#1a2b5c]' : 'text-amber-900 font-extrabold'}`}>
-                    {isLifeMember ? '⭐ PERMANENT ACTIVE' : getRenewalDate(member.registrationDate)}
+                    {isLifeMember ? '⭐ PERMANENT / LIFETIME' : getRenewalDate(member.registrationDate)}
                   </span>
                 </div>
               </div>
@@ -554,48 +605,48 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
                 <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-brand-blue via-transparent to-[#FF1493] z-10" />
 
                 {/* Interactive Live Verification QR Code framed in embossed gold/silver plate */}
-                <div className={`p-1.5 rounded-xl border flex flex-col items-center justify-center shrink-0 w-[64px] h-[75px] ${qrPlateBg}`}>
+                <div className={`p-1.5 rounded-xl border flex flex-col items-center justify-center shrink-0 w-[74px] h-[78px] ${qrPlateBg}`}>
                   <img 
                     src={qrCodeUrl} 
                     alt="Verification QR" 
-                    className="w-[38px] h-[38px] object-contain" 
+                    className="w-[42px] h-[42px] object-contain" 
                     crossOrigin="anonymous" 
                   />
-                  <span className={`text-[4.5px] font-black uppercase mt-1 tracking-widest text-center leading-none ${isLifeMember ? 'text-amber-950' : 'text-indigo-950'}`}>SCAN TO VERIFY</span>
+                  <span className={`text-[6.5px] font-black uppercase mt-1 tracking-wider text-center leading-none ${isLifeMember ? 'text-amber-950' : 'text-slate-950'}`}>SCAN TO VERIFY</span>
                 </div>
 
                 {/* Secretary Signature Plate */}
-                <div className={`flex-1 p-1.5 rounded-xl border flex flex-col justify-between items-center h-[75px] text-center ${signaturePlateBg}`}>
+                <div className={`flex-1 p-1.5 rounded-xl border flex flex-col justify-between items-center h-[78px] text-center ${signaturePlateBg}`}>
                   <div className="flex-1 flex items-center justify-center">
                     <span 
-                      className={`text-[13px] font-normal select-none tracking-normal italic leading-none ${isLifeMember ? 'text-amber-950' : 'text-indigo-950'}`}
+                      className={`text-[14px] font-black select-none tracking-normal italic leading-none ${isLifeMember ? 'text-amber-950' : 'text-slate-950'}`}
                       style={{ fontFamily: "'Brush Script MT', 'Dancing Script', 'Courier New', cursive" }}
                     >
                       Bineesh Kumar
                     </span>
                   </div>
-                  <div className={`w-full border-t my-0.5 ${isLifeMember ? 'border-amber-700/30' : 'border-slate-350'}`} />
-                  <p className={`text-[5.5px] font-black uppercase tracking-tight leading-none truncate max-w-full ${isLifeMember ? 'text-amber-900' : 'text-slate-700'}`}>
+                  <div className={`w-full border-t my-0.5 ${isLifeMember ? 'border-amber-700/50' : 'border-slate-400'}`} />
+                  <p className={`text-[6.5px] font-black uppercase tracking-tight leading-none truncate max-w-full ${isLifeMember ? 'text-amber-950' : 'text-slate-950'}`}>
                     Bineesh Kumar
                   </p>
-                  <p className={`text-[4.5px] font-black uppercase tracking-widest leading-none mt-0.5 ${isLifeMember ? 'text-amber-850/70' : 'text-slate-400'}`}>SECRETARY</p>
+                  <p className={`text-[5.5px] font-black uppercase tracking-widest leading-none mt-0.5 ${isLifeMember ? 'text-amber-950' : 'text-slate-950'}`}>SECRETARY</p>
                 </div>
 
                 {/* President Signature Plate */}
-                <div className={`flex-1 p-1.5 rounded-xl border flex flex-col justify-between items-center h-[75px] text-center ${signaturePlateBg}`}>
+                <div className={`flex-1 p-1.5 rounded-xl border flex flex-col justify-between items-center h-[78px] text-center ${signaturePlateBg}`}>
                   <div className="flex-1 flex items-center justify-center">
                     <span 
-                      className={`text-[14px] font-normal select-none tracking-normal italic leading-none ${isLifeMember ? 'text-amber-950' : 'text-indigo-950'}`}
+                      className={`text-[15px] font-black select-none tracking-normal italic leading-none ${isLifeMember ? 'text-amber-950' : 'text-slate-950'}`}
                       style={{ fontFamily: "'Brush Script MT', 'Dancing Script', 'Courier New', cursive" }}
                     >
                       M. A. Bari
                     </span>
                   </div>
-                  <div className={`w-full border-t my-0.5 ${isLifeMember ? 'border-amber-700/30' : 'border-slate-350'}`} />
-                  <p className={`text-[5.5px] font-black uppercase tracking-tight leading-none truncate max-w-full ${isLifeMember ? 'text-amber-900' : 'text-slate-700'}`}>
+                  <div className={`w-full border-t my-0.5 ${isLifeMember ? 'border-amber-700/50' : 'border-slate-400'}`} />
+                  <p className={`text-[6.5px] font-black uppercase tracking-tight leading-none truncate max-w-full ${isLifeMember ? 'text-amber-950' : 'text-slate-950'}`}>
                     M. A. Bari
                   </p>
-                  <p className={`text-[4.5px] font-black uppercase tracking-widest leading-none mt-0.5 ${isLifeMember ? 'text-amber-850' : 'text-[#FF1493]'}`}>PRESIDENT</p>
+                  <p className={`text-[5.5px] font-black uppercase tracking-widest leading-none mt-0.5 ${isLifeMember ? 'text-amber-950' : 'text-slate-950'}`}>PRESIDENT</p>
                 </div>
               </div>
                 </div>
@@ -606,131 +657,60 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
       </div>
 
       {/* Fallback Long-Press Image Section (Shown when card PNG is successfully compiled) */}
-      {generatedImage && (
-        <div className="w-full bg-slate-900/95 text-white p-5 rounded-3xl border border-slate-800 space-y-3 px-6 shadow-2xl text-center animate-in slide-in-from-bottom duration-300">
-          <div className="flex items-center justify-center gap-1.5 text-amber-400 font-black text-xs uppercase tracking-wider">
-            <Award className="w-4 h-4 text-amber-500 animate-bounce" />
-            <span>നിങ്ങളുടെ മെമ്പർഷിപ്പ് കാർഡ് തെയ്യാറാണ്!</span>
-          </div>
-          <p className="text-[11px] font-bold text-slate-350 leading-relaxed">
-            ചില ഫോണുകളിൽ ഡയറക്റ്റ് ഫയൽ ഡൗൺലോഡ് ബ്ലോക്ക് ചെയ്തേക്കാം. അത് ഒഴിവാക്കാൻ <span className="text-[#FF1493] font-extrabold">താഴെ കാണുന്ന ചിത്രത്തിൽ ഞെക്കിപ്പിടിച്ച് (Long Press)</span> "Download / Save Image" ക്ലിക്ക് ചെയ്യുക!
-          </p>
-          <div className="flex justify-center py-2 max-w-full overflow-hidden">
-            <img 
-              src={generatedImage} 
-              alt="Generated HCRS Card" 
-              className="w-[200px] rounded-xl border-2 border-slate-700 shadow-xl self-center" 
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button 
-              size="sm"
-              onClick={() => {
-                const link = document.createElement('a');
-                link.download = `HCRS_CARD_${member.name.trim().replace(/\s+/g, '_')}.png`;
-                link.href = generatedImage!;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                toast.success('ഫയൽ ഡൗൺലോഡ് വീണ്ടും ആരംഭിച്ചു!');
-              }}
-              className="flex-1 h-9 bg-brand-blue hover:bg-brand-blue/90 text-white rounded-lg font-black text-[10px] uppercase"
-            >
-              📥 Download Again
-            </Button>
-            <Button 
-              size="sm"
-              variant="outline"
-              onClick={() => setGeneratedImage(null)}
-              className="h-9 hover:bg-slate-800 border-slate-700 text-slate-300 rounded-lg font-black text-[10px] uppercase"
-            >
-              Hide Preview
-            </Button>
-          </div>
+      {/* Sleek Action Controls */}
+      {!isScreenshotMode && (
+        <div className="flex flex-col gap-4 w-full px-2 pb-24 shrink-0 transition-all font-sans">
+          {(member.status === 'active' || member.isApproved || isAdmin) && (
+            <div className="flex flex-col gap-3">
+              {/* Visual Instructional Banner */}
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 rounded-[20px] p-4 space-y-2 text-center shadow-xs">
+                <div className="flex items-center justify-center gap-2 text-amber-800 font-black text-[12px] uppercase tracking-wider">
+                  <Camera className="w-4 h-4 text-brand-magenta animate-pulse" />
+                  <span>കാർഡ് സംരക്ഷിക്കുന്ന വിധം</span>
+                </div>
+                <p className="text-[12px] font-extrabold text-slate-900 leading-relaxed font-sans">
+                  താഴെയുള്ള ബട്ടൺ അമർത്തുമ്പോൾ കാർഡ് മാത്രം പൂർണ്ണ സ്ക്രീനിൽ പ്രദർശിപ്പിക്കും. പശ്ചാത്തലം സ്വയമേവ മറയും. തുടർന്ന് Screenshot എടുത്ത് കാർഡ് സംരക്ഷിക്കാം.
+                </p>
+              </div>
+
+              {/* SINGLE SCREENSHOT MODE BUTTON */}
+              <div className="grid grid-cols-1">
+                <Button 
+                  onClick={() => setIsScreenshotMode(true)}
+                  className="w-full h-auto min-h-12 py-3 px-4 font-black rounded-xl text-[10.5px] sm:text-xs uppercase tracking-wider shadow-md bg-[#0054A6] hover:bg-[#004ca0] text-white flex flex-col items-center justify-center gap-0.5 transition-transform active:scale-95 border border-blue-500/10"
+                >
+                  <div className="flex items-center gap-1.5 justify-center">
+                    <Camera className="w-4 h-4 text-white shrink-0" />
+                    <span>SCREENSHOT MODE</span>
+                  </div>
+                  <span className="text-[10px] sm:text-[11px] font-bold tracking-normal block text-blue-100/90 font-sans">
+                    (കാർഡ് മാത്രം കാണിക്കുക)
+                  </span>
+                </Button>
+              </div>
+            </div>
+          )}
+          {onLogout && (
+            <div className="pt-2 flex justify-center w-full">
+              <Button 
+                 variant="ghost" 
+                 onClick={onLogout} 
+                 className="font-bold text-[9px] uppercase tracking-widest text-red-500 hover:text-red-650 hover:bg-red-50/50 px-6 h-9 rounded-xl"
+              >
+                <LogOut className="w-3.5 h-3.5 mr-1" />
+                Sign Out
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Sleek Action Controls */}
-      <div className="flex flex-col gap-4 w-full px-2 pb-24 shrink-0 transition-all font-sans">
-        {(member.status === 'active' || member.isApproved || isAdmin) && (
-          <div className="flex flex-col gap-3">
-            {!isScreenshotMode ? (
-              <>
-                {/* Visual Instructional Banner */}
-                <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-250/60 rounded-[20px] p-4 space-y-2 text-center shadow-xs">
-                  <div className="flex items-center justify-center gap-2 text-amber-700 font-extrabold text-[11px] uppercase tracking-wider">
-                    <Camera className="w-4 h-4 text-brand-magenta animate-pulse" />
-                    <span>കാർഡ് ലഭിക്കാനുള്ള വഴികൾ (Ways to Save Card)</span>
-                  </div>
-                  <p className="text-[11.5px] font-bold text-slate-750 leading-relaxed">
-                    മൊബൈൽ ഫോണുകളിൽ കാർഡ് ഡൗൺലോഡ് ചെയ്യാനും, അതല്ലെങ്കിൽ മുഴുവനായി കണ്ടു സ്ക്രീൻഷോട്ട് എടുക്കാനും താഴെയുള്ള ബട്ടണുകൾ ഉപയോഗിക്കുക.
-                  </p>
-                </div>
-
-                {/* TWO CORE BUTTONS IN MAIN VIEW: 1. Download Card Image, 2. ScreenShot Mode */}
-                <div className="grid grid-cols-1 gap-2.5">
-                  <Button 
-                    onClick={handleGenerateImage}
-                    disabled={isGenerating}
-                    className="w-full h-12 font-black rounded-xl text-xs uppercase tracking-wider shadow-md bg-[#0054A6] hover:bg-[#004ca0] text-white flex items-center justify-center gap-2 transition-transform active:scale-95 border border-blue-500/10"
-                  >
-                    <Download className={`w-4 h-4 text-white ${isGenerating ? 'animate-spin' : 'animate-bounce'}`} />
-                    <span>📥 Save Card to Gallery (കാർഡ് ഡൗൺലോഡ് ചെയ്യുക)</span>
-                  </Button>
-
-                  <Button 
-                    onClick={() => setIsScreenshotMode(true)}
-                    variant="outline"
-                    className="w-full h-12 font-black rounded-xl text-xs uppercase tracking-wider shadow-sm border-slate-300 hover:bg-slate-50 text-slate-800 flex items-center justify-center gap-2 transition-transform active:scale-95"
-                  >
-                    <Camera className="w-4 h-4 text-slate-700" />
-                    <span>📸 Screenshot Mode (കാർഡ് മാത്രം കാണുക)</span>
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <div className="bg-slate-900 text-white p-5 rounded-3xl border border-slate-800 space-y-4 px-6 shadow-2xl text-center">
-                <div className="flex items-center justify-center gap-1.5 text-brand-magenta font-black text-xs uppercase tracking-wider">
-                  <Camera className="w-4 h-4 text-brand-magenta animate-pulse" />
-                  <span>Screenshot Mode Active</span>
-                </div>
-                <p className="text-[11.5px] font-bold text-slate-200 leading-relaxed">
-                  ഫോണിൽ ഒരു <strong className="text-white font-extrabold">സ്ക്രീൻഷോട്ട് (Screenshot)</strong> എടുക്കാൻ അനുയോജ്യമായ രീതിയിൽ അലൈൻമെന്റ് ശരിയാക്കിയിട്ടുണ്ട്. അതല്ലെങ്കിൽ താഴെയുള്ള ബട്ടൺ ക്ലിക്ക് ചെയ്തു കാർഡ് നേരിട്ട് ഡൗൺലോഡ് ചെയ്യുക.
-                </p>
-
-                <div className="flex flex-col gap-2">
-                  <Button 
-                    onClick={handleGenerateImage}
-                    disabled={isGenerating}
-                    className="w-full h-11 bg-brand-blue hover:bg-brand-blue/90 text-white rounded-xl font-black uppercase text-[10.5px] tracking-wider transition-all"
-                  >
-                    <Download className="w-4 h-4 mr-1 inline" /> {isGenerating ? 'Processing...' : 'Direct Download Card'}
-                  </Button>
-                  
-                  <Button 
-                    onClick={() => setIsScreenshotMode(false)}
-                    className="w-full h-11 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-black uppercase text-[10.5px] tracking-wider transition-all"
-                  >
-                    Exit Mode (തിരികെ പേജിലേക്ക് പോകുക)
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-        {!isScreenshotMode && onLogout && (
-          <div className="pt-2 flex justify-center w-full">
-            <Button 
-               variant="ghost" 
-               onClick={onLogout} 
-               className="font-bold text-[9px] uppercase tracking-widest text-red-500 hover:text-red-650 hover:bg-red-50/50 px-6 h-9 rounded-xl"
-            >
-              <LogOut className="w-3.5 h-3.5 mr-1" />
-              Sign Out
-            </Button>
-          </div>
-        )}
-      </div>
+      {/* Minimal Bottom Guide */}
+      {isScreenshotMode && (
+        <p className="absolute bottom-6 text-center text-slate-400 text-[10.5px] font-bold tracking-wider uppercase select-none pointer-events-none opacity-85 px-4 font-sans">
+          തെയ്യാറാണ്! സ്ക്രീൻഷോട്ട് എടുക്കുക • മടങ്ങാൻ എവിടെയെങ്കിലും തൊടുക
+        </p>
+      )}
     </div>
   );
 }

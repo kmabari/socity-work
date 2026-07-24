@@ -403,10 +403,10 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
           <CardHeader className="pb-2 relative z-10">
             <CardTitle className="text-amber-800 flex items-center gap-2">
               <Crown className="w-5 h-5 text-amber-500 animate-pulse" />
-              Founding Life Members Category (ലൈഫ് മെമ്പർഷിപ്പ്)
+              Life Members Category (ലൈഫ് മെമ്പർഷിപ്പ്)
             </CardTitle>
             <CardDescription className="text-amber-700 font-medium">
-              നിർദ്ദിഷ്ട 23 സ്ഥാപക അംഗങ്ങൾക്ക് മാത്രമുള്ള പ്രീമിയം ലേഔട്ട്. ഇവർക്ക് വാർഷിക പുതുക്കലുകളോ പെയ്‌മെന്റ് പരിശോധനകളോ ആവശ്യമില്ല.
+              നിർദ്ദിഷ്ട ലൈഫ് മെമ്പർമാർക്കുള്ള പ്രീമിയം ലേഔട്ട്. ഇവർക്ക് വാർഷിക പുതുക്കലുകളോ പെയ്‌മെന്റ് പരിശോധനകളോ ആവശ്യമില്ല.
             </CardDescription>
           </CardHeader>
           <CardContent className="text-xs text-amber-900/80 leading-relaxed relative z-10">
@@ -443,10 +443,10 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
         <Card className="border border-slate-200/60 shadow-sm bg-white overflow-hidden">
           <CardHeader className="bg-slate-50 border-b border-slate-100 p-5">
             <CardTitle className="text-slate-800 flex items-center gap-2 text-base font-black uppercase tracking-tight">
-              <UserPlus className="w-4 h-4 text-brand-blue" /> Add New Founding Life Member
+              <UserPlus className="w-4 h-4 text-brand-blue" /> Add New Life Member
             </CardTitle>
             <CardDescription className="text-xs font-bold text-slate-500">
-              സ്ഥാപക അംഗത്തെ നേരിട്ട് സൂപ്പർ അഡ്മിൻ മോഡ് മുഖേന ചേർക്കുക.
+              ലൈഫ് അംഗത്തെ നേരിട്ട് സൂപ്പർ അഡ്മിൻ മോഡ് മുഖേന ചേർക്കുക.
             </CardDescription>
           </CardHeader>
 
@@ -617,10 +617,10 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
         <Card className="border border-slate-200/60 shadow-sm bg-white overflow-hidden">
           <CardHeader className="bg-slate-50 border-b border-slate-100 p-5">
             <CardTitle className="text-slate-800 flex items-center gap-2 text-base font-black uppercase tracking-tight">
-              <Sparkles className="w-4 h-4 text-amber-500" /> Founding Life Members list
+              <Sparkles className="w-4 h-4 text-amber-500" /> Life Members List
             </CardTitle>
             <CardDescription className="text-xs font-bold text-slate-500">
-              നിലവിൽ വിജയകരമായി ചേർത്ത സ്ഥാപക അംഗങ്ങളുടെ ഡിറ്റെയിൽസ്.
+              നിലവിൽ വിജയകരമായി ചേർത്ത ലൈഫ് അംഗങ്ങളുടെ വിവരങ്ങൾ.
             </CardDescription>
           </CardHeader>
 
@@ -715,7 +715,7 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
                 <div className="text-center mb-4 pt-2">
                   <h3 className="font-black text-amber-400 text-sm uppercase tracking-wider flex items-center justify-center gap-1.5 font-sans">
                     <Crown className="w-4 h-4 text-amber-500 animate-spin" />
-                    FOUNDING LIFE MEMBER CARD
+                    LIFE MEMBER CARD
                   </h3>
                   <p className="text-[11px] text-slate-400 mt-0.5">പ്രീമിയം ഗോൾഡ് ഡിസൈൻ ഡിജിറ്റൽ സർട്ടിഫിക്കറ്റ്/ഐഡി</p>
                 </div>

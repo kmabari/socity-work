@@ -6463,14 +6463,16 @@ function StatsCard({ title, value, icon, color }: { title: string, value: number
   );
 }
 
-function DetailItem({ label, value, icon }: { label: string, value?: string, icon?: React.ReactNode }) {
+function DetailItem({ label, value, icon }: { label: string, value?: string | React.ReactNode, icon?: React.ReactNode }) {
   const handleCopy = () => {
     if (!value || value === '---' || value === 'N/A') return;
-    navigator.clipboard.writeText(value);
-    toast.success(`${label} കോപ്പി ചെയ്തു!`);
+    if (typeof value === 'string') {
+      navigator.clipboard.writeText(value);
+      toast.success(`${label} കോപ്പി ചെയ്തു!`);
+    }
   };
 
-  const isCopyable = value && value !== '---' && value !== 'N/A';
+  const isCopyable = typeof value === 'string' && value !== '---' && value !== 'N/A';
 
   return (
     <div 
@@ -6489,9 +6491,9 @@ function DetailItem({ label, value, icon }: { label: string, value?: string, ico
           <Copy className="w-3 h-3 text-slate-300 opacity-40 group-hover:opacity-100 transition-opacity whitespace-nowrap ml-1 shrink-0" />
         )}
       </div>
-      <p className="text-sm font-black text-slate-800 leading-tight break-all selection:bg-blue-100">
+      <div className="text-sm font-black text-slate-800 leading-tight break-all selection:bg-blue-100">
         {value || '---'}
-      </p>
+      </div>
     </div>
   );
 }
