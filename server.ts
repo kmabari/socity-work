@@ -765,11 +765,9 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
 
       const sheetId = process.env.GOOGLE_SHEET_ID;
       if (!sheetId) {
-        console.warn("GOOGLE_SHEET_ID is not configured. Registering locally/silently without Sheets database to avoid blocking user.");
-        return res.json({
-          success: true,
-          warning: "Google Sheet ID is not configured on the server, but registration bypassed successfully so you can proceed to send email.",
-          bypassed: true
+        console.error("GOOGLE_SHEET_ID is not configured on the server.");
+        return res.status(500).json({
+          error: "GOOGLE_SHEET_ID environment variable is missing on the server. Please configure GOOGLE_SHEET_ID."
         });
       }
 
@@ -778,11 +776,9 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       try {
         sheets = getSheetsClient();
       } catch (authErr: any) {
-        console.warn("Failed to initialize Google Sheets client (possibly missing service account credentials):", authErr.message || authErr);
-        return res.json({
-          success: true,
-          warning: "Google Sheets authentication is not configured yet, but registration bypassed successfully so you can proceed.",
-          bypassed: true
+        console.error("Failed to initialize Google Sheets client:", authErr.message || authErr);
+        return res.status(500).json({
+          error: `Google Sheets Authentication Error: ${authErr.message || authErr}`
         });
       }
 
@@ -822,7 +818,8 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       if (isDuplicate) {
         return res.status(400).json({
           error: "നിങ്ങൾ ഈ മൊബൈൽ നമ്പർ ഉപയോഗിച്ച് ഇതിനകം പങ്കാളിത്തം രേഖപ്പെടുത്തിയിട്ടുണ്ട്! (You have already registered/participated using this mobile number!)",
-          code: "DUPLICATE_REGISTRATION"
+          code: "DUPLICATE_REGISTRATION",
+          isDuplicate: true
         });
       }
 
@@ -846,22 +843,17 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
           }
         });
       } catch (appendErr: any) {
-        console.warn("Failed to append participant to Google Sheet. Letting request succeed anyway:", appendErr.message || appendErr);
-        return res.json({
-          success: true,
-          warning: "Could not append to Google Sheet but registration bypassed successfully: " + (appendErr.message || "Unknown sheet error"),
-          bypassed: true
+        console.error("Failed to append participant to Google Sheet:", appendErr.message || appendErr);
+        return res.status(500).json({
+          error: `Google Sheets Append Error: ${appendErr.message || appendErr}`
         });
       }
 
       return res.json({ success: true });
     } catch (err: any) {
       console.error("Internal registration error:", err);
-      // Fallback to success instead of hard blocking the user
-      return res.json({
-        success: true,
-        warning: "Internal registration warning: " + (err.message || "Unknown error"),
-        bypassed: true
+      return res.status(500).json({
+        error: `Internal Registration Error: ${err.message || "Unknown error"}`
       });
     }
   });

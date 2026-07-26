@@ -90,16 +90,15 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
         );
         const res = await getDocs(q);
         if (!res.empty) {
-          toast.error('This mobile number is already registered. Please go back and log in. (ഈ മൊബൈൽ നമ്പർ ഉപയോഗിച്ച് നേരത്തെ രജിസ്റ്റർ ചെയ്തതാണ്. ദയവായി ലോഗിൻ ചെയ്യുക.)', { id: loadingToast, duration: 8000 });
+          toast.error("This mobile number is already registered. Please go back and log in.");
+          toast.dismiss(loadingToast);
           return;
         }
         toast.dismiss(loadingToast);
-        setStep('payment');
-      } catch (err: any) {
-        console.error("Error auditing mobile uniqueness during registrations:", err);
+        setStep("payment");
+      } catch (err) {
         toast.dismiss(loadingToast);
-        // Fallback progress if Firestore is temporarily unreachable / blank
-        setStep('payment');
+        toast.error("Failed to verify mobile number. Please try again.");
       }
     }
   };
@@ -126,75 +125,84 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
   };
 
   return (
-    <div className="min-h-screen py-20 px-4 font-sans relative overflow-hidden flex items-center justify-center">
+    <div className="min-h-screen pt-2 pb-8 sm:py-12 md:py-20 px-3 sm:px-6 font-sans relative overflow-x-hidden flex flex-col items-center justify-start sm:justify-center">
       {/* Dynamic graphic backdrops */}
-      <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-brand-magenta/8 blur-3xl pointer-events-none" />
-      <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full bg-brand-blue/8 blur-3xl pointer-events-none" />
+      <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-brand-magenta/8 blur-3xl pointer-events-none max-md:hidden" />
+      <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full bg-brand-blue/8 blur-3xl pointer-events-none max-md:hidden" />
 
-      <div className="max-w-xl w-full z-10">
-        <div className="text-center mb-10">
-          <div className="inline-block p-3 bg-white shadow-premium rounded-[26px] mb-4 border border-slate-100 transition-all hover:scale-105">
-            <Logo className="scale-105 mx-auto" />
+      <div className="max-w-xl w-full z-10 mx-auto px-0.5 sm:px-2">
+        <div className="text-center mb-3 sm:mb-8">
+          {/* Logo container shifted upward on mobile with optimized padding */}
+          <div className="inline-block p-3 sm:p-5 bg-white shadow-premium rounded-[26px] sm:rounded-[36px] mb-2 sm:mb-4 border border-slate-100 transition-all hover:scale-105">
+            <Logo className="w-28 h-28 xs:w-32 xs:h-32 sm:w-48 sm:h-48 md:w-52 md:h-52 mx-auto" size="lg" />
           </div>
-          <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight uppercase leading-none">{t('reg_title', 'Membership Registration')}</h2>
-          <p className="text-[#c9a227] text-[10px] font-black tracking-widest mt-2 uppercase">HIGHRICH COMMUNITY REVIVAL SOCIETY</p>
+          <h2 className="text-xl xs:text-2xl sm:text-4xl font-black text-white tracking-tight uppercase leading-tight px-1 sm:px-0">
+            {t('reg_title', 'Membership Registration')}
+          </h2>
+          <p className="text-[#c9a227] text-[10.5px] xs:text-xs sm:text-base font-black tracking-widest mt-1 sm:mt-2 uppercase px-1">
+            HIGHRICH COMMUNITY REVIVAL SOCIETY
+          </p>
         </div>
 
         {/* Sleek Form Container */}
-        <Card className="border-2 border-slate-150 bg-white shadow-premium overflow-hidden rounded-[36px]">
-          <CardHeader className="bg-slate-50/85 border-b border-slate-150 pb-6 pt-8 px-8 md:px-10">
-            <CardTitle className="text-lg md:text-xl font-black text-slate-900 flex items-center gap-3 uppercase tracking-tight">
+        <Card className="border-2 border-slate-200 bg-white shadow-2xl overflow-hidden rounded-[26px] sm:rounded-[36px] w-full">
+          <CardHeader className="bg-slate-50 border-b border-slate-200/80 p-4 sm:p-8 md:p-10">
+            <CardTitle className="text-lg sm:text-2xl font-black text-slate-900 flex items-center gap-2.5 uppercase tracking-tight">
               {step === 'details' ? (
                 <>
-                  <div className="w-10 h-10 rounded-xl bg-brand-blue/10 flex items-center justify-center text-brand-blue shadow-sm">
-                    <User className="w-5 h-5" />
+                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-brand-blue/10 flex items-center justify-center text-brand-blue shadow-sm shrink-0">
+                    <User className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
-                  {t('reg_fast_title', 'Fast Registration')}
+                  <span>{t('reg_fast_title', 'Fast Registration')}</span>
                 </>
               ) : (
                 <>
-                  <div className="w-10 h-10 rounded-xl bg-brand-blue/10 flex items-center justify-center text-brand-blue shadow-sm">
-                    <Receipt className="w-5 h-5" />
+                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-brand-blue/10 flex items-center justify-center text-brand-blue shadow-sm shrink-0">
+                    <Receipt className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
-                  {t('reg_payment_title', 'Membership Payment')}
+                  <span>{t('reg_payment_title', 'Membership Payment')}</span>
                 </>
               )}
             </CardTitle>
-            <CardDescription className="text-slate-400 font-black uppercase tracking-widest text-[9px] mt-2">
+            <CardDescription className="text-slate-600 font-extrabold uppercase tracking-wider text-[11px] sm:text-sm mt-1 sm:mt-2.5">
               {step === 'details' ? t('reg_step_1_desc', 'Secure Registration Node • Step 1') : t('reg_step_2_desc', 'Treasury Portal • Step 2')}
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="p-8 md:p-10">
+          <CardContent className="p-4 sm:p-8 md:p-10">
             {step === 'details' ? (
               <Form {...form}>
-                <form onSubmit={handleNextStep} className="space-y-7">
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                <form onSubmit={handleNextStep} className="space-y-5 sm:space-y-6">
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4.5 sm:space-y-6">
                     {/* Name Input */}
                     <FormField control={form.control} name="name" render={({ field, fieldState }) => (
-                      <FormItem className="space-y-1.5">
-                        <FormLabel className="text-slate-500 font-extrabold uppercase text-[10px] tracking-wider ml-1">{t('reg_fullname_label', "Full Name (പൂർണ്ണമായ പേര്)")}</FormLabel>
+                      <FormItem className="space-y-2">
+                        <FormLabel className="text-slate-800 font-extrabold uppercase text-xs sm:text-sm tracking-wide ml-1 block">
+                          {t('reg_fullname_label', "Full Name (പൂർണ്ണമായ പേര്)")}
+                        </FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <User className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${field.value ? "text-brand-blue" : "text-slate-300"}`} />
+                            <User className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${field.value ? "text-brand-blue" : "text-slate-400"}`} />
                             <Input 
                               {...field} 
                               placeholder={t('reg_fullname_placeholder', "Enter your full legal name")} 
-                              className={`pl-12 h-13 bg-white border-2 border-slate-200 focus:border-brand-blue/80 focus:ring-0 focus:bg-white transition-all rounded-2xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500 focus:border-red-500' : ''}`} 
+                              className={`pl-12 h-[50px] sm:h-14 bg-white border-2 border-slate-200 focus:border-brand-blue focus:ring-0 focus:bg-white transition-all rounded-2xl font-bold text-sm sm:text-base text-slate-900 placeholder:text-slate-500 placeholder:font-medium ${fieldState.error ? 'border-red-500 focus:border-red-500' : ''}`} 
                             />
                           </div>
                         </FormControl>
-                        <FormMessage />
+                        <FormMessage className="text-xs font-bold text-red-600" />
                       </FormItem>
                     )} />
 
                     {/* Phone Input */}
                     <FormField control={form.control} name="mobile" render={({ field, fieldState }) => (
-                      <FormItem className="space-y-1.5">
-                        <FormLabel className="text-slate-500 font-extrabold uppercase text-[10px] tracking-wider ml-1">{t('reg_mobile_label', "Mobile Number (ഫോൺ നമ്പർ)")}</FormLabel>
+                      <FormItem className="space-y-2">
+                        <FormLabel className="text-slate-800 font-extrabold uppercase text-xs sm:text-sm tracking-wide ml-1 block">
+                          {t('reg_mobile_label', "Mobile Number (ഫോൺ നമ്പർ)")}
+                        </FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <Phone className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${field.value ? "text-brand-blue" : "text-slate-300"}`} />
+                            <Phone className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${field.value ? "text-brand-blue" : "text-slate-400"}`} />
                             <Input 
                               {...field} 
                               maxLength={10}
@@ -203,23 +211,25 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                                 field.onChange(cleaned);
                               }}
                               placeholder="**********" 
-                              className={`pl-12 h-13 bg-white border-2 border-slate-200 focus:border-brand-blue/80 focus:ring-0 focus:bg-white transition-all rounded-2xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`} 
+                              className={`pl-12 h-[50px] sm:h-14 bg-white border-2 border-slate-200 focus:border-brand-blue focus:ring-0 focus:bg-white transition-all rounded-2xl font-bold text-sm sm:text-base text-slate-900 placeholder:text-slate-500 placeholder:font-medium ${fieldState.error ? 'border-red-500' : ''}`} 
                             />
                           </div>
                         </FormControl>
-                        <FormMessage />
+                        <FormMessage className="text-xs font-bold text-red-600" />
                       </FormItem>
                     )} />
 
                     {/* State Select */}
                     <FormField control={form.control} name="state" render={({ field, fieldState }) => (
-                      <FormItem className="space-y-1.5">
-                        <FormLabel className="text-slate-500 font-extrabold uppercase text-[10px] tracking-wider ml-1">{t('reg_state_label', "State (സംസ്ഥാനം)")}</FormLabel>
+                      <FormItem className="space-y-2">
+                        <FormLabel className="text-slate-800 font-extrabold uppercase text-xs sm:text-sm tracking-wide ml-1 block">
+                          {t('reg_state_label', "State (സംസ്ഥാനം)")}
+                        </FormLabel>
                         <Select onValueChange={field.onChange} value={field.value || ""}>
                           <FormControl>
-                            <SelectTrigger className={`h-13 bg-white border-2 border-slate-200 focus:border-brand-blue/80 transition-all rounded-2xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`}>
+                            <SelectTrigger className={`h-[50px] sm:h-14 bg-white border-2 border-slate-200 focus:border-brand-blue transition-all rounded-2xl font-bold text-sm sm:text-base text-slate-900 ${fieldState.error ? 'border-red-500' : ''}`}>
                               <div className="flex items-center gap-2">
-                                <Landmark className={`w-5 h-5 transition-colors ${field.value ? "text-brand-blue" : "text-slate-300"}`} />
+                                <Landmark className={`w-5 h-5 transition-colors ${field.value ? "text-brand-blue" : "text-slate-400"}`} />
                                 <SelectValue placeholder={t('reg_state_placeholder', "Select State")} />
                               </div>
                             </SelectTrigger>
@@ -228,15 +238,17 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                             {STATES.map(s => <SelectItem key={s.code} value={s.code}>{s.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
-                        <FormMessage />
+                        <FormMessage className="text-xs font-bold text-red-600" />
                       </FormItem>
                     )} />
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                       {/* District */}
                       <FormField control={form.control} name="district" render={({ field, fieldState }) => (
-                        <FormItem className="col-span-1 space-y-1.5">
-                          <FormLabel className="text-slate-500 font-extrabold uppercase text-[10px] tracking-wider ml-1">{t('reg_district_label', "District (ജില്ല)")}</FormLabel>
+                        <FormItem className="col-span-1 space-y-2">
+                          <FormLabel className="text-slate-800 font-extrabold uppercase text-xs sm:text-sm tracking-wide ml-1 block">
+                            {t('reg_district_label', "District (ജില്ല)")}
+                          </FormLabel>
                           <Select 
                             onValueChange={(val) => {
                               field.onChange(val);
@@ -245,7 +257,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                             value={field.value || ""}
                           >
                             <FormControl>
-                              <SelectTrigger className={`h-13 bg-white border-2 border-slate-200 focus:border-brand-blue/80 transition-all rounded-2xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`}>
+                              <SelectTrigger className={`h-[50px] sm:h-14 bg-white border-2 border-slate-200 focus:border-brand-blue transition-all rounded-2xl font-bold text-sm sm:text-base text-slate-900 ${fieldState.error ? 'border-red-500' : ''}`}>
                                 <SelectValue placeholder={t('reg_district_placeholder', "Select District")} />
                               </SelectTrigger>
                             </FormControl>
@@ -253,21 +265,23 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                               {DISTRICTS.map(d => <SelectItem key={d.code} value={d.code}>{d.name}</SelectItem>)}
                             </SelectContent>
                           </Select>
-                          <FormMessage />
+                          <FormMessage className="text-xs font-bold text-red-600" />
                         </FormItem>
                       )} />
 
                       {/* Assembly Constituency */}
                       <FormField control={form.control} name="assemblyConstituency" render={({ field, fieldState }) => (
-                        <FormItem className="col-span-1 space-y-1.5">
-                          <FormLabel className="text-slate-500 font-extrabold uppercase text-[10px] tracking-wider ml-1">{t('reg_constituency_label', "Assembly Constituency (മണ്ഡലം)")}</FormLabel>
+                        <FormItem className="col-span-1 space-y-2">
+                          <FormLabel className="text-slate-800 font-extrabold uppercase text-xs sm:text-sm tracking-wide ml-1 block">
+                            {t('reg_constituency_label', "Assembly Constituency (മണ്ഡലം)")}
+                          </FormLabel>
                           <Select 
                             onValueChange={field.onChange} 
                             value={field.value || ""}
                             disabled={!district}
                           >
                             <FormControl>
-                              <SelectTrigger className={`h-13 bg-white border-2 border-slate-200 focus:border-brand-blue/80 transition-all rounded-2xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`}>
+                              <SelectTrigger className={`h-[50px] sm:h-14 bg-white border-2 border-slate-200 focus:border-brand-blue transition-all rounded-2xl font-bold text-sm sm:text-base text-slate-900 ${fieldState.error ? 'border-red-500' : ''}`}>
                                 <SelectValue placeholder={district ? t('reg_constituency_placeholder', "Select Assembly") : t('reg_constituency_select_dist_first', "Select District first")} />
                               </SelectTrigger>
                             </FormControl>
@@ -275,16 +289,16 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                               {availableConstituencies.map(ac => <SelectItem key={ac} value={ac}>{ac}</SelectItem>)}
                             </SelectContent>
                           </Select>
-                          <FormMessage />
+                          <FormMessage className="text-xs font-bold text-red-600" />
                         </FormItem>
                       )} />
                     </div>
                   </motion.div>
 
                   {/* Terms Info */}
-                  <div className="border-t border-slate-100 pt-6 flex items-start gap-3.5">
-                    <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-                    <p className="text-[10.5px] text-slate-500 font-bold uppercase leading-relaxed">
+                  <div className="border-t border-slate-200 pt-5 sm:pt-6 flex items-start gap-3.5 bg-blue-50/60 p-4 rounded-2xl border border-blue-100">
+                    <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                    <p className="text-xs sm:text-sm text-slate-800 font-bold leading-relaxed">
                       {t('reg_terms_note', "നിങ്ങൾ വിജയകരമായി രജിസ്റ്റർ ചെയ്താൽ, നിങ്ങളുടെ മൊബൈൽ നമ്പറും പാസ്‌വേഡ് '123456' ഉം ഉപയോഗിച്ച് ലോഗിൻ ചെയ്യാം. തുടർന്ന് പ്രൊഫൈൽ എഡിറ്റ് ചെയ്ത് നിങ്ങളുടെ മറ്റ് വിവരങ്ങൾ പൂർത്തീകരിക്കാവുന്നതാണ്.")}
                     </p>
                   </div>
@@ -292,23 +306,23 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                   {/* Adhoc Membership Acceptance Checklist */}
                   <div 
                     onClick={() => setAgreeAdhoc(!agreeAdhoc)}
-                    className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3.5 ${
+                    className={`p-4.5 sm:p-5 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3.5 ${
                         agreeAdhoc 
                           ? 'border-brand-magenta bg-brand-magenta/5 shadow-sm' 
-                          : 'border-rose-300 bg-rose-50/10 shadow-[0_0_15px_rgba(239,68,68,0.05)]'
+                          : 'border-slate-300 hover:border-slate-400 bg-slate-50/70 shadow-sm'
                     }`}
                   >
                     <Checkbox 
                       checked={agreeAdhoc} 
                       onCheckedChange={(val) => setAgreeAdhoc(!!val)} 
-                      className={`w-5 h-5 mt-0.5 pointer-events-none ${
+                      className={`w-5.5 h-5.5 mt-0.5 pointer-events-none shrink-0 ${
                         agreeAdhoc 
                           ? 'border-brand-magenta bg-brand-magenta text-white' 
-                          : 'border-rose-400 bg-white'
+                          : 'border-slate-400 bg-white'
                       }`} 
                     />
                     <div className="flex-1 min-w-0 space-y-1">
-                      <p className={`text-[11px] font-bold leading-relaxed ${agreeAdhoc ? 'text-slate-800' : 'text-rose-950 font-extrabold'}`}>
+                      <p className={`text-xs sm:text-sm md:text-base font-bold leading-relaxed ${agreeAdhoc ? 'text-slate-900' : 'text-slate-800'}`}>
                         {t('reg_agreement_text', 'I wish to continue as an Adhoc Member of the Highrich Community Revival Society (HCRS) and agree to abide by the Society Rules, Regulations and Terms & Conditions. *')}
                       </p>
                     </div>
@@ -318,36 +332,36 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                   <Button 
                     type="submit" 
                     disabled={!agreeAdhoc || (district && districtQuotas[district] !== undefined && districtQuotas[district] > 0 && (districtQuotasUsed[district] || 0) >= districtQuotas[district])}
-                    className="w-full h-13 rounded-2xl text-xs font-black transition-all shadow-lg shadow-brand-blue/15 hover:shadow-brand-blue/25 uppercase tracking-widest bg-brand-blue hover:bg-[#083D91] text-white disabled:opacity-50 flex items-center justify-center gap-1.5 hover:translate-y-[-1px] active:translate-y-0"
+                    className="w-full h-[52px] sm:h-15 rounded-2xl text-xs sm:text-sm font-black transition-all shadow-lg shadow-brand-blue/20 hover:shadow-brand-blue/30 uppercase tracking-widest bg-brand-blue hover:bg-[#083D91] text-white disabled:opacity-50 flex items-center justify-center gap-2 hover:translate-y-[-1px] active:translate-y-0 px-4"
                   >
                     {(district && districtQuotas[district] !== undefined && districtQuotas[district] > 0 && (districtQuotasUsed[district] || 0) >= districtQuotas[district])
                       ? t('reg_quota_exhausted', 'Quota Exhausted / ക്വാട്ട കഴിഞ്ഞു') 
                       : t('reg_proceed_to_payment', 'Proceed to Payment / പേയ്മെന്റിലേക്ക് പോവുക')}
-                    <ArrowRight className="w-4 h-4 text-white" />
+                    <ArrowRight className="w-5 h-5 text-white shrink-0" />
                   </Button>
                 </form>
               </Form>
             ) : (
-              <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="space-y-7">
-                <div className="bg-[#030e1d] text-white rounded-[32px] p-6 md:p-8 border-3 border-brand-blue shadow-2xl relative overflow-hidden transition-all duration-300">
+              <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6 sm:space-y-7">
+                <div className="bg-[#030e1d] text-white rounded-[28px] sm:rounded-[32px] p-5 sm:p-8 border-3 border-brand-blue shadow-2xl relative overflow-hidden transition-all duration-300">
                   <div className="absolute top-0 right-0 w-36 h-36 bg-brand-blue/20 blur-3xl pointer-events-none" />
                   <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-brand-magenta/15 blur-3xl pointer-events-none" />
                   <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-brand-blue to-brand-magenta" />
                   
-                  <h4 className="font-extrabold text-white text-base md:text-lg flex items-center justify-center sm:justify-start gap-3 mb-4 uppercase tracking-wider">
-                    <span className="p-1.5 rounded-xl bg-brand-blue/20 text-brand-blue flex items-center justify-center animate-pulse">
+                  <h4 className="font-extrabold text-white text-base sm:text-lg md:text-xl flex items-center justify-center sm:justify-start gap-3 mb-4 uppercase tracking-wider">
+                    <span className="p-2 rounded-xl bg-brand-blue/20 text-brand-blue flex items-center justify-center animate-pulse shrink-0">
                       <Receipt className="w-5 h-5 text-brand-magenta" />
                     </span>
-                    {t('reg_upi_qr_title', 'പേയ്മെന്റ് ക്യു ആർ കോഡ് (UPI Payment QR)')}
+                    <span>{t('reg_upi_qr_title', 'പേയ്മെന്റ് ക്യു ആർ കോഡ് (UPI Payment QR)')}</span>
                   </h4>
                   
-                  <p className="text-xs text-slate-200 font-extrabold leading-relaxed text-center sm:text-left bg-brand-blue/5 p-3 rounded-2xl border border-brand-blue/20 mb-5">
+                  <p className="text-xs sm:text-sm text-slate-100 font-extrabold leading-relaxed text-center sm:text-left bg-brand-blue/10 p-3.5 sm:p-4 rounded-2xl border border-brand-blue/30 mb-5">
                     {t('reg_upi_scan_instruction', 'Scan the QR code below using GPay, PhonePe, or Paytm to pay <span className="text-brand-magenta font-black text-lg underline decoration-brand-magenta">₹200</span> for 1-Year National Active Membership. (താഴെയുള്ള ക്യു ആർ കോഡ് സ്കാൻ ചെയ്ത് ₹200 അടയ്ക്കുക):')}
                   </p>
 
-                  <div className="flex flex-col items-center justify-center gap-4 bg-slate-900/60 p-6 rounded-[24px] border-2 border-slate-800 shadow-inner">
+                  <div className="flex flex-col items-center justify-center gap-4 bg-slate-900/80 p-5 sm:p-6 rounded-[24px] border-2 border-slate-800 shadow-inner">
                     {/* Public UPI Payment QR with Proxy support for Palakkad cellular ISP blocks */}
-                    <div className="bg-white p-3 rounded-2xl shadow-xl shrink-0">
+                    <div className="bg-white p-3.5 rounded-2xl shadow-xl shrink-0">
                       <img 
                         src={qrSrc}
                         onError={() => {
@@ -358,14 +372,14 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                           }
                         }}
                         alt="UPI Payment QR Code"
-                        className="w-44 h-44 object-contain"
+                        className="w-48 h-48 sm:w-52 sm:h-52 object-contain"
                         referrerPolicy="no-referrer"
                       />
                     </div>
                     <div className="flex flex-col items-center gap-2 w-full text-center mt-1">
-                      <p className="text-[10px] font-black text-white bg-slate-950/80 px-4 py-2 rounded-lg border border-slate-800 tracking-wider flex items-center gap-1.5 justify-center">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                        {t('reg_upi_scan_box_text', 'ഈ QR കോഡ് സ്കാൻ ചെയ്ത് ₹200 അടയ്ക്കുക')}
+                      <p className="text-xs sm:text-sm font-black text-white bg-slate-950/90 px-4 py-2.5 rounded-xl border border-slate-800 tracking-wider flex items-center gap-2 justify-center">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span>{t('reg_upi_scan_box_text', 'ഈ QR കോഡ് സ്കാൻ ചെയ്ത് ₹200 അടയ്ക്കുക')}</span>
                       </p>
                     </div>
                   </div>
@@ -373,34 +387,34 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
 
                 <div className="space-y-6">
                   {/* Payment Date & Time Input fields */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 xs:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-slate-500 font-black uppercase text-[10px] tracking-widest ml-1">
+                      <label className="text-slate-700 font-extrabold uppercase text-xs sm:text-sm tracking-wide ml-1 block">
                         {t('reg_payment_date_label', 'അടച്ച തീയതി (Payment Date)')} <span className="text-brand-magenta font-black">*</span>
                       </label>
                       <Input 
                         type="date"
                         value={paymentDate}
                         onChange={(e) => setPaymentDate(e.target.value)}
-                        className="h-12 bg-white border-2 border-slate-200 focus:border-[#0066FF]/80 focus:ring-0 transition-all rounded-xl font-bold font-mono text-center text-sm"
+                        className="h-14 bg-white border-2 border-slate-200 focus:border-[#0066FF] transition-all rounded-2xl font-bold font-mono text-center text-sm sm:text-base text-slate-900"
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-slate-500 font-black uppercase text-[10px] tracking-widest ml-1">
+                      <label className="text-slate-700 font-extrabold uppercase text-xs sm:text-sm tracking-wide ml-1 block">
                         {t('reg_payment_time_label', 'അടച്ച സമയം (Payment Time)')} <span className="text-brand-magenta font-black">*</span>
                       </label>
                       <Input 
                         type="time"
                         value={paymentTime}
                         onChange={(e) => setPaymentTime(e.target.value)}
-                        className="h-12 bg-white border-2 border-slate-200 focus:border-[#0066FF]/80 focus:ring-0 transition-all rounded-xl font-bold font-mono text-center text-sm"
+                        className="h-14 bg-white border-2 border-slate-200 focus:border-[#0066FF] transition-all rounded-2xl font-bold font-mono text-center text-sm sm:text-base text-slate-900"
                       />
                     </div>
                   </div>
 
                   {/* Quick Helper Button and indicator */}
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-slate-50 border border-slate-100 p-3 rounded-2xl">
-                    <span className="text-[10px] font-bold text-slate-500 leading-tight">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-50 border border-slate-200 p-3.5 sm:p-4 rounded-2xl">
+                    <span className="text-xs sm:text-sm font-bold text-slate-700 leading-tight">
                       {t('reg_current_time_info', 'തീയതിയും സമയവും ഇപ്പോഴത്തെ സമയത്തേക്ക് സെറ്റ് ചെയ്യുവാൻ:')}
                     </span>
                     <Button 
@@ -413,14 +427,14 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                         setPaymentTime(today.toTimeString().split(' ')[0].substring(0, 5));
                         toast.success(t('reg_toast_date_time_set', 'തീയതിയും സമയവും ഇപ്പോഴത്തെ സമയത്തേക്ക് മാറ്റി!'));
                       }}
-                      className="border border-[#0066FF]/30 text-[#0066FF] hover:bg-[#0066FF]/5 text-[9px] font-black uppercase px-2.5 h-8 rounded-lg shrink-0 flex items-center gap-1.5 bg-white"
+                      className="border-2 border-[#0066FF]/40 text-[#0066FF] hover:bg-[#0066FF]/10 text-xs font-black uppercase px-3.5 h-10 rounded-xl shrink-0 flex items-center gap-1.5 bg-white"
                     >
                       {t('reg_use_current_btn', 'ഇപ്പോൾ (Use Current)')}
                     </Button>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-slate-500 font-black uppercase text-[10px] tracking-widest ml-1">
+                    <label className="text-slate-700 font-extrabold uppercase text-xs sm:text-sm tracking-wide ml-1 block">
                       {t('reg_txnid_label', 'ട്രാൻസാക്ഷൻ ഐഡി നമ്പർ അടിക്കുക (Enter Transaction ID)')} <span className="text-brand-magenta font-black">*</span>
                     </label>
                     <Input 
@@ -428,30 +442,30 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                       onChange={(e) => setTransactionId(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
                       placeholder="E.g. TXN123456789 or 12-digit UTR"
                       maxLength={25}
-                      className="h-14 bg-white border-2 border-slate-200 focus:border-[#0066FF]/80 focus:ring-0 transition-all rounded-2xl font-black font-mono tracking-wider text-center text-lg placeholder:text-slate-350"
+                      className="h-14 sm:h-15 bg-white border-2 border-slate-200 focus:border-[#0066FF] transition-all rounded-2xl font-black font-mono tracking-wider text-center text-base sm:text-lg text-slate-900 placeholder:text-slate-400 placeholder:font-normal"
                     />
                   </div>
 
-                  <p className="text-[10.5px] font-bold text-slate-500 leading-relaxed border-t border-slate-100 pt-4">
+                  <p className="text-xs sm:text-sm font-bold text-slate-600 leading-relaxed border-t border-slate-200 pt-4">
                     {t('reg_txnid_note', '* അടച്ച തുകയുടെ ശരിയായ യു.പി.ഐ റഫറൻസ് നമ്പറോ ട്രാന്സാക്ഷൻ ഐഡിയോ ഇവിടെ നൽകുക. പരിശോധനയ്ക്ക് ശേഷം അഡ്മിൻ പ്രൊഫൈൽ ആക്റ്റീവ് ചെയ്യുന്നതാണ്.')}
                   </p>
 
-                  <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-3 pt-2">
                     <Button 
                       type="button" 
                       onClick={handleFinalSubmit}
                       disabled={transactionId.trim().length < 8}
-                      className="w-full h-14 rounded-2xl font-black bg-gradient-to-r from-[#0066FF] to-indigo-600 text-white shadow-lg shadow-[#0066FF]/15 hover:shadow-brand-blue/25 transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-40 hover:translate-y-[-1.5px] active:translate-y-0"
+                      className="w-full h-14 sm:h-15 rounded-2xl font-black bg-gradient-to-r from-[#0066FF] to-indigo-600 text-white shadow-lg shadow-[#0066FF]/20 hover:shadow-brand-blue/30 transition-all text-xs sm:text-sm uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-40 hover:translate-y-[-1.5px] active:translate-y-0 px-4"
                     >
                       {t('reg_complete_btn', 'Complete Registration / രജിസ്റ്റർ ചെയ്യുക')}
-                      <ArrowRight className="w-4 h-4 text-white" />
+                      <ArrowRight className="w-5 h-5 text-white shrink-0" />
                     </Button>
 
                     <Button 
                       type="button" 
                       variant="ghost" 
                       onClick={() => setStep('details')}
-                      className="w-full h-12 rounded-2xl text-slate-400 hover:text-slate-600 font-black uppercase tracking-widest text-[10px] hover:bg-slate-50 transition-all flex items-center justify-center gap-1.5"
+                      className="w-full h-12 sm:h-13 rounded-2xl text-slate-500 hover:text-slate-800 font-bold uppercase tracking-widest text-xs hover:bg-slate-100 transition-all flex items-center justify-center gap-2"
                     >
                       <ArrowLeft className="w-4 h-4" /> {t('reg_go_back_btn', 'Go Back / വിവരങ്ങൾ തിരുത്തുക')}
                     </Button>

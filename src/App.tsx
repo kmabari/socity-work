@@ -2498,13 +2498,13 @@ export default function App() {
                         <div className="w-full bg-emerald-500/10 dark:bg-emerald-950/20 border-2 border-emerald-500/35 p-6 sm:p-8 pb-8 sm:pb-10 rounded-[28px] shadow-lg text-center lg:text-left flex flex-col gap-4">
                           <Button 
                             onClick={() => setView('support')}
-                            className="w-full h-15 rounded-2xl font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg hover:scale-[1.02] active:scale-95 transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-3 border-b-4 border-emerald-800 cursor-pointer"
+                            className="w-full h-15 rounded-2xl font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg hover:scale-[1.02] active:scale-95 transition-all text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-3 border-b-4 border-emerald-800 cursor-pointer"
                           >
                             <ShieldCheck className="w-5 h-5 animate-pulse" />
-                            Registry Saved ✓
+                            എല്ലാ 4 ഫോമുകളും പൂർത്തിയായി ✅
                           </Button>
                           <div className="text-center lg:text-left space-y-2 mt-2 pt-3.5 border-t border-emerald-500/20">
-                            <p className="text-sm sm:text-base font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-[0.15em]">രജിസ്ട്രി പൂർത്തിയായി (4/4 Submitted)</p>
+                            <p className="text-sm sm:text-base font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-[0.15em]">എല്ലാ 4 ഫോമുകളും പൂർത്തിയായി ✅</p>
                             <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white uppercase tracking-wide font-sans leading-relaxed">
                               കുടുംബത്തിലെ എല്ലാവരുടെയും വിവരങ്ങൾ രേഖപ്പെടുത്തി
                             </p>
@@ -2517,12 +2517,12 @@ export default function App() {
                             className="w-full h-15 rounded-2xl font-black bg-amber-600 hover:bg-amber-700 text-white shadow-lg hover:scale-[1.02] active:scale-95 transition-all text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-3 border-b-4 border-amber-800 cursor-pointer"
                           >
                             <Info className="w-5 h-5 animate-pulse" />
-                            REGISTRY STATUS: {submittedClaimsCount}/4 SAVED
+                            {submittedClaimsCount === 1 ? "4 ഫോമിൽ 1 പൂർത്തിയായി • 3 എണ്ണം ബാക്കി" :
+                             submittedClaimsCount === 2 ? "4 ഫോമിൽ 2 പൂർത്തിയായി • 2 എണ്ണം ബാക്കി" :
+                             submittedClaimsCount === 3 ? "4 ഫോമിൽ 3 പൂർത്തിയായി • 1 എണ്ണം ബാക്കി" :
+                             "എല്ലാ 4 ഫോമുകളും പൂർത്തിയായി ✅"}
                           </Button>
                           <div className="text-center lg:text-left space-y-2 mt-2 pt-3.5 border-t border-amber-500/30">
-                            <p className="text-sm sm:text-base font-black text-amber-900 dark:text-amber-400 uppercase tracking-[0.15em]">
-                              കൂടുതൽ വിവരങ്ങൾ നൽകാം (SLOTS OPEN)
-                            </p>
                             <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-relaxed">
                               {submittedClaimsCount} പേരുടെ വിവരങ്ങൾ നൽകി. ബാക്കി ചെയ്യാം.
                             </p>

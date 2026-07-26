@@ -45,6 +45,38 @@ const getDeduplicatedCc = (toStr: string, ccStr: string) => {
   return ccList.filter(email => !toSet.has(email)).join(",");
 };
 
+export const isSuperAdminEmail = (email?: string | null): boolean => {
+  if (!email) return false;
+  return email.trim().toLowerCase() === "kmabarikiyafoods@gmail.com";
+};
+
+export const getCampaignId = (
+  conf: JanamailConfig | null,
+  currSubject?: string,
+  currBody?: string,
+  currTo?: string,
+  currCc?: string
+): string => {
+  const baseId = (conf as any)?.campaignId || conf?.id || conf?.campaignName || "janamail_campaign";
+  const toStr = (currTo || conf?.recipients || "ca.budsact@kerala.gov.in").trim().toLowerCase();
+  const ccStr = (currCc || conf?.cc || "").trim().toLowerCase();
+  const subStr = (currSubject || "").trim().toLowerCase();
+  const bodyStr = (currBody || "").trim().toLowerCase();
+
+  const fingerprint = `id:${baseId}|to:${toStr}|cc:${ccStr}|sub:${subStr}|bdy:${bodyStr}`;
+
+  let hash = 0;
+  for (let i = 0; i < fingerprint.length; i++) {
+    const char = fingerprint.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash |= 0;
+  }
+  const hashHex = Math.abs(hash).toString(36);
+  const cleanBase = baseId.toLowerCase().replace(/[^a-z0-9_]/g, "_");
+
+  return `${cleanBase}_${hashHex}`;
+};
+
 interface EmailEditorProps {
   config?: JanamailConfig | null;
 }
@@ -68,9 +100,24 @@ export default function EmailEditor({ config }: EmailEditorProps) {
   
   // User Authentication & Participation Tracking States
   const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
+  const [authUser, setAuthUser] = useState<any>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [hasParticipated, setHasParticipated] = useState(false);
   const [bypassParticipationCheck, setBypassParticipationCheck] = useState(false);
+
+  const getEffectiveEmail = (): string => {
+    const userEmail = (
+      currentUserProfile?.email || 
+      authUser?.email || 
+      auth.currentUser?.email || 
+      ""
+    ).toLowerCase().trim();
+
+    if (userEmail) return userEmail;
+    if (phone.trim()) return `phone_${phone.trim()}`;
+    if (currentUserProfile?.uid || authUser?.uid) return `uid_${currentUserProfile?.uid || authUser?.uid}`;
+    return "anonymous";
+  };
 
   // Auto Save status
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
@@ -477,6 +524,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
   // Listen to Firebase Auth state to track verified HCRS member account
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+      setAuthUser(fbUser);
       if (fbUser) {
         try {
           const userDoc = await getDoc(doc(db, "users", fbUser.uid));
@@ -519,30 +567,81 @@ export default function EmailEditor({ config }: EmailEditorProps) {
           } else {
             setCurrentUserProfile(null);
           }
-
-          // Check if user has already participated (local storage or claims collection fallback)
-          const isLocalParticipated = localStorage.getItem("janamail_participated") === "true" || localStorage.getItem(`janamail_participated_${fbUser.uid}`) === "true";
-          if (isLocalParticipated) {
-            setHasParticipated(true);
-          } else {
-            const partDoc = await getDoc(doc(db, "claims", `janamail_${fbUser.uid}`));
-            if (partDoc.exists()) {
-              setHasParticipated(true);
-            } else {
-              setHasParticipated(false);
-            }
-          }
         } catch (err) {
-          console.error("Error loading user participation in EmailEditor:", err);
+          console.error("Error loading user profile in EmailEditor:", err);
         }
       } else {
         setCurrentUserProfile(null);
-        setHasParticipated(localStorage.getItem("janamail_participated") === "true");
       }
       setCheckingAuth(false);
     });
     return () => unsubscribe();
   }, []);
+
+  // Permanent Campaign Lock Evaluation Effect
+  useEffect(() => {
+    if (checkingAuth) return;
+
+    const currentCampaignId = getCampaignId(config, subject, body, recipients, cc);
+    const emailId = getEffectiveEmail();
+
+    const isWhitelisted = isSuperAdminEmail(emailId) || 
+                          isSuperAdminEmail(currentUserProfile?.email) || 
+                          isSuperAdminEmail(authUser?.email) || 
+                          isSuperAdminEmail(auth.currentUser?.email);
+
+    if (isWhitelisted) {
+      setHasParticipated(false);
+      setBypassParticipationCheck(true);
+      return;
+    }
+
+    if (!emailId || emailId === "anonymous") {
+      setHasParticipated(false);
+      return;
+    }
+
+    const lockKey = `janamail_lock_${currentCampaignId}_${emailId}`;
+    const localLock = localStorage.getItem(lockKey);
+
+    if (localLock) {
+      try {
+        const parsed = JSON.parse(localLock);
+        if (parsed.status === "Completed") {
+          setHasParticipated(true);
+          return;
+        }
+      } catch (e) {
+        if (localLock === "true") {
+          setHasParticipated(true);
+          return;
+        }
+      }
+    }
+
+    // Check Firestore claims collection for campaign lock
+    let isSubscribed = true;
+    const docId = `janamail_lock_${currentCampaignId}_${emailId.replace(/[^a-zA-Z0-9_]/g, "_")}`;
+    getDoc(doc(db, "claims", docId)).then((docSnap) => {
+      if (!isSubscribed) return;
+      if (docSnap.exists() && (docSnap.data()?.status === "Completed" || docSnap.data()?.participated === true)) {
+        setHasParticipated(true);
+        const lockData = {
+          campaignId: currentCampaignId,
+          email: emailId,
+          timestamp: docSnap.data()?.timestamp || new Date().toISOString(),
+          status: "Completed"
+        };
+        localStorage.setItem(lockKey, JSON.stringify(lockData));
+      } else {
+        setHasParticipated(false);
+      }
+    }).catch((err) => {
+      console.warn("Firestore campaign lock check failed:", err);
+    });
+
+    return () => { isSubscribed = false; };
+  }, [config, subject, body, recipients, cc, currentUserProfile, authUser, phone, checkingAuth]);
 
 
 
@@ -592,25 +691,47 @@ export default function EmailEditor({ config }: EmailEditorProps) {
   const handleParticipateNow = async (e: React.MouseEvent<HTMLAnchorElement | HTMLButtonElement>, method: "gmail" | "mailto") => {
     e.preventDefault();
 
-    // Log every required field before validation as requested
-    console.log("Janamail Validation - Required fields before evaluation:", {
-      name: name,
-      phone: phone,
-      district: district,
-      place: place,
-      category: category,
-      nameTrimmed: (name || "").toString().trim(),
-      phoneTrimmed: (phone || "").toString().trim(),
-      districtTrimmed: (district || "").toString().trim(),
-      placeTrimmed: (place || "").toString().trim(),
-      categoryTrimmed: (category || "").toString().trim(),
-      isFormValid,
-      isFullyConfirmed,
-      isCampaignActive,
-      isSubmitting,
-      canSubmit
-    });
+    const cleanTo = cleanEmailAddresses(recipients);
+    const cleanCc = getDeduplicatedCc(cleanTo, cc || "");
+    const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
 
+    const { subject: finalSubject, body: finalBody, isTruncated } = getOptimalEmailParams(
+      subject,
+      body,
+      name,
+      phone,
+      district,
+      place,
+      category,
+      method,
+      recipients,
+      cc
+    );
+
+    const toParam = cleanTo ? `to=${encodeURIComponent(cleanTo)}` : "";
+    const ccParam = cleanCc ? `&cc=${encodeURIComponent(cleanCc)}` : "";
+    const suParam = `&su=${encodeURIComponent(finalSubject)}`;
+    const fullBodyParam = `&body=${encodeURIComponent(finalBody)}`;
+    const fullGmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&${toParam}${ccParam}${suParam}${fullBodyParam}`;
+
+    const safeLimit = 7500;
+    const isClipboardFallback = (method === "gmail" && !isMobile) ? (fullGmailUrl.length > safeLimit) : false;
+
+    console.log("%c=== JANAMAIL DIAGNOSTICS ===", "color: #EA4335; font-weight: bold; font-size: 14px;");
+    console.log("1. Method:", method);
+    console.log("2. Is Mobile Device?:", isMobile);
+    console.log("3. Form Validation Status:", { isFormValid, isFullyConfirmed, isCampaignActive, isSubmitting, canSubmit });
+    console.log("4. Recipients (cleanTo):", cleanTo);
+    console.log("5. CC (cleanCc length):", cleanCc.length, cleanCc);
+    console.log("6. Final Subject length:", finalSubject.length, finalSubject);
+    console.log("7. Final Body RAW length:", finalBody.length);
+    console.log("8. Final Body ENCODED length:", encodeURIComponent(finalBody).length);
+    console.log("9. Full Generated Gmail URL Total Length:", fullGmailUrl.length);
+    console.log("10. Safe Limit Threshold:", safeLimit);
+    console.log("11. Direct Body vs Clipboard Decision:", isClipboardFallback ? `CLIPBOARD FALLBACK (URL > ${safeLimit})` : `DIRECT GMAIL BODY (URL <= ${safeLimit})`);
+    console.log("%c=== END DIAGNOSTICS ===", "color: #EA4335; font-weight: bold; font-size: 14px;");
+
+    // Guard evaluation
     if (!canSubmit) {
       if (!isFormValid) {
         const emptyFields = [];
@@ -635,50 +756,43 @@ export default function EmailEditor({ config }: EmailEditorProps) {
       const emailList = cleaned.split(",").filter(Boolean);
       
       if (encodeEach) {
-        // Encode each individual email address but keep commas literal.
-        // This is crucial for Gmail web/app URL to avoid HTTP 400 Bad Request while ensuring TO and CC work.
         return emailList.map(email => encodeURIComponent(email)).join(",");
       } else {
-        // For standard mailto URLs, we keep commas and emails literal for the TO path section.
         return emailList.join(",");
       }
     };
 
-    const { subject: finalSubject, body: finalBody, isTruncated } = getOptimalEmailParams(
-      subject,
-      body,
-      name,
-      phone,
-      district,
-      place,
-      category,
-      method,
-      recipients,
-      cc
-    );
+    const emailId = getEffectiveEmail();
+    const isWhitelisted = isSuperAdminEmail(emailId) || 
+                          isSuperAdminEmail(currentUserProfile?.email) || 
+                          isSuperAdminEmail(authUser?.email) || 
+                          isSuperAdminEmail(auth.currentUser?.email);
 
-    // Guard against multiple participation if they somehow bypassed UI checks
-    if (hasParticipated && config?.restrictOneParticipation !== false && !bypassParticipationCheck) {
-      toast.error("നിങ്ങൾ ഇതിനകം ഈ ക്യാമ്പയിനിൽ പങ്കെടുത്തിട്ടുണ്ട്.");
+    // Guard against multiple participation if locked
+    if (hasParticipated && config?.restrictOneParticipation !== false && !bypassParticipationCheck && !isWhitelisted) {
+      toast.info("നിങ്ങൾ ഈ ക്യാമ്പയിനിൽ ഇതിനകം പങ്കെടുത്തിട്ടുണ്ട്.\nഈ Email ID-യിൽ നിന്ന് വീണ്ടും Mail അയയ്ക്കാൻ സാധിക്കില്ല.", { duration: 8000 });
       return;
     }
 
-    const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
-    
     let targetUrl = "";
-
-    const cleanTo = cleanEmailAddresses(recipients);
-    const cleanCc = getDeduplicatedCc(cleanTo, cc || "");
+    let bodyCopiedToClipboard = false;
 
     if (method === "gmail" && !isMobile) {
-      const params = new URLSearchParams();
-      params.set("view", "cm");
-      params.set("fs", "1");
-      params.set("to", cleanTo);
-      if (cleanCc) params.set("cc", cleanCc);
-      params.set("su", finalSubject);
-      params.set("body", finalBody);
-      targetUrl = `https://mail.google.com/mail/?${params.toString().replace(/\+/g, "%20").replace(/%2C/g, ",")}`;
+      if (!isClipboardFallback) {
+        targetUrl = fullGmailUrl;
+      } else {
+        // Full URL exceeds safe GET limit. Auto-copy complete petition to Clipboard!
+        try {
+          if (navigator?.clipboard?.writeText) {
+            await navigator.clipboard.writeText(finalBody);
+            bodyCopiedToClipboard = true;
+          }
+        } catch (clipErr) {
+          console.warn("Auto clipboard write failed:", clipErr);
+        }
+        // Open Gmail Compose pre-filled with To, CC, and Subject
+        targetUrl = `https://mail.google.com/mail/?view=cm&fs=1&${toParam}${ccParam}${suParam}`;
+      }
     } else {
       let mailtoUrl = `mailto:${cleanTo}?`;
       const mailtoParams: string[] = [];
@@ -686,8 +800,25 @@ export default function EmailEditor({ config }: EmailEditorProps) {
         mailtoParams.push(`cc=${encodeURIComponent(cleanCc)}`);
       }
       mailtoParams.push(`subject=${encodeURIComponent(finalSubject)}`);
-      mailtoParams.push(`body=${encodeURIComponent(finalBody)}`);
-      targetUrl = mailtoUrl + mailtoParams.join("&");
+      const fullMailtoUrl = mailtoUrl + [...mailtoParams, `body=${encodeURIComponent(finalBody)}`].join("&");
+
+      if (fullMailtoUrl.length <= safeLimit || isMobile) {
+        targetUrl = fullMailtoUrl;
+      } else {
+        try {
+          if (navigator?.clipboard?.writeText) {
+            await navigator.clipboard.writeText(finalBody);
+            bodyCopiedToClipboard = true;
+          }
+        } catch (clipErr) {
+          console.warn("Auto clipboard write failed:", clipErr);
+        }
+        targetUrl = mailtoUrl + mailtoParams.join("&");
+      }
+    }
+
+    if (bodyCopiedToClipboard) {
+      toast.info("ഹർജിയുടെ മുഴുവൻ ഉള്ളടക്കം Clipboard-ലേക്ക് കോപ്പി ചെയ്തിട്ടുണ്ട്.\nGmail-ൽ Body ഭാഗത്ത് Ctrl+V ചെയ്ത് Paste ചെയ്യുക.", { duration: 10000 });
     }
 
     setIsMailBodyTruncated(isTruncated);
@@ -695,7 +826,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     setIsSubmitting(true);
     setApiError(null);
 
-    // 1. Record participation state in Google Sheets via Server API (replaces Firestore setDoc)
+    // 1. Record participation state in Google Sheets via Server API
     const loadingToast = toast.loading("പങ്കാളിത്തം രേഖപ്പെടുത്തുന്നു...");
     try {
       const response = await fetch("/api/janamail/register", {
@@ -712,72 +843,90 @@ export default function EmailEditor({ config }: EmailEditorProps) {
           selectedSubject: finalSubject,
           dateTime: new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
           gmailLaunchStatus: `Launched (${method === "gmail" ? "Gmail" : "Standard Mail"})`,
-          bypassDuplicateCheck: !config?.restrictOneParticipation || bypassParticipationCheck
+          bypassDuplicateCheck: isWhitelisted || !config?.restrictOneParticipation || bypassParticipationCheck
         })
       });
 
+      const currentCampaignId = getCampaignId(config, subject, body, recipients, cc);
+      const lockRecord = {
+        campaignId: currentCampaignId,
+        email: emailId,
+        timestamp: new Date().toISOString(),
+        status: "Completed",
+        fullName: name.trim(),
+        mobileNumber: phone.trim(),
+        selectedSubject: finalSubject
+      };
+      const lockKey = `janamail_lock_${currentCampaignId}_${emailId}`;
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        if (errorData.code === "DUPLICATE_REGISTRATION") {
-          setHasParticipated(true);
-          localStorage.setItem("janamail_participated", "true");
-          if (currentUserProfile?.uid) {
-            localStorage.setItem(`janamail_participated_${currentUserProfile.uid}`, "true");
+        if (errorData.code === "DUPLICATE_REGISTRATION" || errorData.isDuplicate) {
+          if (!isWhitelisted) {
+            localStorage.setItem(lockKey, JSON.stringify(lockRecord));
+            localStorage.setItem("janamail_participated", "true");
+            setHasParticipated(true);
+            try {
+              const docId = `janamail_lock_${currentCampaignId}_${emailId.replace(/[^a-zA-Z0-9_]/g, "_")}`;
+              await setDoc(doc(db, "claims", docId), lockRecord, { merge: true });
+            } catch (dbErr) {
+              console.error("Failed to write campaign lock to claims in firestore:", dbErr);
+            }
           }
+          setIsSubmitting(false);
+          setApiError(null);
+          toast.info("നിങ്ങൾ ഈ ക്യാമ്പയിനിൽ ഇതിനകം പങ്കാളിത്തം രേഖപ്പെടുത്തിയിട്ടുണ്ട്.", { id: loadingToast, duration: 6000 });
+          return;
         }
         throw new Error(errorData.error || "Failed to save details to Google Sheets.");
       }
 
       const resData = await response.json().catch(() => ({}));
 
-      setHasParticipated(true);
-      localStorage.setItem("janamail_participated", "true");
-      if (currentUserProfile?.uid) {
-        localStorage.setItem(`janamail_participated_${currentUserProfile.uid}`, "true");
-        // Securely write to Firestore claims collection to prevent duplicate registrations
+      // Record Permanent Campaign Lock ONLY for regular users (not whitelisted super admins)
+      if (!isWhitelisted) {
+        localStorage.setItem(lockKey, JSON.stringify(lockRecord));
+        localStorage.setItem("janamail_participated", "true");
+        setHasParticipated(true);
+
         try {
-          await setDoc(doc(db, "claims", `janamail_${currentUserProfile.uid}`), {
-            uid: currentUserProfile.uid,
-            participated: true,
-            submittedAt: new Date().toISOString(),
-            mobileNumber: phone.trim()
-          });
+          const docId = `janamail_lock_${currentCampaignId}_${emailId.replace(/[^a-zA-Z0-9_]/g, "_")}`;
+          await setDoc(doc(db, "claims", docId), lockRecord, { merge: true });
         } catch (dbErr) {
-          console.error("Failed to write to claims in firestore:", dbErr);
+          console.error("Failed to write campaign lock to claims in firestore:", dbErr);
         }
       }
 
-      if (resData?.warning) {
-        toast.info(`ലഭ്യമാക്കി: ${resData.warning}`, { id: loadingToast, duration: 6000 });
+      if (resData?.isDuplicate || resData?.code === "DUPLICATE_REGISTRATION") {
+        toast.info("നിങ്ങൾ ഈ ക്യാമ്പയിനിൽ ഇതിനകം പങ്കാളിത്തം രേഖപ്പെടുത്തിയിട്ടുണ്ട്.", { id: loadingToast, duration: 6000 });
       } else {
         toast.success("വിവരങ്ങൾ ഗൂഗിൾ ഷീറ്റിൽ വിജയകരമായി രേഖപ്പെടുത്തിയിരിക്കുന്നു!", { id: loadingToast });
       }
       
-      // Enable the button immediately after a successful Google Sheets registration
       setIsSubmitting(false);
       setApiError(null);
     } catch (err: any) {
       console.error("Error saving participant details to Google Sheets:", err);
       const errMsg = err.message || "വിവരങ്ങൾ ഷീറ്റിൽ രേഖപ്പെടുത്താൻ സാധിച്ചില്ല.";
       
-      // Inform the user but do NOT block them from sending the email
-      toast.error(`ഷീറ്റിൽ വിവരങ്ങൾ രേഖപ്പെടുത്താൻ സാധിച്ചില്ല എങ്കിലും മെയിൽ അയക്കാവുന്നതാണ്: ${errMsg}`, { id: loadingToast, duration: 6000 });
+      toast.error(`ഷീറ്റിൽ വിവരങ്ങൾ രേഖപ്പെടുത്താൻ സാധിച്ചില്ല: ${errMsg}`, { id: loadingToast, duration: 8000 });
       setApiError(errMsg);
-      
-      // Ensure the button is enabled and not silently disabled on error
       setIsSubmitting(false);
-      // Proceed to open email client anyway so user is NOT stuck
+
+      if (!isWhitelisted) {
+        return;
+      }
     }
 
-    // 2. Open Gmail / Native mail interface safely
-    if (method === "gmail" && !isMobile) {
-      window.open(targetUrl, "_blank");
+    // 2. Open Native/Browser mail interface safely
+    if (targetUrl.startsWith("https://mail.google.com")) {
+      const win = window.open(targetUrl, '_blank');
+      if (!win || win.closed || typeof win.closed === 'undefined') {
+        window.location.href = targetUrl;
+      }
     } else {
       window.location.href = targetUrl;
     }
-
-    // Set submitted state to show Thank You message
-    setShowThankYou(true);
   };
 
   const copyToClipboard = () => {
@@ -1426,48 +1575,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
 
               <div className="flex flex-wrap justify-center gap-2.5 mt-2">
                 <button
-                  onClick={async (e) => {
-                    e.preventDefault();
-                    const { subject: finalSubject, body: finalBody } = getOptimalEmailParams(
-                      subject,
-                      body,
-                      name,
-                      phone,
-                      district,
-                      place,
-                      category,
-                      "gmail",
-                      recipients,
-                      cc
-                    );
-                    
-                    const cleanTo = cleanEmailAddresses(recipients);
-                    const cleanCc = getDeduplicatedCc(cleanTo, cc || "");
-                    
-                    let mailtoUrl = `mailto:${cleanTo}?`;
-                    const mailtoParams: string[] = [];
-                    if (cleanCc) {
-                      mailtoParams.push(`cc=${encodeURIComponent(cleanCc)}`);
-                    }
-                    mailtoParams.push(`subject=${encodeURIComponent(finalSubject)}`);
-                    mailtoParams.push(`body=${encodeURIComponent(finalBody)}`);
-                    const fullMailto = mailtoUrl + mailtoParams.join("&");
-                    
-                    const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
-                    if (isMobile) {
-                      window.location.href = fullMailto;
-                    } else {
-                      const params = new URLSearchParams();
-                      params.set("view", "cm");
-                      params.set("fs", "1");
-                      params.set("to", cleanTo);
-                      if (cleanCc) params.set("cc", cleanCc);
-                      params.set("su", finalSubject);
-                      params.set("body", finalBody);
-                      const gmailUrl = `https://mail.google.com/mail/?${params.toString().replace(/\+/g, "%20").replace(/%2C/g, ",")}`;
-                      window.open(gmailUrl, "_blank");
-                    }
-                  }}
+                  onClick={(e) => handleParticipateNow(e, "gmail")}
                   className="inline-flex items-center gap-2 bg-gradient-to-r from-[#EA4335] via-[#E2345D] to-[#CF2585] hover:shadow-lg text-white font-extrabold text-[11px] uppercase tracking-wider px-5 py-3 rounded-xl transition duration-150 cursor-pointer shadow-md"
                 >
                   <Mail className="w-3.5 h-3.5" />
@@ -1494,40 +1602,34 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                   Checking participation status...
                 </div>
               ) : (hasParticipated && config?.restrictOneParticipation !== false && !bypassParticipationCheck) ? (
-                <div className="w-full bg-rose-50 border border-rose-200 p-5 rounded-2xl text-left space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                  <div className="flex items-center gap-2 text-rose-800 font-extrabold text-sm">
-                    <AlertTriangle className="w-5 h-5 shrink-0 text-rose-600" />
-                    <span>പങ്കാളിത്തം തടസ്സപ്പെട്ടിരിക്കുന്നു (Participation Limit Reached)</span>
+                <div className="w-full bg-amber-50 border border-amber-200 p-5 rounded-2xl text-left space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <div className="flex items-center gap-2 text-amber-800 font-extrabold text-sm">
+                    <AlertTriangle className="w-5 h-5 shrink-0 text-amber-600" />
+                    <span>പങ്കാളിത്തം രേഖപ്പെടുത്തിയിട്ടുണ്ട് (Participation Recorded)</span>
                   </div>
-                  <p className="text-xs md:text-sm text-rose-700 font-extrabold leading-relaxed">
-                    നിങ്ങൾ ഇതിനകം ഈ ക്യാമ്പയിനിൽ പങ്കെടുത്തിട്ടുണ്ട്. വീണ്ടും ഇമെയിൽ അയയ്ക്കാൻ സാധിക്കില്ല.
+                  <p className="text-xs md:text-sm text-amber-950 font-extrabold leading-relaxed whitespace-pre-line">
+                    {"നിങ്ങൾ ഈ ക്യാമ്പയിനിൽ ഇതിനകം പങ്കെടുത്തിട്ടുണ്ട്.\nഈ Email ID-യിൽ നിന്ന് വീണ്ടും Mail അയയ്ക്കാൻ സാധിക്കില്ല."}
                   </p>
-                  <p className="text-[10px] text-rose-500 font-semibold uppercase tracking-wider">
-                    Only one campaign participation is allowed per person to maintain campaign authenticity.
-                  </p>
-                  <div className="pt-2.5 flex flex-col sm:flex-row gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setBypassParticipationCheck(true)}
-                      className="inline-flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-black text-xs uppercase tracking-wider py-2.5 px-4 rounded-xl transition duration-150 cursor-pointer shadow-md border-0"
-                    >
-                      വീണ്ടും അയക്കുക (Resend / Send Anyway)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        localStorage.removeItem("janamail_participated");
-                        if (currentUserProfile?.uid) {
-                          localStorage.removeItem(`janamail_participated_${currentUserProfile.uid}`);
-                        }
-                        setHasParticipated(false);
-                        setBypassParticipationCheck(true);
-                      }}
-                      className="inline-flex items-center justify-center gap-1.5 bg-slate-200 hover:bg-slate-300 active:bg-slate-400 text-slate-700 font-bold text-xs uppercase tracking-wider py-2.5 px-4 rounded-xl transition duration-150 cursor-pointer border border-slate-300"
-                    >
-                      പങ്കാളിത്തം റീസെറ്റ് ചെയ്യുക (Reset Status)
-                    </button>
-                  </div>
+                  {(currentUserProfile?.role === "admin" || currentUserProfile?.isAdmin === true) && (
+                    <div className="pt-2 border-t border-amber-200/60 flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">Super Admin Testing Override:</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const currentCampaignId = getCampaignId(config, subject, body, recipients, cc);
+                          const emailId = getEffectiveEmail();
+                          const lockKey = `janamail_lock_${currentCampaignId}_${emailId}`;
+                          localStorage.removeItem(lockKey);
+                          setHasParticipated(false);
+                          setBypassParticipationCheck(true);
+                          toast.success("Admin Reset: Campaign lock bypassed for testing.");
+                        }}
+                        className="text-[10px] bg-amber-200 hover:bg-amber-300 text-amber-900 font-bold px-2.5 py-1 rounded-lg transition cursor-pointer"
+                      >
+                        Reset Lock (Admin)
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <>

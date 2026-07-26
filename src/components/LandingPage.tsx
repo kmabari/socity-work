@@ -497,11 +497,11 @@ export default function LandingPage({
             {janamailConfig?.active !== false && (
               <section className="space-y-8 max-w-6xl mx-auto pt-4" id="featured-campaign">
                 <div className="text-center space-y-3 font-sans">
-                  <div className="inline-flex items-center gap-2 bg-blue-500/10 text-blue-300 px-3.5 py-1.5 rounded-full border border-blue-500/20">
-                    <Megaphone className="w-4 h-4 animate-pulse" />
-                    <span className="font-extrabold text-[10px] uppercase tracking-widest">Featured Campaign • ജനകീയ ക്യാമ്പയിൻ</span>
+                  <div className="inline-flex items-center gap-2 bg-blue-500/15 text-blue-300 px-4 py-2 rounded-full border border-blue-500/25 shadow-xs max-w-full flex-wrap justify-center">
+                    <Megaphone className="w-4 h-4 text-blue-400 shrink-0 animate-pulse stroke-[2.5]" />
+                    <span className="font-black text-xs uppercase tracking-wider leading-snug break-words text-center">Featured Campaign • ജനകീയ ക്യാമ്പയിൻ</span>
                   </div>
-                  <h2 className="text-3xl font-semibold text-white uppercase tracking-tight">
+                  <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight px-2 leading-tight">
                     HCRS <span className="text-blue-400">Featured Campaign</span>
                   </h2>
                   <p className="text-slate-300 font-normal text-xs md:text-sm max-w-xl mx-auto">
@@ -1081,12 +1081,12 @@ export default function LandingPage({
               >
                 <div className="bg-white border border-slate-200/80 p-8 md:p-10 rounded-3xl shadow-premium h-full flex flex-col justify-between">
                   <div className="space-y-6">
-                    <div className="inline-flex items-center gap-2 bg-[#1a2b5c]/6 text-[#1a2b5c] px-3.5 py-1.5 rounded-full border border-[#1a2b5c]/10">
-                      <Target className="w-4 h-4 stroke-[2]" />
-                      <span className="font-extrabold text-[10px] uppercase tracking-widest">Our Society Mission • ലക്ഷ്യങ്ങൾ</span>
+                    <div className="inline-flex items-center gap-2 bg-[#1a2b5c]/8 text-[#1a2b5c] px-4 py-2 rounded-full border border-[#1a2b5c]/15 max-w-full flex-wrap">
+                      <Target className="w-4 h-4 shrink-0 stroke-[2.5]" />
+                      <span className="font-black text-xs uppercase tracking-wider leading-snug break-words">Our Society Mission • ലക്ഷ്യങ്ങൾ</span>
                     </div>
- 
-                    <h2 className="text-2xl font-black text-[#1a2b5c] tracking-tight uppercase leading-none font-heading">
+
+                    <h2 className="text-xl sm:text-2xl font-black text-[#1a2b5c] tracking-tight uppercase leading-tight font-heading">
                       Our <span className="text-[#1a2b5c]">Mission</span>
                     </h2>
  
@@ -1203,11 +1203,11 @@ export default function LandingPage({
             {/* OUR KEY ACTIVITIES SECTION */}
             <section className="space-y-8 sm:space-y-10 max-w-6xl mx-auto pt-12 sm:pt-16 md:pt-20">
               <div className="text-center space-y-3.5 sm:space-y-4 font-sans">
-                <div className="inline-flex items-center gap-2 bg-white/10 text-slate-100 px-3.5 py-1.5 rounded-full border border-white/20">
-                  <Activity className="w-4 h-4 text-slate-100 stroke-[2]" />
-                  <span className="font-extrabold text-[10px] uppercase tracking-widest">Operational Focus • പ്രധാന പ്രവർത്തനങ്ങൾ</span>
+                <div className="inline-flex items-center gap-2 bg-white/15 text-white px-4 py-2 rounded-full border border-white/25 shadow-xs max-w-full flex-wrap justify-center">
+                  <Activity className="w-4 h-4 text-amber-400 shrink-0 stroke-[2.5]" />
+                  <span className="font-black text-xs uppercase tracking-wider leading-snug break-words text-center">Operational Focus • പ്രധാന പ്രവർത്തനങ്ങൾ</span>
                 </div>
-                <h2 className="text-3xl md:text-3xl font-black text-white uppercase tracking-tight font-heading">
+                <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight font-heading px-2 leading-tight">
                   Our Key <span className="text-[#c9a227]">Activities</span>
                 </h2>
                 <p className="text-slate-300 font-medium text-xs md:text-sm max-w-xl mx-auto px-4 sm:px-6">
@@ -1372,11 +1372,11 @@ export default function LandingPage({
             {/* OUR JOURNEY SECTION */}
             <section className="space-y-8 sm:space-y-12 max-w-5xl mx-auto pt-12 sm:pt-16 md:pt-20 pb-8 sm:pb-10">
               <div className="text-center space-y-3 sm:space-y-4 font-sans">
-                <div className="inline-flex items-center gap-2 bg-amber-500/10 text-amber-400 px-3.5 py-1.5 rounded-full border border-amber-500/20">
-                  <Compass className="w-4 h-4 text-amber-400" />
-                  <span className="font-bold text-[10px] uppercase tracking-wider">The Timeline • ചരിത്രവഴി</span>
+                <div className="inline-flex items-center gap-2 bg-amber-500/15 text-amber-300 px-4 py-2 rounded-full border border-amber-400/30 shadow-xs max-w-full flex-wrap justify-center">
+                  <Compass className="w-4 h-4 text-amber-400 shrink-0 stroke-[2.5]" />
+                  <span className="font-black text-xs uppercase tracking-wider leading-snug break-words text-center">The Timeline • ചരിത്രവഴി</span>
                 </div>
-                <h2 className="text-3xl md:text-3xl font-semibold text-white uppercase tracking-tight">
+                <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight px-2 leading-tight">
                   Our <span className="text-[#c9a227]">Journey</span>
                 </h2>
                 <p className="text-slate-300 font-normal text-xs md:text-sm max-w-xl mx-auto px-4 sm:px-6">
@@ -1480,12 +1480,12 @@ export default function LandingPage({
                   <div className="absolute -left-16 -bottom-16 w-48 h-48 bg-white/5 rounded-full blur-3xl pointer-events-none max-md:hidden" />
 
                   <div className="space-y-6 relative max-w-sm font-sans text-white">
-                    <div className="inline-flex items-center gap-2 bg-white/10 text-white px-3.5 py-1.5 rounded-[4px] border border-white/20">
-                      <Eye className="w-4 h-4 text-white" />
-                      <span className="font-bold text-[10px] uppercase tracking-wider text-slate-100">Our society Vision • ദർശനം</span>
+                    <div className="inline-flex items-center gap-2 bg-white/10 text-white px-4 py-2 rounded-[4px] border border-white/20 max-w-full flex-wrap">
+                      <Eye className="w-4 h-4 text-white shrink-0 stroke-[2.5]" />
+                      <span className="font-black text-xs uppercase tracking-wider text-slate-100 leading-snug break-words">Our society Vision • ദർശനം</span>
                     </div>
 
-                    <h2 className="text-2xl font-semibold text-white tracking-tight uppercase">
+                    <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight uppercase leading-tight">
                       Our <span className="text-white">Vision</span>
                     </h2>
 
@@ -1514,12 +1514,12 @@ export default function LandingPage({
                   className="lg:col-span-7 bg-white border border-slate-200 p-8 md:p-10 rounded-[10px] shadow-sm flex flex-col justify-between text-left"
                 >
                   <div className="space-y-6">
-                    <div className="inline-flex items-center gap-2 bg-[#1a2b5c]/5 text-[#1a2b5c] px-3.5 py-1.5 rounded-[4px] border border-[#1a2b5c]/10">
-                      <Target className="w-4 h-4 text-[#1a2b5c]" />
-                      <span className="font-bold text-[10px] uppercase tracking-wider">Social Pillars • സുപ്രധാന ലക്ഷ്യങ്ങൾ</span>
+                    <div className="inline-flex items-center gap-2 bg-[#1a2b5c]/8 text-[#1a2b5c] px-4 py-2 rounded-[4px] border border-[#1a2b5c]/15 max-w-full flex-wrap">
+                      <Target className="w-4 h-4 text-[#1a2b5c] shrink-0 stroke-[2.5]" />
+                      <span className="font-black text-xs uppercase tracking-wider leading-snug break-words">Social Pillars • സുപ്രധാന ലക്ഷ്യങ്ങൾ</span>
                     </div>
 
-                    <h2 className="text-2xl font-semibold text-slate-900 tracking-tight uppercase leading-none">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight uppercase leading-tight">
                       Focus <span className="text-[#1a2b5c]">Areas</span>
                     </h2>
 
@@ -1616,11 +1616,11 @@ export default function LandingPage({
             {/* OUR STATE & DISTRICT COMMITTEES SECTION */}
             <section className="space-y-8 max-w-6xl mx-auto pt-12 sm:pt-16 md:pt-20">
               <div className="text-center space-y-3 sm:space-y-4">
-                <div className="inline-flex items-center gap-2 bg-white/10 text-slate-100 px-3.5 py-1.5 rounded-full border border-white/20">
-                  <Network className="w-4 h-4 text-slate-100" />
-                  <span className="font-bold text-[10px] uppercase tracking-wider">Organizational leadership • കമ്മിറ്റികൾ</span>
+                <div className="inline-flex items-center gap-2 bg-white/15 text-white px-4 py-2 rounded-full border border-white/25 shadow-xs max-w-full flex-wrap justify-center">
+                  <Network className="w-4 h-4 text-amber-400 shrink-0 stroke-[2.5]" />
+                  <span className="font-black text-xs uppercase tracking-wider leading-snug break-words text-center">Organizational leadership • കമ്മിറ്റികൾ</span>
                 </div>
-                <h2 className="text-2xl md:text-3xl font-semibold text-white uppercase tracking-tight">
+                <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight px-2 leading-tight">
                   HCRS Committee <span className="text-[#c9a227]">Members</span>
                 </h2>
                 <p className="text-slate-300 font-normal text-xs md:text-sm max-w-xl mx-auto px-4 sm:px-6">
@@ -2023,11 +2023,11 @@ export default function LandingPage({
             {/* HCRS MEMBERSHIP BENEFITS SECTION */}
             <section className="space-y-8 max-w-6xl mx-auto pt-12 sm:pt-16 md:pt-20">
               <div className="text-center space-y-3 sm:space-y-4">
-                <div className="inline-flex items-center gap-2 bg-white/10 text-slate-100 px-3.5 py-1.5 rounded-full border border-white/20">
-                  <Award className="w-4 h-4 text-slate-100" />
-                  <span className="font-bold text-[10px] uppercase tracking-wider">Member Privileges • അംഗത്വ ആനുകൂല്യങ്ങൾ</span>
+                <div className="inline-flex items-center gap-2 bg-white/15 text-white px-4 py-2 rounded-full border border-white/25 shadow-xs max-w-full flex-wrap justify-center">
+                  <Award className="w-4 h-4 text-amber-400 shrink-0 stroke-[2.5]" />
+                  <span className="font-black text-xs uppercase tracking-wider leading-snug break-words text-center">Member Privileges • അംഗത്വ ആനുകൂല്യങ്ങൾ</span>
                 </div>
-                <h2 className="text-3xl font-semibold text-white uppercase tracking-tight">
+                <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight px-2 leading-tight">
                   HCRS Membership <span className="text-[#c9a227]">Benefits</span>
                 </h2>
                 <p className="text-slate-300 font-normal text-xs md:text-sm max-w-xl mx-auto px-4 sm:px-6">
@@ -2128,11 +2128,11 @@ export default function LandingPage({
             <section className="space-y-8 max-w-6xl mx-auto pt-12 sm:pt-16 md:pt-20" id="gallery-preview">
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 text-left">
                 <div className="space-y-2">
-                  <div className="inline-flex items-center gap-2 bg-amber-500/10 text-amber-400 px-3.5 py-1.5 rounded-full border border-amber-500/20">
-                    <LayoutGrid className="w-4 h-4" />
-                    <span className="font-bold text-[10px] uppercase tracking-wider">Visual Records</span>
+                  <div className="inline-flex items-center gap-2 bg-amber-500/15 text-amber-300 px-4 py-2 rounded-full border border-amber-400/30 shadow-xs max-w-full flex-wrap">
+                    <LayoutGrid className="w-4 h-4 text-amber-400 shrink-0 stroke-[2.5]" />
+                    <span className="font-black text-xs uppercase tracking-wider leading-snug break-words">Visual Records</span>
                   </div>
-                  <h2 className="text-3xl font-semibold text-white uppercase tracking-tight mt-1">
+                  <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight mt-1 leading-tight">
                     Secretariat <span className="text-[#c9a227]">Moments</span>
                   </h2>
                 </div>
@@ -2188,7 +2188,7 @@ export default function LandingPage({
             <section id="contact-us" className="bg-white border border-slate-200 rounded-[10px] shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-2 max-w-6xl mx-auto mt-12 sm:mt-16 md:mt-20 text-left font-sans">
               <div className="p-8 md:p-12 space-y-10">
                 <div className="space-y-3">
-                  <h2 className="text-3xl font-semibold text-slate-900 uppercase tracking-tight">Connect with HCRS</h2>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 uppercase tracking-tight leading-tight">Connect with HCRS</h2>
                   <p className="text-slate-700 font-normal text-xs sm:text-sm leading-relaxed max-w-md px-1 sm:px-0">For queries regarding registrations, identity verification or the financial context registry.</p>
                 </div>
 
