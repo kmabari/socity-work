@@ -1389,6 +1389,10 @@ export default function App() {
         throw new Error('This mobile number is already registered. Please Login. (ഈ മൊബൈൽ നമ്പർ ഉപയോഗിച്ച് നേരത്തെ രജിസ്റ്റർ ചെയ്തതാണ്. ലോഗിൻ ചെയ്യുക.)');
       }
 
+      // TEMPORARY TESTING MODE
+      // Duplicate email restriction disabled.
+      // Re-enable before production deployment.
+      /*
       if (cleanEmail && cleanEmail.includes('@')) {
         const emailQuery = query(usersRef, where('email', '==', cleanEmail), where('status', 'in', ['pending', 'active', 'offline', 'disabled']), limit(1));
         const emailSnap = await getDocs(emailQuery);
@@ -1396,6 +1400,7 @@ export default function App() {
           throw new Error('This email is already registered. Please Login. (ഈ ഇമെയിൽ ഉപയോഗിച്ച് നേരത്തെ രജിസ്റ്റർ ചെയ്തതാണ്. ലോഗിൻ ചെയ്യുക.)');
         }
       }
+      */
 
       // 0.2 Check for duplicate Transaction ID to prevent double-submitting a duplicate screenshot/ID
       const inputTxId = (values.transactionId || '').toString().toUpperCase().trim().replace(/[^A-Z0-9]/g, '');
