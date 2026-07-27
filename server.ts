@@ -734,9 +734,13 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       throw new Error("Google service account credentials file 'google-service-account.json' not found at project root, and GOOGLE_SERVICE_ACCOUNT_JSON environment variable is not configured or could not be parsed.");
     }
 
+    const formattedPrivateKey = typeof credentialsJson.private_key === "string"
+      ? credentialsJson.private_key.replace(/\\n/g, "\n")
+      : credentialsJson.private_key;
+
     const auth = new google.auth.JWT({
       email: credentialsJson.client_email,
-      key: credentialsJson.private_key,
+      key: formattedPrivateKey,
       scopes: ["https://www.googleapis.com/auth/spreadsheets"]
     });
 
@@ -763,7 +767,14 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         return res.status(400).json({ error: "Full Name and Mobile Number are required." });
       }
 
-      const sheetId = process.env.GOOGLE_SHEET_ID;
+      let sheetId = process.env.GOOGLE_SHEET_ID ? process.env.GOOGLE_SHEET_ID.trim() : "";
+      if (sheetId) {
+        const urlMatch = sheetId.match(/\/d\/([a-zA-Z0-9-_]+)/);
+        if (urlMatch && urlMatch[1]) {
+          sheetId = urlMatch[1];
+        }
+      }
+
       if (!sheetId) {
         console.error("GOOGLE_SHEET_ID is not configured on the server.");
         return res.status(500).json({
@@ -829,6 +840,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
           spreadsheetId: sheetId,
           range,
           valueInputOption: "USER_ENTERED",
+          insertDataOption: "INSERT_ROWS",
           requestBody: {
             values: [[
               fullName,
