@@ -777,6 +777,51 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     return JSON.stringify(err);
   }
 
+  // Operation Janamail Diagnostics Endpoint
+  app.get("/api/janamail/status", async (req, res) => {
+    const credentialsPath = path.join(process.cwd(), "google-service-account.json");
+    const hasEnvJson = !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+    const hasFileJson = fs.existsSync(credentialsPath);
+    let sheetId = process.env.GOOGLE_SHEET_ID ? process.env.GOOGLE_SHEET_ID.trim() : "";
+    if (sheetId) {
+      const urlMatch = sheetId.match(/\/d\/([a-zA-Z0-9-_]+)/);
+      if (urlMatch && urlMatch[1]) sheetId = urlMatch[1];
+    }
+
+    let authOk = false;
+    let authError = null;
+    let serviceAccountEmail = null;
+
+    try {
+      const client = getSheetsClient();
+      authOk = true;
+      if (hasFileJson) {
+        const c = JSON.parse(fs.readFileSync(credentialsPath, "utf8"));
+        serviceAccountEmail = c.client_email;
+      } else if (hasEnvJson) {
+        let raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON!.trim();
+        if (raw.startsWith('"') && raw.endsWith('"')) {
+          try { raw = JSON.parse(raw); } catch (e) {}
+        }
+        if (!raw.startsWith('{') && raw.endsWith('}')) raw = '{' + raw;
+        const c = JSON.parse(raw);
+        serviceAccountEmail = c.client_email;
+      }
+    } catch (e: any) {
+      authError = extractGoogleApiError(e);
+    }
+
+    res.json({
+      serverRunning: true,
+      googleSheetIdConfigured: !!sheetId,
+      googleSheetId: sheetId ? `${sheetId.substring(0, 8)}...` : null,
+      serviceAccountConfigured: hasEnvJson || hasFileJson,
+      serviceAccountEmail,
+      authSuccess: authOk,
+      authError
+    });
+  });
+
   // Operation Janamail Sheets Registration API
   app.post("/api/janamail/register", async (req, res) => {
     console.log("[Google Sheets Flow 1/7] Received registration request on /api/janamail/register:", {

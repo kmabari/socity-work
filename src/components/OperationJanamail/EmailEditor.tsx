@@ -860,25 +860,37 @@ export default function EmailEditor({ config }: EmailEditorProps) {
       const lockKey = `janamail_lock_${currentCampaignId}_${emailId}`;
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        if (errorData.code === "DUPLICATE_REGISTRATION" || errorData.isDuplicate) {
-          if (!isWhitelisted) {
-            localStorage.setItem(lockKey, JSON.stringify(lockRecord));
-            localStorage.setItem("janamail_participated", "true");
-            setHasParticipated(true);
-            try {
-              const docId = `janamail_lock_${currentCampaignId}_${emailId.replace(/[^a-zA-Z0-9_]/g, "_")}`;
-              await setDoc(doc(db, "claims", docId), lockRecord, { merge: true });
-            } catch (dbErr) {
-              console.error("Failed to write campaign lock to claims in firestore:", dbErr);
+        let errorMsg = "";
+        try {
+          const text = await response.text();
+          try {
+            const errorData = JSON.parse(text);
+            if (errorData.code === "DUPLICATE_REGISTRATION" || errorData.isDuplicate) {
+              if (!isWhitelisted) {
+                localStorage.setItem(lockKey, JSON.stringify(lockRecord));
+                localStorage.setItem("janamail_participated", "true");
+                setHasParticipated(true);
+                try {
+                  const docId = `janamail_lock_${currentCampaignId}_${emailId.replace(/[^a-zA-Z0-9_]/g, "_")}`;
+                  await setDoc(doc(db, "claims", docId), lockRecord, { merge: true });
+                } catch (dbErr) {
+                  console.error("Failed to write campaign lock to claims in firestore:", dbErr);
+                }
+              }
+              setIsSubmitting(false);
+              setApiError(null);
+              toast.info("നിങ്ങൾ ഈ ക്യാമ്പയിനിൽ ഇതിനകം പങ്കാളിത്തം രേഖപ്പെടുത്തിയിട്ടുണ്ട്.", { id: loadingToast, duration: 6000 });
+              return;
             }
+            errorMsg = errorData.error || errorData.message || text;
+          } catch {
+            errorMsg = text ? `Server HTTP ${response.status}: ${text.substring(0, 300)}` : `Server HTTP status ${response.status}`;
           }
-          setIsSubmitting(false);
-          setApiError(null);
-          toast.info("നിങ്ങൾ ഈ ക്യാമ്പയിനിൽ ഇതിനകം പങ്കാളിത്തം രേഖപ്പെടുത്തിയിട്ടുണ്ട്.", { id: loadingToast, duration: 6000 });
-          return;
+        } catch {
+          errorMsg = `Server request failed with HTTP ${response.status}`;
         }
-        throw new Error(errorData.error || "Failed to save details to Google Sheets.");
+
+        throw new Error(errorMsg || `Server returned HTTP status ${response.status}`);
       }
 
       const resData = await response.json().catch(() => ({}));
