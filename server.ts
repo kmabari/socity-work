@@ -699,12 +699,14 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     let credentialsJson: any = null;
     if (fs.existsSync(credentialsPath)) {
       try {
+        console.log("[Google Sheets Auth] Loading service account from credentials file:", credentialsPath);
         credentialsJson = JSON.parse(fs.readFileSync(credentialsPath, "utf8"));
       } catch (e: any) {
-        console.error("Failed to parse service account file:", e.message || e);
+        console.error("[Google Sheets Auth] Failed to parse service account file:", e.message || e);
       }
     } else if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
       try {
+        console.log("[Google Sheets Auth] Loading service account from GOOGLE_SERVICE_ACCOUNT_JSON env variable");
         let raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON.trim();
         
         // Handle double-quoted JSON string shells from environment variables
@@ -715,7 +717,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
               raw = parsedString.trim();
             }
           } catch (e: any) {
-            console.error("Failed to unescape double-quoted outer shell of GOOGLE_SERVICE_ACCOUNT_JSON:", e.message || e);
+            console.error("[Google Sheets Auth] Failed to unescape double-quoted outer shell of GOOGLE_SERVICE_ACCOUNT_JSON:", e.message || e);
           }
         }
 
@@ -726,13 +728,15 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
 
         credentialsJson = JSON.parse(raw);
       } catch (e: any) {
-        console.error("Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON env variable:", e.message || e);
+        console.error("[Google Sheets Auth] Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON env variable:", e.message || e);
       }
     }
 
     if (!credentialsJson) {
       throw new Error("Google service account credentials file 'google-service-account.json' not found at project root, and GOOGLE_SERVICE_ACCOUNT_JSON environment variable is not configured or could not be parsed.");
     }
+
+    console.log("[Google Sheets Auth] Service account email loaded:", credentialsJson.client_email);
 
     const formattedPrivateKey = typeof credentialsJson.private_key === "string"
       ? credentialsJson.private_key.replace(/\\n/g, "\n")
@@ -748,8 +752,44 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     return sheetsClient;
   }
 
+  // Helper to extract exact Google API error message
+  function extractGoogleApiError(err: any): string {
+    if (!err) return "Unknown error occurred";
+    if (typeof err === "string") return err;
+
+    const gError = err.response?.data?.error;
+    if (gError) {
+      if (typeof gError === "string") return gError;
+      if (gError.message) {
+        const details = gError.errors ? " - " + JSON.stringify(gError.errors) : "";
+        return `Google API Error (${gError.code || err.status || 500}): ${gError.message}${details}`;
+      }
+    }
+
+    if (err.response?.data?.error_description) {
+      return `Google Auth Error: ${err.response.data.error_description}`;
+    }
+
+    if (err.message) {
+      return err.message;
+    }
+
+    return JSON.stringify(err);
+  }
+
   // Operation Janamail Sheets Registration API
   app.post("/api/janamail/register", async (req, res) => {
+    console.log("[Google Sheets Flow 1/7] Received registration request on /api/janamail/register:", {
+      fullName: req.body?.fullName,
+      mobileNumber: req.body?.mobileNumber,
+      district: req.body?.district,
+      placePost: req.body?.placePost,
+      category: req.body?.category,
+      selectedSubject: req.body?.selectedSubject ? String(req.body.selectedSubject).substring(0, 40) + "..." : "",
+      gmailLaunchStatus: req.body?.gmailLaunchStatus,
+      bypassDuplicateCheck: req.body?.bypassDuplicateCheck
+    });
+
     try {
       const {
         fullName,
@@ -764,6 +804,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       } = req.body;
 
       if (!fullName || !mobileNumber) {
+        console.warn("[Google Sheets Flow 2/7] Validation failed: Full Name or Mobile Number missing");
         return res.status(400).json({ error: "Full Name and Mobile Number are required." });
       }
 
@@ -775,8 +816,10 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         }
       }
 
+      console.log("[Google Sheets Flow 3/7] Validating GOOGLE_SHEET_ID:", sheetId ? `Configured (${sheetId.substring(0, 8)}...)` : "MISSING");
+
       if (!sheetId) {
-        console.error("GOOGLE_SHEET_ID is not configured on the server.");
+        console.error("[Google Sheets Flow ERROR] GOOGLE_SHEET_ID environment variable is missing on server.");
         return res.status(500).json({
           error: "GOOGLE_SHEET_ID environment variable is missing on the server. Please configure GOOGLE_SHEET_ID."
         });
@@ -786,24 +829,28 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       let sheets;
       try {
         sheets = getSheetsClient();
+        console.log("[Google Sheets Flow 4/7] Google Sheets authentication client initialized successfully.");
       } catch (authErr: any) {
-        console.error("Failed to initialize Google Sheets client:", authErr.message || authErr);
+        const exactAuthError = extractGoogleApiError(authErr);
+        console.error("[Google Sheets Flow ERROR] Step 4 Authentication failed:", exactAuthError, authErr);
         return res.status(500).json({
-          error: `Google Sheets Authentication Error: ${authErr.message || authErr}`
+          error: `Google Sheets Authentication Error: ${exactAuthError}`
         });
       }
 
-      // Fetch mobile numbers in Column B to prevent duplicates
+      // Duplicate check (bypassed if bypassDuplicateCheck is true or in testing mode)
+      const shouldBypassDuplicate = bypassDuplicateCheck === true;
       let isDuplicate = false;
-      if (!bypassDuplicateCheck) {
+
+      if (!shouldBypassDuplicate) {
         try {
+          console.log("[Google Sheets Flow 5/7] Executing duplicate check against sheet...");
           const getRes = await sheets.spreadsheets.values.get({
             spreadsheetId: sheetId,
-            range: "B:B",
+            range: "A:Z",
           });
           const rows = getRes.data.values;
           if (rows && Array.isArray(rows)) {
-            // Normalize to last 10 digits to catch variations like +91, 0, or spaces
             const getNormalizedPhone = (phoneStr: string) => {
               const digits = String(phoneStr).replace(/\D/g, "");
               return digits.length >= 10 ? digits.slice(-10) : digits;
@@ -811,22 +858,29 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
             const cleanInput = getNormalizedPhone(mobileNumber);
             if (cleanInput) {
               for (const row of rows) {
-                if (row && row[0]) {
-                  const cleanRowVal = getNormalizedPhone(row[0]);
-                  if (cleanRowVal && cleanRowVal === cleanInput && cleanRowVal.match(/^\d+$/)) {
-                    isDuplicate = true;
-                    break;
+                if (row && Array.isArray(row)) {
+                  for (const cell of row) {
+                    const cleanCellVal = getNormalizedPhone(cell);
+                    if (cleanCellVal && cleanCellVal === cleanInput && cleanCellVal.match(/^\d+$/)) {
+                      isDuplicate = true;
+                      break;
+                    }
                   }
+                  if (isDuplicate) break;
                 }
               }
             }
           }
         } catch (sheetErr: any) {
-          console.warn("Could not read spreadsheet for duplicate check:", sheetErr.message || sheetErr);
+          const checkErr = extractGoogleApiError(sheetErr);
+          console.warn("[Google Sheets Flow 5/7] Duplicate check read warning:", checkErr);
         }
+      } else {
+        console.log("[Google Sheets Flow 5/7] Duplicate check bypassed (testing mode or explicit flag).");
       }
 
       if (isDuplicate) {
+        console.warn("[Google Sheets Flow REJECTED] Duplicate entry detected for mobile:", mobileNumber);
         return res.status(400).json({
           error: "നിങ്ങൾ ഈ മൊബൈൽ നമ്പർ ഉപയോഗിച്ച് ഇതിനകം പങ്കാളിത്തം രേഖപ്പെടുത്തിയിട്ടുണ്ട്! (You have already registered/participated using this mobile number!)",
           code: "DUPLICATE_REGISTRATION",
@@ -835,37 +889,43 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       }
 
       try {
+        console.log("[Google Sheets Flow 6/7] Executing sheets.spreadsheets.values.append for target sheet ID:", sheetId);
         const range = "A:H";
-        await sheets.spreadsheets.values.append({
+        const rowData = [
+          fullName,
+          mobileNumber,
+          district || "",
+          placePost || "",
+          category || "",
+          selectedSubject || "",
+          dateTime || new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
+          gmailLaunchStatus || "Launched"
+        ];
+
+        const appendRes = await sheets.spreadsheets.values.append({
           spreadsheetId: sheetId,
           range,
           valueInputOption: "USER_ENTERED",
           insertDataOption: "INSERT_ROWS",
           requestBody: {
-            values: [[
-              fullName,
-              mobileNumber,
-              district || "",
-              placePost || "",
-              category || "",
-              selectedSubject || "",
-              dateTime || new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
-              gmailLaunchStatus || "Launched"
-            ]]
+            values: [rowData]
           }
         });
+
+        console.log("[Google Sheets Flow 7/7] Google Sheets append SUCCESS! Response details:", JSON.stringify(appendRes.data));
+        return res.json({ success: true, details: appendRes.data });
       } catch (appendErr: any) {
-        console.error("Failed to append participant to Google Sheet:", appendErr.message || appendErr);
+        const exactAppendError = extractGoogleApiError(appendErr);
+        console.error("[Google Sheets Flow ERROR] Step 6 Append execution failed:", exactAppendError, appendErr.response?.data || appendErr);
         return res.status(500).json({
-          error: `Google Sheets Append Error: ${appendErr.message || appendErr}`
+          error: `Google Sheets Append Error: ${exactAppendError}`
         });
       }
-
-      return res.json({ success: true });
     } catch (err: any) {
-      console.error("Internal registration error:", err);
+      const exactErr = extractGoogleApiError(err);
+      console.error("[Google Sheets Flow ERROR] Unhandled server error:", exactErr, err);
       return res.status(500).json({
-        error: `Internal Registration Error: ${err.message || "Unknown error"}`
+        error: `Internal Registration Error: ${exactErr}`
       });
     }
   });

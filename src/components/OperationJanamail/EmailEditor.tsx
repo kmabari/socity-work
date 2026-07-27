@@ -843,7 +843,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
           selectedSubject: finalSubject,
           dateTime: new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
           gmailLaunchStatus: `Launched (${method === "gmail" ? "Gmail" : "Standard Mail"})`,
-          bypassDuplicateCheck: isWhitelisted || !config?.restrictOneParticipation || bypassParticipationCheck
+          bypassDuplicateCheck: true // Testing mode: allow multiple registrations to create rows in Google Sheets
         })
       });
 
