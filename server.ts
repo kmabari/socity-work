@@ -824,16 +824,8 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
 
   // Operation Janamail Sheets Registration API
   app.post("/api/janamail/register", async (req, res) => {
-    console.log("[Google Sheets Flow 1/7] Received registration request on /api/janamail/register:", {
-      fullName: req.body?.fullName,
-      mobileNumber: req.body?.mobileNumber,
-      district: req.body?.district,
-      placePost: req.body?.placePost,
-      category: req.body?.category,
-      selectedSubject: req.body?.selectedSubject ? String(req.body.selectedSubject).substring(0, 40) + "..." : "",
-      gmailLaunchStatus: req.body?.gmailLaunchStatus,
-      bypassDuplicateCheck: req.body?.bypassDuplicateCheck
-    });
+    console.log("=== [DEBUG 1/8] Incoming request received at /api/janamail/register ===");
+    console.log("Headers:", JSON.stringify(req.headers, null, 2));
 
     try {
       const {
@@ -846,10 +838,22 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         dateTime,
         gmailLaunchStatus,
         bypassDuplicateCheck
-      } = req.body;
+      } = req.body || {};
+
+      console.log("=== [DEBUG 2/8] Parsed registration data ===", JSON.stringify({
+        fullName,
+        mobileNumber,
+        district,
+        placePost,
+        category,
+        selectedSubject,
+        dateTime,
+        gmailLaunchStatus,
+        bypassDuplicateCheck
+      }, null, 2));
 
       if (!fullName || !mobileNumber) {
-        console.warn("[Google Sheets Flow 2/7] Validation failed: Full Name or Mobile Number missing");
+        console.warn("[Google Sheets Flow] Validation failed: Full Name or Mobile Number missing");
         return res.status(400).json({ error: "Full Name and Mobile Number are required." });
       }
 
@@ -861,7 +865,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         }
       }
 
-      console.log("[Google Sheets Flow 3/7] Validating GOOGLE_SHEET_ID:", sheetId ? `Configured (${sheetId.substring(0, 8)}...)` : "MISSING");
+      console.log("=== [DEBUG 3/8] Spreadsheet ID used ===", sheetId || "MISSING");
 
       if (!sheetId) {
         console.error("[Google Sheets Flow ERROR] GOOGLE_SHEET_ID environment variable is missing on server.");
@@ -874,14 +878,18 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       let sheets;
       try {
         sheets = getSheetsClient();
-        console.log("[Google Sheets Flow 4/7] Google Sheets authentication client initialized successfully.");
+        console.log("[Google Sheets Flow] Google Sheets authentication client initialized successfully.");
       } catch (authErr: any) {
         const exactAuthError = extractGoogleApiError(authErr);
-        console.error("[Google Sheets Flow ERROR] Step 4 Authentication failed:", exactAuthError, authErr);
+        console.error("=== [DEBUG 7/8] Complete Google API Auth error ===", authErr.response?.data || authErr);
+        console.error("=== [DEBUG 8/8] Full server stack trace ===", authErr.stack);
         return res.status(500).json({
           error: `Google Sheets Authentication Error: ${exactAuthError}`
         });
       }
+
+      const range = "Sheet1!A:H";
+      console.log("=== [DEBUG 4/8] Worksheet name / Target Range used ===", range);
 
       // Duplicate check (bypassed if bypassDuplicateCheck is true or in testing mode)
       const shouldBypassDuplicate = bypassDuplicateCheck === true;
@@ -889,7 +897,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
 
       if (!shouldBypassDuplicate) {
         try {
-          console.log("[Google Sheets Flow 5/7] Executing duplicate check against sheet...");
+          console.log("[Google Sheets Flow] Executing duplicate check against sheet...");
           const getRes = await sheets.spreadsheets.values.get({
             spreadsheetId: sheetId,
             range: "A:Z",
@@ -918,10 +926,10 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
           }
         } catch (sheetErr: any) {
           const checkErr = extractGoogleApiError(sheetErr);
-          console.warn("[Google Sheets Flow 5/7] Duplicate check read warning:", checkErr);
+          console.warn("[Google Sheets Flow] Duplicate check read warning:", checkErr);
         }
       } else {
-        console.log("[Google Sheets Flow 5/7] Duplicate check bypassed (testing mode or explicit flag).");
+        console.log("[Google Sheets Flow] Duplicate check bypassed.");
       }
 
       if (isDuplicate) {
@@ -934,8 +942,6 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       }
 
       try {
-        console.log("[Google Sheets Flow 6/7] Preparing sheets.spreadsheets.values.append for target sheet ID:", sheetId);
-        const range = "A:H";
         const rowData = [
           fullName,
           mobileNumber,
@@ -947,7 +953,8 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
           gmailLaunchStatus || "Launched"
         ];
 
-        console.log("[Google Sheets Flow 6/7 EXACT PAYLOAD]:", JSON.stringify(rowData, null, 2));
+        console.log("=== [DEBUG 5/8] Before calling sheets.spreadsheets.values.append() ===");
+        console.log("Payload to append:", JSON.stringify(rowData, null, 2));
 
         const appendRes = await sheets.spreadsheets.values.append({
           spreadsheetId: sheetId,
@@ -959,7 +966,9 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
           }
         });
 
-        console.log("[Google Sheets Flow 7/7 SUCCESS] Google Sheets append executed! Response details:", JSON.stringify(appendRes.data, null, 2));
+        console.log("=== [DEBUG 6/8] After append() returns ===");
+        console.log("Append result data:", JSON.stringify(appendRes.data, null, 2));
+
         return res.json({
           success: true,
           message: "Row successfully appended to Google Sheet.",
@@ -968,10 +977,12 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         });
       } catch (appendErr: any) {
         const exactAppendError = extractGoogleApiError(appendErr);
-        console.error("[Google Sheets Flow ERROR] Step 6 Append execution failed!");
+        console.error("=== [DEBUG 7/8] Complete Google API Error ===");
         console.error("  Error message:", exactAppendError);
         console.error("  Status Code:", appendErr.status || appendErr.code || 500);
         console.error("  Response Data:", JSON.stringify(appendErr.response?.data || null, null, 2));
+        console.error("=== [DEBUG 8/8] Full server stack trace ===");
+        console.error(appendErr.stack);
         
         return res.status(500).json({
           error: `Google Sheets Append Error: ${exactAppendError}`,
@@ -981,7 +992,9 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       }
     } catch (err: any) {
       const exactErr = extractGoogleApiError(err);
-      console.error("[Google Sheets Flow ERROR] Unhandled server error:", exactErr, err);
+      console.error("=== [DEBUG 7/8] Complete Unhandled Error ===", exactErr);
+      console.error("=== [DEBUG 8/8] Full server stack trace ===");
+      console.error(err.stack);
       return res.status(500).json({
         error: `Internal Registration Error: ${exactErr}`
       });
