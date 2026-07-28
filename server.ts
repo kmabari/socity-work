@@ -8,21 +8,28 @@ import { google } from "googleapis";
 
 dotenv.config();
 
-async function startServer() {
-  const app = express();
-  const PORT = 3000;
+export const app = express();
+const PORT = 3000;
 
-  app.use(express.json());
+app.use(express.json());
 
-  // Setup Gemini SDK securely
-  const ai = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
-      }
+// Normalize request URL for serverless environments where /api prefix might be stripped
+app.use((req, _res, next) => {
+  if (req.url && !req.url.startsWith('/api')) {
+    req.url = '/api' + req.url;
+  }
+  next();
+});
+
+// Setup Gemini SDK securely
+const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
+  httpOptions: {
+    headers: {
+      'User-Agent': 'aistudio-build',
     }
-  });
+  }
+});
 
   // Server-side fallback Malayalam FAQ generator when Gemini API hits sandbox quotas
   function generateServerFallbackResponse(userQuery: string, member: any, orgSettings?: any): string {
@@ -1001,6 +1008,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
+async function startServer() {
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -1042,4 +1050,8 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
   });
 }
 
-startServer();
+if (!process.env.VERCEL) {
+  startServer();
+}
+
+export default app;
