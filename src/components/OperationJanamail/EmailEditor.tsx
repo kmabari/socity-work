@@ -1742,11 +1742,8 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                           <AlertTriangle className="w-4.5 h-4.5 shrink-0 text-rose-600" />
                           <span>രജിസ്ട്രേഷൻ പരാജയപ്പെട്ടു / REGISTRATION FAILED</span>
                         </div>
-                        <p className="text-xs text-rose-700 font-extrabold leading-relaxed">
+                        <p className="text-xs text-rose-700 font-extrabold leading-relaxed break-words font-mono">
                           {apiError}
-                        </p>
-                        <p className="text-[10px] text-rose-500 font-semibold leading-normal">
-                          ഷീറ്റിൽ വിവരങ്ങൾ രേഖപ്പെടുത്താൻ സാധിച്ചില്ല. ദയവായി ഈ പിശക് പരിശോധിക്കുകയോ വീണ്ടും ശ്രമിക്കുകയോ ചെയ്യുക. (Google Sheets saving failed. Please inspect this error or try again.)
                         </p>
                       </div>
                     );

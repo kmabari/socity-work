@@ -934,7 +934,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       }
 
       try {
-        console.log("[Google Sheets Flow 6/7] Executing sheets.spreadsheets.values.append for target sheet ID:", sheetId);
+        console.log("[Google Sheets Flow 6/7] Preparing sheets.spreadsheets.values.append for target sheet ID:", sheetId);
         const range = "A:H";
         const rowData = [
           fullName,
@@ -947,6 +947,8 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
           gmailLaunchStatus || "Launched"
         ];
 
+        console.log("[Google Sheets Flow 6/7 EXACT PAYLOAD]:", JSON.stringify(rowData, null, 2));
+
         const appendRes = await sheets.spreadsheets.values.append({
           spreadsheetId: sheetId,
           range,
@@ -957,13 +959,24 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
           }
         });
 
-        console.log("[Google Sheets Flow 7/7] Google Sheets append SUCCESS! Response details:", JSON.stringify(appendRes.data));
-        return res.json({ success: true, details: appendRes.data });
+        console.log("[Google Sheets Flow 7/7 SUCCESS] Google Sheets append executed! Response details:", JSON.stringify(appendRes.data, null, 2));
+        return res.json({
+          success: true,
+          message: "Row successfully appended to Google Sheet.",
+          payloadSent: rowData,
+          details: appendRes.data
+        });
       } catch (appendErr: any) {
         const exactAppendError = extractGoogleApiError(appendErr);
-        console.error("[Google Sheets Flow ERROR] Step 6 Append execution failed:", exactAppendError, appendErr.response?.data || appendErr);
+        console.error("[Google Sheets Flow ERROR] Step 6 Append execution failed!");
+        console.error("  Error message:", exactAppendError);
+        console.error("  Status Code:", appendErr.status || appendErr.code || 500);
+        console.error("  Response Data:", JSON.stringify(appendErr.response?.data || null, null, 2));
+        
         return res.status(500).json({
-          error: `Google Sheets Append Error: ${exactAppendError}`
+          error: `Google Sheets Append Error: ${exactAppendError}`,
+          rawGoogleError: appendErr.response?.data || null,
+          statusCode: appendErr.status || appendErr.code || 500
         });
       }
     } catch (err: any) {
