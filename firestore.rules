@@ -198,9 +198,9 @@ service cloud.firestore {
 
       allow delete: if isAdmin() || (
         isSignedIn() && (
-          (userId.startsWith('offline_') || userId.startsWith('life_')) && (
+          (userId.matches('^offline_.*') || userId.matches('^life_.*')) && (
             (existing().get('email', null) != null && existing().get('email', null) == request.auth.token.get('email', null)) ||
-            (existing().get('mobile', null) != null && request.auth.token.get('email', '').startsWith(existing().get('mobile', ''))) ||
+            (existing().get('mobile', null) != null && request.auth.token.get('email', '').matches('^' + existing().get('mobile', '') + '.*')) ||
             (
               exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
                 get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('mobile', '') == resource.data.get('mobile', '') ||
@@ -268,19 +268,19 @@ service cloud.firestore {
 
     // --- Collection: claims ---
     match /claims/{claimId} {
-      allow read: if claimId.startsWith('janamail_') || (isSignedIn() && (
+      allow read: if claimId.matches('^janamail_.*') || (isSignedIn() && (
         resource.data.uid == request.auth.uid || 
         isOperator() ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
          resource.data.userMobile == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.mobile)
       ));
-      allow create: if claimId.startsWith('janamail_') || (isSignedIn() && (
+      allow create: if claimId.matches('^janamail_.*') || (isSignedIn() && (
         request.resource.data.uid == request.auth.uid ||
         isOperator() ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
          request.resource.data.userMobile == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.mobile)
       ));
-      allow update: if claimId.startsWith('janamail_') || (isSignedIn() && (
+      allow update: if claimId.matches('^janamail_.*') || (isSignedIn() && (
         resource.data.uid == request.auth.uid || 
         isOperator() ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
