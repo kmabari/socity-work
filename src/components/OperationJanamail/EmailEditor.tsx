@@ -841,6 +841,11 @@ export default function EmailEditor({ config }: EmailEditorProps) {
           placePost: place.trim(),
           category: category.trim(),
           selectedSubject: finalSubject,
+          template: activeComposeMethod === "template"
+            ? (currentSelectedTemplate?.title || currentSelectedTemplate?.subject || `Template ${currentTemplateDisplayIdx + 1}`)
+            : "Custom",
+          date: new Date().toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
+          time: new Date().toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" }),
           dateTime: new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
           gmailLaunchStatus: `Launched (${method === "gmail" ? "Gmail" : "Standard Mail"})`,
           bypassDuplicateCheck: true // Testing mode: allow multiple registrations to create rows in Google Sheets

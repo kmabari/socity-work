@@ -13,13 +13,15 @@ const PORT = 3000;
 
 app.use(express.json());
 
-// Normalize request URL for serverless environments where /api prefix might be stripped
-app.use((req, _res, next) => {
-  if (req.url && !req.url.startsWith('/api')) {
-    req.url = '/api' + req.url;
-  }
-  next();
-});
+// Normalize request URL for Vercel serverless environments where /api prefix might be stripped
+if (process.env.VERCEL) {
+  app.use((req, _res, next) => {
+    if (req.url && !req.url.startsWith('/api')) {
+      req.url = '/api' + req.url;
+    }
+    next();
+  });
+}
 
 // Setup Gemini SDK securely
 const ai = new GoogleGenAI({
@@ -837,13 +839,24 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     try {
       const {
         fullName,
+        name: bodyName,
         mobileNumber,
+        phone,
         district,
         placePost,
+        place,
         category,
+        memberCategory,
         selectedSubject,
+        subject,
+        template,
+        templateName,
+        date: bodyDate,
+        time: bodyTime,
         dateTime,
         gmailLaunchStatus,
+        emailStatus,
+        status,
         bypassDuplicateCheck
       } = req.body || {};
 
@@ -854,12 +867,16 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         placePost,
         category,
         selectedSubject,
+        template,
         dateTime,
         gmailLaunchStatus,
         bypassDuplicateCheck
       }, null, 2));
 
-      if (!fullName || !mobileNumber) {
+      const inputName = fullName || bodyName;
+      const inputMobile = mobileNumber || phone;
+
+      if (!inputName || !inputMobile) {
         console.warn("[Google Sheets Flow] Validation failed: Full Name or Mobile Number missing");
         return res.status(400).json({ error: "Full Name and Mobile Number are required." });
       }
@@ -895,7 +912,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         });
       }
 
-      const range = "Sheet1!A:H";
+      const range = "Sheet1!A:J";
       console.log("=== [DEBUG 4/8] Worksheet name / Target Range used ===", range);
 
       // Duplicate check (bypassed if bypassDuplicateCheck is true or in testing mode)
@@ -915,7 +932,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
               const digits = String(phoneStr).replace(/\D/g, "");
               return digits.length >= 10 ? digits.slice(-10) : digits;
             };
-            const cleanInput = getNormalizedPhone(mobileNumber);
+            const cleanInput = getNormalizedPhone(inputMobile);
             if (cleanInput) {
               for (const row of rows) {
                 if (row && Array.isArray(row)) {
@@ -940,7 +957,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       }
 
       if (isDuplicate) {
-        console.warn("[Google Sheets Flow REJECTED] Duplicate entry detected for mobile:", mobileNumber);
+        console.warn("[Google Sheets Flow REJECTED] Duplicate entry detected for mobile:", inputMobile);
         return res.status(400).json({
           error: "നിങ്ങൾ ഈ മൊബൈൽ നമ്പർ ഉപയോഗിച്ച് ഇതിനകം പങ്കാളിത്തം രേഖപ്പെടുത്തിയിട്ടുണ്ട്! (You have already registered/participated using this mobile number!)",
           code: "DUPLICATE_REGISTRATION",
@@ -949,15 +966,53 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       }
 
       try {
+        const now = new Date();
+        const defaultDateStr = now.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" });
+        const defaultTimeStr = now.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" });
+
+        let dateVal = bodyDate || "";
+        let timeVal = bodyTime || "";
+
+        if (!dateVal || !timeVal) {
+          if (dateTime && typeof dateTime === "string") {
+            if (dateTime.includes(",")) {
+              const parts = dateTime.split(",");
+              if (!dateVal) dateVal = parts[0].trim();
+              if (!timeVal && parts[1]) timeVal = parts[1].trim();
+            } else if (dateTime.includes("T")) {
+              const parts = dateTime.split("T");
+              if (!dateVal) dateVal = parts[0].trim();
+              if (!timeVal && parts[1]) timeVal = parts[1].replace("Z", "").trim();
+            } else {
+              if (!dateVal) dateVal = dateTime;
+            }
+          }
+        }
+
+        if (!dateVal) dateVal = defaultDateStr;
+        if (!timeVal) timeVal = defaultTimeStr;
+
+        const userFullName = inputName;
+        const userMobile = inputMobile;
+        const userDistrict = district || "";
+        const userPlace = placePost || place || "";
+        const userCategory = category || memberCategory || "";
+        const userSubject = selectedSubject || subject || "";
+        const userTemplate = template || templateName || "Template 1";
+        const userEmailStatus = gmailLaunchStatus || emailStatus || status || "Launched";
+
+        // 10 Columns: Date, Time, Name, Mobile, District, Place, Member Category, Subject, Template, Email Status
         const rowData = [
-          fullName,
-          mobileNumber,
-          district || "",
-          placePost || "",
-          category || "",
-          selectedSubject || "",
-          dateTime || new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
-          gmailLaunchStatus || "Launched"
+          dateVal,
+          timeVal,
+          userFullName,
+          userMobile,
+          userDistrict,
+          userPlace,
+          userCategory,
+          userSubject,
+          userTemplate,
+          userEmailStatus
         ];
 
         console.log("=== [DEBUG 5/8] Before calling sheets.spreadsheets.values.append() ===");
