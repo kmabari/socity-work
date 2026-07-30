@@ -912,7 +912,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         });
       }
 
-      const range = "Sheet1!A:J";
+      const range = "Sheet1!A:Z";
       console.log("=== [DEBUG 4/8] Worksheet name / Target Range used ===", range);
 
       // Duplicate check (bypassed if bypassDuplicateCheck is true or in testing mode)
@@ -1000,23 +1000,74 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         const userSubject = selectedSubject || subject || "";
         const userTemplate = template || templateName || "Template 1";
         const userEmailStatus = gmailLaunchStatus || emailStatus || status || "Launched";
+        const userHistory = req.body?.history || req.body?.registrationHistory || req.body?.historyLog || "";
 
-        // 10 Columns: Date, Time, Name, Mobile, District, Place, Member Category, Subject, Template, Email Status
-        const rowData = [
-          dateVal,
-          timeVal,
-          userFullName,
-          userMobile,
-          userDistrict,
-          userPlace,
-          userCategory,
-          userSubject,
-          userTemplate,
-          userEmailStatus
-        ];
+        // Read master header row from Sheet1 Row 1
+        let masterHeaders: string[] = [];
+        try {
+          const headerRes = await sheets.spreadsheets.values.get({
+            spreadsheetId: sheetId,
+            range: "Sheet1!1:1"
+          });
+          if (headerRes.data.values && headerRes.data.values[0] && Array.isArray(headerRes.data.values[0])) {
+            masterHeaders = headerRes.data.values[0].map((h: any) => String(h || ""));
+          }
+        } catch (headerErr) {
+          console.warn("[Google Sheets Flow] Failed to read header row from Sheet1, using fallback headers:", headerErr);
+        }
 
-        console.log("=== [DEBUG 5/8] Before calling sheets.spreadsheets.values.append() ===");
-        console.log("Payload to append:", JSON.stringify(rowData, null, 2));
+        if (masterHeaders.length === 0) {
+          masterHeaders = [
+            "DATE",
+            "Time",
+            "Name",
+            "Mobile",
+            "District",
+            "Place",
+            "Member Category",
+            "Subject",
+            "Template",
+            "Email Status"
+          ];
+        }
+
+        // Map form values to matching header column name
+        const mapHeaderToValue = (rawHeader: string): string => {
+          const clean = String(rawHeader || "").trim();
+          const norm = clean.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+          if (!norm) return "";
+
+          if (norm.includes("date") && norm.includes("time")) return `${dateVal}, ${timeVal}`;
+          if (norm.includes("date")) return dateVal;
+          if (norm.includes("time")) return timeVal;
+          if (norm.includes("name")) return userFullName;
+          if (norm.includes("mobile") || norm.includes("phone")) return userMobile;
+          if (norm.includes("district")) return userDistrict;
+          if (norm.includes("place") || norm.includes("post")) return userPlace;
+          if (norm.includes("category")) return userCategory;
+          if (norm.includes("subject")) return userSubject;
+          if (norm.includes("history")) return userHistory;
+          if (norm.includes("template")) return userTemplate;
+          if (norm.includes("status") || norm.includes("email") || norm.includes("gmail")) return userEmailStatus;
+
+          // Direct lookup in req.body for custom header names
+          if (req.body && typeof req.body === "object") {
+            for (const key of Object.keys(req.body)) {
+              if (key.toLowerCase().replace(/[^a-z0-9]/g, "") === norm) {
+                const val = req.body[key];
+                return val !== undefined && val !== null ? String(val) : "";
+              }
+            }
+          }
+
+          return "";
+        };
+
+        const rowData = masterHeaders.map(h => mapHeaderToValue(h));
+
+        console.log("=== [DEBUG 5/8] Master Headers from Sheet1 ===", masterHeaders);
+        console.log("=== [DEBUG 5/8] Dynamically mapped payload to append ===", JSON.stringify(rowData, null, 2));
 
         const appendRes = await sheets.spreadsheets.values.append({
           spreadsheetId: sheetId,
