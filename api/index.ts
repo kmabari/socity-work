@@ -1,12 +1,3 @@
-import express from "express";
-
-const app = express();
-
-app.get("/", (_req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "API is working"
-  });
-});
+import app from "../server";
 
 export default app;
