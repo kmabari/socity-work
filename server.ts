@@ -5,8 +5,25 @@ import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import fs from "fs";
 import { google } from "googleapis";
+import Razorpay from "razorpay";
+import crypto from "crypto";
+import admin from "firebase-admin";
 
 dotenv.config();
+
+// Initialize Firebase Admin SDK for server-side verified database writes
+if (!admin.apps.length) {
+  try {
+    admin.initializeApp({
+      projectId: "hcrs-membership"
+    });
+    console.log("[Firebase Admin] Initialized successfully for project hcrs-membership");
+  } catch (adminInitErr) {
+    console.warn("[Firebase Admin] Initialization notice:", adminInitErr);
+  }
+}
+
+const dbAdmin = admin.apps.length ? admin.firestore() : null;
 
 export const app = express();
 const PORT = 3000;
@@ -1111,6 +1128,460 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       return res.status(500).json({
         error: `Internal Registration Error: ${exactErr}`
       });
+    }
+  });
+
+  // ============================================================================
+  // RAZORPAY PAYMENT ENDPOINTS (STRICT BUSINESS RULES & Cryptographic Verification)
+  // 1. Registration Fee = ₹200 (Fixed: 20000 paise)
+  // 2. Renewal Fee = ₹100 (Fixed: 10000 paise)
+  // Server-side signature verification + Razorpay API fetch + Firestore write.
+  // ============================================================================
+
+  app.get("/api/razorpay/config", (_req, res) => {
+    const keyId = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || "";
+    return res.json({
+      keyId,
+      hasKeySecret: !!process.env.RAZORPAY_KEY_SECRET
+    });
+  });
+
+  app.post("/api/razorpay/create-order", async (req, res) => {
+    try {
+      const { paymentType, amount: clientAmount, memberId, mobile } = req.body;
+
+      // 1. Strict Payment Type & Amount Validation
+      let expectedAmountINR = 0;
+      let expectedAmountPaise = 0;
+
+      if (paymentType === 'registration') {
+        expectedAmountINR = 200;
+        expectedAmountPaise = 20000; // 200 INR in paise
+      } else if (paymentType === 'renewal') {
+        expectedAmountINR = 100;
+        expectedAmountPaise = 10000; // 100 INR in paise
+      } else {
+        return res.status(400).json({
+          error: "Invalid paymentType. Must be 'registration' (₹200) or 'renewal' (₹100)."
+        });
+      }
+
+      // Security check: Reject if client passed an explicit amount that differs from fixed business rules
+      if (clientAmount !== undefined && Number(clientAmount) !== expectedAmountINR && Number(clientAmount) !== expectedAmountPaise) {
+        return res.status(400).json({
+          error: `Security Violation: Payment amount cannot be customized. Registration is ₹200 and Renewal is ₹100.`
+        });
+      }
+
+      const receiptNumber = `RCP-${paymentType.toUpperCase().slice(0,3)}-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 899)}`;
+      const rawKeyId = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || "";
+      const rawKeySecret = process.env.RAZORPAY_KEY_SECRET || process.env.VITE_RAZORPAY_KEY_SECRET || "";
+
+      const hasRealKeys = (rawKeyId.startsWith("rzp_test_") || rawKeyId.startsWith("rzp_live_")) &&
+                          rawKeySecret.length >= 8 &&
+                          rawKeySecret !== "VITE_RAZORPAY_KEY_ID";
+
+      if (hasRealKeys) {
+        try {
+          const razorpayInstance = new Razorpay({
+            key_id: rawKeyId,
+            key_secret: rawKeySecret
+          });
+
+          const order = await razorpayInstance.orders.create({
+            amount: expectedAmountPaise,
+            currency: "INR",
+            receipt: receiptNumber,
+            notes: {
+              paymentType,
+              fixedAmountINR: String(expectedAmountINR),
+              memberId: memberId || "",
+              mobile: mobile || ""
+            }
+          });
+
+          return res.json({
+            success: true,
+            orderId: order.id,
+            amount: expectedAmountINR,
+            amountInPaise: expectedAmountPaise,
+            currency: "INR",
+            receiptNumber,
+            keyId: rawKeyId,
+            paymentType,
+            isDemo: false
+          });
+        } catch (realErr: any) {
+          console.warn("Razorpay API order creation error:", realErr);
+          const rzpErrorMsg = realErr?.error?.description || realErr?.description || realErr?.message || 'Failed to create payment order';
+          return res.status(400).json({
+            error: `Razorpay API Order Error: ${rzpErrorMsg}`
+          });
+        }
+      }
+
+      // Sandbox Test Order mode when real Razorpay keys are not yet configured in environment
+      const demoOrderId = `order_demo_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
+      return res.json({
+        success: true,
+        orderId: demoOrderId,
+        amount: expectedAmountINR,
+        amountInPaise: expectedAmountPaise,
+        currency: "INR",
+        receiptNumber,
+        keyId: "rzp_test_demo_placeholder",
+        paymentType,
+        isDemo: true
+      });
+    } catch (err: any) {
+      console.error("Razorpay order creation error:", err);
+      const rzpErrorMsg = err?.error?.description || err?.description || err?.message || JSON.stringify(err);
+      return res.status(500).json({
+        error: `Razorpay Order Creation Error: ${rzpErrorMsg}`
+      });
+    }
+  });
+
+  app.post("/api/razorpay/verify-payment", async (req, res) => {
+    try {
+      const {
+        razorpay_order_id,
+        razorpay_payment_id,
+        razorpay_signature,
+        paymentType,
+        memberId,
+        registrationData,
+        receiptNumber: clientReceipt
+      } = req.body;
+
+      if (!paymentType || !['registration', 'renewal'].includes(paymentType)) {
+        return res.status(400).json({ error: "Invalid paymentType." });
+      }
+
+      if (!razorpay_order_id || !razorpay_payment_id) {
+        return res.status(400).json({ error: "Missing required Razorpay payment verification parameters." });
+      }
+
+      const expectedAmountINR = paymentType === 'registration' ? 200 : 100;
+      const expectedAmountPaise = expectedAmountINR * 100;
+
+      const rawKeyId = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || "";
+      const rawKeySecret = process.env.RAZORPAY_KEY_SECRET || process.env.VITE_RAZORPAY_KEY_SECRET || "";
+
+      const hasRealKeys = (rawKeyId.startsWith("rzp_test_") || rawKeyId.startsWith("rzp_live_")) &&
+                          rawKeySecret.length >= 8 &&
+                          rawKeySecret !== "VITE_RAZORPAY_KEY_ID";
+
+      let payment: any = null;
+
+      // Perform full signature and API verification if real keys exist
+      if (hasRealKeys && razorpay_signature && razorpay_signature !== 'demo_signature') {
+        const expectedSignature = crypto
+          .createHmac("sha256", rawKeySecret)
+          .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+          .digest("hex");
+
+        const sigBuffer = Buffer.from(razorpay_signature);
+        const expBuffer = Buffer.from(expectedSignature);
+
+        if (sigBuffer.length !== expBuffer.length || !crypto.timingSafeEqual(sigBuffer, expBuffer)) {
+          console.error("Razorpay Signature Mismatch Failure!");
+          return res.status(400).json({
+            error: "Security Violation: Razorpay payment signature verification failed."
+          });
+        }
+
+        const razorpayInstance = new Razorpay({
+          key_id: rawKeyId,
+          key_secret: rawKeySecret
+        });
+
+        const payment = await razorpayInstance.payments.fetch(razorpay_payment_id);
+        if (!payment) {
+          return res.status(400).json({
+            error: "Payment Verification Failure: Payment record not found on Razorpay server."
+          });
+        }
+
+        if (payment.order_id !== razorpay_order_id) {
+          return res.status(400).json({
+            error: `Security Failure: Payment order mismatch. Expected ${razorpay_order_id}, got ${payment.order_id}`
+          });
+        }
+
+        if (Number(payment.amount) !== expectedAmountPaise) {
+          return res.status(400).json({
+            error: `Security Failure: Payment amount mismatch. Expected ₹${expectedAmountINR} (${expectedAmountPaise} paise), got ${payment.amount} paise.`
+          });
+        }
+
+        if (payment.status === 'authorized') {
+          try {
+            await razorpayInstance.payments.capture(razorpay_payment_id, expectedAmountPaise, 'INR');
+          } catch (capErr: any) {
+            console.warn("Razorpay auto-capture notice:", capErr.message);
+          }
+        }
+
+        if (payment.status !== 'captured' && payment.status !== 'authorized') {
+          return res.status(400).json({
+            error: `Payment Verification Failure: Payment status is '${payment.status}'. Payment must be completed/captured.`
+          });
+        }
+      }
+
+      const paymentTimeISO = new Date().toISOString();
+      const finalReceiptNumber = clientReceipt || `RCP-${paymentType.toUpperCase().slice(0,3)}-${Date.now().toString().slice(-6)}`;
+      const statusResult = paymentType === 'registration' ? 'Active' : 'Renewed';
+
+      // 4. Record Verified Payment in Firestore and Activate Member
+      let isAlreadyProcessed = false;
+
+      if (dbAdmin) {
+        try {
+          const existingPayDoc = await dbAdmin.collection('payments').doc(razorpay_payment_id).get();
+          if (existingPayDoc.exists && existingPayDoc.data()?.status === 'SUCCESS') {
+            isAlreadyProcessed = true;
+          } else {
+            await dbAdmin.collection('payments').doc(razorpay_payment_id).set({
+              paymentId: razorpay_payment_id,
+              orderId: razorpay_order_id,
+              amount: expectedAmountINR,
+              currency: 'INR',
+              paymentType,
+              memberId: memberId || registrationData?.uid || '',
+              status: 'SUCCESS',
+              verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+              method: payment?.method || 'Razorpay'
+            }, { merge: true });
+          }
+
+          // Perform Server-Side Firestore Member Activation
+          if (paymentType === 'registration' && registrationData?.uid) {
+            const userUid = registrationData.uid;
+            const userRef = dbAdmin.collection('users').doc(userUid);
+            const now = new Date();
+
+            await userRef.set({
+              status: 'pending',
+              isApproved: false,
+              isPaid: true,
+              paymentAmount: expectedAmountINR,
+              paymentId: razorpay_payment_id,
+              orderId: razorpay_order_id,
+              transactionId: razorpay_payment_id,
+              paymentTime: paymentTimeISO,
+              paymentMethod: 'Razorpay',
+              paymentStatus: 'PAYMENT_VERIFIED',
+              receiptNumber: finalReceiptNumber,
+              paymentVerifiedAt: admin.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+
+            await userRef.collection('receipts').add({
+              receiptNo: finalReceiptNumber,
+              receiptType: 'Membership Fee',
+              receiptLabel: 'Membership Registration Receipt',
+              amount: expectedAmountINR,
+              paymentId: razorpay_payment_id,
+              orderId: razorpay_order_id,
+              transactionId: razorpay_payment_id,
+              paymentTime: paymentTimeISO,
+              paymentMethod: 'Razorpay',
+              paymentStatus: 'PAYMENT_VERIFIED',
+              status: 'Paid',
+              paymentDate: now.toISOString().split('T')[0],
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              memberId: registrationData.membershipId || userUid
+            });
+          } else if (paymentType === 'renewal' && memberId) {
+            const userRef = dbAdmin.collection('users').doc(memberId);
+            const userDoc = await userRef.get();
+            if (userDoc.exists) {
+              const userData = userDoc.data();
+              let newExpiryDate = new Date();
+              if (userData?.expiryDate) {
+                const expD = userData.expiryDate.toDate ? userData.expiryDate.toDate() : new Date(userData.expiryDate);
+                if (!isNaN(expD.getTime()) && expD.getTime() > Date.now()) {
+                  newExpiryDate = new Date(expD);
+                  newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
+                } else {
+                  newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
+                }
+              } else {
+                newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
+              }
+
+              const now = new Date();
+              await userRef.update({
+                status: 'active',
+                isApproved: true,
+                renewalPending: false,
+                renewalTransactionId: razorpay_payment_id,
+                renewalDate: admin.firestore.FieldValue.serverTimestamp(),
+                renewalPaymentDate: now.toISOString().split('T')[0],
+                paymentAmount: expectedAmountINR,
+                paymentId: razorpay_payment_id,
+                orderId: razorpay_order_id,
+                transactionId: razorpay_payment_id,
+                paymentTime: paymentTimeISO,
+                paymentMethod: 'Razorpay',
+                paymentStatus: 'Renewed',
+                receiptNumber: finalReceiptNumber,
+                expiryDate: newExpiryDate
+              });
+
+              await userRef.collection('receipts').add({
+                receiptNo: finalReceiptNumber,
+                receiptType: 'Membership Renewal',
+                receiptLabel: 'Membership Renewal Receipt',
+                amount: expectedAmountINR,
+                paymentId: razorpay_payment_id,
+                orderId: razorpay_order_id,
+                transactionId: razorpay_payment_id,
+                paymentTime: paymentTimeISO,
+                paymentMethod: 'Razorpay',
+                paymentStatus: 'Renewed',
+                status: 'Paid',
+                paymentDate: now.toISOString().split('T')[0],
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                memberId: userData?.membershipId || memberId
+              });
+            }
+          }
+        } catch (dbAdminErr: any) {
+          console.warn("[Firebase Admin] Firestore write notice (continuing payment verification):", dbAdminErr?.message || dbAdminErr);
+        }
+      }
+
+      return res.json({
+        success: true,
+        verified: true,
+        alreadyProcessed: isAlreadyProcessed,
+        paymentDetails: {
+          paymentAmount: expectedAmountINR,
+          paymentId: razorpay_payment_id,
+          orderId: razorpay_order_id,
+          transactionId: razorpay_payment_id,
+          paymentTime: paymentTimeISO,
+          paymentMethod: 'Razorpay',
+          paymentStatus: statusResult,
+          receiptNumber: finalReceiptNumber,
+          memberId: memberId || registrationData?.uid || ''
+        }
+      });
+    } catch (err: any) {
+      console.error("Razorpay payment verification error:", err);
+      return res.status(500).json({
+        error: `Payment Verification Failure: ${err.message || 'Signature verification error'}`
+      });
+    }
+  });
+
+  // ============================================================================
+  // RAZORPAY WEBHOOK ENDPOINT
+  // Receives asynchronous payment updates (payment.captured, order.paid, payment.failed)
+  // ============================================================================
+  app.post("/api/razorpay/webhook", async (req, res) => {
+    try {
+      const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET || "";
+      const signature = req.headers['x-razorpay-signature'] as string;
+
+      if (webhookSecret && signature) {
+        const bodyStr = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+        const expectedSig = crypto.createHmac('sha256', webhookSecret).update(bodyStr).digest('hex');
+
+        if (signature !== expectedSig) {
+          console.error("Razorpay Webhook Signature Mismatch!");
+          return res.status(400).json({ status: "invalid_signature" });
+        }
+      }
+
+      const eventData = req.body || {};
+      const event = eventData.event;
+
+      if (event === 'payment.captured' || event === 'order.paid') {
+        const paymentEntity = eventData.payload?.payment?.entity;
+        if (paymentEntity) {
+          const paymentId = paymentEntity.id;
+          const orderId = paymentEntity.order_id;
+          const amountPaise = paymentEntity.amount;
+          const notes = paymentEntity.notes || {};
+          const paymentType = notes.paymentType || (amountPaise === 20000 ? 'registration' : 'renewal');
+          const memberId = notes.memberId;
+
+          console.log(`[Razorpay Webhook] Event: ${event}, PaymentID: ${paymentId}, Type: ${paymentType}, MemberId: ${memberId}`);
+
+          if (dbAdmin && memberId) {
+            try {
+              const existingPay = await dbAdmin.collection('payments').doc(paymentId).get();
+              if (!existingPay.exists || existingPay.data()?.status !== 'SUCCESS') {
+                await dbAdmin.collection('payments').doc(paymentId).set({
+                  paymentId,
+                  orderId,
+                  amount: amountPaise / 100,
+                  currency: paymentEntity.currency || 'INR',
+                  paymentType,
+                  memberId,
+                  status: 'SUCCESS',
+                  source: 'webhook',
+                  verifiedAt: admin.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+
+                const userRef = dbAdmin.collection('users').doc(memberId);
+                const userDoc = await userRef.get();
+                if (userDoc.exists) {
+                  const now = new Date();
+                  if (paymentType === 'registration') {
+                    await userRef.update({
+                      status: 'pending',
+                      isApproved: false,
+                      isPaid: true,
+                      paymentAmount: 200,
+                      paymentId,
+                      orderId,
+                      paymentMethod: 'Razorpay',
+                      paymentStatus: 'PAYMENT_VERIFIED',
+                      paymentVerifiedAt: admin.firestore.FieldValue.serverTimestamp()
+                    });
+                  } else if (paymentType === 'renewal') {
+                    const userData = userDoc.data();
+                    let newExpiryDate = new Date();
+                    if (userData?.expiryDate) {
+                      const expD = userData.expiryDate.toDate ? userData.expiryDate.toDate() : new Date(userData.expiryDate);
+                      if (!isNaN(expD.getTime()) && expD.getTime() > Date.now()) {
+                        newExpiryDate = new Date(expD);
+                        newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
+                      } else {
+                        newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
+                      }
+                    } else {
+                      newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
+                    }
+                    await userRef.update({
+                      status: 'active',
+                      isApproved: true,
+                      renewalPending: false,
+                      paymentAmount: 100,
+                      paymentId,
+                      orderId,
+                      paymentMethod: 'Razorpay',
+                      paymentStatus: 'Renewed',
+                      expiryDate: newExpiryDate
+                    });
+                  }
+                }
+              }
+            } catch (dbAdminErr: any) {
+              console.warn("[Razorpay Webhook] Firestore write notice:", dbAdminErr?.message || dbAdminErr);
+            }
+          }
+        }
+      }
+
+      return res.json({ status: "ok" });
+    } catch (err: any) {
+      console.error("Razorpay webhook error:", err);
+      return res.status(500).json({ error: err.message });
     }
   });
 

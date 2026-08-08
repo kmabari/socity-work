@@ -236,7 +236,7 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
     })()
   );
 
-  const isPending = member.status === 'pending' || member.renewalPending === true;
+  const isPending = member.status === 'pending' || member.renewalPending === true || (!member.isApproved && member.role !== 'admin' && !member.isAdmin);
 
   const getRenewalDate = (date: any) => {
     // If we have an explicit expiry date, use that!

@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { motion } from 'motion/react';
-import { User, Phone, MapPin, Landmark, ShieldCheck, ArrowRight, Heart, Receipt, ArrowLeft } from 'lucide-react';
+import { User, Phone, MapPin, Landmark, ShieldCheck, ArrowRight, Heart, ArrowLeft, CreditCard, CheckCircle2 } from 'lucide-react';
 import { DISTRICTS, STATES, CONSTITUENCIES } from '@/src/constants';
 import Logo from '../Logo';
 import { toast } from 'sonner';
@@ -16,6 +16,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Checkbox } from '@/components/ui/checkbox';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { processRazorpayPayment } from '../lib/razorpay';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Name is required / പേര് നൽകുക'),
@@ -34,27 +35,55 @@ interface RegistrationFormProps {
   initialMobile?: string;
 }
 
-const QR_MIRRORS = [
-  'https://images.weserv.nl/?url=https://i.ibb.co/KczsHznx/IMG-20250606-WA0242.jpg',
-  'https://wsrv.nl/?url=https://i.ibb.co/KczsHznx/IMG-20250606-WA0242.jpg',
-  'https://i.ibb.co/KczsHznx/IMG-20250606-WA0242.jpg'
-];
-
 export default function RegistrationForm({ onSubmit, districtQuotas = {}, districtQuotasUsed = {}, initialMobile }: RegistrationFormProps) {
   const { t } = useI18n();
   const [step, setStep] = React.useState<'details' | 'payment'>('details');
-  const [transactionId, setTransactionId] = React.useState('');
-  const [paymentDate, setPaymentDate] = React.useState(() => {
-    const today = new Date();
-    return today.toISOString().split('T')[0]; // YYYY-MM-DD
-  });
-  const [paymentTime, setPaymentTime] = React.useState(() => {
-    const today = new Date();
-    return today.toTimeString().split(' ')[0].substring(0, 5); // HH:MM
-  });
-  const [mirrorIndex, setMirrorIndex] = React.useState(0);
-  const [qrSrc, setQrSrc] = React.useState(QR_MIRRORS[0]);
   const [agreeAdhoc, setAgreeAdhoc] = React.useState(false);
+  const [isProcessingRazorpay, setIsProcessingRazorpay] = React.useState(false);
+
+  const handleRazorpayRegistration = async () => {
+    setIsProcessingRazorpay(true);
+    const formVals = form.getValues();
+    try {
+      const paymentDetails = await processRazorpayPayment({
+        paymentType: 'registration',
+        name: formVals.name,
+        mobile: formVals.mobile
+      });
+
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+      const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
+
+      const fullValues = {
+        ...formVals,
+        email: '',
+        address: '',
+        pincode: '',
+        postOffice: '',
+        bloodGroup: '',
+        transactionId: paymentDetails.paymentId,
+        paymentId: paymentDetails.paymentId,
+        orderId: paymentDetails.orderId,
+        paymentAmount: 200,
+        paymentMethod: 'Razorpay',
+        paymentStatus: 'PAYMENT_VERIFIED',
+        receiptNumber: paymentDetails.receiptNumber,
+        paymentDate: todayStr,
+        paymentTime: timeStr,
+        paymentTimeISO: paymentDetails.paymentTime,
+        pin: '123456',
+      };
+
+      toast.success('Razorpay Payment Verified! Completing Registration...');
+      onSubmit(fullValues);
+    } catch (err: any) {
+      console.error('Razorpay Registration Error:', err);
+      toast.error(err.message || 'Payment failed or cancelled.');
+    } finally {
+      setIsProcessingRazorpay(false);
+    }
+  };
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -103,27 +132,6 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
     }
   };
 
-  const handleFinalSubmit = () => {
-    if (!transactionId.trim()) {
-      toast.error('Please enter payment transaction ID / ട്രാന്സാക്ഷൻ ഐഡി നൽകുക');
-      return;
-    }
-    const data = form.getValues();
-    const fullValues = {
-      ...data,
-      email: '',
-      address: '',
-      pincode: '',
-      postOffice: '',
-      bloodGroup: '',
-      transactionId: transactionId.trim(),
-      paymentDate: paymentDate,
-      paymentTime: paymentTime,
-      pin: '123456', // default lock pin
-    };
-    onSubmit(fullValues);
-  };
-
   return (
     <div className="min-h-screen pt-2 pb-8 sm:py-12 md:py-20 px-3 sm:px-6 font-sans relative overflow-x-hidden flex flex-col items-center justify-start sm:justify-center">
       {/* Dynamic graphic backdrops */}
@@ -158,7 +166,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
               ) : (
                 <>
                   <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-brand-blue/10 flex items-center justify-center text-brand-blue shadow-sm shrink-0">
-                    <Receipt className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <CreditCard className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
                   <span>{t('reg_payment_title', 'Membership Payment')}</span>
                 </>
@@ -343,133 +351,51 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
               </Form>
             ) : (
               <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6 sm:space-y-7">
-                <div className="bg-[#030e1d] text-white rounded-[28px] sm:rounded-[32px] p-5 sm:p-8 border-3 border-brand-blue shadow-2xl relative overflow-hidden transition-all duration-300">
-                  <div className="absolute top-0 right-0 w-36 h-36 bg-brand-blue/20 blur-3xl pointer-events-none" />
-                  <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-brand-magenta/15 blur-3xl pointer-events-none" />
-                  <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-brand-blue to-brand-magenta" />
-                  
-                  <h4 className="font-extrabold text-white text-base sm:text-lg md:text-xl flex items-center justify-center sm:justify-start gap-3 mb-4 uppercase tracking-wider">
-                    <span className="p-2 rounded-xl bg-brand-blue/20 text-brand-blue flex items-center justify-center animate-pulse shrink-0">
-                      <Receipt className="w-5 h-5 text-brand-magenta" />
-                    </span>
-                    <span>{t('reg_upi_qr_title', 'പേയ്മെന്റ് ക്യു ആർ കോഡ് (UPI Payment QR)')}</span>
-                  </h4>
-                  
-                  <p className="text-xs sm:text-sm text-slate-100 font-extrabold leading-relaxed text-center sm:text-left bg-brand-blue/10 p-3.5 sm:p-4 rounded-2xl border border-brand-blue/30 mb-5">
-                    {t('reg_upi_scan_instruction', 'Scan the QR code below using GPay, PhonePe, or Paytm to pay <span className="text-brand-magenta font-black text-lg underline decoration-brand-magenta">₹200</span> for 1-Year National Active Membership. (താഴെയുള്ള ക്യു ആർ കോഡ് സ്കാൻ ചെയ്ത് ₹200 അടയ്ക്കുക):')}
-                  </p>
-
-                  <div className="flex flex-col items-center justify-center gap-4 bg-slate-900/80 p-5 sm:p-6 rounded-[24px] border-2 border-slate-800 shadow-inner">
-                    {/* Public UPI Payment QR with Proxy support for Palakkad cellular ISP blocks */}
-                    <div className="bg-white p-3.5 rounded-2xl shadow-xl shrink-0">
-                      <img 
-                        src={qrSrc}
-                        onError={() => {
-                          if (mirrorIndex < QR_MIRRORS.length - 1) {
-                            const nextIndex = mirrorIndex + 1;
-                             setMirrorIndex(nextIndex);
-                            setQrSrc(QR_MIRRORS[nextIndex]);
-                          }
-                        }}
-                        alt="UPI Payment QR Code"
-                        className="w-48 h-48 sm:w-52 sm:h-52 object-contain"
-                        referrerPolicy="no-referrer"
-                      />
+                {/* Razorpay Online Payment Integration */}
+                <div className="bg-gradient-to-br from-blue-900 via-slate-900 to-indigo-950 text-white rounded-[28px] sm:rounded-[32px] p-5 sm:p-7 border-2 border-brand-blue shadow-2xl relative overflow-hidden space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-2xl bg-brand-blue/30 flex items-center justify-center text-white border border-brand-blue/50 shrink-0 shadow-inner">
+                        <CreditCard className="w-6 h-6 text-brand-magenta" />
+                      </div>
+                      <div>
+                        <h4 className="font-extrabold text-white text-base sm:text-lg uppercase tracking-wide">
+                          Razorpay Instant Payment
+                        </h4>
+                        <p className="text-[11px] text-blue-200 font-bold uppercase tracking-wider">
+                          UPI • GPay • PhonePe • Cards • NetBanking
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex flex-col items-center gap-2 w-full text-center mt-1">
-                      <p className="text-xs sm:text-sm font-black text-white bg-slate-950/90 px-4 py-2.5 rounded-xl border border-slate-800 tracking-wider flex items-center gap-2 justify-center">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        <span>{t('reg_upi_scan_box_text', 'ഈ QR കോഡ് സ്കാൻ ചെയ്ത് ₹200 അടയ്ക്കുക')}</span>
-                      </p>
+                    <div className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs sm:text-sm font-black px-3.5 py-1.5 rounded-xl uppercase tracking-wider w-fit shrink-0">
+                      Amount: ₹200 (Fixed)
                     </div>
                   </div>
+
+                  <p className="text-xs text-slate-200 font-bold leading-relaxed bg-black/40 p-3.5 rounded-2xl border border-white/10">
+                    പുതിയ അംഗത്വ രജിസ്ട്രേഷൻ ഫീസ് <span className="text-emerald-400 font-extrabold">₹200</span> ആയി സിസ്റ്റം നേരിട്ട് ക്രമീകരിച്ചിരിക്കുന്നു. തുക മാറ്റം വരുത്താൻ സാധിക്കില്ല. താഴെയുള്ള ബട്ടൺ ക്ലിക്ക് ചെയ്ത് Razorpay വഴി നേരിട്ട് തുക അടയ്ക്കാം.
+                  </p>
+
+                  <Button
+                    type="button"
+                    onClick={handleRazorpayRegistration}
+                    disabled={isProcessingRazorpay}
+                    className="w-full h-15 rounded-2xl font-black bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-xl shadow-emerald-500/20 text-xs sm:text-sm uppercase tracking-widest flex items-center justify-center gap-2.5 transition-all hover:scale-[1.01] active:scale-95 cursor-pointer"
+                  >
+                    <ShieldCheck className="w-5 h-5" />
+                    <span>{isProcessingRazorpay ? 'Processing Payment...' : 'Pay ₹200 via Razorpay (₹200 ഓൺലൈൻ അടയ്ക്കുക)'}</span>
+                  </Button>
                 </div>
 
-                <div className="space-y-6">
-                  {/* Payment Date & Time Input fields */}
-                  <div className="grid grid-cols-1 xs:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-slate-700 font-extrabold uppercase text-xs sm:text-sm tracking-wide ml-1 block">
-                        {t('reg_payment_date_label', 'അടച്ച തീയതി (Payment Date)')} <span className="text-brand-magenta font-black">*</span>
-                      </label>
-                      <Input 
-                        type="date"
-                        value={paymentDate}
-                        onChange={(e) => setPaymentDate(e.target.value)}
-                        className="h-14 bg-white border-2 border-slate-200 focus:border-[#0066FF] transition-all rounded-2xl font-bold font-mono text-center text-sm sm:text-base text-slate-900"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-slate-700 font-extrabold uppercase text-xs sm:text-sm tracking-wide ml-1 block">
-                        {t('reg_payment_time_label', 'അടച്ച സമയം (Payment Time)')} <span className="text-brand-magenta font-black">*</span>
-                      </label>
-                      <Input 
-                        type="time"
-                        value={paymentTime}
-                        onChange={(e) => setPaymentTime(e.target.value)}
-                        className="h-14 bg-white border-2 border-slate-200 focus:border-[#0066FF] transition-all rounded-2xl font-bold font-mono text-center text-sm sm:text-base text-slate-900"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Quick Helper Button and indicator */}
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-50 border border-slate-200 p-3.5 sm:p-4 rounded-2xl">
-                    <span className="text-xs sm:text-sm font-bold text-slate-700 leading-tight">
-                      {t('reg_current_time_info', 'തീയതിയും സമയവും ഇപ്പോഴത്തെ സമയത്തേക്ക് സെറ്റ് ചെയ്യുവാൻ:')}
-                    </span>
-                    <Button 
-                      type="button" 
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const today = new Date();
-                        setPaymentDate(today.toISOString().split('T')[0]);
-                        setPaymentTime(today.toTimeString().split(' ')[0].substring(0, 5));
-                        toast.success(t('reg_toast_date_time_set', 'തീയതിയും സമയവും ഇപ്പോഴത്തെ സമയത്തേക്ക് മാറ്റി!'));
-                      }}
-                      className="border-2 border-[#0066FF]/40 text-[#0066FF] hover:bg-[#0066FF]/10 text-xs font-black uppercase px-3.5 h-10 rounded-xl shrink-0 flex items-center gap-1.5 bg-white"
-                    >
-                      {t('reg_use_current_btn', 'ഇപ്പോൾ (Use Current)')}
-                    </Button>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-slate-700 font-extrabold uppercase text-xs sm:text-sm tracking-wide ml-1 block">
-                      {t('reg_txnid_label', 'ട്രാൻസാക്ഷൻ ഐഡി നമ്പർ അടിക്കുക (Enter Transaction ID)')} <span className="text-brand-magenta font-black">*</span>
-                    </label>
-                    <Input 
-                      value={transactionId}
-                      onChange={(e) => setTransactionId(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-                      placeholder="E.g. TXN123456789 or 12-digit UTR"
-                      maxLength={25}
-                      className="h-14 sm:h-15 bg-white border-2 border-slate-200 focus:border-[#0066FF] transition-all rounded-2xl font-black font-mono tracking-wider text-center text-base sm:text-lg text-slate-900 placeholder:text-slate-400 placeholder:font-normal"
-                    />
-                  </div>
-
-                  <p className="text-xs sm:text-sm font-bold text-slate-600 leading-relaxed border-t border-slate-200 pt-4">
-                    {t('reg_txnid_note', '* അടച്ച തുകയുടെ ശരിയായ യു.പി.ഐ റഫറൻസ് നമ്പറോ ട്രാന്സാക്ഷൻ ഐഡിയോ ഇവിടെ നൽകുക. പരിശോധനയ്ക്ക് ശേഷം അഡ്മിൻ പ്രൊഫൈൽ ആക്റ്റീവ് ചെയ്യുന്നതാണ്.')}
-                  </p>
-
-                  <div className="flex flex-col gap-3 pt-2">
-                    <Button 
-                      type="button" 
-                      onClick={handleFinalSubmit}
-                      disabled={transactionId.trim().length < 8}
-                      className="w-full h-14 sm:h-15 rounded-2xl font-black bg-gradient-to-r from-[#0066FF] to-indigo-600 text-white shadow-lg shadow-[#0066FF]/20 hover:shadow-brand-blue/30 transition-all text-xs sm:text-sm uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-40 hover:translate-y-[-1.5px] active:translate-y-0 px-4"
-                    >
-                      {t('reg_complete_btn', 'Complete Registration / രജിസ്റ്റർ ചെയ്യുക')}
-                      <ArrowRight className="w-5 h-5 text-white shrink-0" />
-                    </Button>
-
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      onClick={() => setStep('details')}
-                      className="w-full h-12 sm:h-13 rounded-2xl text-slate-500 hover:text-slate-800 font-bold uppercase tracking-widest text-xs hover:bg-slate-100 transition-all flex items-center justify-center gap-2"
-                    >
-                      <ArrowLeft className="w-4 h-4" /> {t('reg_go_back_btn', 'Go Back / വിവരങ്ങൾ തിരുത്തുക')}
-                    </Button>
-                  </div>
+                <div className="pt-2">
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    onClick={() => setStep('details')}
+                    className="w-full h-12 sm:h-13 rounded-2xl text-slate-500 hover:text-slate-800 font-bold uppercase tracking-widest text-xs hover:bg-slate-100 transition-all flex items-center justify-center gap-2"
+                  >
+                    <ArrowLeft className="w-4 h-4" /> {t('reg_go_back_btn', 'Go Back / വിവരങ്ങൾ തിരുത്തുക')}
+                  </Button>
                 </div>
               </motion.div>
             )}

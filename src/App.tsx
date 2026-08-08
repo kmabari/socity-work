@@ -402,14 +402,18 @@ export default function App() {
   const [loadingStatus, setLoadingStatus] = useState<string>('Initializing...');
   const [fireStatus, setFireStatus] = useState<'online' | 'offline' | 'checking'>('checking');
 
+  const [isGoogleLoggingIn, setIsGoogleLoggingIn] = useState(false);
+
   const handleGoogleLogin = async () => {
+    if (isGoogleLoggingIn) return;
+    setIsGoogleLoggingIn(true);
     const loadingToast = toast.loading('Signing in with Google...');
     setView('loading');
     try {
       await signInWithPopup(auth, googleProvider);
       toast.success('Signed in with Google!', { id: loadingToast });
     } catch (error: any) {
-      console.error("Google login error:", error);
+      console.warn("Google login notification:", error?.code || error?.message);
       setView('login');
       const isCustomDomain = typeof window !== 'undefined' && 
         !window.location.origin.includes('vercel.app') && 
@@ -417,7 +421,9 @@ export default function App() {
         !window.location.origin.includes('127.0.0.1') && 
         !window.location.origin.includes('ais-');
 
-      if (error?.code === 'auth/unauthorized-domain' || isCustomDomain) {
+      if (error?.code === 'auth/popup-closed-by-user' || error?.code === 'auth/cancelled-popup-request' || error?.message?.includes('closed-by-user')) {
+        toast.info('Google sign-in was cancelled.', { id: loadingToast });
+      } else if (error?.code === 'auth/unauthorized-domain' || isCustomDomain) {
         toast.error(
           'ഗൂഗിൾ വൈരിഫൈഡ് ലോഗിൻ നേരിട്ട് പ്രവർത്തിക്കില്ല! കസ്റ്റം ഡൊമൈൻ ആയതു കൊണ്ട് ഗൂഗിൾ സുരക്ഷാ നിയമങ്ങൾ ഇതിനെ തടയുന്നു.', 
           { 
@@ -433,6 +439,8 @@ export default function App() {
       } else {
         toast.error('Google sign-in failed. Please try again.', { id: loadingToast });
       }
+    } finally {
+      setIsGoogleLoggingIn(false);
     }
   };
   useEffect(() => {
@@ -1485,6 +1493,10 @@ export default function App() {
       
       try {
         let nextSerial = 0;
+        let createdMembershipId = '';
+        let isFullyVerifiedActive = false;
+        const isRazorpayPaid = values.paymentMethod === 'Razorpay' && (values.paymentStatus === 'Active' || values.paymentStatus === 'PAYMENT_VERIFIED') && !!values.paymentId && !!values.orderId;
+
         await runTransaction(db, async (transaction) => {
           // Perform all reads first
           const metaDoc = await transaction.get(metadataRef);
@@ -1499,10 +1511,17 @@ export default function App() {
           const memberDistCode = getDistrictCode(values.district);
           const assemblyCode = getAssemblyCode(values.assemblyConstituency);
           const membershipId = generateNewMembershipId(values.district, values.assemblyConstituency, nextSerial);
+          createdMembershipId = membershipId;
 
           const now = new Date();
           const expiry = new Date();
           expiry.setFullYear(now.getFullYear() + 1);
+          
+          // Members require Admin Approval! Even after successful Razorpay payment, status remains 'pending' and isApproved remains false.
+          // Only Admin account creations bypass pending status.
+          const memberStatus = isAdminEmail ? 'active' : 'pending';
+          const memberApproved = isAdminEmail;
+          isFullyVerifiedActive = isAdminEmail;
 
           const newMemberData = {
             uid,
@@ -1512,9 +1531,9 @@ export default function App() {
             registrationDate: serverTimestamp(),
             expiryDate: expiry,
             membershipId,
-            status: 'pending',
-            isPaid: true,
-            isApproved: false,
+            status: memberStatus,
+            isPaid: isRazorpayPaid || isAdminEmail,
+            isApproved: memberApproved,
             isAdmin: isAdminEmail,
             role: isAdminEmail ? 'admin' : (isOperatorEmail ? 'operator' : 'member'),
             serialNo: nextSerial,
@@ -1523,16 +1542,54 @@ export default function App() {
             districtCode: memberDistCode.toUpperCase(),
             constituencyCode: assemblyCode.toUpperCase(),
             membership_type: 'ADHOC_MEMBER',
-            isQuotaCounted: false
+            isQuotaCounted: false,
+            paymentAmount: values.paymentAmount || 200,
+            paymentId: values.paymentId || values.transactionId || '',
+            orderId: values.orderId || '',
+            transactionId: values.transactionId || values.paymentId || '',
+            paymentTime: values.paymentTimeISO || new Date().toISOString(),
+            paymentMethod: values.paymentMethod || 'Razorpay',
+            paymentStatus: isRazorpayPaid ? 'PAYMENT_VERIFIED' : 'Pending Verification',
+            receiptNumber: values.receiptNumber || `RCP-REG-${nextSerial}`
           };
           transaction.set(userRef, newMemberData);
         });
 
+        // Save payment receipt to users/{uid}/receipts subcollection
+        try {
+          const receiptsRef = collection(db, 'users', uid, 'receipts');
+          await addDoc(receiptsRef, {
+            receiptNo: values.receiptNumber || `RCP-REG-${nextSerial}`,
+            receiptType: 'Membership Fee',
+            receiptLabel: 'Membership Registration Receipt',
+            amount: values.paymentAmount || 200,
+            paymentId: values.paymentId || values.transactionId || '',
+            orderId: values.orderId || '',
+            transactionId: values.transactionId || values.paymentId || '',
+            paymentTime: values.paymentTimeISO || new Date().toISOString(),
+            paymentMethod: values.paymentMethod || 'Razorpay',
+            paymentStatus: isRazorpayPaid ? 'PAYMENT_VERIFIED' : 'Pending Verification',
+            status: isRazorpayPaid ? 'Paid' : 'Pending Verification',
+            paymentDate: values.paymentDate || new Date().toISOString().split('T')[0],
+            createdAt: serverTimestamp(),
+            memberId: createdMembershipId
+          });
+        } catch (rErr) {
+          console.warn("Notice saving initial registration receipt:", rErr);
+        }
+
         localStorage.removeItem('hcrs_registration_cache');
         localStorage.removeItem('hcrs_registration_step');
-        setShowCelebration(true);
-        toast.success('Registration Successful! (രജിസ്ട്രേഷൻ വിജയിച്ചു)', { id: loadingToast, duration: 6000 });
-        setView('card');
+
+        if (isAdminEmail) {
+          setShowCelebration(true);
+          toast.success('Registration & Payment Verified! Active Membership Card Issued.', { id: loadingToast, duration: 6000 });
+          setView('card');
+        } else {
+          setShowCelebration(false);
+          toast.success('അപേക്ഷ സമർപ്പിച്ചു & പെയ്മെന്റ് വെരിഫൈ ചെയ്തു! അഡ്മിൻ അപ്രൂവലിനായി കാത്തിരിക്കുന്നു (Payment verified. Pending Admin Approval).', { id: loadingToast, duration: 8000 });
+          setView('login');
+        }
       } catch (txError: any) {
         console.error("Transaction Error:", txError);
         if (txError.message === "QUOTA_FULL") {

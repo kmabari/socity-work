@@ -11,6 +11,7 @@ import BulkImportManager from './BulkImportManager';
 import CommitteeManagement from './CommitteeManagement';
 import BackupRestoreManager from './BackupRestoreManager';
 import CampaignTemplateManager from './CampaignTemplateManager';
+import AdminReportsTab from './AdminReportsTab';
 import { 
   Crown,
   Users, 
@@ -2484,6 +2485,9 @@ export default function AdminDashboard({
                   <TabsTrigger value="valid_active" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex-1 md:flex-none py-2 px-3 transition-all">
                     Active & Valid (വാലിഡിറ്റിയുള്ളവർ) <Badge className="ml-1.5 bg-green-100 text-green-600 border-none text-[8px] px-1.5 py-0">{validActiveCount}</Badge>
                   </TabsTrigger>
+                  <TabsTrigger value="reports" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-sm font-black text-[10px] uppercase text-emerald-700 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400 rounded-lg flex-1 md:flex-none py-2 px-3 transition-all">
+                    📊 Payment & Reports
+                  </TabsTrigger>
                   {!isSecondary && (
                     <>
                       <TabsTrigger value="quotas" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
@@ -2768,6 +2772,16 @@ export default function AdminDashboard({
                   )}
                 </div>
              </Card>
+          </TabsContent>
+          <TabsContent value="reports">
+            <AdminReportsTab 
+              members={members} 
+              onApprove={onApprove} 
+              onViewDetails={setViewingMember} 
+              DISTRICTS={DISTRICTS} 
+              userDistrict={user?.district} 
+              isSuperAdmin={isSuperAdmin} 
+            />
           </TabsContent>
           <TabsContent value="list">
             {otherDistrictMatch && (

@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useI18n } from './lib/i18n';
 import { motion } from 'motion/react';
-import { Search, ArrowRight, ArrowLeft, ShieldCheck, Heart, CreditCard, Receipt } from 'lucide-react';
+import { Search, ArrowRight, ArrowLeft, ShieldCheck, Heart, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { db, handleFirestoreError, OperationType } from './lib/firebase';
-import { collection, query, where, getDocs, doc, updateDoc, serverTimestamp, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, serverTimestamp, limit, addDoc } from 'firebase/firestore';
 import { UserProfile } from './types';
 import Logo from './Logo';
+import { processRazorpayPayment } from './lib/razorpay';
 
 interface RenewalFormProps {
   onBack: () => void;
@@ -17,32 +18,108 @@ interface RenewalFormProps {
   initialMobile?: string;
 }
 
-const UPI_PAYLOAD = "upi://pay?pa=9846431909@okbizaxis&pn=Member&am=100&tn=HCRS%20RENEWAL";
-
-const QR_MIRRORS = [
-  `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(UPI_PAYLOAD)}`,
-  `https://quickchart.io/qr?text=${encodeURIComponent(UPI_PAYLOAD)}&size=300`,
-  `https://chart.googleapis.com/chart?cht=qr&chs=300x300&chl=${encodeURIComponent(UPI_PAYLOAD)}`
-];
-
 export default function RenewalForm({ onBack, onSuccess, initialMobile }: RenewalFormProps) {
   const { t } = useI18n();
   const [step, setStep] = useState<'search' | 'confirm' | 'payment'>('search');
   const [searchQuery, setSearchQuery] = useState(initialMobile || '');
   const [searching, setSearching] = useState(false);
   const [foundMember, setFoundMember] = useState<UserProfile | null>(null);
-  const [transactionId, setTransactionId] = useState('');
-  const [paymentDate, setPaymentDate] = useState(() => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-  });
-  const [paymentTime, setPaymentTime] = useState(() => {
-    const today = new Date();
-    return today.toTimeString().split(' ')[0].substring(0, 5);
-  });
-  const [submitting, setSubmitting] = useState(false);
-  const [mirrorIndex, setMirrorIndex] = useState(0);
-  const [qrSrc, setQrSrc] = useState(QR_MIRRORS[0]);
+  const [isProcessingRazorpay, setIsProcessingRazorpay] = useState(false);
+
+  const handleRazorpayRenewal = async () => {
+    if (!foundMember) return;
+    setIsProcessingRazorpay(true);
+    const loadingToast = toast.loading('Initiating Razorpay Renewal Payment...');
+    try {
+      const paymentDetails = await processRazorpayPayment({
+        paymentType: 'renewal',
+        memberId: foundMember.uid,
+        mobile: foundMember.mobile,
+        name: foundMember.name
+      });
+
+      toast.loading('Saving renewal payment record to database...', { id: loadingToast });
+
+      const memberRef = doc(db, 'users', foundMember.uid);
+      const now = new Date();
+      
+      // Calculate extended expiry date (current expiry + 1 year, or today + 1 year)
+      let newExpiryDate = new Date();
+      if (foundMember.expiryDate) {
+        const expD = (foundMember.expiryDate as any).toDate ? (foundMember.expiryDate as any).toDate() : ((foundMember.expiryDate as any).seconds ? new Date((foundMember.expiryDate as any).seconds * 1000) : new Date(foundMember.expiryDate as any));
+        if (!isNaN(expD.getTime()) && expD.getTime() > Date.now()) {
+          newExpiryDate = new Date(expD);
+          newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
+        } else {
+          newExpiryDate.setFullYear(now.getFullYear() + 1);
+        }
+      } else {
+        newExpiryDate.setFullYear(now.getFullYear() + 1);
+      }
+
+      const todayStr = now.toISOString().split('T')[0];
+      const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
+
+      const renewalData = {
+        status: 'active',
+        isApproved: true,
+        renewalPending: false,
+        renewalTransactionId: paymentDetails.paymentId,
+        renewalDate: serverTimestamp(),
+        renewalPaymentDate: todayStr,
+        renewalPaymentTime: timeStr,
+        paymentAmount: 100,
+        paymentId: paymentDetails.paymentId,
+        orderId: paymentDetails.orderId,
+        transactionId: paymentDetails.paymentId,
+        paymentTime: paymentDetails.paymentTime,
+        paymentMethod: 'Razorpay',
+        paymentStatus: 'Renewed',
+        receiptNumber: paymentDetails.receiptNumber,
+        expiryDate: newExpiryDate
+      };
+
+      await updateDoc(memberRef, renewalData);
+
+      // Save receipt to users/{uid}/receipts subcollection
+      try {
+        const receiptsRef = collection(db, 'users', foundMember.uid, 'receipts');
+        await addDoc(receiptsRef, {
+          receiptNo: paymentDetails.receiptNumber,
+          receiptType: 'Membership Renewal',
+          receiptLabel: 'Membership Renewal Receipt',
+          amount: 100,
+          paymentId: paymentDetails.paymentId,
+          orderId: paymentDetails.orderId,
+          transactionId: paymentDetails.paymentId,
+          paymentTime: paymentDetails.paymentTime,
+          paymentMethod: 'Razorpay',
+          paymentStatus: 'Renewed',
+          status: 'Paid',
+          paymentDate: todayStr,
+          createdAt: serverTimestamp(),
+          memberId: foundMember.membershipId || foundMember.uid
+        });
+      } catch (rErr) {
+        console.warn("Notice saving renewal receipt document:", rErr);
+      }
+
+      toast.success('Membership Renewed Successfully! (അംഗത്വം വിജയകരമായി പുതുക്കി)', { id: loadingToast });
+
+      const updatedMember: UserProfile = {
+        ...foundMember,
+        ...renewalData,
+        expiryDate: newExpiryDate
+      } as UserProfile;
+
+      onSuccess(updatedMember);
+    } catch (err: any) {
+      console.error('Razorpay Renewal Error:', err);
+      toast.error(err.message || 'Renewal payment failed or cancelled.', { id: loadingToast });
+    } finally {
+      setIsProcessingRazorpay(false);
+    }
+  };
 
   // Check if member has active validity
   const getMemberValidityInfo = (member: UserProfile) => {
@@ -134,65 +211,6 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
       toast.error('Search failed. Please try again.');
     } finally {
       setSearching(false);
-    }
-  };
-
-  const handleRenewalSubmit = async () => {
-    if (!transactionId) {
-      toast.error('Please enter payment transaction ID');
-      return;
-    }
-
-    setSubmitting(true);
-    const loadingToast = toast.loading('Processing renewal request...');
-    
-    try {
-      if (!foundMember) return;
-
-      // Check for duplicate Transaction ID to prevent double-submitting a duplicate screenshot/ID
-      const inputTxId = transactionId.toString().toUpperCase().trim().replace(/[^A-Z0-9]/g, '');
-      if (inputTxId && !['CASH/OFFLINE', 'MANUAL_OFFLINE', 'CASH', 'OFFLINE', 'FREE'].includes(inputTxId)) {
-        toast.loading('Checking transaction ID... / ട്രാൻസാക്ഷൻ ഐഡി പരിശോധിക്കുന്നു...', { id: loadingToast });
-        const usersRef = collection(db, 'users');
-        const txQuery1 = query(usersRef, where('transactionId', '==', inputTxId), where('status', 'in', ['pending', 'active', 'offline', 'disabled']), limit(1));
-        const txQuery2 = query(usersRef, where('renewalTransactionId', '==', inputTxId), where('status', 'in', ['pending', 'active', 'offline', 'disabled']), limit(1));
-        const [txSnap1, txSnap2] = await Promise.all([getDocs(txQuery1), getDocs(txQuery2)]);
-        if (!txSnap1.empty || !txSnap2.empty) {
-          throw new Error('ഈ ട്രാൻസാക്ഷൻ ഐഡി ഇതിനകം തന്നെ സിസ്റ്റത്തിൽ ഉപയോഗിച്ചതാണ്. ദയവായി ശരിയായ മറ്റൊരു ഐഡി നൽകുക. (This Transaction ID is already used in our system. Please enter a unique transaction ID.)');
-        }
-      }
-      
-      const memberRef = doc(db, 'users', foundMember.uid);
-      await updateDoc(memberRef, {
-        status: 'pending', // Re-verify renewal
-        isApproved: false,
-        renewalPending: true,
-        renewalTransactionId: transactionId,
-        renewalDate: serverTimestamp(),
-        renewalPaymentDate: paymentDate,
-        renewalPaymentTime: paymentTime,
-        // We don't change membershipId or other details
-      });
-      
-      toast.success('Renewal request submitted! Admin will verify soon.', { id: loadingToast });
-      
-      // Pass the fully updated member state to parent immediately
-      const updatedMember: UserProfile = {
-        ...foundMember,
-        status: 'pending',
-        isApproved: false,
-        renewalPending: true,
-        renewalTransactionId: transactionId,
-        renewalPaymentDate: paymentDate,
-        renewalPaymentTime: paymentTime,
-      };
-      
-      onSuccess(updatedMember);
-    } catch (error) {
-      toast.error('Renewal failed. Please try again.', { id: loadingToast });
-      handleFirestoreError(error, OperationType.UPDATE, `users/${foundMember?.uid}`);
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -314,131 +332,52 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
           )}
 
           {step === 'payment' && (
-            <CardContent className="p-8 space-y-8">
-              <div className="bg-[#030e1d] text-white rounded-[32px] p-6 md:p-8 border-3 border-brand-blue shadow-2xl relative overflow-hidden transition-all duration-300">
-                <div className="absolute top-0 right-0 w-36 h-36 bg-brand-blue/20 blur-3xl pointer-events-none" />
-                <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-brand-magenta/15 blur-3xl pointer-events-none" />
-                <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-brand-blue to-brand-magenta" />
-                
-                <h4 className="font-extrabold text-white text-base md:text-lg flex items-center justify-center sm:justify-start gap-3 mb-4 uppercase tracking-wider">
-                  <span className="p-1.5 rounded-xl bg-brand-blue/20 text-brand-blue flex items-center justify-center animate-pulse">
-                    <Receipt className="w-5 h-5 text-brand-magenta" />
-                  </span>
-                  {t('reg_upi_qr_title', 'പേയ്മെന്റ് ക്യു ആർ കോഡ് (UPI Payment QR)')}
-                </h4>
-                
-                <p className="text-xs text-slate-200 font-extrabold leading-relaxed text-center sm:text-left bg-brand-blue/5 p-3 rounded-2xl border border-brand-blue/20 mb-5">
-                  {t('renewal_upi_scan_instruction', 'Scan the QR code below using GPay, PhonePe, or Paytm to pay ₹100 for 1-Year Membership Renewal. (താഴെയുള്ള ക്യു ആർ കോഡ് സ്കാൻ ചെയ്ത് ₹100 അടയ്ക്കുക):')}
-                </p>
-
-                <div className="flex flex-col items-center justify-center gap-4 bg-slate-900/60 p-6 rounded-[24px] border-2 border-slate-800 shadow-inner">
-                  {/* Public UPI Payment QR with Proxy support for Palakkad cellular ISP blocks */}
-                  <div className="bg-white p-3 rounded-2xl shadow-xl shrink-0">
-                    <img 
-                      src={qrSrc}
-                      onError={() => {
-                        if (mirrorIndex < QR_MIRRORS.length - 1) {
-                          const nextIndex = mirrorIndex + 1;
-                          setMirrorIndex(nextIndex);
-                          setQrSrc(QR_MIRRORS[nextIndex]);
-                        }
-                      }}
-                      alt="UPI Payment QR Code"
-                      className="w-44 h-44 object-contain"
-                      referrerPolicy="no-referrer"
-                    />
+            <CardContent className="p-8 space-y-6">
+              {/* Razorpay Online Payment Integration for Renewal */}
+              <div className="bg-gradient-to-br from-blue-900 via-slate-900 to-indigo-950 text-white rounded-[28px] p-6 border-2 border-brand-blue shadow-2xl relative overflow-hidden space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-brand-blue/30 flex items-center justify-center text-white border border-brand-blue/50 shrink-0 shadow-inner">
+                      <CreditCard className="w-5 h-5 text-brand-magenta" />
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-white text-base uppercase tracking-wide">
+                        Razorpay Renewal Payment
+                      </h4>
+                      <p className="text-[10px] text-blue-200 font-bold uppercase tracking-wider">
+                        UPI • GPay • PhonePe • Cards • NetBanking
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex flex-col items-center gap-2 w-full text-center mt-1">
-                    <p className="text-[10px] font-black text-white bg-slate-950/80 px-4 py-2 rounded-lg border border-slate-800 tracking-wider flex items-center gap-1.5 justify-center">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                      {t('renewal_upi_scan_box_text', 'ഈ QR കോഡ് സ്കാൻ ചെയ്ത് ₹100 അടയ്ക്കുക')}
-                    </p>
+                  <div className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-black px-3 py-1.5 rounded-xl uppercase tracking-wider w-fit shrink-0">
+                    Fee: ₹100 (Fixed)
                   </div>
                 </div>
+
+                <p className="text-xs text-slate-200 font-bold leading-relaxed bg-black/40 p-3 rounded-xl border border-white/10 text-left">
+                  അംഗത്വം പുതുക്കൽ ഫീസ് <span className="text-emerald-400 font-extrabold">₹100</span> ആയി സിസ്റ്റം ഓട്ടോമാറ്റിക് ആയി ക്രമീകരിച്ചിരിക്കുന്നു. Razorpay വഴി തൽക്ഷണം പുതുക്കൽ പൂർത്തിയാക്കാം.
+                </p>
+
+                <Button
+                  type="button"
+                  onClick={handleRazorpayRenewal}
+                  disabled={isProcessingRazorpay}
+                  className="w-full h-14 rounded-2xl font-black bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-xl shadow-emerald-500/20 text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-95 cursor-pointer"
+                >
+                  <ShieldCheck className="w-5 h-5" />
+                  <span>{isProcessingRazorpay ? 'Processing Renewal...' : 'Pay ₹100 via Razorpay (₹100 അടയ്ക്കുക)'}</span>
+                </Button>
               </div>
 
-              <div className="space-y-5">
-                {/* Payment Date & Time Input fields */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2 text-left">
-                    <label className="text-slate-500 font-black uppercase text-[10px] tracking-widest ml-1">
-                      {t('reg_payment_date_label', 'അടച്ച തീയതി (Payment Date)')} <span className="text-brand-magenta font-black">*</span>
-                    </label>
-                    <Input 
-                      type="date"
-                      value={paymentDate}
-                      onChange={(e) => setPaymentDate(e.target.value)}
-                      className="h-12 bg-white border-2 border-slate-200 focus:border-[#0066FF]/80 focus:ring-0 transition-all rounded-xl font-bold font-mono text-center text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2 text-left">
-                    <label className="text-slate-500 font-black uppercase text-[10px] tracking-widest ml-1">
-                      {t('reg_payment_time_label', 'അടച്ച സമയം (Payment Time)')} <span className="text-brand-magenta font-black">*</span>
-                    </label>
-                    <Input 
-                      type="time"
-                      value={paymentTime}
-                      onChange={(e) => setPaymentTime(e.target.value)}
-                      className="h-12 bg-white border-2 border-slate-200 focus:border-[#0066FF]/80 focus:ring-0 transition-all rounded-xl font-bold font-mono text-center text-sm"
-                    />
-                  </div>
-                </div>
-
-                {/* Quick Helper Button and indicator */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-slate-50 border border-slate-100 p-3 rounded-2xl">
-                  <span className="text-[10px] font-bold text-slate-500 leading-tight text-left">
-                    {t('reg_current_time_info', 'തീയതിയും സമയവും ഇപ്പോഴത്തെ സമയത്തേക്ക് സെറ്റ് ചെയ്യുവാൻ:')}
-                  </span>
-                  <Button 
-                    type="button" 
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const today = new Date();
-                      setPaymentDate(today.toISOString().split('T')[0]);
-                      setPaymentTime(today.toTimeString().split(' ')[0].substring(0, 5));
-                      toast.success(t('reg_toast_date_time_set', 'തീയതിയും സമയവും ഇപ്പോഴത്തെ സമയത്തേക്ക് മാറ്റി!'));
-                    }}
-                    className="border border-[#0066FF]/30 text-[#0066FF] hover:bg-[#0066FF]/5 text-[9px] font-black uppercase px-2.5 h-8 rounded-lg shrink-0 flex items-center gap-1.5 bg-white"
-                  >
-                    {t('reg_use_current_btn', 'ഇപ്പോൾ (Use Current)')}
-                  </Button>
-                </div>
-
-                <div className="space-y-2 text-left">
-                  <label className="text-slate-500 font-black uppercase text-[10px] tracking-widest ml-1">
-                    {t('reg_txnid_label', 'ട്രാൻസാക്ഷൻ ഐഡി നമ്പർ അടിക്കുക (Enter Transaction ID)')} <span className="text-brand-magenta font-black">*</span>
-                  </label>
-                  <Input 
-                    value={transactionId}
-                    onChange={(e) => setTransactionId(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-                    placeholder="E.g. TXN123456789 or 12-digit UTR"
-                    maxLength={25}
-                    className="h-14 bg-white border-2 border-slate-200 focus:border-[#0066FF]/80 focus:ring-0 transition-all rounded-2xl font-black font-mono tracking-wider text-center text-lg placeholder:text-slate-350"
-                  />
-                </div>
-
-                <p className="text-[10px] font-bold text-slate-400 leading-relaxed text-left border-t border-slate-100 pt-3">
-                  {t('renewal_txnid_note', '* ഇവിടെ ശരിയായ യു.പി.ഐ നമ്പർ അല്ലെങ്കിൽ റഫറൻസ് നമ്പറുകൾ നൽകി പുതുക്കൽ പൂർത്തിയാക്കുക. വെരിഫിക്കേഷന് ശേഷം അംഗത്വം സജീവമാകും.')}
-                </p>
-
-                <div className="flex flex-col gap-2.5">
-                  <Button 
-                    onClick={handleRenewalSubmit}
-                    disabled={submitting || transactionId.trim().length < 8}
-                    className="w-full h-14 rounded-2xl font-black bg-gradient-to-r from-[#0066FF] to-indigo-600 text-white shadow-lg shadow-[#0066FF]/15 hover:shadow-brand-blue/25 transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-40 hover:translate-y-[-1px] active:translate-y-0"
-                  >
-                    {submitting ? t('renewal_submitting', 'Submitting request...') : t('renewal_complete_btn', 'Complete Renewal / അപ്ഡേറ്റ് ചെയ്യുക')}
-                  </Button>
-                  
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => setStep('confirm')}
-                    className="w-full h-12 rounded-2xl text-slate-400 hover:text-slate-600 font-black uppercase tracking-widest text-[10px] hover:bg-slate-50 transition-all flex items-center justify-center gap-1.5"
-                  >
-                    {t('reg_go_back_btn', 'Go Back / വിവരങ്ങൾ തിരുത്തുക')}
-                  </Button>
-                </div>
+              <div className="pt-2">
+                <Button 
+                  variant="ghost" 
+                  onClick={() => setStep('confirm')}
+                  className="w-full h-12 rounded-2xl text-slate-400 hover:text-slate-600 font-black uppercase tracking-widest text-[10px] hover:bg-slate-50 transition-all flex items-center justify-center gap-1.5"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  {t('reg_go_back_btn', 'Go Back / വിവരങ്ങൾ തിരുത്തുക')}
+                </Button>
               </div>
             </CardContent>
           )}

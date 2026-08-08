@@ -18,6 +18,13 @@ export interface UserProfile {
   paymentProofUrl?: string;
   transactionId?: string;
   paymentTime?: string;
+  paymentTimeISO?: string;
+  paymentDate?: string;
+  renewalPaymentDate?: string;
+  paymentStatus?: string;
+  paymentId?: string;
+  orderId?: string;
+  paymentAmount?: number;
   issueDate?: any;
   expiryDate?: any;
   registrationDate: any;
