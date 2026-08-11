@@ -595,12 +595,12 @@ export default function LandingPage({
                       ക്യാമ്പയിൻ പങ്കുവെക്കാം (Public Sharing)
                     </h4>
                     
-                    <p className="text-xs text-slate-350 font-medium leading-relaxed">
+                    <p className="text-xs text-slate-200 font-medium leading-relaxed">
                       ഈ ക്യാമ്പയിൻ ലിങ്ക് മറ്റുള്ളവരിലേക്ക് ഷെയർ ചെയ്തുകൊണ്ട് എല്ലാവരെയും ഇതിന്റെ ഭാഗമാക്കൂ.
                     </p>
 
                     {/* Public Campaign Link Box */}
-                    <div className="bg-slate-950/40 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-slate-300 select-all break-all shadow-inner">
+                    <div className="bg-slate-950/80 border border-white/20 rounded-xl px-3 py-2 text-xs font-mono text-amber-300 select-all break-all shadow-inner">
                       {campaignUrl}
                     </div>
 
@@ -698,7 +698,7 @@ export default function LandingPage({
                         <span className={cn(
                           "text-[9px] font-extrabold tracking-widest uppercase px-3.5 py-1.5 rounded-lg border",
                           isAutoPlaying 
-                            ? "bg-emerald-50 text-emerald-850 border-emerald-150 animate-pulse"
+                            ? "bg-emerald-50 text-emerald-800 border-emerald-200 animate-pulse"
                             : "bg-amber-50/50 text-amber-800 border-amber-100"
                         )}>
                           {isAutoPlaying 
@@ -858,7 +858,7 @@ export default function LandingPage({
                             setUserInteracted(false);
                             toast.success('തിരഞ്ഞെടുപ്പ് ആദ്യ അറിയിപ്പിലേക്ക് റീസെറ്റ് ചെയ്തിരിക്കുന്നു.');
                           }}
-                          className="bg-slate-50 text-slate-650 hover:text-slate-900 hover:bg-slate-100 text-xs font-bold px-4 py-2.5 rounded-xl border border-slate-200 flex items-center justify-center gap-2 flex-1 sm:flex-initial transition-colors"
+                          className="bg-slate-50 text-slate-600 hover:text-slate-900 hover:bg-slate-100 text-xs font-bold px-4 py-2.5 rounded-xl border border-slate-200 flex items-center justify-center gap-2 flex-1 sm:flex-initial transition-colors"
                         >
                           <RefreshCw className="w-3.5 h-3.5 text-[#1a2b5c]" />
                           ആദ്യം മുതൽ (RESET)
@@ -2047,7 +2047,7 @@ export default function LandingPage({
                       <Briefcase className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold text-slate-905 uppercase tracking-tight leading-tight">
+                      <h3 className="text-lg font-semibold text-slate-900 uppercase tracking-tight leading-tight">
                         Reclaiming Livelihoods
                       </h3>
                       <p className="text-[10px] text-[#1a2b5c] font-bold uppercase tracking-wider mt-1">
@@ -2075,7 +2075,7 @@ export default function LandingPage({
                       <Scale className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold text-slate-905 uppercase tracking-tight leading-tight">
+                      <h3 className="text-lg font-semibold text-slate-900 uppercase tracking-tight leading-tight">
                         Stand For Justice
                       </h3>
                       <p className="text-[10px] sm:text-[11px] text-[#c9a227] font-bold uppercase tracking-wider mt-1">
@@ -2103,7 +2103,7 @@ export default function LandingPage({
                       <Shield className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold text-slate-905 uppercase tracking-tight leading-tight">
+                      <h3 className="text-lg font-semibold text-slate-900 uppercase tracking-tight leading-tight">
                         Guaranteed Privacy
                       </h3>
                       <p className="text-[10px] sm:text-[11px] text-emerald-600 font-bold uppercase tracking-wider mt-1">
@@ -2301,7 +2301,7 @@ export default function LandingPage({
                       <div className="w-6 h-6 rounded-[4px] bg-[#1a2b5c] text-white flex items-center justify-center shrink-0">
                         <span className="font-semibold text-xs">{idx + 1}</span>
                       </div>
-                      <p className="text-xs font-normal text-slate-650 leading-relaxed pt-0.5">{text}</p>
+                      <p className="text-xs font-normal text-slate-600 leading-relaxed pt-0.5">{text}</p>
                     </div>
                   ))}
                 </div>
@@ -2389,35 +2389,35 @@ export default function LandingPage({
                         
                         <div className="space-y-1.5 pl-3 border-l-2 border-[#1a2b5c]/30 pb-0.5 mt-2">
                           <p className="text-[10px] font-bold text-[#1a2b5c] uppercase tracking-wider mb-1">The information collected will help identify:</p>
-                          <p className="flex items-start gap-1.5 text-[11px] text-slate-705">
+                          <p className="flex items-start gap-1.5 text-[11px] text-slate-700">
                             <span className="text-[#c9a227] shrink-0">•</span> Members facing urgent financial difficulties
                           </p>
-                          <p className="flex items-start gap-1.5 text-[11px] text-slate-705">
+                          <p className="flex items-start gap-1.5 text-[11px] text-slate-700">
                             <span className="text-[#c9a227] shrink-0">•</span> Members requiring priority consideration for future support initiatives
                           </p>
-                          <p className="flex items-start gap-1.5 text-[11px] text-slate-705">
+                          <p className="flex items-start gap-1.5 text-[11px] text-slate-700">
                             <span className="text-[#c9a227] shrink-0">•</span> Members who wish to continue participating in future business opportunities
                           </p>
-                          <p className="flex items-start gap-1.5 text-[11px] text-slate-705">
+                          <p className="flex items-start gap-1.5 text-[11px] text-slate-700">
                             <span className="text-[#c9a227] shrink-0">•</span> Members who prefer settlement and closure of their financial involvement upon resolution
                           </p>
                         </div>
                         
-                        <p className="text-slate-500 text-[11px]">
+                        <p className="text-slate-600 text-[11px]">
                           The information submitted through this registry will be compiled, verified, and may be shared with the Highrich Management and Legal Team for reference, planning, verification, and member support activities.
                         </p>
                         
-                        <p className="text-slate-500 text-[11px]">
+                        <p className="text-slate-600 text-[11px]">
                           This registry is intended solely for information collection, member verification, and support planning purposes.
                         </p>
                         
-                        <p className="bg-[#1a2b5c]/3 border border-[#1a2b5c]/10 p-3.5 rounded-[6px] text-[10px] text-slate-600 font-semibold leading-normal">
+                        <p className="bg-[#1a2b5c]/5 border border-[#1a2b5c]/15 p-3.5 rounded-[6px] text-[10px] text-slate-700 font-semibold leading-normal">
                           <strong>Note:</strong> Submission of information does not constitute a legal claim, compensation claim, or guarantee of payment.
                         </p>
                       </div>
 
-                      <div className="bg-[#c9a227]/5 border border-amber-100 p-4 rounded-[6px] mt-4">
-                        <p className="text-xs font-semibold text-slate-850 leading-relaxed">
+                      <div className="bg-[#c9a227]/10 border border-amber-200 p-4 rounded-[6px] mt-4">
+                        <p className="text-xs font-semibold text-slate-800 leading-relaxed">
                           വിവര രജിസ്ട്രി ഫോം ആക്സസ് ചെയ്യുന്നതിനായി ദയവായി നിങ്ങളുടെ രജിസ്റ്റർ ചെയ്ത മൊബൈൽ നമ്പർ നൽകി വേരിഫൈ ചെയ്യുക:
                           <span className="text-[10px] text-[#c9a227] block mt-1.5 uppercase font-bold tracking-wider">Please enter your registered mobile number to check eligibility and proceed to the registry.</span>
                         </p>
@@ -2537,8 +2537,8 @@ export default function LandingPage({
 
                     <div className="bg-slate-50 border border-slate-200 p-5 rounded-[6px] flex items-center justify-between shadow-sm">
                       <div>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Registered Number</p>
-                        <p className="text-base font-semibold text-slate-850 tracking-tight font-mono mt-2">{claimMobile}</p>
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none">Registered Number</p>
+                        <p className="text-base font-semibold text-slate-800 tracking-tight font-mono mt-2">{claimMobile}</p>
                       </div>
                       <Button 
                         variant="outline" 
@@ -2605,7 +2605,7 @@ export default function LandingPage({
 
                         {userHasSubmittedClaim && (
                           <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-[6px] p-4 space-y-1.5 text-xs font-semibold">
-                            <p className="font-bold text-[11px] text-amber-850 uppercase tracking-wider flex items-center gap-2">
+                            <p className="font-bold text-[11px] text-amber-800 uppercase tracking-wider flex items-center gap-2">
                               <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0 block animate-pulse" />
                               പ്രധാന അറിയിപ്പ് (Important Notice)
                             </p>
@@ -2987,7 +2987,7 @@ export default function LandingPage({
                   <Info className="w-4 h-4 text-[#1a2b5c] shrink-0 mt-0.5" />
                   <div>
                     <h5 className="font-bold text-slate-800 text-[10px] uppercase tracking-wider">Operational Hours / പ്രവൃത്തി സമയം</h5>
-                    <p className="text-[11px] text-slate-650 mt-1 leading-relaxed">
+                    <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
                       Our official support team operates from <strong>Monday to Saturday (09:30 AM to 05:30 PM IST)</strong>. We are closed on Sundays and Public Holidays.
                       <br/>
                       പ്രവൃത്തി സമയം: തിങ്കൾ മുതൽ ശനി വരെ രാവിലെ 09:30 മുതൽ വൈകുന്നേരം 05:30 വരെ. ഞായറാഴ്ച അവധിയായിരിക്കും.

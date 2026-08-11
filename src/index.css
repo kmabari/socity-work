@@ -105,16 +105,15 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
-    background-color: #0d1b3e !important;
-    color: #F8FAFC !important;
-    background-image: none !important;
+    @apply bg-background text-foreground font-sans antialiased;
+    background-color: #0d1b3e;
+    color: #F8FAFC;
     background-attachment: fixed;
   }
   html {
-    @apply font-sans antialiased text-[#F8FAFC];
-    background-color: #0d1b3e !important;
-    color: #F8FAFC !important;
+    @apply font-sans antialiased;
+    background-color: #0d1b3e;
+    color: #F8FAFC;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-heading tracking-tight font-semibold;
@@ -135,10 +134,10 @@
   }
   
   .glass-card {
-    background-color: rgba(255, 255, 255, 0.8) !important;
-    backdrop-filter: blur(12px) !important;
-    border: 1px solid rgba(226, 232, 240, 0.8) !important;
-    box-shadow: 0 10px 30px -10px rgba(26, 43, 92, 0.06) !important;
+    background-color: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    box-shadow: 0 10px 30px -10px rgba(26, 43, 92, 0.06);
   }
 }
 
@@ -159,74 +158,32 @@
   background: #c9a227;
 }
 
-/* Force light style variables on specific components */
-.bg-white, [class*="bg-white"] {
-  background-color: #FFFFFF !important;
-}
-
-.bg-slate-50, [class*="bg-slate-50"] {
-  background-color: #F8FAFC !important;
-}
-
-.bg-slate-100, [class*="bg-slate-100"] {
-  background-color: #F1F5F9 !important;
-}
-
-.bg-slate-200, [class*="bg-slate-200"] {
-  background-color: #E2E8F0 !important;
-}
-
-.bg-slate-300, [class*="bg-slate-300"] {
-  background-color: #CBD5E1 !important;
-}
-
-/* Light text values */
-.text-slate-900, .text-gray-900, .text-slate-800, .text-slate-700, .text-gray-800, .text-slate-950, .text-slate-850 {
-  color: #0F172A !important;
-}
-
-.text-slate-500, .text-slate-600, .text-gray-500, .text-gray-600 {
-  color: #64748B !important;
-}
-
-.text-slate-400, .text-gray-400 {
-  color: #94A3B8 !important;
-}
-
-.border-slate-100, .border-slate-150, .border-slate-200, .border-slate-300, .border-gray-100, .border-gray-200 {
-  border-color: #E2E8F0 !important;
-}
-
 /* Input styling */
 input, select, textarea {
-  background-color: #FFFFFF !important;
-  color: #0F172A !important;
-  border-color: #E2E8F0 !important;
+  background-color: #FFFFFF;
+  color: #0F172A;
+  border-color: #E2E8F0;
 }
 input:focus, select:focus, textarea:focus {
-  border-color: #233875 !important;
-  box-shadow: 0 0 12px rgba(35, 56, 117, 0.15) !important;
-  background-color: #FFFFFF !important;
+  border-color: #233875;
+  box-shadow: 0 0 12px rgba(35, 56, 117, 0.15);
+  background-color: #FFFFFF;
 }
 
 /* Hover scales */
 button, .btn {
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
-}
-button:hover, .btn:hover {
-  transform: translateY(-1px) scale(1.02) !important;
-  box-shadow: 0 8px 20px -6px rgba(26, 43, 92, 0.12) !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Brand Button style gradients (Blue + Pink) */
 .bg-brand-magenta, .from-brand-magenta, .to-pink-500 {
-  background: linear-gradient(135deg, #c9a227 0%, #dfb634 100%) !important;
-  color: #FFFFFF !important;
+  background: linear-gradient(135deg, #c9a227 0%, #dfb634 100%);
+  color: #FFFFFF;
 }
 
 .bg-brand-blue, .from-brand-blue, .to-brand-blue {
-  background: linear-gradient(135deg, #1a2b5c 0%, #233875 100%) !important;
-  color: #FFFFFF !important;
+  background: linear-gradient(135deg, #1a2b5c 0%, #233875 100%);
+  color: #FFFFFF;
 }
 
 /* Premium Shimmer for Blue + Pink */
@@ -240,28 +197,17 @@ button:hover, .btn:hover {
 }
 
 .shimmer-button {
-  background: linear-gradient(120deg, #1a2b5c 30%, #233875 40%, #1a2b5c 50%) !important;
-  background-size: 200% auto !important;
+  background: linear-gradient(120deg, #1a2b5c 30%, #233875 40%, #1a2b5c 50%);
+  background-size: 200% auto;
 }
 .shimmer-button:hover {
-  animation: shimmer-shine 1.5s infinite linear !important;
-  box-shadow: 0 8px 25px rgba(26, 43, 92, 0.25) !important;
-}
-
-/* Premium organization styling rules */
-.glass-card, .card, [class*="rounded-[36px]"], [class*="rounded-3xl"] {
-  background-color: #FFFFFF !important;
-  box-shadow: 0 10px 30px -10px rgba(26, 43, 92, 0.06), 0 1px 3px rgba(26, 43, 92, 0.02) !important;
-  border: 1px solid #E2E8F0 !important;
-}
-.glass-card:hover, .card:hover {
-  box-shadow: 0 20px 40px -15px rgba(26, 43, 92, 0.12), 0 1px 4px rgba(26, 43, 92, 0.03) !important;
-  border-color: #CBD5E1 !important;
+  animation: shimmer-shine 1.5s infinite linear;
+  box-shadow: 0 8px 25px rgba(26, 43, 92, 0.25);
 }
 
 /* Active status badge pulsing */
-.pulse-badge, [class*="bg-green-500"], [class*="bg-emerald-500"] {
-  animation: pulse-blue 2.5s infinite !important;
+.pulse-badge {
+  animation: pulse-blue 2.5s infinite;
 }
 
 @keyframes pulse-blue {
@@ -284,18 +230,18 @@ button:hover, .btn:hover {
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .menu-item-hover:hover {
-  transform: translateX(3px) !important;
-  color: #c9a227 !important;
+  transform: translateX(3px);
+  color: #c9a227;
 }
 
 /* Loading Spinner */
 .custom-spinner {
-  border: 3px solid rgba(26, 43, 92, 0.1) !important;
-  border-top: 3px solid #c9a227 !important;
-  border-radius: 50% !important;
+  border: 3px solid rgba(26, 43, 92, 0.1);
+  border-top: 3px solid #c9a227;
+  border-radius: 50%;
   width: 32px;
   height: 32px;
-  animation: spin 0.8s linear infinite !important;
+  animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
@@ -324,37 +270,14 @@ button:hover, .btn:hover {
 
 /* Specific Style 2 adjustments for clean government portals */
 nav.fixed {
-  background-color: rgba(255, 255, 255, 0.85) !important;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.8) !important;
-  backdrop-filter: blur(16px) !important;
-  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04) !important;
+  background-color: rgba(255, 255, 255, 0.95);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04);
 }
 nav.fixed h1 {
-  color: #1a2b5c !important;
+  color: #1a2b5c;
 }
 nav.fixed p {
-  color: #c9a227 !important;
-}
-
-.bg-white.border.border-slate-200.px-5.py-2 {
-  background-color: #F8FAFC !important;
-  border-color: #E2E8F0 !important;
-}
-
-/* Government Portal Style Card gradients and outlines */
-[class*="bg-[#F5F7FA]"] {
-  background-color: #F8FAFC !important;
-  border: 1px solid #E2E8F0 !important;
-  box-shadow: 0 8px 30px rgba(26, 43, 92, 0.04) !important;
-}
-
-[class*="bg-slate-50"] {
-  background-color: #F8FAFC !important;
-}
-
-.border-pink-200, .border-pink-150 {
-  border-color: rgba(201, 162, 39, 0.2) !important;
-}
-.bg-pink-100, .bg-pink-50 {
-  background-color: rgba(201, 162, 39, 0.05) !important;
+  color: #c9a227;
 }

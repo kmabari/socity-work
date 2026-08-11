@@ -2332,7 +2332,6 @@ export default function App() {
         }
         return null;
       })()}
-
       {view === 'landing' && (
         <LandingPage 
           announcements={announcements}
@@ -2682,7 +2681,7 @@ export default function App() {
                 <p>
                   പ്രിയ അംഗമേ, താങ്കളുടെ പുതിയ അംഗത്വം അഡ്മിൻ വെരിഫൈ ചെയ്ത് അപ്പ്രൂവ് ചെയ്യേണ്ടതുണ്ട്. <strong>അപ്പ്രൂവ് ചെയ്തതിന് ശേഷം മാത്രമേ വിവര രജിസ്ട്രി ഫോം ലഭ്യമാകൂ.</strong>
                 </p>
-                <p className="text-[10.5px] text-slate-400 font-bold leading-normal uppercase">
+                <p className="text-[10.5px] text-slate-500 font-bold leading-normal uppercase">
                   Your registration is pending admin approval. Access to the Financial Info Registry portal will unlock once your account is active.
                 </p>
               </div>
