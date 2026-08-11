@@ -2,7 +2,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { motion } from 'motion/react';
-import { useEffect } from 'react';
 import { Lock, ArrowRight, ArrowLeft, KeyRound, Smartphone, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,14 +22,19 @@ import { useI18n } from '../lib/i18n';
 import LanguageSwitcher from './LanguageSwitcher';
 
 const loginSchema = z.object({
-  email: z.string().min(1, 'Enter Username or Mobile Number'),
-  pin: z.string().min(4, 'Password must be at least 4 characters'),
+  mobile: z.string().trim().refine((val) => {
+    const cleaned = val.replace(/\D/g, '');
+    return cleaned.length === 10 || (val.includes('@') && val.length > 5);
+  }, {
+    message: '10 അക്ക മൊബൈൽ നമ്പർ നൽകുക',
+  }),
+  pin: z.string().min(1, 'Password നൽകുക'),
 });
 
 type LoginValues = z.infer<typeof loginSchema>;
 
 interface LoginFormProps {
-  onLogin: (values: LoginValues) => void;
+  onLogin: (values: { email: string; pin: string }) => void;
   onGoogleLogin: () => void;
   onBack: () => void;
   isLoading?: boolean;
@@ -41,41 +45,34 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: '',
+      mobile: '',
       pin: '',
     },
   });
 
-  useEffect(() => {
-    const intent = sessionStorage.getItem('hcrs_district_intent');
-    if (intent) {
-      if (!form.getValues('email')) {
-        form.setValue('email', `hcrs${intent.toLowerCase()}@hcrs.society`);
-      }
-      if (!form.getValues('pin')) {
-        form.setValue('pin', '246810');
-      }
-    }
-  }, [form]);
-
   const onSubmit = (values: LoginValues) => {
-    onLogin(values);
+    onLogin({ email: values.mobile, pin: values.pin });
   };
 
   const handleForgotPassword = async () => {
-    const email = form.getValues('email');
-    if (!email || !email.includes('@')) {
-      toast.error('Please enter your email address first.');
+    const mobileOrEmail = form.getValues('mobile');
+    if (!mobileOrEmail) {
+      toast.error('നിങ്ങളുടെ മൊബൈൽ നമ്പർ / ഇമെയിൽ നൽകുക.');
       return;
     }
 
-    const loadingToast = toast.loading('Sending reset text...');
+    if (!mobileOrEmail.includes('@')) {
+      toast.error('മൊബൈൽ നമ്പർ ഉപയോഗിച്ചുള്ള അക്കൗണ്ടുകൾക്ക് പാസ്‌വേഡ് റീസെറ്റ് ചെയ്യാൻ നിങ്ങളുടെ അഡ്മിനെ ബന്ധപ്പെടുക.');
+      return;
+    }
+
+    const loadingToast = toast.loading('Sending reset link...');
     try {
-      if (email.includes('@hcrs.society')) {
-        toast.error('Password reset via email is not available for mobile-registered accounts. Please contact your District Admin. (മൊബൈൽ നമ്പർ ഉപയോഗിച്ചുള്ള അക്കൗണ്ടുകൾക്ക് നേരിട്ട് പാസ്‌വേഡ് റീസെറ്റ് ചെയ്യാൻ കഴിയില്ല. അഡ്മിനെ ബന്ധപ്പെടുക.)', { id: loadingToast, duration: 8000 });
+      if (mobileOrEmail.includes('@hcrs.society')) {
+        toast.error('മൊബൈൽ നമ്പർ ഉപയോഗിച്ചുള്ള അക്കൗണ്ടുകൾക്ക് നേരിട്ട് പാസ്‌വേഡ് റീസെറ്റ് ചെയ്യാൻ കഴിയില്ല. അഡ്മിനെ ബന്ധപ്പെടുക.', { id: loadingToast, duration: 6000 });
         return;
       }
-      await sendPasswordResetEmail(auth, email);
+      await sendPasswordResetEmail(auth, mobileOrEmail);
       toast.success('Reset link sent to your inbox.', { id: loadingToast });
     } catch (error: any) {
       console.error('Reset error:', error);
@@ -125,7 +122,7 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
         <div className="relative bg-white border border-slate-200 p-8 rounded-[36px] shadow-premium overflow-hidden before:content-[''] before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-[#1a2b5c] before:via-[#c9a227] before:to-[#233875] after:content-[''] after:absolute after:inset-x-0 after:bottom-0 after:h-1 after:bg-gradient-to-r after:from-[#233875] after:via-[#c9a227] after:to-[#1a2b5c]">
           <div className="flex items-center gap-4 mb-8">
             <div className="w-12 h-12 rounded-xl bg-[#1a2b5c]/5 flex items-center justify-center text-[#1a2b5c] shadow-sm border border-[#1a2b5c]/10">
-              <KeyRound className="w-6 h-6 animate-pulse text-[#1a2b5c]" />
+              <KeyRound className="w-6 h-6 text-[#1a2b5c]" />
             </div>
             <div>
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">
@@ -141,21 +138,30 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
-                name="email"
+                name="mobile"
                 render={({ field, fieldState }) => (
                   <FormItem className="space-y-1.5">
-                    <FormLabel className="text-slate-500 font-extrabold uppercase text-[10px] tracking-wider ml-1">
-                      {t('label_mobile', 'Mobile Number')} / Email / Username
+                    <FormLabel className="text-slate-600 font-extrabold uppercase text-[10px] tracking-wider ml-1">
+                      മൊബൈൽ നമ്പർ
                     </FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Smartphone className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${field.value ? 'text-[#c9a227]' : 'text-slate-300'}`} />
                         <Input 
                           {...field} 
-                          type="text" 
-                          placeholder="********** / admin@hcrs.society" 
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="10 അക്ക മൊബൈൽ നമ്പർ" 
                           disabled={isLoading}
-                          className={`pl-12 h-13 bg-slate-50 border-2 border-slate-200 focus:border-[#1a2b5c] focus:ring-1 focus:ring-[#1a2b5c]/30 transition-all rounded-2xl font-bold text-sm text-slate-800 placeholder-slate-400 ${fieldState.error ? 'border-red-500' : ''}`} 
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val.includes('@')) {
+                              field.onChange(val);
+                            } else {
+                              field.onChange(val.replace(/\D/g, '').slice(0, 10));
+                            }
+                          }}
+                          className={`pl-12 h-13 bg-slate-50 border-2 border-slate-200 focus:border-[#1a2b5c] focus:ring-1 focus:ring-[#1a2b5c]/30 transition-all rounded-2xl font-bold text-sm text-slate-800 placeholder:text-slate-400 ${fieldState.error ? 'border-red-500' : ''}`} 
                         />
                       </div>
                     </FormControl>
@@ -170,8 +176,8 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
                 render={({ field, fieldState }) => (
                   <FormItem className="space-y-1.5">
                     <div className="flex justify-between items-center mb-1 bg-transparent px-1">
-                      <FormLabel className="text-slate-500 font-extrabold uppercase text-[10px] tracking-wider">
-                        {t('form_password', 'Password')}
+                      <FormLabel className="text-slate-600 font-extrabold uppercase text-[10px] tracking-wider">
+                        PASSWORD
                       </FormLabel>
                       <button 
                         type="button" 
@@ -188,10 +194,10 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
                         <Input 
                           {...field} 
                           type="password" 
-                          placeholder="••••" 
+                          placeholder="Password" 
                           disabled={isLoading}
-                          maxLength={12}
-                          className={`pl-12 h-13 bg-slate-50 border-2 border-slate-200 focus:border-[#1a2b5c] focus:ring-1 focus:ring-[#1a2b5c]/30 transition-all rounded-2xl font-bold text-sm text-slate-800 ${fieldState.error ? 'border-red-500' : ''}`} 
+                          maxLength={20}
+                          className={`pl-12 h-13 bg-slate-50 border-2 border-slate-200 focus:border-[#1a2b5c] focus:ring-1 focus:ring-[#1a2b5c]/30 transition-all rounded-2xl font-bold text-sm text-slate-800 placeholder:text-slate-400 ${fieldState.error ? 'border-red-500' : ''}`} 
                         />
                       </div>
                     </FormControl>
@@ -233,30 +239,6 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
                 </svg>
                 Sign In with Google
               </Button>
-
-              {/* Admin login help box */}
-              <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-4 space-y-1.5">
-                <p className="text-[10px] font-black text-amber-800 uppercase tracking-wider flex items-center gap-1.5 leading-none">
-                  ⚠️ അഡ്മിൻ ലോഗിൻ ഗൈഡ് (Admin Access Backup)
-                </p>
-                <p className="text-[10px] text-amber-700 font-semibold leading-relaxed">
-                  മൊബൈൽ ബ്രൗസറോ അതോ ഗൂഗിൾ ലോഗിൻ പോപ്പ്അപ്പോ ലഭിക്കുന്നില്ലെങ്കിൽ, മുകളിലെ <span className="font-extrabold text-amber-900">Mobile Number / Email</span> ബോക്സിൽ നിങ്ങളുടെ രജിസ്റ്റർ ചെയ്ത അഡ്മിൻ ഇമെയിൽ ഐഡി (ഉദാഹരണത്തിന്: <span className="font-mono font-bold text-amber-900">hcrskerala@gmail.com</span>) നൽകുക. തുടർന്ന് <span className="font-extrabold text-amber-900">Password</span> ബോക്സിൽ <span className="font-mono font-bold text-amber-900">246810</span> എന്ന് ടൈപ്പ് ചെയ്ത് താഴെയുള്ള <b>"Log In"</b> ബട്ടൺ ക്ലിക്ക് ചെയ്താൽ നിങ്ങൾക്ക് അഡ്മിൻ പാനലിലേക്ക് നേരിട്ട് പ്രവേശിക്കാം.
-                </p>
-              </div>
-
-              {/* Offline Local Backup access button */}
-              <div className="pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={isLoading}
-                  onClick={() => onLogin({ email: "offline_backup", pin: "246810" })}
-                  className="w-full h-12 rounded-2xl text-xs font-black border-2 border-dashed border-slate-200 hover:border-[#1a2b5c] hover:bg-[#1a2b5c]/5 text-slate-600 transition-all uppercase tracking-widest flex items-center justify-center gap-1.5 bg-slate-50/50"
-                >
-                  <ShieldCheck className="w-4 h-4 text-[#1a2b5c] animate-pulse" />
-                  ലോക്കൽ പ്രിവ്യൂ മോഡ് (Local Offline Backup)
-                </Button>
-              </div>
             </form>
           </Form>
         </div>
@@ -289,3 +271,4 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
     </div>
   );
 }
+

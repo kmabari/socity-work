@@ -1138,11 +1138,40 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
   // Server-side signature verification + Razorpay API fetch + Firestore write.
   // ============================================================================
 
+  function getRazorpayCredentials() {
+    let rawKeyId = (process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || "").trim();
+    let rawKeySecret = (process.env.RAZORPAY_KEY_SECRET || process.env.VITE_RAZORPAY_KEY_SECRET || "").trim();
+
+    // Smart-parsing if user entered "KeyID,KeySecret" together in one variable
+    if (rawKeyId.includes(",")) {
+      const parts = rawKeyId.split(",").map(p => p.trim()).filter(Boolean);
+      if (parts.length >= 2) {
+        rawKeyId = parts[0];
+        if (!rawKeySecret || rawKeySecret === rawKeyId || rawKeySecret.includes(",")) {
+          rawKeySecret = parts[1];
+        }
+      }
+    }
+
+    if (rawKeySecret.includes(",")) {
+      const parts = rawKeySecret.split(",").map(p => p.trim()).filter(Boolean);
+      if (parts.length >= 2) {
+        if (!rawKeyId || rawKeyId.includes(",")) rawKeyId = parts[0];
+        rawKeySecret = parts[1];
+      }
+    }
+
+    rawKeyId = rawKeyId.replace(/^["']|["']$/g, "").trim();
+    rawKeySecret = rawKeySecret.replace(/^["']|["']$/g, "").trim();
+
+    return { keyId: rawKeyId, keySecret: rawKeySecret };
+  }
+
   app.get("/api/razorpay/config", (_req, res) => {
-    const keyId = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || "";
+    const { keyId, keySecret } = getRazorpayCredentials();
     return res.json({
       keyId,
-      hasKeySecret: !!process.env.RAZORPAY_KEY_SECRET
+      hasKeySecret: !!keySecret && keySecret.length >= 8
     });
   });
 
@@ -1174,70 +1203,61 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       }
 
       const receiptNumber = `RCP-${paymentType.toUpperCase().slice(0,3)}-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 899)}`;
-      const rawKeyId = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || "";
-      const rawKeySecret = process.env.RAZORPAY_KEY_SECRET || process.env.VITE_RAZORPAY_KEY_SECRET || "";
+      const { keyId, keySecret } = getRazorpayCredentials();
 
-      const hasRealKeys = (rawKeyId.startsWith("rzp_test_") || rawKeyId.startsWith("rzp_live_")) &&
-                          rawKeySecret.length >= 8 &&
-                          rawKeySecret !== "VITE_RAZORPAY_KEY_ID";
-
-      if (hasRealKeys) {
-        try {
-          const razorpayInstance = new Razorpay({
-            key_id: rawKeyId,
-            key_secret: rawKeySecret
-          });
-
-          const order = await razorpayInstance.orders.create({
-            amount: expectedAmountPaise,
-            currency: "INR",
-            receipt: receiptNumber,
-            notes: {
-              paymentType,
-              fixedAmountINR: String(expectedAmountINR),
-              memberId: memberId || "",
-              mobile: mobile || ""
-            }
-          });
-
-          return res.json({
-            success: true,
-            orderId: order.id,
-            amount: expectedAmountINR,
-            amountInPaise: expectedAmountPaise,
-            currency: "INR",
-            receiptNumber,
-            keyId: rawKeyId,
-            paymentType,
-            isDemo: false
-          });
-        } catch (realErr: any) {
-          console.warn("Razorpay API order creation error:", realErr);
-          const rzpErrorMsg = realErr?.error?.description || realErr?.description || realErr?.message || 'Failed to create payment order';
-          return res.status(400).json({
-            error: `Razorpay API Order Error: ${rzpErrorMsg}`
-          });
-        }
+      if (!keyId || !keySecret) {
+        return res.status(400).json({
+          error: `Razorpay Credentials Error: Server missing environment variables. (RAZORPAY_KEY_ID: ${keyId ? 'PRESENT' : 'MISSING'}, RAZORPAY_KEY_SECRET: ${keySecret ? 'PRESENT' : 'MISSING'}). Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in server environment.`
+        });
       }
 
-      // Sandbox Test Order mode when real Razorpay keys are not yet configured in environment
-      const demoOrderId = `order_demo_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
+      const authHeader = "Basic " + Buffer.from(`${keyId}:${keySecret}`).toString("base64");
+
+      const rzpResponse = await fetch("https://api.razorpay.com/v1/orders", {
+        method: "POST",
+        headers: {
+          "Authorization": authHeader,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          amount: expectedAmountPaise,
+          currency: "INR",
+          receipt: receiptNumber,
+          notes: {
+            paymentType,
+            fixedAmountINR: String(expectedAmountINR),
+            memberId: memberId || "",
+            mobile: mobile || ""
+          }
+        })
+      });
+
+      const rzpData = await rzpResponse.json().catch(() => ({}));
+
+      if (!rzpResponse.ok) {
+        console.error("Razorpay Order Creation API Error:", rzpResponse.status, rzpData);
+        const rzpErrDetail = rzpData?.error?.description || rzpData?.error?.reason || rzpData?.error?.code || rzpData?.message || JSON.stringify(rzpData);
+        return res.status(rzpResponse.status || 400).json({
+          error: `Razorpay Order Error (${rzpResponse.status}): ${rzpErrDetail}`
+        });
+      }
+
       return res.json({
         success: true,
-        orderId: demoOrderId,
+        orderId: rzpData.id,
         amount: expectedAmountINR,
         amountInPaise: expectedAmountPaise,
         currency: "INR",
         receiptNumber,
-        keyId: "rzp_test_demo_placeholder",
+        keyId: keyId,
         paymentType,
-        isDemo: true
+        isDemo: false
       });
     } catch (err: any) {
-      console.error("Razorpay order creation error:", err);
-      const rzpErrorMsg = err?.error?.description || err?.description || err?.message || JSON.stringify(err);
+      console.error("Razorpay server order creation exception:", err);
+      const rzpErrorMsg = err?.error?.description || err?.description || err?.message || String(err);
       return res.status(500).json({
-        error: `Razorpay Order Creation Error: ${rzpErrorMsg}`
+        error: `Razorpay Order Exception: ${rzpErrorMsg}`
       });
     }
   });
@@ -1265,19 +1285,18 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       const expectedAmountINR = paymentType === 'registration' ? 200 : 100;
       const expectedAmountPaise = expectedAmountINR * 100;
 
-      const rawKeyId = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || "";
-      const rawKeySecret = process.env.RAZORPAY_KEY_SECRET || process.env.VITE_RAZORPAY_KEY_SECRET || "";
+      const { keyId, keySecret } = getRazorpayCredentials();
 
-      const hasRealKeys = (rawKeyId.startsWith("rzp_test_") || rawKeyId.startsWith("rzp_live_")) &&
-                          rawKeySecret.length >= 8 &&
-                          rawKeySecret !== "VITE_RAZORPAY_KEY_ID";
+      const hasRealKeys = (keyId.startsWith("rzp_test_") || keyId.startsWith("rzp_live_")) &&
+                          keySecret.length >= 8 &&
+                          keySecret !== "VITE_RAZORPAY_KEY_ID";
 
       let payment: any = null;
 
       // Perform full signature and API verification if real keys exist
       if (hasRealKeys && razorpay_signature && razorpay_signature !== 'demo_signature') {
         const expectedSignature = crypto
-          .createHmac("sha256", rawKeySecret)
+          .createHmac("sha256", keySecret)
           .update(`${razorpay_order_id}|${razorpay_payment_id}`)
           .digest("hex");
 
@@ -1292,8 +1311,8 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         }
 
         const razorpayInstance = new Razorpay({
-          key_id: rawKeyId,
-          key_secret: rawKeySecret
+          key_id: keyId,
+          key_secret: keySecret
         });
 
         const payment = await razorpayInstance.payments.fetch(razorpay_payment_id);
