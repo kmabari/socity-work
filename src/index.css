@@ -106,14 +106,14 @@
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    background-color: #0d1b3e;
-    color: #F8FAFC;
+    background-color: #FAF9FC;
+    color: #0F172A;
     background-attachment: fixed;
   }
   html {
     @apply font-sans antialiased;
-    background-color: #0d1b3e;
-    color: #F8FAFC;
+    background-color: #FAF9FC;
+    color: #0F172A;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-heading tracking-tight font-semibold;
@@ -163,6 +163,10 @@ input, select, textarea {
   background-color: #FFFFFF;
   color: #0F172A;
   border-color: #E2E8F0;
+}
+input::placeholder, textarea::placeholder {
+  color: #64748B;
+  opacity: 1;
 }
 input:focus, select:focus, textarea:focus {
   border-color: #233875;

@@ -2569,10 +2569,10 @@ export default function AdminDashboard({
                   {/* Search Bar */}
                   <div className="flex-1 min-w-[280px]">
                     <div className="relative w-full">
-                      <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
+                      <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
                       <Input 
                         placeholder="Search member by name, phone or ID... (അംഗങ്ങളെ പേര്, ഫോൺ അല്ലെങ്കിൽ ID വഴി തിരയുക)" 
-                        className="pl-10 pr-4 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-850 h-11 rounded-xl text-xs font-bold w-full focus:border-brand-blue/30 focus:ring-1 focus:ring-brand-blue/10 transition-all placeholder:text-slate-400"
+                        className="pl-10 pr-4 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-850 h-11 rounded-xl text-xs font-bold w-full focus:border-brand-blue/30 focus:ring-1 focus:ring-brand-blue/10 transition-all placeholder:text-slate-500"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                       />
@@ -3162,10 +3162,10 @@ export default function AdminDashboard({
               {filteredMembers.length === 0 && (
                 <div className="py-20 text-center bg-white">
                    <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <AlertCircle className="text-slate-300 w-8 h-8" />
+                      <AlertCircle className="text-slate-400 w-8 h-8" />
                    </div>
-                   <p className="text-slate-500 font-medium tracking-tight">No members found matching your search.</p>
-                   <p className="text-slate-400 text-sm mt-1">Waiting for new membership applications.</p>
+                   <p className="text-slate-800 font-bold tracking-tight">No members found matching your search.</p>
+                   <p className="text-slate-600 text-sm mt-1">Waiting for new membership applications.</p>
                 </div>
               )}
             </Card>
@@ -4227,7 +4227,7 @@ export default function AdminDashboard({
                         if (uniqueQuotaList.length === 0) {
                           return (
                             <TableRow>
-                              <TableCell colSpan={6} className="text-center py-20 text-slate-400 font-bold">
+                              <TableCell colSpan={6} className="text-center py-20 text-slate-600 font-bold">
                                 {searchTerm ? "No members found matching your search." : "No operators or district managers found. Use search to find a member."}
                               </TableCell>
                             </TableRow>

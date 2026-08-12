@@ -561,7 +561,7 @@ export default function OperatorDashboard({
                       {filteredMembers.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={4} className="text-center py-10">
-                            <p className="text-sm font-bold text-slate-400 uppercase">No members found in {districtName}</p>
+                            <p className="text-sm font-black text-slate-600 uppercase">No members found in {districtName}</p>
                           </TableCell>
                         </TableRow>
                       ) : (
@@ -1484,7 +1484,7 @@ export default function OperatorDashboard({
                 {filteredMembers.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-16">
-                      <p className="text-sm font-black text-slate-400 uppercase tracking-wider">No members found in {districtName}</p>
+                      <p className="text-sm font-black text-slate-600 uppercase tracking-wider">No members found in {districtName}</p>
                       {otherDistrictMatch && (
                         <p className="text-[11px] text-amber-600 font-bold mt-1 uppercase">
                           Note: A match exists in another district. Check the alert box above.

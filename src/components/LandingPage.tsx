@@ -300,7 +300,7 @@ export default function LandingPage({
   }, [stage]);
 
   return (
-    <div className="min-h-screen bg-transparent text-slate-100 font-sans selection:bg-[#1a2b5c]/10 relative overflow-x-hidden pb-12">
+    <div className="min-h-screen bg-transparent text-slate-900 font-sans selection:bg-[#1a2b5c]/10 relative overflow-x-hidden pb-12">
       {/* Subtle Ambient Backglows inspired by Reference #2's premium orange/blue gradient glow */}
       <div className="absolute top-0 left-1/4 w-[40rem] h-[35rem] bg-gradient-to-br from-[#1a2b5c]/5 to-transparent rounded-full blur-[100px] pointer-events-none -z-10 max-md:hidden" />
       <div className="absolute top-20 right-1/4 w-[35rem] h-[35rem] bg-gradient-to-br from-[#c9a227]/4 to-transparent rounded-full blur-[110px] pointer-events-none -z-10 max-md:hidden" />
@@ -497,14 +497,14 @@ export default function LandingPage({
             {janamailConfig?.active !== false && (
               <section className="space-y-8 max-w-6xl mx-auto pt-4" id="featured-campaign">
                 <div className="text-center space-y-3 font-sans">
-                  <div className="inline-flex items-center gap-2 bg-blue-500/15 text-blue-300 px-4 py-2 rounded-full border border-blue-500/25 shadow-xs max-w-full flex-wrap justify-center">
-                    <Megaphone className="w-4 h-4 text-blue-400 shrink-0 animate-pulse stroke-[2.5]" />
+                  <div className="inline-flex items-center gap-2 bg-blue-500/10 text-[#1a2b5c] px-4 py-2 rounded-full border border-blue-200 shadow-xs max-w-full flex-wrap justify-center">
+                    <Megaphone className="w-4 h-4 text-[#1a2b5c] shrink-0 animate-pulse stroke-[2.5]" />
                     <span className="font-black text-xs uppercase tracking-wider leading-snug break-words text-center">Featured Campaign • ജനകീയ ക്യാമ്പയിൻ</span>
                   </div>
-                  <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight px-2 leading-tight">
-                    HCRS <span className="text-blue-400">Featured Campaign</span>
+                  <h2 className="text-2xl sm:text-3xl font-black text-[#1a2b5c] uppercase tracking-tight px-2 leading-tight">
+                    HCRS <span className="text-blue-600">Featured Campaign</span>
                   </h2>
-                  <p className="text-slate-300 font-normal text-xs md:text-sm max-w-xl mx-auto">
+                  <p className="text-slate-700 font-normal text-xs md:text-sm max-w-xl mx-auto">
                     Participate in our official active community drives designed to bring attention to member causes.
                   </p>
                 </div>
@@ -1203,14 +1203,14 @@ export default function LandingPage({
             {/* OUR KEY ACTIVITIES SECTION */}
             <section className="space-y-8 sm:space-y-10 max-w-6xl mx-auto pt-12 sm:pt-16 md:pt-20">
               <div className="text-center space-y-3.5 sm:space-y-4 font-sans">
-                <div className="inline-flex items-center gap-2 bg-white/15 text-white px-4 py-2 rounded-full border border-white/25 shadow-xs max-w-full flex-wrap justify-center">
-                  <Activity className="w-4 h-4 text-amber-400 shrink-0 stroke-[2.5]" />
+                <div className="inline-flex items-center gap-2 bg-[#1a2b5c]/10 text-[#1a2b5c] px-4 py-2 rounded-full border border-[#1a2b5c]/20 shadow-xs max-w-full flex-wrap justify-center">
+                  <Activity className="w-4 h-4 text-[#c9a227] shrink-0 stroke-[2.5]" />
                   <span className="font-black text-xs uppercase tracking-wider leading-snug break-words text-center">Operational Focus • പ്രധാന പ്രവർത്തനങ്ങൾ</span>
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight font-heading px-2 leading-tight">
+                <h2 className="text-2xl sm:text-3xl font-black text-[#1a2b5c] uppercase tracking-tight font-heading px-2 leading-tight">
                   Our Key <span className="text-[#c9a227]">Activities</span>
                 </h2>
-                <p className="text-slate-300 font-medium text-xs md:text-sm max-w-xl mx-auto px-4 sm:px-6">
+                <p className="text-slate-700 font-medium text-xs md:text-sm max-w-xl mx-auto px-4 sm:px-6">
                   We are actively engaged in structured initiatives and programs to restore the community.
                 </p>
               </div>
@@ -1372,14 +1372,14 @@ export default function LandingPage({
             {/* OUR JOURNEY SECTION */}
             <section className="space-y-8 sm:space-y-12 max-w-5xl mx-auto pt-12 sm:pt-16 md:pt-20 pb-8 sm:pb-10">
               <div className="text-center space-y-3 sm:space-y-4 font-sans">
-                <div className="inline-flex items-center gap-2 bg-amber-500/15 text-amber-300 px-4 py-2 rounded-full border border-amber-400/30 shadow-xs max-w-full flex-wrap justify-center">
-                  <Compass className="w-4 h-4 text-amber-400 shrink-0 stroke-[2.5]" />
+                <div className="inline-flex items-center gap-2 bg-amber-500/10 text-amber-900 px-4 py-2 rounded-full border border-amber-400/30 shadow-xs max-w-full flex-wrap justify-center">
+                  <Compass className="w-4 h-4 text-amber-600 shrink-0 stroke-[2.5]" />
                   <span className="font-black text-xs uppercase tracking-wider leading-snug break-words text-center">The Timeline • ചരിത്രവഴി</span>
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight px-2 leading-tight">
+                <h2 className="text-2xl sm:text-3xl font-black text-[#1a2b5c] uppercase tracking-tight px-2 leading-tight">
                   Our <span className="text-[#c9a227]">Journey</span>
                 </h2>
-                <p className="text-slate-300 font-normal text-xs md:text-sm max-w-xl mx-auto px-4 sm:px-6">
+                <p className="text-slate-700 font-normal text-xs md:text-sm max-w-xl mx-auto px-4 sm:px-6">
                   A timeline tracking our establishment, unity, and dedicated ongoing community efforts.
                 </p>
               </div>
@@ -1616,14 +1616,14 @@ export default function LandingPage({
             {/* OUR STATE & DISTRICT COMMITTEES SECTION */}
             <section className="space-y-8 max-w-6xl mx-auto pt-12 sm:pt-16 md:pt-20">
               <div className="text-center space-y-3 sm:space-y-4">
-                <div className="inline-flex items-center gap-2 bg-white/15 text-white px-4 py-2 rounded-full border border-white/25 shadow-xs max-w-full flex-wrap justify-center">
-                  <Network className="w-4 h-4 text-amber-400 shrink-0 stroke-[2.5]" />
+                <div className="inline-flex items-center gap-2 bg-[#1a2b5c]/10 text-[#1a2b5c] px-4 py-2 rounded-full border border-[#1a2b5c]/20 shadow-xs max-w-full flex-wrap justify-center">
+                  <Network className="w-4 h-4 text-[#c9a227] shrink-0 stroke-[2.5]" />
                   <span className="font-black text-xs uppercase tracking-wider leading-snug break-words text-center">Organizational leadership • കമ്മിറ്റികൾ</span>
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight px-2 leading-tight">
+                <h2 className="text-2xl sm:text-3xl font-black text-[#1a2b5c] uppercase tracking-tight px-2 leading-tight">
                   HCRS Committee <span className="text-[#c9a227]">Members</span>
                 </h2>
-                <p className="text-slate-300 font-normal text-xs md:text-sm max-w-xl mx-auto px-4 sm:px-6">
+                <p className="text-slate-700 font-normal text-xs md:text-sm max-w-xl mx-auto px-4 sm:px-6">
                   സംസ്ഥാന, ജില്ലാ, മണ്ഡലം തലങ്ങളിലെ ഞങ്ങളുടെ നേതൃത്വ നിരയും ഭാരവാഹികളും താഴെ കാണാം.
                 </p>
               </div>
@@ -2023,14 +2023,14 @@ export default function LandingPage({
             {/* HCRS MEMBERSHIP BENEFITS SECTION */}
             <section className="space-y-8 max-w-6xl mx-auto pt-12 sm:pt-16 md:pt-20">
               <div className="text-center space-y-3 sm:space-y-4">
-                <div className="inline-flex items-center gap-2 bg-white/15 text-white px-4 py-2 rounded-full border border-white/25 shadow-xs max-w-full flex-wrap justify-center">
-                  <Award className="w-4 h-4 text-amber-400 shrink-0 stroke-[2.5]" />
+                <div className="inline-flex items-center gap-2 bg-[#1a2b5c]/10 text-[#1a2b5c] px-4 py-2 rounded-full border border-[#1a2b5c]/20 shadow-xs max-w-full flex-wrap justify-center">
+                  <Award className="w-4 h-4 text-[#c9a227] shrink-0 stroke-[2.5]" />
                   <span className="font-black text-xs uppercase tracking-wider leading-snug break-words text-center">Member Privileges • അംഗത്വ ആനുകൂല്യങ്ങൾ</span>
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight px-2 leading-tight">
+                <h2 className="text-2xl sm:text-3xl font-black text-[#1a2b5c] uppercase tracking-tight px-2 leading-tight">
                   HCRS Membership <span className="text-[#c9a227]">Benefits</span>
                 </h2>
-                <p className="text-slate-300 font-normal text-xs md:text-sm max-w-xl mx-auto px-4 sm:px-6">
+                <p className="text-slate-700 font-normal text-xs md:text-sm max-w-xl mx-auto px-4 sm:px-6">
                   By joining our registered collective, you unlock vital community support systems, legal standing, and advocacy channels.
                 </p>
               </div>
@@ -2128,11 +2128,11 @@ export default function LandingPage({
             <section className="space-y-8 max-w-6xl mx-auto pt-12 sm:pt-16 md:pt-20" id="gallery-preview">
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 text-left">
                 <div className="space-y-2">
-                  <div className="inline-flex items-center gap-2 bg-amber-500/15 text-amber-300 px-4 py-2 rounded-full border border-amber-400/30 shadow-xs max-w-full flex-wrap">
-                    <LayoutGrid className="w-4 h-4 text-amber-400 shrink-0 stroke-[2.5]" />
+                  <div className="inline-flex items-center gap-2 bg-amber-500/10 text-amber-900 px-4 py-2 rounded-full border border-amber-400/30 shadow-xs max-w-full flex-wrap">
+                    <LayoutGrid className="w-4 h-4 text-amber-600 shrink-0 stroke-[2.5]" />
                     <span className="font-black text-xs uppercase tracking-wider leading-snug break-words">Visual Records</span>
                   </div>
-                  <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight mt-1 leading-tight">
+                  <h2 className="text-2xl sm:text-3xl font-black text-[#1a2b5c] uppercase tracking-tight mt-1 leading-tight">
                     Secretariat <span className="text-[#c9a227]">Moments</span>
                   </h2>
                 </div>
