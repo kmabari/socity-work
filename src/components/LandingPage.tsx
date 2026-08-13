@@ -582,7 +582,7 @@ export default function LandingPage({
                 </div>
 
                 {/* Directly BELOW the campaign card, create a "Public Sharing" section */}
-                <div className="max-w-2xl mx-auto bg-white/5 border border-white/10 rounded-[28px] p-6 shadow-premium flex flex-col md:flex-row items-center gap-6">
+                <div className="max-w-2xl mx-auto bg-white border border-white/10 rounded-[28px] p-6 shadow-premium flex flex-col md:flex-row items-center gap-6">
                   {/* QR Code Canvas */}
                   <div className="relative bg-white p-3 rounded-2xl shadow-xs border border-slate-200/80 w-36 h-36 flex items-center justify-center shrink-0">
                     <canvas ref={qrCanvasRef} className="w-28 h-28 block" />
@@ -590,12 +590,12 @@ export default function LandingPage({
 
                   {/* Sharing details and actions */}
                   <div className="flex-1 text-left space-y-3 font-sans w-full">
-                    <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                    <h4 className="text-sm font-black text-[#1a2b5c] uppercase tracking-wider flex items-center gap-2">
                       <QrCode className="w-4 h-4 text-blue-400 animate-pulse" />
                       ക്യാമ്പയിൻ പങ്കുവെക്കാം (Public Sharing)
                     </h4>
                     
-                    <p className="text-xs text-slate-200 font-medium leading-relaxed">
+                    <p className="text-xs text-slate-700 font-medium leading-relaxed">
                       ഈ ക്യാമ്പയിൻ ലിങ്ക് മറ്റുള്ളവരിലേക്ക് ഷെയർ ചെയ്തുകൊണ്ട് എല്ലാവരെയും ഇതിന്റെ ഭാഗമാക്കൂ.
                     </p>
 
@@ -622,7 +622,7 @@ export default function LandingPage({
                           "flex-1 font-extrabold text-xs h-10 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer border",
                           copiedLink
                             ? "bg-emerald-500 border-emerald-500 text-white hover:bg-emerald-600 hover:text-white"
-                            : "bg-white/15 border-white/15 text-white hover:bg-white/20"
+                            : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
                         )}
                       >
                         {copiedLink ? (
