@@ -582,7 +582,7 @@ export default function LandingPage({
                 </div>
 
                 {/* Directly BELOW the campaign card, create a "Public Sharing" section */}
-                <div className="max-w-2xl mx-auto bg-white/5 border border-white/10 rounded-[28px] p-6 shadow-premium flex flex-col md:flex-row items-center gap-6">
+                <div className="max-w-2xl mx-auto bg-white border border-white/10 rounded-[28px] p-6 shadow-premium flex flex-col md:flex-row items-center gap-6">
                   {/* QR Code Canvas */}
                   <div className="relative bg-white p-3 rounded-2xl shadow-xs border border-slate-200/80 w-36 h-36 flex items-center justify-center shrink-0">
                     <canvas ref={qrCanvasRef} className="w-28 h-28 block" />
@@ -590,12 +590,12 @@ export default function LandingPage({
 
                   {/* Sharing details and actions */}
                   <div className="flex-1 text-left space-y-3 font-sans w-full">
-                    <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                    <h4 className="text-sm font-black text-[#1a2b5c] uppercase tracking-wider flex items-center gap-2">
                       <QrCode className="w-4 h-4 text-blue-400 animate-pulse" />
                       ക്യാമ്പയിൻ പങ്കുവെക്കാം (Public Sharing)
                     </h4>
                     
-                    <p className="text-xs text-slate-200 font-medium leading-relaxed">
+                    <p className="text-xs text-slate-700 font-medium leading-relaxed">
                       ഈ ക്യാമ്പയിൻ ലിങ്ക് മറ്റുള്ളവരിലേക്ക് ഷെയർ ചെയ്തുകൊണ്ട് എല്ലാവരെയും ഇതിന്റെ ഭാഗമാക്കൂ.
                     </p>
 
@@ -1770,7 +1770,7 @@ export default function LandingPage({
                                 }}
                               />
                               {posterMember.nameMl && (
-                                <p className="mt-4 text-sm font-black text-white uppercase tracking-wider malayalam-text text-center">
+                                <p className="mt-4 text-sm font-black text-[#1a2b5c] uppercase tracking-wider malayalam-text text-center">
                                   {posterMember.nameMl}
                                 </p>
                               )}
@@ -2746,7 +2746,7 @@ export default function LandingPage({
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-6 pt-8 pb-8 px-8 md:px-10 text-left font-sans text-xs text-slate-200 leading-relaxed max-h-[600px] overflow-y-auto custom-scrollbar">
+              <CardContent className="space-y-6 pt-8 pb-8 px-8 md:px-10 text-left font-sans text-xs text-slate-700 leading-relaxed max-h-[600px] overflow-y-auto custom-scrollbar">
                 <div className="space-y-2 border-b border-slate-100 pb-4">
                   <h3 className="text-sm font-bold text-slate-800">1. Introduction / ആമുഖം</h3>
                   <p>Welcome to <strong>{settings.fullName || "Highrich Community Revival Society"}</strong>. We value your privacy and trust. This policy governs how we collect, process, and safeguard your personal data to ensure transparency and security on our portal.</p>
@@ -2814,7 +2814,7 @@ export default function LandingPage({
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-6 pt-8 pb-8 px-8 md:px-10 text-left font-sans text-xs text-slate-200 leading-relaxed max-h-[600px] overflow-y-auto custom-scrollbar">
+              <CardContent className="space-y-6 pt-8 pb-8 px-8 md:px-10 text-left font-sans text-xs text-slate-700 leading-relaxed max-h-[600px] overflow-y-auto custom-scrollbar">
                 <div className="space-y-2 border-b border-slate-100 pb-4">
                   <h3 className="text-sm font-bold text-slate-800">1. Acceptance of Terms / നിബന്ധനകളുടെ സ്വീകാര്യത</h3>
                   <p>By accessing this website, registering your profile, making dynamic payments, or interacting with HCRS portal services, you explicitly agree to follow, respect, and be governed by these Terms and Conditions.</p>
@@ -2877,7 +2877,7 @@ export default function LandingPage({
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-6 pt-8 pb-8 px-8 md:px-10 text-left font-sans text-xs text-slate-200 leading-relaxed max-h-[600px] overflow-y-auto custom-scrollbar">
+              <CardContent className="space-y-6 pt-8 pb-8 px-8 md:px-10 text-left font-sans text-xs text-slate-700 leading-relaxed max-h-[600px] overflow-y-auto custom-scrollbar">
                 <div className="space-y-2 border-b border-slate-100 pb-4">
                   <h3 className="text-sm font-bold text-slate-800">1. Strict No-Refund Policy / മാറ്റമില്ലാത്ത റീഫണ്ട് നയം</h3>
                   <p><strong>HIGHRICH COMMUNITY REVIVAL SOCIETY (HCRS)</strong> is a mutual volunteer-supported community revival platform. Registered members contribute administrative expenses, validation charges, and profile maintenance processing fees to set up the secure database directory.</p>
