@@ -289,8 +289,7 @@ export default function LandingPage({
         setStage('landing');
       }
     };
-
-    handleHashChange();
+  handleHashChange();
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);

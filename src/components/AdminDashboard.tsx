@@ -54,7 +54,8 @@ import {
   Loader2,
   Copy,
   AlertTriangle,
-  Layers
+  Layers,
+  Printer
 } from 'lucide-react';
 import { DISTRICTS, BLOOD_GROUPS, CONSTITUENCIES, FALLBACK_LOGO_URL, SHARED_URL, getAssemblyCode } from '@/src/constants';
 import { UserProfile } from '@/src/types';
@@ -244,6 +245,326 @@ export default function AdminDashboard({
     const last10_1 = clean1.slice(-10);
     const last10_2 = clean2.slice(-10);
     return last10_1.length === 10 && last10_2.length === 10 && last10_1 === last10_2;
+  };
+
+  const getComboGroups = (sourceClaims: any[]) => {
+    const groups: any[][] = [];
+
+    sourceClaims.forEach((claim) => {
+      const existingGroup = groups.find(group =>
+        group.some(existingClaim =>
+          compareMobiles(existingClaim.userMobile, claim.userMobile)
+        )
+      );
+
+      if (existingGroup) {
+        existingGroup.push(claim);
+      } else {
+        groups.push([claim]);
+      }
+    });
+
+    return groups.filter(group => group.length > 1);
+  };
+
+  const printComboClaims = (comboClaims: any[]) => {
+    if (!comboClaims || comboClaims.length === 0) return;
+
+    const money = (value: any) =>
+      `₹${Number(value || 0).toLocaleString('en-IN')}`;
+
+    const pages = comboClaims.map((claim, index) => {
+      const categories = formatClaimCategories(claim.categories);
+
+      return `
+        <section class="page">
+          <div class="header">
+            <div class="brand">HCRS SUPPORT CLAIM</div>
+            <div class="subtitle">Combo Claim · ${index + 1} of ${comboClaims.length}</div>
+          </div>
+
+          <div class="member">
+            <div>
+              <div class="member-name">${claim.userName || 'N/A'}</div>
+              <div class="member-meta">
+                Mobile: ${claim.userMobile || 'N/A'}
+                ${claim.membershipId ? ` · Membership: ${claim.membershipId}` : ''}
+              </div>
+            </div>
+            <div class="combo">COMBO</div>
+          </div>
+
+          <div class="claim">
+            <div class="claim-head">
+              <div>
+                <div class="claim-title">Claim #${claim.tokenNo ?? claim.serialNo ?? 'N/A'}</div>
+                <div class="muted">
+                  Relation: ${claim.relation || 'Self'}
+                </div>
+              </div>
+              <div class="priority">${claim.priorityStatus || 'GREEN'}</div>
+            </div>
+
+            <div class="grid">
+              <div>
+                <span>HR ID</span>
+                <strong>${claim.highrichId || 'N/A'}</strong>
+              </div>
+              <div>
+                <span>Paid</span>
+                <strong>${money(claim.totalPaid)}</strong>
+              </div>
+              <div>
+                <span>Received</span>
+                <strong>${money(claim.totalReceived)}</strong>
+              </div>
+              <div>
+                <span>Pending</span>
+                <strong>${money(claim.totalPending)}</strong>
+              </div>
+            </div>
+
+            ${categories ? `
+              <div class="categories">
+                <span>Categories:</span> ${categories}
+              </div>
+            ` : ''}
+
+            ${claim.notes ? `
+              <div class="notes">
+                <b>Admin Note:</b> ${claim.notes}
+              </div>
+            ` : ''}
+
+            <div class="date">
+              Claim Date: ${formatClaimDate(claim.createdAt)}
+            </div>
+          </div>
+
+          <div class="footer">
+            HCRS Admin Dashboard · Combo Claim ${index + 1} / ${comboClaims.length}
+          </div>
+        </section>
+      `;
+    }).join('');
+
+    const printWindow = window.open('', '_blank', 'width=900,height=1100');
+
+    if (!printWindow) {
+      toast.error('Print window blocked. Please allow pop-ups.');
+      return;
+    }
+
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>HCRS Combo Claims - ${comboClaims[0]?.userName || 'Member'}</title>
+
+          <style>
+            @page {
+              size: A4 portrait;
+              margin: 10mm;
+            }
+
+            * {
+              box-sizing: border-box;
+            }
+
+            html,
+            body {
+              margin: 0;
+              padding: 0;
+              background: white;
+              color: #172033;
+              font-family: Arial, "Noto Sans", sans-serif;
+            }
+
+            body {
+              font-size: 10px;
+            }
+
+            .page {
+              width: 100%;
+              min-height: 277mm;
+              page-break-after: always;
+              break-after: page;
+              position: relative;
+            }
+
+            .page:last-child {
+              page-break-after: auto;
+              break-after: auto;
+            }
+
+            .header {
+              border-bottom: 2px solid #172b5c;
+              padding-bottom: 8px;
+              margin-bottom: 12px;
+            }
+
+            .brand {
+              font-size: 18px;
+              font-weight: 900;
+              color: #172b5c;
+            }
+
+            .subtitle {
+              margin-top: 3px;
+              font-size: 9px;
+              color: #64748b;
+              font-weight: 700;
+            }
+
+            .member {
+              display: flex;
+              justify-content: space-between;
+              gap: 12px;
+              padding: 10px;
+              background: #f8fafc;
+              border: 1px solid #e2e8f0;
+              border-radius: 8px;
+              margin-bottom: 12px;
+            }
+
+            .member-name {
+              font-size: 15px;
+              font-weight: 900;
+            }
+
+            .member-meta {
+              color: #475569;
+              font-size: 9px;
+              margin-top: 3px;
+            }
+
+            .combo {
+              color: #ff1493;
+              font-size: 10px;
+              font-weight: 900;
+            }
+
+            .claim {
+              border: 1px solid #dbe3ed;
+              border-radius: 9px;
+              padding: 12px;
+              break-inside: avoid;
+            }
+
+            .claim-head {
+              display: flex;
+              justify-content: space-between;
+              gap: 10px;
+              margin-bottom: 10px;
+            }
+
+            .claim-title {
+              font-size: 14px;
+              font-weight: 900;
+            }
+
+            .muted {
+              color: #64748b;
+              font-size: 10px;
+              margin-top: 4px;
+            }
+
+            .priority {
+              padding: 5px 8px;
+              border-radius: 6px;
+              background: #f1f5f9;
+              font-size: 9px;
+              font-weight: 900;
+              height: fit-content;
+            }
+
+            .grid {
+              display: grid;
+              grid-template-columns: repeat(4, 1fr);
+              gap: 8px;
+              border-top: 1px solid #eef2f7;
+              padding-top: 9px;
+            }
+
+            .grid span {
+              display: block;
+              color: #94a3b8;
+              font-size: 8px;
+              font-weight: 800;
+              text-transform: uppercase;
+              margin-bottom: 3px;
+            }
+
+            .grid strong {
+              font-size: 12px;
+              font-weight: 900;
+            }
+
+            .categories {
+              margin-top: 10px;
+              padding-top: 9px;
+              border-top: 1px dashed #e2e8f0;
+              color: #475569;
+              font-size: 10px;
+              line-height: 1.5;
+            }
+
+            .categories span {
+              font-weight: 900;
+              color: #64748b;
+            }
+
+            .notes {
+              margin-top: 10px;
+              padding: 8px;
+              background: #f8fafc;
+              border-radius: 6px;
+              color: #475569;
+              font-size: 9px;
+              line-height: 1.5;
+            }
+
+            .date {
+              margin-top: 10px;
+              color: #94a3b8;
+              font-size: 9px;
+              font-weight: 700;
+            }
+
+            .footer {
+              position: absolute;
+              bottom: 0;
+              left: 0;
+              right: 0;
+              padding-top: 7px;
+              border-top: 1px solid #e2e8f0;
+              color: #94a3b8;
+              font-size: 8px;
+              text-align: center;
+            }
+
+            @media print {
+              body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+            }
+          </style>
+        </head>
+
+        <body>
+          ${pages}
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    printWindow.focus();
+
+    setTimeout(() => {
+      printWindow.print();
+    }, 300);
   };
 
   const formatClaimDate = (createdAt: any): string => {
@@ -2504,6 +2825,11 @@ export default function AdminDashboard({
                     <MessageCircle className="w-3 h-3 text-brand-magenta" />
                     Claims <Badge className="ml-1.5 bg-brand-magenta text-white border-none text-[8px] px-1.5 py-0">{claims.length}</Badge>
                   </TabsTrigger>
+                  <TabsTrigger value="combo" className="data-[state=active]:bg-white data-[state=active]:text-brand-magenta data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
+                    <Layers className="w-3 h-3 text-brand-magenta" />
+                    Combo <Badge className="ml-1.5 bg-brand-magenta text-white border-none text-[8px] px-1.5 py-0">{getComboGroups(claims).length}</Badge>
+                  </TabsTrigger>
+
                   <TabsTrigger value="fast_entry" className="data-[state=active]:bg-white data-[state=active]:text-brand-magenta data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
                     <UserPlus className="w-3 h-3 text-brand-magenta" />
                     Fast Entry
@@ -2560,7 +2886,8 @@ export default function AdminDashboard({
                       📧 Operation Janamail
                     </TabsTrigger>
                   )}
-                </TabsList>
+                
+</TabsList>
               </div>
 
               {/* Row 2: Search & Filter controls */}
@@ -4419,6 +4746,104 @@ export default function AdminDashboard({
                </CardContent>
             </Card>
           </TabsContent>
+          
+          <TabsContent value="combo">
+            <div className="space-y-4">
+              {(() => {
+                const comboGroups = getComboGroups(claims);
+
+                if (comboGroups.length === 0) {
+                  return (
+                    <Card className="border-none shadow-sm rounded-3xl bg-white">
+                      <div className="py-16 text-center">
+                        <p className="text-slate-400 font-black uppercase text-xs tracking-widest">
+                          No Combo Claims Found
+                        </p>
+                      </div>
+                    </Card>
+                  );
+                }
+
+                return (
+                  <>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-lg font-black text-slate-800 uppercase">
+                          Combo Claims
+                        </h3>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                          {comboGroups.length} Combo Groups
+                        </p>
+                      </div>
+
+                      <Button
+                        onClick={() => printComboClaims(comboGroups.flat())}
+                        className="bg-brand-blue hover:bg-brand-blue/90 text-white font-black text-xs uppercase rounded-xl"
+                      >
+                        <Printer className="w-4 h-4 mr-2" />
+                        Print All Combos
+                      </Button>
+                    </div>
+
+                    <Card className="border-none shadow-sm overflow-hidden rounded-3xl bg-white">
+                      <div className="divide-y divide-slate-100">
+                        {comboGroups.map((group, groupIndex) => {
+                          const first = group[0];
+
+                          return (
+                            <div
+                              key={`combo-${first.userMobile}-${groupIndex}`}
+                              className="px-5 py-4 flex items-center justify-between gap-4 hover:bg-slate-50/70 transition-colors"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-3 flex-wrap">
+                                  <span className="font-black text-slate-800 text-sm">
+                                    {first.userName || 'N/A'}
+                                  </span>
+
+                                  <Badge className="bg-brand-magenta text-white border-none font-black text-[9px] uppercase">
+                                    👥 Combo · {group.length} Claims
+                                  </Badge>
+                                </div>
+
+                                <div className="flex items-center gap-4 mt-1.5 flex-wrap">
+                                  <span className="text-[10px] font-bold text-slate-500">
+                                    {first.userMobile || 'N/A'}
+                                  </span>
+
+                                  {first.membershipId && (
+                                    <span className="text-[9px] font-black text-brand-blue uppercase">
+                                      {first.membershipId}
+                                    </span>
+                                  )}
+
+                                  <span className="text-[9px] font-bold text-slate-400">
+                                    Claims: {group.map((claim, i) =>
+                                      `#${claim.tokenNo ?? claim.serialNo ?? 'N/A'}`
+                                    ).join(', ')}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => printComboClaims(group)}
+                                className="h-8 shrink-0 rounded-xl font-black text-[9px] uppercase text-brand-blue border-blue-200 hover:bg-blue-50"
+                              >
+                                <Printer className="w-3.5 h-3.5 mr-1" />
+                                Print Combo
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </Card>
+                  </>
+                );
+              })()}
+            </div>
+          </TabsContent>
           <TabsContent value="claims">
             <div className="space-y-6">
                {/* Claims Analytics */}
@@ -4633,6 +5058,24 @@ service cloud.firestore {
                )}
 
                {/* Claims Table */}
+               <div className="flex justify-end mb-3">
+                 <Button
+                   onClick={() => {
+                     const comboGroups = getComboGroups(claims);
+                     if (comboGroups.length === 0) {
+                       toast.info('No Combo claims found.');
+                       return;
+                     }
+                     const allComboClaims = comboGroups.flat();
+                     printComboClaims(allComboClaims);
+                   }}
+                   className="bg-brand-blue hover:bg-brand-blue/90 text-white font-black text-xs uppercase rounded-xl px-4"
+                 >
+                   <Printer className="w-4 h-4 mr-2" />
+                   Print All Combos
+                 </Button>
+               </div>
+
                <Card className="border-none shadow-sm overflow-hidden rounded-3xl bg-white">
                   {claimsLoading ? (
                     <div className="py-20 text-center space-y-4">
@@ -4640,11 +5083,14 @@ service cloud.firestore {
                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Loading support claims...</p>
                     </div>
                   ) : (
+                    <div className="w-full overflow-x-auto">
+                      <div className="min-w-[1100px]">
                     <Table>
                       <TableHeader className="bg-slate-50">
                         <TableRow>
                           <TableHead className="text-[10px] font-black uppercase tracking-widest px-6 w-[100px]">Serial No</TableHead>
                           <TableHead className="text-[10px] font-black uppercase tracking-widest px-6">Member Info</TableHead>
+                          <TableHead className="text-[10px] font-black uppercase tracking-widest">Combo</TableHead>
                           <TableHead className="text-[10px] font-black uppercase tracking-widest">Relation</TableHead>
                           <TableHead className="text-[10px] font-black uppercase tracking-widest">Amount Details</TableHead>
                           <TableHead className="text-[10px] font-black uppercase tracking-widest">Categories</TableHead>
@@ -4680,6 +5126,37 @@ service cloud.firestore {
                                 })()}
                                 <p className="text-[9px] font-black text-brand-blue uppercase">{claim.membershipId}</p>
                               </div>
+                            </TableCell>
+                            <TableCell>
+                              {(() => {
+                                const comboClaims = claims.filter(c =>
+                                  compareMobiles(c.userMobile, claim.userMobile)
+                                );
+
+                                if (comboClaims.length <= 1) {
+                                  return <span className="text-[9px] text-slate-300 font-bold">—</span>;
+                                }
+
+                                return (
+                                  <div className="flex flex-col items-start gap-1.5">
+                                    <Badge
+                                      variant="outline"
+                                      className="text-[8px] h-5 font-black uppercase text-[#FF1493] bg-[#FF1493]/5 border-[#FF1493]/20"
+                                    >
+                                      👥 Combo · {comboClaims.length}
+                                    </Badge>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => printComboClaims(comboClaims)}
+                                      className="h-7 px-2 rounded-lg text-[8px] font-black uppercase text-brand-blue border-blue-200 hover:bg-blue-50"
+                                    >
+                                      <Printer className="w-3 h-3 mr-1" />
+                                      Print
+                                    </Button>
+                                  </div>
+                                );
+                              })()}
                             </TableCell>
                             <TableCell>
                               {claim.relation && (
@@ -4753,6 +5230,8 @@ service cloud.firestore {
                         ))}
                       </TableBody>
                     </Table>
+                      </div>
+                    </div>
                   )}
                   {!claimsLoading && filteredClaims.length === 0 && (
                     <div className="py-20 text-center bg-white">
