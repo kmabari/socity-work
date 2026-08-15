@@ -20,7 +20,7 @@ import { DISTRICTS, CONSTITUENCIES, LOGO_URL, FALLBACK_LOGO_URL, getDistrictCode
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { auth, db, storage, handleFirestoreError, OperationType, secondaryAuth } from './lib/firebase';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, signInWithPopup } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, signInWithPopup, updatePassword } from 'firebase/auth';
 import { Clock, LogOut, Camera, ShieldCheck, RefreshCw, Users, ShieldAlert, ArrowRight, Eye, Pencil, Trash2, MoreVertical, Receipt, Mail, Smartphone, Search, MapPin, Plus, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
 import { setDoc, doc, updateDoc, deleteDoc, collection, onSnapshot, query, getDoc, getDocs, runTransaction, serverTimestamp, where, increment, limit, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -122,6 +122,10 @@ export default function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [isScreenshotMode, setIsScreenshotMode] = useState(false);
   const [prefilledMobile, setPrefilledMobile] = useState('');
   const [hasSubmittedClaim, setHasSubmittedClaim] = useState(false);
@@ -621,6 +625,9 @@ export default function App() {
         lastAuthUserUidRef.current = null;
         if (!isMagicLink) {
           setUser(null);
+          setMustChangePassword(false);
+          setNewPassword('');
+          setConfirmNewPassword('');
           setMembers([]);
           if (unsubscribeMembers) { unsubscribeMembers(); unsubscribeMembers = null; }
           if (unsubscribeUser) { unsubscribeUser(); unsubscribeUser = null; }
@@ -679,10 +686,29 @@ export default function App() {
         if (cached) {
           const cachedData = JSON.parse(cached) as UserProfile;
           setUser(cachedData);
+
+          // First-login password enforcement for cached profiles.
+          // Admin accounts are never forced through the member password-change flow.
+          const cachedMustChangePassword =
+            !cachedData.isAdmin &&
+            cachedData.role !== 'admin' &&
+            (
+              cachedData.mustChangePassword === true ||
+              (
+                cachedData.mustChangePassword === undefined &&
+                String(cachedData.pin ?? '').trim() === '123456'
+              )
+            );
+
+          setMustChangePassword(cachedMustChangePassword);
+
           if (currentViewRef.current !== 'register' && currentViewRef.current !== 'renewal' && currentViewRef.current !== 'janamail') {
             const isAdm = cachedData.role === 'admin' || cachedData.isAdmin;
             const isOp = cachedData.role === 'operator';
-            if (isAdm) setView('admin');
+
+            if (cachedMustChangePassword) {
+              // Render-level password gate will take priority.
+            } else if (isAdm) setView('admin');
             else if (isOp) setView('operator');
             else setView('card');
           }
@@ -810,8 +836,23 @@ export default function App() {
           
           const isAdmin = userData.role === 'admin' || userData.isAdmin;
           const isOperator = userData.role === 'operator';
+
+          // First-login password enforcement.
+          // Existing members without the field are forced to change only when
+          // their stored/default PIN is still 123456.
+          const profileMustChangePassword =
+            !isAdmin &&
+            (
+              userData.mustChangePassword === true ||
+              (
+                userData.mustChangePassword === undefined &&
+                String(userData.pin ?? '').trim() === '123456'
+              )
+            );
+
+          setMustChangePassword(profileMustChangePassword);
           
-          if (currentViewRef.current !== 'janamail') {
+          if (currentViewRef.current !== 'janamail' && !profileMustChangePassword) {
             if (isAdmin) {
                setView('admin');
             } else if (isOperator || (isDirectManual && !isMagicLink && isOperator)) {
@@ -1375,6 +1416,60 @@ export default function App() {
       return false;
     } finally {
       setIsLoggingIn(false);
+    }
+  };
+
+  const handleChangePassword = async (): Promise<boolean> => {
+    if (!auth.currentUser || !user) {
+      toast.error('Please log in again.');
+      return false;
+    }
+
+    if (!/^\d{6}$/.test(newPassword)) {
+      toast.error('New password must contain exactly 6 digits.');
+      return false;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      toast.error('Passwords do not match.');
+      return false;
+    }
+
+    if (newPassword === '123456') {
+      toast.error('Please choose a new password different from 123456.');
+      return false;
+    }
+
+    setIsChangingPassword(true);
+
+    try {
+      await updatePassword(auth.currentUser, newPassword);
+
+      await updateDoc(doc(db, 'users', user.uid), {
+        pin: newPassword,
+        mustChangePassword: false,
+        passwordChangedAt: serverTimestamp()
+      });
+
+      setMustChangePassword(false);
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setIsEditingProfile(true);
+
+      toast.success('Password changed successfully. Please complete your profile.');
+      return true;
+    } catch (error: any) {
+      console.error('Password change failed:', error);
+
+      if (error.code === 'auth/requires-recent-login') {
+        toast.error('Please log out and log in again before changing your password.');
+      } else {
+        toast.error('Unable to change password. Please try again.');
+      }
+
+      return false;
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -2316,6 +2411,87 @@ export default function App() {
   }
 
   const maintenanceMode = orgSettings?.maintenanceMode;
+
+  // Mandatory first-login password change gate.
+  // This must render before all member/admin/dashboard views.
+  if (mustChangePassword && user) {
+    return (
+      <div className="min-h-screen bg-[#FAF9FC] flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white border border-slate-200 rounded-[32px] shadow-xl shadow-slate-200/50 p-6 sm:p-8">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 rounded-2xl bg-brand-blue/10 flex items-center justify-center text-brand-blue text-xl font-black">
+                🔐
+              </div>
+              <div>
+                <h1 className="text-xl font-black text-slate-900">
+                  Set New Password
+                </h1>
+                <p className="text-xs font-semibold text-slate-500 mt-1">
+                  Your first-login password must be changed before continuing.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6">
+              <p className="text-xs font-bold text-amber-800 leading-relaxed">
+                Please create a new 6-digit password. Your new password cannot be 123456.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-2">
+                  New 6-Digit Password
+                </label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={6}
+                  autoComplete="new-password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  disabled={isChangingPassword}
+                  className="w-full h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-center text-lg font-black tracking-[0.35em] outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10 disabled:opacity-60"
+                  placeholder="••••••"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-2">
+                  Confirm New Password
+                </label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={6}
+                  autoComplete="new-password"
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  disabled={isChangingPassword}
+                  className="w-full h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-center text-lg font-black tracking-[0.35em] outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10 disabled:opacity-60"
+                  placeholder="••••••"
+                />
+              </div>
+
+              <Button
+                type="button"
+                onClick={handleChangePassword}
+                disabled={isChangingPassword || newPassword.length !== 6 || confirmNewPassword.length !== 6}
+                className="w-full h-12 rounded-2xl font-black uppercase tracking-wider"
+              >
+                {isChangingPassword ? 'Saving Password...' : 'Save New Password'}
+              </Button>
+            </div>
+
+            <p className="text-center text-[10px] font-bold text-slate-400 mt-6 leading-relaxed">
+              Password must contain exactly 6 digits. OTP is not required.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#FAF9FC]">
