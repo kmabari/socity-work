@@ -46,6 +46,7 @@ export interface UserProfile {
   quotaUsed?: number;
   serialNo: number;
   pin?: string;
+  mustChangePassword?: boolean;
   details?: string;
   entryBy?: string;
   waStatus?: 'Pending' | 'Sent' | 'Failed';
