@@ -694,7 +694,7 @@ export default function App() {
           // First-login password enforcement for cached profiles.
           // Admin accounts are never forced through the member password-change flow.
           const cachedPasswordChangeAlreadyCompleted =
-            passwordChangeCompletedUidRef.current === cachedData.uid;
+            passwordChangeCompletedUidRef.current === authUser.uid;
 
           const cachedMustChangePassword =
             !cachedData.isAdmin &&
@@ -849,7 +849,7 @@ export default function App() {
           // Existing members without the field are forced to change only when
           // their stored/default PIN is still 123456.
           const passwordChangeAlreadyCompleted =
-            passwordChangeCompletedUidRef.current === userData.uid;
+            passwordChangeCompletedUidRef.current === authUser.uid;
 
           const profileMustChangePassword =
             !isAdmin &&
@@ -1456,6 +1456,10 @@ export default function App() {
 
     try {
       await updatePassword(auth.currentUser, newPassword);
+
+      // Mark completion BEFORE Firestore update so an immediate snapshot
+      // cannot reopen the password-change gate.
+      passwordChangeCompletedUidRef.current = user.uid;
 
       await updateDoc(doc(db, 'users', user.uid), {
         pin: newPassword,
