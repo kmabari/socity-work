@@ -31,10 +31,36 @@ export default function ProfileEditForm({ user, onSave, onCancel }: ProfileEditF
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Sanitize values
+    // Mandatory profile completion validation
     const cleanEmail = email.trim().toLowerCase();
-    if (cleanEmail && !cleanEmail.includes('@')) {
+    const cleanAddress = address.trim();
+    const cleanPincode = pincode.trim().replace(/\D/g, '');
+    const cleanPostOffice = postOffice.trim();
+
+    if (
+      !cleanEmail ||
+      !cleanAddress ||
+      !cleanPincode ||
+      !cleanPostOffice ||
+      !bloodGroup ||
+      !gender ||
+      !dob ||
+      !district ||
+      !assemblyConstituency
+    ) {
+      toast.error('Please complete all profile fields before saving.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!cleanEmail.includes('@')) {
       toast.error('Please enter a valid email address.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (cleanPincode.length !== 6) {
+      toast.error('Please enter a valid 6-digit PIN code.');
       setIsSubmitting(false);
       return;
     }
