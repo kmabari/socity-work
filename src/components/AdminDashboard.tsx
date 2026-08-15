@@ -274,7 +274,7 @@ export default function AdminDashboard({
       `₹${Number(value || 0).toLocaleString('en-IN')}`;
 
     const escapeHtml = (value: any) =>
-      String(value ?? 'N/A')
+      String(value ?? '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
@@ -291,7 +291,7 @@ export default function AdminDashboard({
         Wife: 'ഭാര്യ (Wife)',
         Husband: 'ഭർത്താവ് (Husband)',
       };
-      return labels[relation] || relation || 'Self';
+      return labels[relation] || relation || '';
     };
 
     const hardshipLabel = (value: string) => {
@@ -300,7 +300,7 @@ export default function AdminDashboard({
         crisis: 'FINANCIAL CRISIS',
         medical: 'MEDICAL EMERGENCY',
       };
-      return labels[value] || value || 'NONE';
+      return labels[value] || value || '';
     };
 
     const pages = comboClaims.map((claim, index) => {
@@ -357,43 +357,43 @@ export default function AdminDashboard({
 
             <div class="field">
               <label>Member ID</label>
-              <strong>${escapeHtml(claim.membershipId || 'PENDING')}</strong>
+              <strong>${escapeHtml(claim.membershipId || '')}</strong>
             </div>
             <div class="field">
               <label>Serial / Claim No.</label>
-              <strong>#${escapeHtml(claim.tokenNo ?? claim.serialNo ?? 'N/A')}</strong>
+              <strong>#${escapeHtml(claim.tokenNo ?? claim.serialNo ?? '')}</strong>
             </div>
             <div class="field">
               <label>Phone Number</label>
-              <strong>${escapeHtml(claim.userMobile || claim.mobile)}</strong>
+              <strong>${escapeHtml(claim.userMobile || claim.mobile || '')}</strong>
             </div>
             <div class="field">
               <label>HighRich ID</label>
-              <strong>${escapeHtml(claim.highrichId || 'NOT PROVIDED')}</strong>
+              <strong>${escapeHtml(claim.highrichId || '')}</strong>
             </div>
 
             <div class="field wide">
               <label>Address</label>
-              <strong>${escapeHtml(claim.address)}</strong>
+              <strong>${escapeHtml(claim.address || '')}</strong>
             </div>
 
             <div class="field">
               <label>District</label>
               <strong>${escapeHtml(
-                DISTRICTS.find(d => d.code === claim.district)?.name || claim.district
+                DISTRICTS.find(d => d.code === claim.district || '')?.name || claim.district || ''
               )}</strong>
             </div>
             <div class="field">
               <label>Constituency</label>
-              <strong>${escapeHtml(claim.constituency)}</strong>
+              <strong>${escapeHtml(claim.constituency || '')}</strong>
             </div>
             <div class="field">
               <label>Blood Group</label>
-              <strong>${escapeHtml(claim.bloodGroup)}</strong>
+              <strong>${escapeHtml(claim.bloodGroup || '')}</strong>
             </div>
             <div class="field">
               <label>Email</label>
-              <strong>${escapeHtml(claim.email)}</strong>
+              <strong>${escapeHtml(claim.email || '')}</strong>
             </div>
           </div>
 
@@ -489,7 +489,7 @@ export default function AdminDashboard({
           </div>
 
           <div class="footer">
-            HCRS SUPPORT CLAIM · Claim #${escapeHtml(claim.tokenNo ?? claim.serialNo ?? 'N/A')}
+            HCRS SUPPORT CLAIM · Claim #${escapeHtml(claim.tokenNo ?? claim.serialNo ?? '')}
             · ${escapeHtml(formatClaimDate(claim.createdAt))}
           </div>
 
@@ -514,7 +514,7 @@ export default function AdminDashboard({
           <style>
             @page {
               size: A4 portrait;
-              margin: 10mm;
+              margin: 7mm;
             }
 
             * {
@@ -530,16 +530,19 @@ export default function AdminDashboard({
             }
 
             body {
-              font-size: 9.5px;
+              font-size: 10px;
             }
 
             .page {
               width: 100%;
-              min-height: 277mm;
+              min-height: 283mm;
               position: relative;
               page-break-after: always;
               break-after: page;
-              padding-bottom: 14mm;
+              padding: 6mm 6mm 14mm;
+              border: 1.5px solid #172b5c;
+              border-radius: 1mm;
+              overflow: hidden;
             }
 
             .page:last-child {
@@ -552,12 +555,12 @@ export default function AdminDashboard({
               justify-content: space-between;
               align-items: flex-start;
               border-bottom: 2px solid #172b5c;
-              padding-bottom: 7px;
-              margin-bottom: 10px;
+              padding-bottom: 8px;
+              margin-bottom: 11px;
             }
 
             .brand {
-              font-size: 18px;
+              font-size: 20px;
               font-weight: 900;
               color: #172b5c;
             }
@@ -581,24 +584,24 @@ export default function AdminDashboard({
             .section-title {
               background: #172b5c;
               color: white;
-              font-size: 8.5px;
+              font-size: 9px;
               font-weight: 900;
-              padding: 5px 7px;
-              margin-top: 9px;
-              margin-bottom: 6px;
+              padding: 6px 8px;
+              margin-top: 10px;
+              margin-bottom: 7px;
               letter-spacing: .4px;
             }
 
             .details-grid {
               display: grid;
               grid-template-columns: repeat(4, 1fr);
-              gap: 5px;
+              gap: 6px;
             }
 
             .field {
               border: 1px solid #dbe3ed;
-              padding: 6px;
-              min-height: 34px;
+              padding: 7px;
+              min-height: 38px;
             }
 
             .field.wide {
@@ -618,8 +621,8 @@ export default function AdminDashboard({
 
             .field strong {
               display: block;
-              font-size: 9px;
-              line-height: 1.35;
+              font-size: 9.5px;
+              line-height: 1.4;
               word-break: break-word;
             }
 
@@ -631,7 +634,8 @@ export default function AdminDashboard({
 
             .status-box {
               border: 1px solid #dbe3ed;
-              padding: 7px;
+              padding: 8px;
+              min-height: 38px;
             }
 
             .status-box strong {
@@ -647,7 +651,8 @@ export default function AdminDashboard({
 
             .amount-grid > div {
               border: 1px solid #dbe3ed;
-              padding: 8px;
+              padding: 10px;
+              min-height: 50px;
               text-align: center;
             }
 
@@ -665,7 +670,7 @@ export default function AdminDashboard({
 
             .amount-grid strong {
               display: block;
-              font-size: 14px;
+              font-size: 16px;
               font-weight: 900;
             }
 
@@ -718,9 +723,9 @@ export default function AdminDashboard({
             .text-box {
               border: 1px solid #dbe3ed;
               background: #f8fafc;
-              padding: 7px;
-              min-height: 30px;
-              line-height: 1.45;
+              padding: 8px;
+              min-height: 36px;
+              line-height: 1.5;
               white-space: pre-wrap;
             }
 
@@ -780,7 +785,8 @@ export default function AdminDashboard({
               }
 
               .page {
-                min-height: 277mm;
+                min-height: 283mm;
+                border: 1.5px solid #172b5c;
               }
             }
           </style>
@@ -5052,7 +5058,7 @@ export default function AdminDashboard({
 
                                   <span className="text-[9px] font-bold text-slate-400">
                                     Claims: {group.map((claim, i) =>
-                                      `#${claim.tokenNo ?? claim.serialNo ?? 'N/A'}`
+                                      `#${claim.tokenNo ?? claim.serialNo ?? ''}`
                                     ).join(', ')}
                                   </span>
                                 </div>
@@ -5337,7 +5343,7 @@ service cloud.firestore {
                           <TableRow key={claim.id} className="hover:bg-slate-50/50 transition-colors">
                             <TableCell className="px-6 py-4 font-black text-[#FF1493] text-sm font-mono">
                               <span className="bg-[#FF1493]/5 border border-[#FF1493]/15 py-1 px-2.5 rounded-lg text-[#FF1493]">
-                                #{claim.tokenNo ?? claim.serialNo ?? 'N/A'}
+                                #{claim.tokenNo ?? claim.serialNo ?? ''}
                               </span>
                             </TableCell>
                             <TableCell className="px-6 py-4">
