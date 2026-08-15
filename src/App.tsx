@@ -693,9 +693,13 @@ export default function App() {
 
           // First-login password enforcement for cached profiles.
           // Admin accounts are never forced through the member password-change flow.
+          const cachedPasswordChangeAlreadyCompleted =
+            passwordChangeCompletedUidRef.current === cachedData.uid;
+
           const cachedMustChangePassword =
             !cachedData.isAdmin &&
             cachedData.role !== 'admin' &&
+            !cachedPasswordChangeAlreadyCompleted &&
             (
               cachedData.mustChangePassword === true ||
               (
@@ -1462,6 +1466,30 @@ export default function App() {
       // Mark this UID as completed so a stale Firestore snapshot
       // cannot immediately reopen the password-change gate.
       passwordChangeCompletedUidRef.current = user.uid;
+
+      // Keep the local cached profile in sync so the next auth/profile
+      // initialization cannot reopen the password-change gate.
+      try {
+        const cacheKey = `hcrs_cached_user_${user.uid}`;
+        const cachedProfile = localStorage.getItem(cacheKey);
+        if (cachedProfile) {
+          const cachedData = JSON.parse(cachedProfile);
+          localStorage.setItem(cacheKey, JSON.stringify({
+            ...cachedData,
+            pin: newPassword,
+            mustChangePassword: false,
+            passwordChangedAt: new Date().toISOString()
+          }));
+        }
+      } catch (e) {
+        console.warn("Could not update cached password state:", e);
+      }
+
+      setUser(prev => prev ? {
+        ...prev,
+        pin: newPassword,
+        mustChangePassword: false
+      } : prev);
 
       setMustChangePassword(false);
       setNewPassword('');
