@@ -124,6 +124,10 @@ export default function App() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [mustChangePassword, setMustChangePassword] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  // Prevent a stale Firestore snapshot from reopening the password-change gate
+  // immediately after a successful password update.
+  const passwordChangeCompletedUidRef = useRef<string | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [isScreenshotMode, setIsScreenshotMode] = useState(false);
@@ -840,8 +844,12 @@ export default function App() {
           // First-login password enforcement.
           // Existing members without the field are forced to change only when
           // their stored/default PIN is still 123456.
+          const passwordChangeAlreadyCompleted =
+            passwordChangeCompletedUidRef.current === userData.uid;
+
           const profileMustChangePassword =
             !isAdmin &&
+            !passwordChangeAlreadyCompleted &&
             (
               userData.mustChangePassword === true ||
               (
@@ -1450,6 +1458,10 @@ export default function App() {
         mustChangePassword: false,
         passwordChangedAt: serverTimestamp()
       });
+
+      // Mark this UID as completed so a stale Firestore snapshot
+      // cannot immediately reopen the password-change gate.
+      passwordChangeCompletedUidRef.current = user.uid;
 
       setMustChangePassword(false);
       setNewPassword('');
