@@ -273,82 +273,231 @@ export default function AdminDashboard({
     const money = (value: any) =>
       `₹${Number(value || 0).toLocaleString('en-IN')}`;
 
+    const escapeHtml = (value: any) =>
+      String(value ?? 'N/A')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+
+    const relationLabel = (relation: any) => {
+      const labels: Record<string, string> = {
+        Self: 'സ്വന്തം (Self)',
+        Mother: 'അമ്മ (Mother)',
+        Father: 'അച്ഛൻ (Father)',
+        Son: 'മകൻ (Son)',
+        Daughter: 'മകൾ (Daughter)',
+        Wife: 'ഭാര്യ (Wife)',
+        Husband: 'ഭർത്താവ് (Husband)',
+      };
+      return labels[relation] || relation || 'Self';
+    };
+
+    const hardshipLabel = (value: string) => {
+      const labels: Record<string, string> = {
+        bank: 'BANK SEIZURE',
+        crisis: 'FINANCIAL CRISIS',
+        medical: 'MEDICAL EMERGENCY',
+      };
+      return labels[value] || value || 'NONE';
+    };
+
     const pages = comboClaims.map((claim, index) => {
-      const categories = formatClaimCategories(claim.categories);
+      const categoryDetails = claim.categoryDetails || {};
+      const categoryRows = Object.entries(categoryDetails)
+        .map(([catId, detail]: [string, any]) => `
+          <tr>
+            <td>${escapeHtml(getCategoryLabel(catId))}</td>
+            <td>${money(detail?.paid)}</td>
+            <td>${money(detail?.received)}</td>
+            <td class="pending">${money(detail?.pending)}</td>
+          </tr>
+        `)
+        .join('');
+
+      const hardship = Array.isArray(claim.hardshipStatus)
+        ? claim.hardshipStatus.map(h => hardshipLabel(h)).join(', ')
+        : 'NONE';
+
+      const futurePreference =
+        claim.futurePreference === 'settlement'
+          ? 'Prefer settlement and closure after receiving balance'
+          : claim.futurePreference === 'wait'
+            ? 'Willing to wait if company continues and grows'
+            : claim.futurePreference
+              ? 'Ready to continue with company based on future plans'
+              : 'N/A';
 
       return `
         <section class="page">
-          <div class="header">
-            <div class="brand">HCRS SUPPORT CLAIM</div>
-            <div class="subtitle">Combo Claim · ${index + 1} of ${comboClaims.length}</div>
-          </div>
 
-          <div class="member">
+          <div class="top-header">
             <div>
-              <div class="member-name">${claim.userName || 'N/A'}</div>
-              <div class="member-meta">
-                Mobile: ${claim.userMobile || 'N/A'}
-                ${claim.membershipId ? ` · Membership: ${claim.membershipId}` : ''}
-              </div>
+              <div class="brand">HCRS SUPPORT CLAIM</div>
+              <div class="document-title">MEMBER CLAIM DETAILS &amp; VERIFICATION</div>
             </div>
-            <div class="combo">COMBO</div>
+            <div class="page-meta">
+              COMBO CLAIM<br>
+              ${index + 1} / ${comboClaims.length}
+            </div>
           </div>
 
-          <div class="claim">
-            <div class="claim-head">
-              <div>
-                <div class="claim-title">Claim #${claim.tokenNo ?? claim.serialNo ?? 'N/A'}</div>
-                <div class="muted">
-                  Relation: ${claim.relation || 'Self'}
-                </div>
-              </div>
-              <div class="priority">${claim.priorityStatus || 'GREEN'}</div>
+          <div class="section-title">1. MEMBER / CLAIMANT DETAILS</div>
+
+          <div class="details-grid">
+            <div class="field wide">
+              <label>Account Holder / Claimant</label>
+              <strong>${escapeHtml(claim.userName)}</strong>
+            </div>
+            <div class="field">
+              <label>Relation</label>
+              <strong>${escapeHtml(relationLabel(claim.relation))}</strong>
             </div>
 
-            <div class="grid">
-              <div>
-                <span>HR ID</span>
-                <strong>${claim.highrichId || 'N/A'}</strong>
-              </div>
-              <div>
-                <span>Paid</span>
-                <strong>${money(claim.totalPaid)}</strong>
-              </div>
-              <div>
-                <span>Received</span>
-                <strong>${money(claim.totalReceived)}</strong>
-              </div>
-              <div>
-                <span>Pending</span>
-                <strong>${money(claim.totalPending)}</strong>
-              </div>
+            <div class="field">
+              <label>Member ID</label>
+              <strong>${escapeHtml(claim.membershipId || 'PENDING')}</strong>
+            </div>
+            <div class="field">
+              <label>Serial / Claim No.</label>
+              <strong>#${escapeHtml(claim.tokenNo ?? claim.serialNo ?? 'N/A')}</strong>
+            </div>
+            <div class="field">
+              <label>Phone Number</label>
+              <strong>${escapeHtml(claim.userMobile || claim.mobile)}</strong>
+            </div>
+            <div class="field">
+              <label>HighRich ID</label>
+              <strong>${escapeHtml(claim.highrichId || 'NOT PROVIDED')}</strong>
             </div>
 
-            ${categories ? `
-              <div class="categories">
-                <span>Categories:</span> ${categories}
-              </div>
-            ` : ''}
+            <div class="field wide">
+              <label>Address</label>
+              <strong>${escapeHtml(claim.address)}</strong>
+            </div>
 
-            ${claim.notes ? `
-              <div class="notes">
-                <b>Admin Note:</b> ${claim.notes}
-              </div>
-            ` : ''}
+            <div class="field">
+              <label>District</label>
+              <strong>${escapeHtml(
+                DISTRICTS.find(d => d.code === claim.district)?.name || claim.district
+              )}</strong>
+            </div>
+            <div class="field">
+              <label>Constituency</label>
+              <strong>${escapeHtml(claim.constituency)}</strong>
+            </div>
+            <div class="field">
+              <label>Blood Group</label>
+              <strong>${escapeHtml(claim.bloodGroup)}</strong>
+            </div>
+            <div class="field">
+              <label>Email</label>
+              <strong>${escapeHtml(claim.email)}</strong>
+            </div>
+          </div>
 
-            <div class="date">
-              Claim Date: ${formatClaimDate(claim.createdAt)}
+          <div class="section-title">2. CLAIM STATUS</div>
+
+          <div class="status-grid">
+            <div class="status-box">
+              <label>Priority Status</label>
+              <strong>${escapeHtml(claim.priorityStatus || 'GREEN')}</strong>
+            </div>
+            <div class="status-box">
+              <label>Emergency Verified</label>
+              <strong>${claim.isEmergency ? 'YES' : 'NO'}</strong>
+            </div>
+            <div class="status-box">
+              <label>Claim Submitted</label>
+              <strong>${escapeHtml(formatClaimDate(claim.createdAt))}</strong>
+            </div>
+          </div>
+
+          <div class="section-title">3. AMOUNT BREAKDOWN</div>
+
+          <div class="amount-grid">
+            <div>
+              <label>Total Paid</label>
+              <strong>${money(claim.totalPaid)}</strong>
+            </div>
+            <div>
+              <label>Total Received</label>
+              <strong>${money(claim.totalReceived)}</strong>
+            </div>
+            <div>
+              <label>Total Pending</label>
+              <strong>${money(claim.totalPending)}</strong>
+            </div>
+          </div>
+
+          ${categoryRows ? `
+            <div class="sub-title">Category-wise Claim Breakdown</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Paid</th>
+                  <th>Received</th>
+                  <th>Pending</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${categoryRows}
+              </tbody>
+            </table>
+          ` : ''}
+
+          ${claim.notes ? `
+            <div class="section-title">4. REMARKS / NOTES</div>
+            <div class="text-box">${escapeHtml(claim.notes)}</div>
+          ` : ''}
+
+          <div class="two-column">
+
+            <div>
+              <div class="section-title">5. FUTURE PREFERENCE</div>
+              <div class="text-box">${escapeHtml(futurePreference)}</div>
+            </div>
+
+            <div>
+              <div class="section-title">6. HARDSHIP DECLARATION</div>
+              <div class="text-box">${escapeHtml(hardship)}</div>
+            </div>
+
+          </div>
+
+          <div class="verification">
+            <div class="section-title">7. CLAIM VERIFICATION</div>
+            <p>
+              The above information represents the claim details available in
+              the company's records. The claim amount and related particulars
+              may be verified against the company's records before submission
+              to the concerned authorities.
+            </p>
+
+            <div class="signature-grid">
+              <div>
+                <span>Member / Claimant Confirmation</span>
+                <div class="signature-line"></div>
+              </div>
+              <div>
+                <span>Verified by Company / Authorized Representative</span>
+                <div class="signature-line"></div>
+              </div>
             </div>
           </div>
 
           <div class="footer">
-            HCRS Admin Dashboard · Combo Claim ${index + 1} / ${comboClaims.length}
+            HCRS SUPPORT CLAIM · Claim #${escapeHtml(claim.tokenNo ?? claim.serialNo ?? 'N/A')}
+            · ${escapeHtml(formatClaimDate(claim.createdAt))}
           </div>
+
         </section>
       `;
     }).join('');
 
-    const printWindow = window.open('', '_blank', 'width=900,height=1100');
+    const printWindow = window.open('', '_blank', 'width=1000,height=1200');
 
     if (!printWindow) {
       toast.error('Print window blocked. Please allow pop-ups.');
@@ -360,7 +509,7 @@ export default function AdminDashboard({
       <html>
         <head>
           <meta charset="utf-8" />
-          <title>HCRS Combo Claims - ${comboClaims[0]?.userName || 'Member'}</title>
+          <title>HCRS Support Claims</title>
 
           <style>
             @page {
@@ -372,25 +521,25 @@ export default function AdminDashboard({
               box-sizing: border-box;
             }
 
-            html,
-            body {
+            html, body {
               margin: 0;
               padding: 0;
-              background: white;
+              background: #fff;
               color: #172033;
               font-family: Arial, "Noto Sans", sans-serif;
             }
 
             body {
-              font-size: 10px;
+              font-size: 9.5px;
             }
 
             .page {
               width: 100%;
               min-height: 277mm;
+              position: relative;
               page-break-after: always;
               break-after: page;
-              position: relative;
+              padding-bottom: 14mm;
             }
 
             .page:last-child {
@@ -398,10 +547,13 @@ export default function AdminDashboard({
               break-after: auto;
             }
 
-            .header {
+            .top-header {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
               border-bottom: 2px solid #172b5c;
-              padding-bottom: 8px;
-              margin-bottom: 12px;
+              padding-bottom: 7px;
+              margin-bottom: 10px;
             }
 
             .brand {
@@ -410,126 +562,202 @@ export default function AdminDashboard({
               color: #172b5c;
             }
 
-            .subtitle {
+            .document-title {
               margin-top: 3px;
               font-size: 9px;
+              font-weight: 800;
               color: #64748b;
-              font-weight: 700;
+              letter-spacing: .4px;
             }
 
-            .member {
-              display: flex;
-              justify-content: space-between;
-              gap: 12px;
-              padding: 10px;
-              background: #f8fafc;
-              border: 1px solid #e2e8f0;
-              border-radius: 8px;
-              margin-bottom: 12px;
-            }
-
-            .member-name {
-              font-size: 15px;
+            .page-meta {
+              text-align: right;
+              font-size: 8px;
+              line-height: 1.5;
               font-weight: 900;
-            }
-
-            .member-meta {
-              color: #475569;
-              font-size: 9px;
-              margin-top: 3px;
-            }
-
-            .combo {
-              color: #ff1493;
-              font-size: 10px;
-              font-weight: 900;
-            }
-
-            .claim {
-              border: 1px solid #dbe3ed;
-              border-radius: 9px;
-              padding: 12px;
-              break-inside: avoid;
-            }
-
-            .claim-head {
-              display: flex;
-              justify-content: space-between;
-              gap: 10px;
-              margin-bottom: 10px;
-            }
-
-            .claim-title {
-              font-size: 14px;
-              font-weight: 900;
-            }
-
-            .muted {
               color: #64748b;
-              font-size: 10px;
-              margin-top: 4px;
             }
 
-            .priority {
-              padding: 5px 8px;
-              border-radius: 6px;
-              background: #f1f5f9;
-              font-size: 9px;
+            .section-title {
+              background: #172b5c;
+              color: white;
+              font-size: 8.5px;
               font-weight: 900;
-              height: fit-content;
+              padding: 5px 7px;
+              margin-top: 9px;
+              margin-bottom: 6px;
+              letter-spacing: .4px;
             }
 
-            .grid {
+            .details-grid {
               display: grid;
               grid-template-columns: repeat(4, 1fr);
-              gap: 8px;
-              border-top: 1px solid #eef2f7;
-              padding-top: 9px;
+              gap: 5px;
             }
 
-            .grid span {
+            .field {
+              border: 1px solid #dbe3ed;
+              padding: 6px;
+              min-height: 34px;
+            }
+
+            .field.wide {
+              grid-column: span 2;
+            }
+
+            .field label,
+            .status-box label,
+            .amount-grid label {
               display: block;
-              color: #94a3b8;
-              font-size: 8px;
-              font-weight: 800;
+              color: #64748b;
+              font-size: 7px;
+              font-weight: 900;
               text-transform: uppercase;
               margin-bottom: 3px;
             }
 
-            .grid strong {
-              font-size: 12px;
-              font-weight: 900;
+            .field strong {
+              display: block;
+              font-size: 9px;
+              line-height: 1.35;
+              word-break: break-word;
             }
 
-            .categories {
-              margin-top: 10px;
-              padding-top: 9px;
-              border-top: 1px dashed #e2e8f0;
-              color: #475569;
+            .status-grid {
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 6px;
+            }
+
+            .status-box {
+              border: 1px solid #dbe3ed;
+              padding: 7px;
+            }
+
+            .status-box strong {
               font-size: 10px;
-              line-height: 1.5;
+              font-weight: 900;
             }
 
-            .categories span {
+            .amount-grid {
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 7px;
+            }
+
+            .amount-grid > div {
+              border: 1px solid #dbe3ed;
+              padding: 8px;
+              text-align: center;
+            }
+
+            .amount-grid > div:nth-child(1) {
+              background: #f1f5f9;
+            }
+
+            .amount-grid > div:nth-child(2) {
+              background: #f0fdf4;
+            }
+
+            .amount-grid > div:nth-child(3) {
+              background: #fdf2f8;
+            }
+
+            .amount-grid strong {
+              display: block;
+              font-size: 14px;
               font-weight: 900;
+            }
+
+            .sub-title {
+              margin-top: 7px;
+              margin-bottom: 4px;
+              font-size: 8px;
+              font-weight: 900;
+              color: #334155;
+            }
+
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 8px;
+            }
+
+            th {
+              background: #f1f5f9;
+              color: #334155;
+              font-weight: 900;
+              text-transform: uppercase;
+            }
+
+            th, td {
+              border: 1px solid #dbe3ed;
+              padding: 5px 6px;
+              text-align: left;
+            }
+
+            td:nth-child(2),
+            td:nth-child(3),
+            td:nth-child(4),
+            th:nth-child(2),
+            th:nth-child(3),
+            th:nth-child(4) {
+              text-align: right;
+            }
+
+            td.pending {
+              font-weight: 900;
+            }
+
+            .two-column {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 8px;
+            }
+
+            .text-box {
+              border: 1px solid #dbe3ed;
+              background: #f8fafc;
+              padding: 7px;
+              min-height: 30px;
+              line-height: 1.45;
+              white-space: pre-wrap;
+            }
+
+            .verification {
+              margin-top: 8px;
+              border: 1px solid #cbd5e1;
+              padding: 7px;
+            }
+
+            .verification .section-title {
+              margin: -7px -7px 7px;
+            }
+
+            .verification p {
+              margin: 0;
+              font-size: 8px;
+              line-height: 1.5;
+              color: #475569;
+            }
+
+            .signature-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 25px;
+              margin-top: 22px;
+            }
+
+            .signature-grid span {
+              display: block;
+              font-size: 7px;
+              font-weight: 800;
               color: #64748b;
             }
 
-            .notes {
-              margin-top: 10px;
-              padding: 8px;
-              background: #f8fafc;
-              border-radius: 6px;
-              color: #475569;
-              font-size: 9px;
-              line-height: 1.5;
-            }
-
-            .date {
-              margin-top: 10px;
-              color: #94a3b8;
-              font-size: 9px;
-              font-weight: 700;
+            .signature-line {
+              margin-top: 18px;
+              border-bottom: 1px solid #334155;
             }
 
             .footer {
@@ -537,17 +765,22 @@ export default function AdminDashboard({
               bottom: 0;
               left: 0;
               right: 0;
-              padding-top: 7px;
-              border-top: 1px solid #e2e8f0;
-              color: #94a3b8;
-              font-size: 8px;
+              border-top: 1px solid #dbe3ed;
+              padding-top: 5px;
               text-align: center;
+              color: #94a3b8;
+              font-size: 7px;
+              font-weight: 700;
             }
 
             @media print {
               body {
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
+              }
+
+              .page {
+                min-height: 277mm;
               }
             }
           </style>
@@ -564,7 +797,7 @@ export default function AdminDashboard({
 
     setTimeout(() => {
       printWindow.print();
-    }, 300);
+    }, 500);
   };
 
   const formatClaimDate = (createdAt: any): string => {
