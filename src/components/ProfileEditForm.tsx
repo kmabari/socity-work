@@ -13,9 +13,15 @@ interface ProfileEditFormProps {
   user: UserProfile;
   onSave: (updatedData: Partial<UserProfile>) => Promise<void>;
   onCancel: () => void;
+  isMandatory?: boolean;
 }
 
-export default function ProfileEditForm({ user, onSave, onCancel }: ProfileEditFormProps) {
+export default function ProfileEditForm({
+  user,
+  onSave,
+  onCancel,
+  isMandatory = false
+}: ProfileEditFormProps) {
   const [address, setAddress] = useState(user.address || '');
   const [email, setEmail] = useState(user.email || '');
   const [pincode, setPincode] = useState(user.pincode || '');
@@ -95,14 +101,16 @@ export default function ProfileEditForm({ user, onSave, onCancel }: ProfileEditF
   return (
     <div className="bg-white rounded-[24px] border border-slate-200/80 shadow-premium p-6 sm:p-8 max-w-lg w-full mx-auto space-y-6 text-slate-800 animate-in fade-in slide-in-from-bottom-4 duration-300 font-sans">
       <div className="flex items-center gap-3">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={onCancel}
-          className="rounded-full w-9 h-9 border border-slate-200 text-slate-600 hover:bg-slate-50"
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </Button>
+        {!isMandatory && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onCancel}
+            className="rounded-full w-9 h-9 border border-slate-200 text-slate-600 hover:bg-slate-50"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+        )}
         <div>
           <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Edit Profile</h3>
           <p className="text-[10px] text-slate-500 font-bold uppercase">Update edit-permissible personal details</p>
@@ -301,14 +309,16 @@ export default function ProfileEditForm({ user, onSave, onCancel }: ProfileEditF
         </div>
 
         <div className="flex gap-3 pt-2">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={onCancel}
-            className="flex-1 h-11 rounded-xl border-slate-200 text-slate-700 font-bold uppercase text-xs tracking-wider"
-          >
-            Cancel
-          </Button>
+          {!isMandatory && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              className="flex-1 h-11 rounded-xl border-slate-200 text-slate-700 font-bold uppercase text-xs tracking-wider"
+            >
+              Cancel
+            </Button>
+          )}
           <Button 
             type="submit" 
             disabled={isSubmitting}

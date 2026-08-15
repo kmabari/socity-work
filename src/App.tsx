@@ -123,6 +123,7 @@ export default function App() {
   const [showCelebration, setShowCelebration] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [mustCompleteProfile, setMustCompleteProfile] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   // Prevent a stale Firestore snapshot from reopening the password-change gate
@@ -710,12 +711,20 @@ export default function App() {
 
           setMustChangePassword(cachedMustChangePassword);
 
+          const cachedMustCompleteProfile =
+            !cachedData.isAdmin &&
+            cachedData.role !== 'admin' &&
+            !cachedMustChangePassword &&
+            cachedData.mustCompleteProfile === true;
+
+          setMustCompleteProfile(cachedMustCompleteProfile);
+
           if (currentViewRef.current !== 'register' && currentViewRef.current !== 'renewal' && currentViewRef.current !== 'janamail') {
             const isAdm = cachedData.role === 'admin' || cachedData.isAdmin;
             const isOp = cachedData.role === 'operator';
 
-            if (cachedMustChangePassword) {
-              // Render-level password gate will take priority.
+            if (cachedMustChangePassword || cachedMustCompleteProfile) {
+              // Render-level password/profile gate will take priority.
             } else if (isAdm) setView('admin');
             else if (isOp) setView('operator');
             else setView('card');
@@ -863,8 +872,15 @@ export default function App() {
             );
 
           setMustChangePassword(profileMustChangePassword);
+
+          const profileMustComplete =
+            !isAdmin &&
+            !profileMustChangePassword &&
+            userData.mustCompleteProfile === true;
+
+          setMustCompleteProfile(profileMustComplete);
           
-          if (currentViewRef.current !== 'janamail' && !profileMustChangePassword) {
+          if (currentViewRef.current !== 'janamail' && !profileMustChangePassword && !profileMustComplete) {
             if (isAdmin) {
                setView('admin');
             } else if (isOperator || (isDirectManual && !isMagicLink && isOperator)) {
@@ -1019,7 +1035,29 @@ export default function App() {
             if (currentViewRef.current !== 'register' && currentViewRef.current !== 'renewal') {
               const isAdm = cachedData.role === 'admin' || cachedData.isAdmin;
               const isOp = cachedData.role === 'operator';
-              if (isAdm) setView('admin');
+
+              const cachedPasswordMustChange =
+                !isAdm &&
+                !passwordChangeCompletedUidRef.current &&
+                (
+                  cachedData.mustChangePassword === true ||
+                  (
+                    cachedData.mustChangePassword === undefined &&
+                    String(cachedData.pin ?? '').trim() === '123456'
+                  )
+                );
+
+              const cachedProfileMustComplete =
+                !isAdm &&
+                !cachedPasswordMustChange &&
+                cachedData.mustCompleteProfile === true;
+
+              setMustChangePassword(cachedPasswordMustChange);
+              setMustCompleteProfile(cachedProfileMustComplete);
+
+              if (cachedPasswordMustChange || cachedProfileMustComplete) {
+                // Authentication/profile gates take priority.
+              } else if (isAdm) setView('admin');
               else if (isOp) setView('operator');
               else setView('card');
             }
@@ -1464,6 +1502,7 @@ export default function App() {
       await updateDoc(doc(db, 'users', user.uid), {
         pin: newPassword,
         mustChangePassword: false,
+        mustCompleteProfile: true,
         passwordChangedAt: serverTimestamp()
       });
 
@@ -2241,9 +2280,22 @@ export default function App() {
         finalData.constituencyCode = assemblyCode;
       }
 
+      // Completing the mandatory first-login profile requirement.
+      finalData.mustCompleteProfile = false;
+
       await updateDoc(doc(db, 'users', user.uid), finalData);
+
+      // Keep local state synchronized immediately after profile completion.
+      setMustCompleteProfile(false);
+      setUser(prev => prev ? {
+        ...prev,
+        ...finalData,
+        mustCompleteProfile: false
+      } : prev);
+
       toast.success('Profile updated successfully! (വിവരങ്ങൾ പുതുക്കിയിരിക്കുന്നു.)', { id: loadingToast });
       setIsEditingProfile(false);
+      setView('card');
     } catch (error) {
       console.error("Save profile error:", error);
       toast.error('Failed to update details.', { id: loadingToast });
@@ -2457,7 +2509,7 @@ export default function App() {
   const maintenanceMode = orgSettings?.maintenanceMode;
 
   // Mandatory first-login password change gate.
-  // This must render before all member/admin/dashboard views.
+  // Password change must always be completed before profile completion.
   if (mustChangePassword && user) {
     return (
       <div className="min-h-screen bg-[#FAF9FC] flex items-center justify-center p-4">
@@ -2532,6 +2584,23 @@ export default function App() {
               Password must contain exactly 6 digits. OTP is not required.
             </p>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Mandatory first-login profile completion gate.
+  // This is checked only after the password-change requirement is cleared.
+  if (mustCompleteProfile && user) {
+    return (
+      <div className="min-h-screen bg-[#FAF9FC] flex items-center justify-center p-4">
+        <div className="w-full max-w-lg">
+          <ProfileEditForm
+            user={user}
+            onSave={handleSaveProfile}
+            onCancel={() => {}}
+            isMandatory
+          />
         </div>
       </div>
     );
@@ -2778,7 +2847,13 @@ export default function App() {
                       {submittedClaimsCount >= 4 ? (
                         <div className="w-full bg-emerald-500/10 dark:bg-emerald-950/20 border-2 border-emerald-500/35 p-6 sm:p-8 pb-8 sm:pb-10 rounded-[28px] shadow-lg text-center lg:text-left flex flex-col gap-4">
                           <Button 
-                            onClick={() => setView('support')}
+                            onClick={() => {
+                              if (mustCompleteProfile) {
+                                setIsEditingProfile(true);
+                                return;
+                              }
+                              setView('support');
+                            }}
                             className="w-full h-15 rounded-2xl font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg hover:scale-[1.02] active:scale-95 transition-all text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-3 border-b-4 border-emerald-800 cursor-pointer"
                           >
                             <ShieldCheck className="w-5 h-5 animate-pulse" />
@@ -2794,7 +2869,13 @@ export default function App() {
                       ) : submittedClaimsCount > 0 ? (
                         <div className="w-full bg-amber-500/15 dark:bg-amber-950/30 border-2 border-amber-500/40 p-6 sm:p-8 pb-8 sm:pb-10 rounded-[28px] shadow-xl text-center lg:text-left flex flex-col gap-4">
                           <Button 
-                            onClick={() => setView('support')}
+                            onClick={() => {
+                              if (mustCompleteProfile) {
+                                setIsEditingProfile(true);
+                                return;
+                              }
+                              setView('support');
+                            }}
                             className="w-full h-15 rounded-2xl font-black bg-amber-600 hover:bg-amber-700 text-white shadow-lg hover:scale-[1.02] active:scale-95 transition-all text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-3 border-b-4 border-amber-800 cursor-pointer"
                           >
                             <Info className="w-5 h-5 animate-pulse" />
@@ -2815,7 +2896,13 @@ export default function App() {
                       ) : (
                         <div className="w-full bg-rose-500/10 dark:bg-rose-950/20 border-2 border-brand-magenta/40 p-6 sm:p-8 pb-8 sm:pb-10 rounded-[28px] shadow-lg text-center lg:text-left flex flex-col gap-4">
                           <Button 
-                            onClick={() => setView('support')}
+                            onClick={() => {
+                              if (mustCompleteProfile) {
+                                setIsEditingProfile(true);
+                                return;
+                              }
+                              setView('support');
+                            }}
                             className="w-full h-15 rounded-2xl font-black bg-brand-magenta hover:bg-brand-magenta/90 text-slate-950 shadow-lg hover:scale-[1.02] active:scale-95 transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-3 border-b-4 border-[#9c7203]/70 cursor-pointer"
                           >
                             <Info className="w-5 h-5" />

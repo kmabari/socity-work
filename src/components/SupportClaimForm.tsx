@@ -131,7 +131,7 @@ const HARDSHIPS = [
   { id: 'none', label: 'അടിയന്തിര പ്രാധാന്യമില്ല (No emergency)' }
 ];
 
-export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
+export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProps) {
   const [loading, setLoading] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [orgSettings, setOrgSettings] = useState<OrgSettings>(defaultSettings);
@@ -2148,12 +2148,12 @@ export function SupportClaimForm({ user, onClose }: SupportClaimFormProps) {
 
       {/* STICKY BOTTOM ACTIONS */}
       <div className="fixed bottom-0 left-0 right-0 p-5 bg-white/80 backdrop-blur-2xl border-t z-20 flex gap-4 max-w-2xl mx-auto rounded-t-3xl shadow-lg border">
-        <Button 
-          variant="outline" 
-          onClick={onClose} 
+        <Button
+          variant="outline"
+          onClick={onBack || onClose}
           className="h-12 flex-1 rounded-xl border-slate-200 font-semibold text-slate-500"
         >
-          Cancel
+          ← തിരികെ ഐഡി കാർഡിലേക്ക് (Back)
         </Button>
         <Button 
           disabled={loading || !formIsValid}
