@@ -1107,6 +1107,7 @@ export default function App() {
         sessionStorage.removeItem('hcrs_district_intent');
       }
       setIsDirectManual(false);
+      passwordChangeCompletedUidRef.current = null;
       await signOut(auth);
       setUser(null);
       setMembers([]);
