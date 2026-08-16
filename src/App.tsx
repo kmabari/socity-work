@@ -2290,6 +2290,23 @@ export default function App() {
 
       await updateDoc(doc(db, 'users', user.uid), finalData);
 
+      // Keep the cached profile synchronized so a later login does not reopen
+      // the completed profile gate.
+      try {
+        const cacheKey = `hcrs_cached_user_${user.uid}`;
+        const cachedProfile = localStorage.getItem(cacheKey);
+        if (cachedProfile) {
+          const cachedData = JSON.parse(cachedProfile);
+          localStorage.setItem(cacheKey, JSON.stringify({
+            ...cachedData,
+            ...finalData,
+            mustCompleteProfile: false
+          }));
+        }
+      } catch (e) {
+        console.warn("Could not update cached profile completion state:", e);
+      }
+
       // Keep local state synchronized immediately after profile completion.
       setMustCompleteProfile(false);
       setUser(prev => prev ? {

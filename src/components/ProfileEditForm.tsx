@@ -28,7 +28,28 @@ export default function ProfileEditForm({
   const [postOffice, setPostOffice] = useState(user.postOffice || '');
   const [bloodGroup, setBloodGroup] = useState(user.bloodGroup || '');
   const [gender, setGender] = useState(user.gender || '');
-  const [dob, setDob] = useState(user.dob || '');
+  const formatDobForDisplay = (value: string) => {
+    if (!value) return '';
+    const parts = value.split('-');
+    if (parts.length === 3 && parts[0].length === 4) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return value;
+  };
+
+  const formatDobForStorage = (value: string) => {
+    if (!value) return '';
+    const parts = value.split('/');
+    if (parts.length === 3) {
+      const [day, month, year] = parts;
+      if (day.length === 2 && month.length === 2 && year.length === 4) {
+        return `${year}-${month}-${day}`;
+      }
+    }
+    return value;
+  };
+
+  const [dob, setDob] = useState(formatDobForDisplay(user.dob || ''));
   const [district, setDistrict] = useState(user.district || DISTRICTS[0].code);
   const [assemblyConstituency, setAssemblyConstituency] = useState(user.assemblyConstituency || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -62,7 +83,7 @@ export default function ProfileEditForm({
       postOffice: postOffice.trim(),
       bloodGroup: bloodGroup,
       gender: gender,
-      dob: dob,
+      dob: formatDobForStorage(dob),
       district: district,
       assemblyConstituency: assemblyConstituency
     };
@@ -204,11 +225,25 @@ export default function ProfileEditForm({
               <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider flex items-center gap-1">
                 <Calendar className="w-3 h-3 text-slate-400" /> Date of Birth
               </Label>
-              <Input 
-                type="date"
+              <Input
+                type="text"
+                inputMode="numeric"
+                maxLength={10}
+                placeholder="DD/MM/YYYY"
                 className="h-11 rounded-xl border-slate-200 px-3 focus-visible:ring-brand-blue text-xs font-bold"
                 value={dob}
-                onChange={e => setDob(e.target.value)}
+                onChange={e => {
+                  const digits = e.target.value.replace(/\D/g, '').slice(0, 8);
+                  let formatted = digits;
+
+                  if (digits.length > 4) {
+                    formatted = `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+                  } else if (digits.length > 2) {
+                    formatted = `${digits.slice(0, 2)}/${digits.slice(2)}`;
+                  }
+
+                  setDob(formatted);
+                }}
               />
             </div>
             
