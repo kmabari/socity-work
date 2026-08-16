@@ -876,7 +876,10 @@ export default function App() {
           const profileMustComplete =
             !isAdmin &&
             !profileMustChangePassword &&
-            userData.mustCompleteProfile === true;
+            (
+              userData.mustCompleteProfile === true ||
+              passwordChangeCompletedUidRef.current === authUser.uid
+            );
 
           setMustCompleteProfile(profileMustComplete);
           
