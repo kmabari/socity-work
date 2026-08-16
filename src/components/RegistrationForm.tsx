@@ -20,7 +20,14 @@ import { processRazorpayPayment } from '../lib/razorpay';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Name is required / പേര് നൽകുക'),
-  mobile: z.string().regex(/^\d{10}$/, 'Enter 10-digit mobile number / 10 അക്ക മെബൈൽ നമ്പർ നൽകുക'),
+  mobile: z.string().regex(/^\d{10}$/, 'Enter 10-digit mobile number / 10 അക്ക മൊബൈൽ നമ്പർ നൽകുക'),
+  email: z.string().optional(),
+  address: z.string().optional(),
+  pincode: z.string().optional(),
+  postOffice: z.string().optional(),
+  bloodGroup: z.string().optional(),
+  gender: z.string().optional(),
+  dob: z.string().optional(),
   district: z.string().min(1, 'Select district / ജില്ല തിരഞ്ഞെടുക്കുക'),
   state: z.string().min(1, 'Select state / സ്റ്റേറ്റ് തിരഞ്ഞെടുക്കുക'),
   assemblyConstituency: z.string().min(1, 'Assembly constituency is required / മണ്ഡലം തിരഞ്ഞെടുക്കുക'),
@@ -57,11 +64,6 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
 
       const fullValues = {
         ...formVals,
-        email: '',
-        address: '',
-        pincode: '',
-        postOffice: '',
-        bloodGroup: '',
         transactionId: paymentDetails.paymentId,
         paymentId: paymentDetails.paymentId,
         orderId: paymentDetails.orderId,
@@ -90,6 +92,13 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
     defaultValues: {
       name: '',
       mobile: initialMobile || '',
+      email: '',
+      address: '',
+      pincode: '',
+      postOffice: '',
+      bloodGroup: '',
+      gender: '',
+      dob: '',
       district: '',
       state: 'Kerala',
       assemblyConstituency: '',
@@ -161,7 +170,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                   <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-brand-blue/10 flex items-center justify-center text-brand-blue shadow-sm shrink-0">
                     <User className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
-                  <span>{t('reg_fast_title', 'Fast Registration')}</span>
+                  <span>{t('reg_title', 'Membership Registration')}</span>
                 </>
               ) : (
                 <>
@@ -227,6 +236,145 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                       </FormItem>
                     )} />
 
+                    {/* Optional Profile Fields */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                      {/* Email */}
+                      <FormField control={form.control} name="email" render={({ field }) => (
+                        <FormItem className="space-y-2">
+                          <FormLabel className="text-slate-800 font-extrabold uppercase text-xs sm:text-sm tracking-wide ml-1 block">
+                            Email Address <span className="text-slate-400">(Optional)</span>
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type="email"
+                              placeholder="member@email.com"
+                              className="h-[50px] sm:h-14 bg-white border-2 border-slate-200 focus:border-brand-blue rounded-2xl font-bold text-sm sm:text-base text-slate-900"
+                            />
+                          </FormControl>
+                          <FormMessage className="text-xs font-bold text-red-600" />
+                        </FormItem>
+                      )} />
+
+                      {/* Date of Birth */}
+                      <FormField control={form.control} name="dob" render={({ field }) => (
+                        <FormItem className="space-y-2">
+                          <FormLabel className="text-slate-800 font-extrabold uppercase text-xs sm:text-sm tracking-wide ml-1 block">
+                            Date of Birth <span className="text-slate-400">(Optional)</span>
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type="date"
+                              className="h-[50px] sm:h-14 bg-white border-2 border-slate-200 focus:border-brand-blue rounded-2xl font-bold text-sm sm:text-base text-slate-900"
+                            />
+                          </FormControl>
+                          <FormMessage className="text-xs font-bold text-red-600" />
+                        </FormItem>
+                      )} />
+
+                      {/* Gender */}
+                      <FormField control={form.control} name="gender" render={({ field }) => (
+                        <FormItem className="space-y-2">
+                          <FormLabel className="text-slate-800 font-extrabold uppercase text-xs sm:text-sm tracking-wide ml-1 block">
+                            Gender <span className="text-slate-400">(Optional)</span>
+                          </FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || ""}>
+                            <FormControl>
+                              <SelectTrigger className="h-[50px] sm:h-14 bg-white border-2 border-slate-200 focus:border-brand-blue rounded-2xl font-bold text-sm sm:text-base text-slate-900">
+                                <SelectValue placeholder="Select Gender" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="Male">Male</SelectItem>
+                              <SelectItem value="Female">Female</SelectItem>
+                              <SelectItem value="Other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage className="text-xs font-bold text-red-600" />
+                        </FormItem>
+                      )} />
+
+                      {/* Blood Group */}
+                      <FormField control={form.control} name="bloodGroup" render={({ field }) => (
+                        <FormItem className="space-y-2">
+                          <FormLabel className="text-slate-800 font-extrabold uppercase text-xs sm:text-sm tracking-wide ml-1 block">
+                            Blood Group <span className="text-slate-400">(Optional)</span>
+                          </FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || ""}>
+                            <FormControl>
+                              <SelectTrigger className="h-[50px] sm:h-14 bg-white border-2 border-slate-200 focus:border-brand-blue rounded-2xl font-bold text-sm sm:text-base text-slate-900">
+                                <SelectValue placeholder="Select Blood Group" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(group => (
+                                <SelectItem key={group} value={group}>{group}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage className="text-xs font-bold text-red-600" />
+                        </FormItem>
+                      )} />
+                    </div>
+
+                    {/* Address */}
+                    <FormField control={form.control} name="address" render={({ field }) => (
+                      <FormItem className="space-y-2">
+                        <FormLabel className="text-slate-800 font-extrabold uppercase text-xs sm:text-sm tracking-wide ml-1 block">
+                          Address <span className="text-slate-400">(Optional)</span>
+                        </FormLabel>
+                        <FormControl>
+                          <textarea
+                            {...field}
+                            rows={3}
+                            placeholder="Enter your address"
+                            className="w-full rounded-2xl border-2 border-slate-200 bg-white px-4 py-3 font-bold text-sm sm:text-base text-slate-900 outline-none focus:border-brand-blue resize-none"
+                          />
+                        </FormControl>
+                        <FormMessage className="text-xs font-bold text-red-600" />
+                      </FormItem>
+                    )} />
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                      {/* Post Office */}
+                      <FormField control={form.control} name="postOffice" render={({ field }) => (
+                        <FormItem className="space-y-2">
+                          <FormLabel className="text-slate-800 font-extrabold uppercase text-xs sm:text-sm tracking-wide ml-1 block">
+                            Post Office <span className="text-slate-400">(Optional)</span>
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="Post Office"
+                              className="h-[50px] sm:h-14 bg-white border-2 border-slate-200 focus:border-brand-blue rounded-2xl font-bold text-sm sm:text-base text-slate-900"
+                            />
+                          </FormControl>
+                          <FormMessage className="text-xs font-bold text-red-600" />
+                        </FormItem>
+                      )} />
+
+                      {/* PIN Code */}
+                      <FormField control={form.control} name="pincode" render={({ field }) => (
+                        <FormItem className="space-y-2">
+                          <FormLabel className="text-slate-800 font-extrabold uppercase text-xs sm:text-sm tracking-wide ml-1 block">
+                            PIN Code <span className="text-slate-400">(Optional)</span>
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              inputMode="numeric"
+                              maxLength={6}
+                              onChange={(e) => field.onChange(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                              placeholder="6-digit PIN"
+                              className="h-[50px] sm:h-14 bg-white border-2 border-slate-200 focus:border-brand-blue rounded-2xl font-bold text-sm sm:text-base text-slate-900"
+                            />
+                          </FormControl>
+                          <FormMessage className="text-xs font-bold text-red-600" />
+                        </FormItem>
+                      )} />
+                    </div>
+
                     {/* State Select */}
                     <FormField control={form.control} name="state" render={({ field, fieldState }) => (
                       <FormItem className="space-y-2">
@@ -260,7 +408,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                           <Select 
                             onValueChange={(val) => {
                               field.onChange(val);
-                              form.setValue('assemblyConstituency', CONSTITUENCIES[val]?.[0] || '');
+                              form.setValue('assemblyConstituency', '');
                             }} 
                             value={field.value || ""}
                           >
