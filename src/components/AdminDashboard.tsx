@@ -555,8 +555,8 @@ export default function AdminDashboard({
               justify-content: space-between;
               align-items: flex-start;
               border-bottom: 2px solid #172b5c;
-              padding-bottom: 8px;
-              margin-bottom: 11px;
+              padding-bottom: 10px;
+              margin-bottom: 14px;
             }
 
             .brand {
@@ -584,24 +584,24 @@ export default function AdminDashboard({
             .section-title {
               background: #172b5c;
               color: white;
-              font-size: 9px;
+              font-size: 10px;
               font-weight: 900;
-              padding: 6px 8px;
-              margin-top: 10px;
-              margin-bottom: 7px;
+              padding: 8px 9px;
+              margin-top: 13px;
+              margin-bottom: 9px;
               letter-spacing: .4px;
             }
 
             .details-grid {
               display: grid;
               grid-template-columns: repeat(4, 1fr);
-              gap: 6px;
+              gap: 8px;
             }
 
             .field {
               border: 1px solid #dbe3ed;
-              padding: 7px;
-              min-height: 38px;
+              padding: 10px;
+              min-height: 48px;
             }
 
             .field.wide {
@@ -629,13 +629,13 @@ export default function AdminDashboard({
             .status-grid {
               display: grid;
               grid-template-columns: repeat(3, 1fr);
-              gap: 6px;
+              gap: 8px;
             }
 
             .status-box {
               border: 1px solid #dbe3ed;
-              padding: 8px;
-              min-height: 38px;
+              padding: 10px;
+              min-height: 48px;
             }
 
             .status-box strong {
@@ -646,13 +646,13 @@ export default function AdminDashboard({
             .amount-grid {
               display: grid;
               grid-template-columns: repeat(3, 1fr);
-              gap: 7px;
+              gap: 8px;
             }
 
             .amount-grid > div {
               border: 1px solid #dbe3ed;
-              padding: 10px;
-              min-height: 50px;
+              padding: 14px 10px;
+              min-height: 68px;
               text-align: center;
             }
 
@@ -697,7 +697,7 @@ export default function AdminDashboard({
 
             th, td {
               border: 1px solid #dbe3ed;
-              padding: 5px 6px;
+              padding: 8px 7px;
               text-align: left;
             }
 
@@ -723,16 +723,16 @@ export default function AdminDashboard({
             .text-box {
               border: 1px solid #dbe3ed;
               background: #f8fafc;
-              padding: 8px;
-              min-height: 36px;
-              line-height: 1.5;
+              padding: 11px;
+              min-height: 52px;
+              line-height: 1.6;
               white-space: pre-wrap;
             }
 
             .verification {
-              margin-top: 8px;
+              margin-top: 12px;
               border: 1px solid #cbd5e1;
-              padding: 7px;
+              padding: 10px;
             }
 
             .verification .section-title {
@@ -749,8 +749,8 @@ export default function AdminDashboard({
             .signature-grid {
               display: grid;
               grid-template-columns: 1fr 1fr;
-              gap: 25px;
-              margin-top: 22px;
+              gap: 35px;
+              margin-top: 30px;
             }
 
             .signature-grid span {
@@ -761,7 +761,7 @@ export default function AdminDashboard({
             }
 
             .signature-line {
-              margin-top: 18px;
+              margin-top: 24px;
               border-bottom: 1px solid #334155;
             }
 
