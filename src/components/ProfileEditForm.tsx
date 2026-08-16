@@ -43,29 +43,13 @@ export default function ProfileEditForm({
     const cleanPincode = pincode.trim().replace(/\D/g, '');
     const cleanPostOffice = postOffice.trim();
 
-    if (
-      !cleanEmail ||
-      !cleanAddress ||
-      !cleanPincode ||
-      !cleanPostOffice ||
-      !bloodGroup ||
-      !gender ||
-      !dob ||
-      !district ||
-      !assemblyConstituency
-    ) {
-      toast.error('Please complete all profile fields before saving.');
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (!cleanEmail.includes('@')) {
+    if (cleanEmail && !cleanEmail.includes('@')) {
       toast.error('Please enter a valid email address.');
       setIsSubmitting(false);
       return;
     }
 
-    if (cleanPincode.length !== 6) {
+    if (cleanPincode && cleanPincode.length !== 6) {
       toast.error('Please enter a valid 6-digit PIN code.');
       setIsSubmitting(false);
       return;
@@ -169,7 +153,7 @@ export default function ProfileEditForm({
               </Label>
               <Select value={district} onValueChange={(val) => {
                 setDistrict(val);
-                setAssemblyConstituency(CONSTITUENCIES[val]?.[0] || 'NA');
+                setAssemblyConstituency('');
               }}>
                 <SelectTrigger className="h-11 rounded-xl border-slate-200 focus:ring-brand-blue text-xs font-black bg-white">
                   <SelectValue placeholder="Select District" />
