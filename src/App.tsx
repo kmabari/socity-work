@@ -129,6 +129,7 @@ export default function App() {
   // Prevent a stale Firestore snapshot from reopening the password-change gate
   // immediately after a successful password update.
   const passwordChangeCompletedUidRef = useRef<string | null>(null);
+  const userInitiatedLoginRef = useRef(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [isScreenshotMode, setIsScreenshotMode] = useState(false);
@@ -414,6 +415,7 @@ export default function App() {
   const [isGoogleLoggingIn, setIsGoogleLoggingIn] = useState(false);
 
   const handleGoogleLogin = async () => {
+    userInitiatedLoginRef.current = true;
     if (isGoogleLoggingIn) return;
     setIsGoogleLoggingIn(true);
     const loadingToast = toast.loading('Signing in with Google...');
@@ -727,7 +729,8 @@ export default function App() {
               // Render-level password/profile gate will take priority.
             } else if (isAdm) setView('admin');
             else if (isOp) setView('operator');
-            else setView('card');
+            else if (userInitiatedLoginRef.current) setView('card');
+            else setView('landing');
           }
         }
       } catch (e) {
@@ -894,7 +897,11 @@ export default function App() {
                 if (typeof window !== 'undefined') sessionStorage.removeItem('hcrs_claim_redirect');
                 setView('support');
               } else if (currentViewRef.current !== 'renewal') {
-                setView('card');
+                if (userInitiatedLoginRef.current) {
+                  setView('card');
+                } else {
+                  setView('landing');
+                }
               }
             }
           }
@@ -1062,7 +1069,8 @@ export default function App() {
                 // Authentication/profile gates take priority.
               } else if (isAdm) setView('admin');
               else if (isOp) setView('operator');
-              else setView('card');
+              else if (userInitiatedLoginRef.current) setView('card');
+              else setView('landing');
             }
             const now = Date.now();
             const lastShown = (window as any)._lastDbConnectionToastTime || 0;
@@ -1108,6 +1116,7 @@ export default function App() {
       }
       setIsDirectManual(false);
       passwordChangeCompletedUidRef.current = null;
+      userInitiatedLoginRef.current = false;
       await signOut(auth);
       setUser(null);
       setMembers([]);
@@ -1120,6 +1129,7 @@ export default function App() {
   };
 
   const handleLogin = async (values: { email: string, pin: string }, originView: 'login' | 'landing' = 'login'): Promise<boolean> => {
+    userInitiatedLoginRef.current = true;
     const loadingToast = toast.loading('Logging you in...');
     const originalInput = (values.email || '').trim();
     const trimmedPin = (values.pin || '').trim();
