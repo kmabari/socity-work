@@ -1531,10 +1531,12 @@ export default function App() {
       setUser(prev => prev ? {
         ...prev,
         pin: newPassword,
-        mustChangePassword: false
+        mustChangePassword: false,
+        mustCompleteProfile: true
       } : prev);
 
       setMustChangePassword(false);
+      setMustCompleteProfile(true);
       setNewPassword('');
       setConfirmNewPassword('');
       setIsEditingProfile(true);
