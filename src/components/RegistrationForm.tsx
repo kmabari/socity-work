@@ -195,7 +195,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                     <FormField control={form.control} name="name" render={({ field, fieldState }) => (
                       <FormItem className="space-y-2">
                         <FormLabel className="text-slate-800 font-extrabold uppercase text-xs sm:text-sm tracking-wide ml-1 block">
-                          {t('reg_fullname_label', "Full Name (പൂർണ്ണമായ പേര്)")}
+                          {t('reg_fullname_label', "Full Name (പൂർണ്ണമായ പേര്)")} <span className="text-red-600">*</span>
                         </FormLabel>
                         <FormControl>
                           <div className="relative">
@@ -215,7 +215,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                     <FormField control={form.control} name="mobile" render={({ field, fieldState }) => (
                       <FormItem className="space-y-2">
                         <FormLabel className="text-slate-800 font-extrabold uppercase text-xs sm:text-sm tracking-wide ml-1 block">
-                          {t('reg_mobile_label', "Mobile Number (ഫോൺ നമ്പർ)")}
+                          {t('reg_mobile_label', "Mobile Number (ഫോൺ നമ്പർ)")} <span className="text-red-600">*</span>
                         </FormLabel>
                         <FormControl>
                           <div className="relative">
@@ -379,7 +379,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                     <FormField control={form.control} name="state" render={({ field, fieldState }) => (
                       <FormItem className="space-y-2">
                         <FormLabel className="text-slate-800 font-extrabold uppercase text-xs sm:text-sm tracking-wide ml-1 block">
-                          {t('reg_state_label', "State (സംസ്ഥാനം)")}
+                          {t('reg_state_label', "State (സംസ്ഥാനം)")} <span className="text-red-600">*</span>
                         </FormLabel>
                         <Select onValueChange={field.onChange} value={field.value || ""}>
                           <FormControl>
@@ -403,7 +403,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                       <FormField control={form.control} name="district" render={({ field, fieldState }) => (
                         <FormItem className="col-span-1 space-y-2">
                           <FormLabel className="text-slate-800 font-extrabold uppercase text-xs sm:text-sm tracking-wide ml-1 block">
-                            {t('reg_district_label', "District (ജില്ല)")}
+                            {t('reg_district_label', "District (ജില്ല)")} <span className="text-red-600">*</span>
                           </FormLabel>
                           <Select 
                             onValueChange={(val) => {
@@ -429,7 +429,7 @@ export default function RegistrationForm({ onSubmit, districtQuotas = {}, distri
                       <FormField control={form.control} name="assemblyConstituency" render={({ field, fieldState }) => (
                         <FormItem className="col-span-1 space-y-2">
                           <FormLabel className="text-slate-800 font-extrabold uppercase text-xs sm:text-sm tracking-wide ml-1 block">
-                            {t('reg_constituency_label', "Assembly Constituency (മണ്ഡലം)")}
+                            {t('reg_constituency_label', "Assembly Constituency (മണ്ഡലം)")} <span className="text-red-600">*</span>
                           </FormLabel>
                           <Select 
                             onValueChange={field.onChange} 

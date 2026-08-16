@@ -149,7 +149,7 @@ export default function ProfileEditForm({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider">
-                District / ജില്ലാ
+                District / ജില്ലാ <span className="text-red-600">*</span>
               </Label>
               <Select value={district} onValueChange={(val) => {
                 setDistrict(val);
@@ -168,7 +168,7 @@ export default function ProfileEditForm({
             
             <div className="space-y-1.5">
               <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider">
-                Assembly Constituency / മണ്ഡലം
+                Assembly Constituency / മണ്ഡലം <span className="text-red-600">*</span>
               </Label>
               <Select value={assemblyConstituency} onValueChange={setAssemblyConstituency}>
                 <SelectTrigger className="h-11 rounded-xl border-slate-200 focus:ring-brand-blue text-xs font-black bg-white">
