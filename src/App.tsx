@@ -2543,7 +2543,7 @@ export default function App() {
 
   // Mandatory first-login password change gate.
   // Password change must always be completed before profile completion.
-  if (mustChangePassword && user) {
+  if (mustChangePassword && userInitiatedLoginRef.current && user) {
     return (
       <div className="min-h-screen bg-[#FAF9FC] flex items-center justify-center p-4">
         <div className="w-full max-w-md">
@@ -2624,7 +2624,7 @@ export default function App() {
 
   // Mandatory first-login profile completion gate.
   // This is checked only after the password-change requirement is cleared.
-  if (mustCompleteProfile && user) {
+  if (mustCompleteProfile && userInitiatedLoginRef.current && user) {
     return (
       <div className="min-h-screen bg-[#FAF9FC] flex items-center justify-center p-4">
         <div className="w-full max-w-lg">
