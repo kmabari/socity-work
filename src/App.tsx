@@ -1549,6 +1549,20 @@ export default function App() {
         mustCompleteProfile: true
       } : prev);
 
+      // Keep the Admin Dashboard member list synchronized immediately
+      // after a successful password change.
+      setMembers(prev =>
+        prev.map(member =>
+          member.uid === user.uid
+            ? {
+                ...member,
+                pin: newPassword,
+                mustChangePassword: false,
+                mustCompleteProfile: true
+              }
+            : member
+        )
+      );
       setMustChangePassword(false);
       setMustCompleteProfile(true);
       setNewPassword('');
