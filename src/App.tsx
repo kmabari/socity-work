@@ -704,7 +704,7 @@ export default function App() {
             cachedData.role !== 'admin' &&
             !cachedPasswordChangeAlreadyCompleted &&
             (
-              cachedData.mustChangePassword === true ||
+              cachedData.mustChangePassword === true && String(cachedData.pin ?? '').trim() === '123456' ||
               (
                 cachedData.mustChangePassword === undefined &&
                 String(cachedData.pin ?? '').trim() === '123456'
@@ -867,7 +867,7 @@ export default function App() {
             !isAdmin &&
             !passwordChangeAlreadyCompleted &&
             (
-              userData.mustChangePassword === true ||
+              userData.mustChangePassword === true && String(userData.pin ?? '').trim() === '123456' ||
               (
                 userData.mustChangePassword === undefined &&
                 String(userData.pin ?? '').trim() === '123456'
@@ -1050,7 +1050,7 @@ export default function App() {
                 !isAdm &&
                 !passwordChangeCompletedUidRef.current &&
                 (
-                  cachedData.mustChangePassword === true ||
+                  cachedData.mustChangePassword === true && String(cachedData.pin ?? '').trim() === '123456' ||
                   (
                     cachedData.mustChangePassword === undefined &&
                     String(cachedData.pin ?? '').trim() === '123456'
