@@ -954,20 +954,52 @@ export default function App() {
               }
             }
 
-            // Execute queries in fallback order until we find a match
+            // Execute queries in fallback order until we find a match.
+            // Use limit(5) (not 1) so we can apply best-document selection below.
+            // With limit(1) and no orderBy, Firestore's undefined ordering could
+            // return a stale offline_ doc (pin=123456) ahead of the correctly-updated
+            // healed uid doc (pin=newPin, mustChangePassword=false), causing the
+            // password gate to reopen on the very next snapshot after healing.
             for (const cand of uniqueCandidates) {
               console.log(`Healing check: querying where('${cand.field}', '==', '${cand.value}') (${cand.desc})...`);
-              const q = query(usersRef, where(cand.field, '==', cand.value), limit(1));
+              const q = query(usersRef, where(cand.field, '==', cand.value), limit(5));
               const snap = await getDocs(q);
               if (!snap.empty) {
                 querySnap = snap;
-                console.log(`Healing matched candidate via where('${cand.field}', '==', '${cand.value}') (${cand.desc})! Document ID:`, snap.docs[0].id);
+                console.log(`Healing matched candidate via where('${cand.field}', '==', '${cand.value}') (${cand.desc})! Found ${snap.docs.length} doc(s).`);
                 break;
               }
             }
             
             if (querySnap && !querySnap.empty) {
-              const oldDoc = querySnap.docs[0];
+              // Pick the best document using the same priority as handleLogin's
+              // selectBestDocument: prefer non-offline/life_ IDs, then
+              // docs where mustChangePassword===false (member already changed PIN),
+              // then newest registrationDate. This prevents a stale offline_
+              // doc from beating a properly-healed uid doc.
+              const sortedHealDocs = [...querySnap.docs].sort((a, b) => {
+                const dA = a.data();
+                const dB = b.data();
+                // Priority 1: standard/healed ID beats offline_/life_ IDs
+                const aIsTemp = a.id.startsWith('offline_') || a.id.startsWith('life_');
+                const bIsTemp = b.id.startsWith('offline_') || b.id.startsWith('life_');
+                if (!aIsTemp && bIsTemp) return -1;
+                if (aIsTemp && !bIsTemp) return 1;
+                // Priority 2: doc where password was explicitly changed (mustChangePassword===false)
+                // beats a doc where it was never changed (undefined/true)
+                const aChanged = dA.mustChangePassword === false;
+                const bChanged = dB.mustChangePassword === false;
+                if (aChanged && !bChanged) return -1;
+                if (!aChanged && bChanged) return 1;
+                // Priority 3: newest registrationDate
+                const getRegTime = (data: any) => {
+                  const reg = data.registrationDate;
+                  if (!reg) return 0;
+                  return reg.toDate ? reg.toDate().getTime() : (reg.seconds ? reg.seconds * 1000 : new Date(reg).getTime());
+                };
+                return getRegTime(dB) - getRegTime(dA);
+              });
+              const oldDoc = sortedHealDocs[0];
               const oldDocId = oldDoc.id;
               
               if (oldDocId !== authUser.uid) {
@@ -1181,12 +1213,23 @@ export default function App() {
       let mappedUserData: any = null;
       let targetEmail = '';
 
-      const selectBestDocument = (docs: any[]) => {
+      const selectBestDocument = (docs: any[], enteredPin?: string) => {
         if (!docs || docs.length === 0) return null;
         // Sort documents to prioritize the active, non-expired/latest valid account
         const sorted = [...docs].sort((a, b) => {
           const dataA = a.data();
           const dataB = b.data();
+
+          // Prefer the document whose stored PIN matches the PIN entered by the member.
+          if (enteredPin) {
+            const pinA = String(dataA.pin ?? '').trim();
+            const pinB = String(dataB.pin ?? '').trim();
+            const aPinMatches = pinA === enteredPin;
+            const bPinMatches = pinB === enteredPin;
+
+            if (aPinMatches && !bPinMatches) return -1;
+            if (!aPinMatches && bPinMatches) return 1;
+          }
           
           // Priority 1: standard/healed ID (not starting with 'life_' or 'offline_')
           const idA_starts = a.id.startsWith('life_') || a.id.startsWith('offline_');
@@ -1254,7 +1297,7 @@ export default function App() {
         }
 
         if (!querySnap.empty) {
-          const selectedDoc = selectBestDocument(querySnap.docs);
+          const selectedDoc = selectBestDocument(querySnap.docs, trimmedPin);
           mappedUserData = selectedDoc?.data() || querySnap.docs[0].data();
           targetEmail = mappedUserData.email || `${sanitizedMobile}@hcrs.society`;
         } else {
@@ -1272,7 +1315,7 @@ export default function App() {
         }
 
         if (!querySnap.empty) {
-          const selectedDoc = selectBestDocument(querySnap.docs);
+          const selectedDoc = selectBestDocument(querySnap.docs, trimmedPin);
           mappedUserData = selectedDoc?.data() || querySnap.docs[0].data();
           targetEmail = mappedUserData.email || `${mappedUserData.mobile || 'user'}@hcrs.society`;
         } else if (originalInput.includes('@')) {
@@ -1280,7 +1323,7 @@ export default function App() {
           const qEmail = query(usersRef, where('email', '==', originalInput.toLowerCase()), limit(5));
           const querySnapEmail = await getDocs(qEmail);
           if (!querySnapEmail.empty) {
-            const selectedDoc = selectBestDocument(querySnapEmail.docs);
+            const selectedDoc = selectBestDocument(querySnapEmail.docs, trimmedPin);
             mappedUserData = selectedDoc?.data() || querySnapEmail.docs[0].data();
             targetEmail = mappedUserData.email;
           } else {
@@ -1292,7 +1335,7 @@ export default function App() {
           const qFallback = query(usersRef, where('email', '==', fallbackEmail), limit(5));
           const querySnapFallback = await getDocs(qFallback);
           if (!querySnapFallback.empty) {
-            const selectedDoc = selectBestDocument(querySnapFallback.docs);
+            const selectedDoc = selectBestDocument(querySnapFallback.docs, trimmedPin);
             mappedUserData = selectedDoc?.data() || querySnapFallback.docs[0].data();
             targetEmail = mappedUserData.email;
           } else {
@@ -1326,7 +1369,17 @@ export default function App() {
             throw signInError; // propagate original signInError
           }
         } else if ((signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential') && 
-                   mappedUserData && trimmedPin === String(mappedUserData.pin ?? '123456').trim()) {
+                   mappedUserData && (() => {
+                     // GUARD: If the member has explicitly completed a password change
+                     // (mustChangePassword === false), do NOT fall back to '123456' as a
+                     // default pin. Only allow healing if the entered PIN matches the
+                     // actual stored Firestore PIN. This prevents recreating a 123456
+                     // Auth account after a member has already set a new password.
+                     const storedPin = mappedUserData.mustChangePassword === false
+                       ? String(mappedUserData.pin ?? '').trim()
+                       : String(mappedUserData.pin ?? '123456').trim();
+                     return trimmedPin === storedPin;
+                   })()) {
           // Dynamic Auth auto-creation/healing for valid offline profiles
           console.log("Entered PIN matches registered database profile PIN. Healing Auth registration...");
           try {
@@ -1359,7 +1412,15 @@ export default function App() {
               throw signInError; // propagate original signInError
             }
           }
-        } else if (mappedUserData && trimmedPin === String(mappedUserData.pin ?? '123456').trim()) {
+        } else if (mappedUserData && (() => {
+                     // GUARD: Same mustChangePassword guard as above — do not allow
+                     // the '123456' fallback pin when the member already changed their
+                     // password. Only heal using the exact stored Firestore PIN.
+                     const storedPin = mappedUserData.mustChangePassword === false
+                       ? String(mappedUserData.pin ?? '').trim()
+                       : String(mappedUserData.pin ?? '123456').trim();
+                     return trimmedPin === storedPin;
+                   })()) {
           // The database PIN is correct, but login failed (e.g., wrong-password because of old out-of-sync auth record)
           console.log("PIN is correct in Firestore, but standard Auth login failed. Attempting secondary/v2 auth channel...");
           const mobilePart = isMobile ? sanitizedMobile : (mappedUserData.mobile || '');
@@ -1480,12 +1541,16 @@ export default function App() {
     }
 
     setIsChangingPassword(true);
+    // Track which steps completed so the catch block can reason about partial failure.
+    let authPasswordUpdated = false;
 
     try {
       await updatePassword(auth.currentUser, newPassword);
+      authPasswordUpdated = true;
 
-      // Mark completion BEFORE Firestore update so an immediate snapshot
-      // cannot reopen the password-change gate.
+      // Mark completion BEFORE the Firestore update so that the Firestore
+      // snapshot that fires immediately after updateDoc cannot reopen the
+      // password-change gate.
       passwordChangeCompletedUidRef.current = user.uid;
 
       await updateDoc(doc(db, 'users', user.uid), {
@@ -1495,12 +1560,10 @@ export default function App() {
         passwordChangedAt: serverTimestamp()
       });
 
-      // Mark this UID as completed so a stale Firestore snapshot
-      // cannot immediately reopen the password-change gate.
-      passwordChangeCompletedUidRef.current = user.uid;
-
-      // Keep the local cached profile in sync so the next auth/profile
-      // initialization cannot reopen the password-change gate.
+      // Firestore write confirmed. Patch the local cache immediately so the
+      // next auth/profile initialization cannot reopen the password-change gate.
+      // Include mustCompleteProfile: true so the cache is fully consistent even
+      // before the Firestore snapshot fires.
       try {
         const cacheKey = `hcrs_cached_user_${user.uid}`;
         const cachedProfile = localStorage.getItem(cacheKey);
@@ -1510,6 +1573,7 @@ export default function App() {
             ...cachedData,
             pin: newPassword,
             mustChangePassword: false,
+            mustCompleteProfile: true,
             passwordChangedAt: new Date().toISOString()
           }));
         }
@@ -1548,6 +1612,17 @@ export default function App() {
       return true;
     } catch (error: any) {
       console.error('Password change failed:', error);
+
+      if (authPasswordUpdated) {
+        // Firebase Auth password was updated but the Firestore (or cache)
+        // write failed. CLEAR the in-memory completion ref so the
+        // password-change gate correctly stays visible — the member can see
+        // it, retry, and fully synchronise Auth + Firestore on the next
+        // attempt. Without this clear, the ref was preventing the gate from
+        // reopening even though Firestore still held pin=123456, causing the
+        // "new password not persisting" bug on next login.
+        passwordChangeCompletedUidRef.current = null;
+      }
 
       if (error.code === 'auth/requires-recent-login') {
         toast.error('Please log out and log in again before changing your password.');
