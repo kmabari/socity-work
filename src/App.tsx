@@ -228,41 +228,11 @@ export default function App() {
         }
       }
       
-      // AUTO-CLEANUP DUPLICATE LIFE MEMBER SERIAL NO 1
+      // AUDIT NOTE: Duplicate Life Member detection is logged only.
+      // No automatic deletion is performed to protect production data.
       const life1s = cleanList.filter(u => u.membership_type === 'LIFE_MEMBER' && u.serialNo === 1);
       if (life1s.length > 1) {
-        console.log("Database Maintenance: Found duplicate Life Members with serialNo = 1:", life1s.map(l => l.uid));
-        
-        // Sort to keep the earliest/original profile, delete later duplicates
-        const sorted = [...life1s].sort((a, b) => {
-          const t1 = a.registrationDate 
-            ? (typeof a.registrationDate.toDate === 'function' 
-                ? a.registrationDate.toDate().getTime() 
-                : new Date(a.registrationDate).getTime()) 
-            : 0;
-          const t2 = b.registrationDate 
-            ? (typeof b.registrationDate.toDate === 'function' 
-                ? b.registrationDate.toDate().getTime() 
-                : new Date(b.registrationDate).getTime()) 
-            : 0;
-          return t1 - t2;
-        });
-
-        // Keep sorted[0] (earliest), delete subsequent duplicates
-        const toDelete = sorted.slice(1);
-        for (const duplicateToKill of toDelete) {
-          console.log(`Auto-deleting duplicate Life Member with serialNo=1, UID: ${duplicateToKill.uid}`);
-          try {
-            await deleteDoc(doc(db, 'users', duplicateToKill.uid));
-            toast.success(`ഡ്യൂപ്ലിക്കേറ്റ് ലൈഫ് മെമ്പർ (സീരിയൽ 1, UID: ${duplicateToKill.uid}) ഡാറ്റാബേസിൽ നിന്ന് വിജയകരമായി നീക്കം ചെയ്തു.`);
-          } catch (delErr) {
-            console.error("Failed to delete duplicate life 1 member:", delErr);
-          }
-        }
-
-        // Exclude deleted profiles from local state
-        const deletedUids = toDelete.map(u => u.uid);
-        cleanList = cleanList.filter(u => !deletedUids.includes(u.uid));
+        console.warn("Database Notice: Found duplicate Life Members with serialNo = 1. Manual review recommended:", life1s.map(l => l.uid));
       }
 
       setMembers(cleanList);
@@ -630,6 +600,8 @@ export default function App() {
         console.log("No authenticated user found.");
         hasInitialSyncedRef.current = false;
         lastAuthUserUidRef.current = null;
+        // Reset login-intent ref so stale state cannot influence the next session.
+        userInitiatedLoginRef.current = false;
         if (!isMagicLink) {
           setUser(null);
           setMustChangePassword(false);
@@ -876,13 +848,16 @@ export default function App() {
 
           setMustChangePassword(profileMustChangePassword);
 
+          // profileMustComplete is driven ONLY by the live Firestore flag.
+          // Do NOT use passwordChangeCompletedUidRef here: that ref existing
+          // does NOT mean the profile is still incomplete — it only means a
+          // password change happened this session. Using it here was causing
+          // the profile gate to re-open on every Firestore snapshot after a
+          // password change, including on subsequent logins.
           const profileMustComplete =
             !isAdmin &&
             !profileMustChangePassword &&
-            (
-              userData.mustCompleteProfile === true ||
-              passwordChangeCompletedUidRef.current === authUser.uid
-            );
+            userData.mustCompleteProfile === true;
 
           setMustCompleteProfile(profileMustComplete);
           
@@ -2310,8 +2285,15 @@ export default function App() {
         finalData.constituencyCode = assemblyCode;
       }
 
-      // Completing the mandatory first-login profile requirement.
-      finalData.mustCompleteProfile = false;
+      // Defensive check to prevent bypassing the mandatory profile gate
+      const currentDistrict = updatedData.district !== undefined ? updatedData.district : user.district;
+      const currentAssembly = updatedData.assemblyConstituency !== undefined ? updatedData.assemblyConstituency : user.assemblyConstituency;
+      const isComplete = !!currentDistrict && !!currentAssembly;
+
+      if (isComplete) {
+        // Completing the mandatory first-login profile requirement.
+        finalData.mustCompleteProfile = false;
+      }
 
       await updateDoc(doc(db, 'users', user.uid), finalData);
 
@@ -2322,23 +2304,28 @@ export default function App() {
         const cachedProfile = localStorage.getItem(cacheKey);
         if (cachedProfile) {
           const cachedData = JSON.parse(cachedProfile);
-          localStorage.setItem(cacheKey, JSON.stringify({
-            ...cachedData,
-            ...finalData,
-            mustCompleteProfile: false
-          }));
+          const newCache = { ...cachedData, ...finalData };
+          if (isComplete) {
+            newCache.mustCompleteProfile = false;
+          }
+          localStorage.setItem(cacheKey, JSON.stringify(newCache));
         }
       } catch (e) {
         console.warn("Could not update cached profile completion state:", e);
       }
 
       // Keep local state synchronized immediately after profile completion.
-      setMustCompleteProfile(false);
-      setUser(prev => prev ? {
-        ...prev,
-        ...finalData,
-        mustCompleteProfile: false
-      } : prev);
+      if (isComplete) {
+        setMustCompleteProfile(false);
+      }
+      setUser(prev => {
+        if (!prev) return prev;
+        const nextState = { ...prev, ...finalData };
+        if (isComplete) {
+          nextState.mustCompleteProfile = false;
+        }
+        return nextState;
+      });
 
       toast.success('Profile updated successfully! (വിവരങ്ങൾ പുതുക്കിയിരിക്കുന്നു.)', { id: loadingToast });
       setIsEditingProfile(false);

@@ -50,7 +50,9 @@ export default function ProfileEditForm({
   };
 
   const [dob, setDob] = useState(formatDobForDisplay(user.dob || ''));
-  const [district, setDistrict] = useState(user.district || DISTRICTS[0].code);
+  // Default to '' when user has no stored district so the mandatory validation
+  // correctly blocks Save until the user explicitly selects their district.
+  const [district, setDistrict] = useState(user.district || '');
   const [assemblyConstituency, setAssemblyConstituency] = useState(user.assemblyConstituency || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -63,6 +65,18 @@ export default function ProfileEditForm({
     const cleanAddress = address.trim();
     const cleanPincode = pincode.trim().replace(/\D/g, '');
     const cleanPostOffice = postOffice.trim();
+
+    if (!district) {
+      toast.error('District is a mandatory field. Please select your district.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!assemblyConstituency) {
+      toast.error('Assembly Constituency is a mandatory field. Please select your constituency.');
+      setIsSubmitting(false);
+      return;
+    }
 
     if (cleanEmail && !cleanEmail.includes('@')) {
       toast.error('Please enter a valid email address.');
