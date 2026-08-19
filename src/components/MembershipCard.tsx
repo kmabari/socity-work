@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { Download, MapPin, ShieldCheck, Camera, PartyPopper, Share2, LogOut, Calendar, Phone, Mail, Award, Clock, User } from 'lucide-react';
+import { Download, MapPin, ShieldCheck, Camera, PartyPopper, Share2, LogOut, Calendar, Phone, Mail, Award, Clock, User, Printer, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { UserProfile } from '@/src/types';
@@ -168,38 +168,330 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
     }
   };
 
-  const shareImage = async () => {
-    if (!cardRef.current) return;
-    toast.info('Preparing for WhatsApp sharing...');
-    try {
-      const canvas = await html2canvas(cardRef.current, { scale: 2, useCORS: true, backgroundColor: '#FFFFFF', onclone: html2canvasOklchOnClone });
-      canvas.toBlob(async (blob) => {
-        if (!blob) return;
-        const file = new File([blob], `HCRS_ID_${member.name}.png`, { type: 'image/png' });
-        if (navigator.share && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: 'HCRS Digital ID', text: `${member.name} - ${member.membershipId}` });
-        } else {
-          const link = document.createElement('a');
-          link.download = `HCRS_ID_${member.name}.png`;
-          link.href = canvas.toDataURL('image/png');
-          link.click();
-          toast.info('Sharing intent fallback triggered: Downloader booted.');
-        }
-      });
-    } catch (error) { toast.error('Failed to encode membership card'); }
+  const triggerBlobDownload = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 1500);
   };
 
-  const downloadPDF = async () => {
-    if (!cardRef.current) return;
-    const loadingToast = toast.loading('Building premium print-ready document...');
+  const generateCardPdfBlob = async (): Promise<Blob | null> => {
+    if (!cardRef.current) return null;
     try {
-      const canvas = await html2canvas(cardRef.current, { scale: 3.5, useCORS: true, backgroundColor: '#FFFFFF', onclone: html2canvasOklchOnClone });
-      const imgData = canvas.toDataURL('image/jpeg', 1.0);
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [54, 86] });
-      pdf.addImage(imgData, 'JPEG', 0, 0, 54, 86, undefined, 'FAST');
-      pdf.save(`${member.name}_HCRS_Card.pdf`);
-      toast.success('Successfully downloaded Premium PDF!', { id: loadingToast });
-    } catch (error) { toast.error('Download failed. Please try again.', { id: loadingToast }); }
+      const canvas = await html2canvas(cardRef.current, { 
+        scale: 3.5, 
+        useCORS: true, 
+        backgroundColor: '#FFFFFF', 
+        onclone: html2canvasOklchOnClone 
+      });
+      const imgData = canvas.toDataURL('image/jpeg', 0.98);
+      
+      // Standard A4 dimensions in mm: 210 x 297
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      
+      // Center card neatly on standard A4 page (Standard ID card scale ~ 86mm width)
+      const cardWidth = 86; // mm
+      const cardHeight = (canvas.height / canvas.width) * cardWidth;
+      const xPos = (210 - cardWidth) / 2;
+      const yPos = 28; // top margin in mm
+
+      // Header on A4 page
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(14);
+      pdf.setTextColor(15, 23, 42);
+      pdf.text('HIGHRICH COMMUNITY REVIVAL SOCIETY', 105, 16, { align: 'center' });
+      pdf.setFontSize(8.5);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(100, 116, 139);
+      pdf.text('OFFICIAL MEMBERSHIP IDENTITY CARD • A4 PRINT COPY', 105, 21, { align: 'center' });
+
+      // Add Card image
+      pdf.addImage(imgData, 'JPEG', xPos, yPos, cardWidth, cardHeight, undefined, 'FAST');
+
+      // Add cutting / folding guide below the card
+      const guideY = yPos + cardHeight + 10;
+      pdf.setDrawColor(180, 180, 180);
+      pdf.setLineDashPattern([2, 2], 0);
+      pdf.line(25, guideY, 185, guideY);
+
+      pdf.setFontSize(8);
+      pdf.setTextColor(120, 120, 120);
+      pdf.text('✂ Cut along the card outline. Suitable for PVC card lamination or ID holder insertion.', 105, guideY + 5, { align: 'center' });
+      
+      // Member details summary table at the bottom of the A4 page
+      const detailsY = guideY + 14;
+      pdf.setFillColor(248, 250, 252);
+      pdf.roundedRect(25, detailsY, 160, 48, 3, 3, 'F');
+      pdf.setDrawColor(226, 232, 240);
+      pdf.roundedRect(25, detailsY, 160, 48, 3, 3, 'D');
+
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(9);
+      pdf.setTextColor(30, 41, 59);
+      pdf.text('MEMBER DETAILS VERIFICATION SHEET', 30, detailsY + 8);
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(8.5);
+      pdf.setTextColor(71, 85, 105);
+      pdf.text(`Full Name: ${member.name || 'N/A'}`, 30, detailsY + 16);
+      pdf.text(`Membership ID: ${member.membershipId || 'N/A'}`, 30, detailsY + 23);
+      pdf.text(`Mobile: ${member.mobile || 'N/A'}`, 30, detailsY + 30);
+      pdf.text(`District: ${districtName} | Constituency: ${member.assemblyConstituency || 'N/A'}`, 30, detailsY + 37);
+      pdf.text(`Serial No: ${member.serialNo || 'N/A'} | Status: ${(member.status || 'Active').toUpperCase()}`, 30, detailsY + 44);
+
+      pdf.setFontSize(7.5);
+      pdf.setTextColor(148, 163, 184);
+      pdf.text(`Generated on: ${new Date().toLocaleDateString('en-IN')} ${new Date().toLocaleTimeString('en-IN')}`, 180, detailsY + 8, { align: 'right' });
+
+      return pdf.output('blob');
+    } catch (err) {
+      console.error("Generate PDF error:", err);
+      return null;
+    }
+  };
+
+  const downloadA4PDF = async () => {
+    if (!cardRef.current) return;
+    const loadingToast = toast.loading('A4 പ്രിന്റ് PDF ഡൗൺലോഡ് ചെയ്യുന്നു (Generating PDF)...');
+    try {
+      const pdfBlob = await generateCardPdfBlob();
+      if (!pdfBlob) {
+        toast.error('PDF തയ്യാറാക്കാൻ സാധിച്ചില്ല. ദയവായി വീണ്ടും ശ്രമിക്കുക.', { id: loadingToast });
+        return;
+      }
+      const cleanName = member.name.trim().replace(/\s+/g, '_');
+      triggerBlobDownload(pdfBlob, `HCRS_ID_${cleanName}_A4_Print.pdf`);
+      toast.success('A4 Print PDF വിജയകരമായി ഡൗൺലോഡ് ചെയ്തിട്ടുണ്ട്!', { id: loadingToast });
+    } catch (error) {
+      console.error('A4 PDF error:', error);
+      toast.error('PDF ഡൗൺലോഡ് പരാജയപ്പെട്ടു. ദയവായി വീണ്ടും ശ്രമിക്കുക.', { id: loadingToast });
+    }
+  };
+
+  const shareCardPDF = async () => {
+    if (!cardRef.current) return;
+    const loadingToast = toast.loading('PDF തയ്യാറാക്കുന്നു (Preparing PDF)...');
+    try {
+      const pdfBlob = await generateCardPdfBlob();
+      if (!pdfBlob) {
+        toast.error('PDF തയ്യാറാക്കാൻ സാധിച്ചില്ല.', { id: loadingToast });
+        return;
+      }
+      const cleanName = member.name.trim().replace(/\s+/g, '_');
+      const fileName = `HCRS_ID_${cleanName}.pdf`;
+      const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+      if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+        toast.dismiss(loadingToast);
+        await navigator.share({
+          files: [pdfFile],
+          title: `HCRS ID Card - ${member.name}`,
+          text: `Highrich Community Revival Society Membership ID Card of ${member.name} (${member.membershipId || ''})`
+        });
+      } else {
+        triggerBlobDownload(pdfBlob, fileName);
+        toast.success('PDF ഫോണിലേക്ക് ഡൗൺലോഡ് ആയിട്ടുണ്ട്! വാട്സാപ്പിൽ നേരിട്ട് അറ്റാച്ച് ചെയ്ത് അയക്കാം.', { id: loadingToast, duration: 6000 });
+      }
+    } catch (error: any) {
+      if (error?.name !== 'AbortError') {
+        console.error('Share PDF error:', error);
+        toast.error('ഷെയർ ചെയ്യുന്നതിൽ തടസ്സം നേരിട്ടു: ' + (error?.message || ''), { id: loadingToast });
+      } else {
+        toast.dismiss(loadingToast);
+      }
+    }
+  };
+
+  const downloadPNG = async () => {
+    if (!cardRef.current) return;
+    const loadingToast = toast.loading('ചിത്രം (PNG) ഡൗൺലോഡ് ചെയ്യുന്നു...');
+    try {
+      const canvas = await html2canvas(cardRef.current, { 
+        scale: 3.5, 
+        useCORS: true, 
+        backgroundColor: null, 
+        onclone: html2canvasOklchOnClone 
+      });
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const cleanName = member.name.trim().replace(/\s+/g, '_');
+          triggerBlobDownload(blob, `HCRS_CARD_${cleanName}.png`);
+          toast.success('മെമ്പർഷിപ്പ് കാർഡ് ഇമേജ് ഡൗൺലോഡ് ആയിട്ടുണ്ട്!', { id: loadingToast });
+        }
+      }, 'image/png');
+    } catch (err) {
+      console.error('PNG error:', err);
+      toast.error('ചിത്രം ഡൗൺലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.', { id: loadingToast });
+    }
+  };
+
+  const handlePrintCard = async () => {
+    if (!cardRef.current) return;
+    const loadingToast = toast.loading('Preparing print dialog...');
+    try {
+      const canvas = await html2canvas(cardRef.current, { scale: 3, useCORS: true, backgroundColor: '#FFFFFF', onclone: html2canvasOklchOnClone });
+      const imgData = canvas.toDataURL('image/png');
+      
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>HCRS Membership Card - ${member.name}</title>
+              <style>
+                @page {
+                  size: A4 portrait;
+                  margin: 15mm;
+                }
+                body {
+                  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                  margin: 0;
+                  padding: 20px;
+                  background: #ffffff;
+                  color: #1e293b;
+                  text-align: center;
+                }
+                .print-header {
+                  margin-bottom: 20px;
+                }
+                .print-header h1 {
+                  font-size: 18px;
+                  margin: 0 0 4px 0;
+                  color: #0f172a;
+                  font-weight: 800;
+                  text-transform: uppercase;
+                  letter-spacing: 0.5px;
+                }
+                .print-header p {
+                  font-size: 11px;
+                  color: #64748b;
+                  margin: 0;
+                  font-weight: 600;
+                }
+                .card-container {
+                  display: flex;
+                  justify-content: center;
+                  margin: 20px auto;
+                }
+                .card-image {
+                  width: 86mm;
+                  height: auto;
+                  border-radius: 12px;
+                  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                  border: 1px solid #e2e8f0;
+                }
+                .guide-text {
+                  font-size: 10px;
+                  color: #94a3b8;
+                  margin-top: 15px;
+                  border-top: 1px dashed #cbd5e1;
+                  padding-top: 10px;
+                  width: 80%;
+                  margin-left: auto;
+                  margin-right: auto;
+                }
+                .member-details {
+                  margin-top: 25px;
+                  background: #f8fafc;
+                  border: 1px solid #e2e8f0;
+                  border-radius: 12px;
+                  padding: 15px 20px;
+                  text-align: left;
+                  max-width: 140mm;
+                  margin-left: auto;
+                  margin-right: auto;
+                }
+                .member-details h3 {
+                  margin: 0 0 10px 0;
+                  font-size: 12px;
+                  text-transform: uppercase;
+                  color: #334155;
+                  letter-spacing: 0.5px;
+                  border-bottom: 1px solid #e2e8f0;
+                  padding-bottom: 5px;
+                }
+                .detail-row {
+                  display: flex;
+                  justify-content: space-between;
+                  font-size: 11px;
+                  margin-bottom: 6px;
+                }
+                .detail-label {
+                  color: #64748b;
+                  font-weight: 600;
+                }
+                .detail-value {
+                  color: #0f172a;
+                  font-weight: 700;
+                }
+                @media print {
+                  body {
+                    padding: 0;
+                    background: transparent;
+                  }
+                  .no-print {
+                    display: none;
+                  }
+                }
+              </style>
+            </head>
+            <body onload="window.print();">
+              <div class="print-header">
+                <h1>Highrich Community Revival Society</h1>
+                <p>Official Membership Identity Card • A4 Print Copy</p>
+              </div>
+              <div class="card-container">
+                <img src="${imgData}" class="card-image" alt="Membership Card" />
+              </div>
+              <div class="guide-text">
+                ✂ Cut along the card outline. Suitable for standard PVC card pouches or holders.
+              </div>
+              <div class="member-details">
+                <h3>Member Record Verification</h3>
+                <div class="detail-row">
+                  <span class="detail-label">Name:</span>
+                  <span class="detail-value">${member.name || 'N/A'}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Membership ID:</span>
+                  <span class="detail-value">${member.membershipId || 'N/A'}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Mobile Number:</span>
+                  <span class="detail-value">${member.mobile || 'N/A'}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">District / Constituency:</span>
+                  <span class="detail-value">${districtName} / ${member.assemblyConstituency || 'N/A'}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Serial Number:</span>
+                  <span class="detail-value">${member.serialNo || 'N/A'}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Status:</span>
+                  <span class="detail-value">${(member.status || 'Active').toUpperCase()}</span>
+                </div>
+              </div>
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
+        toast.success('Print dialog ready!', { id: loadingToast });
+      } else {
+        toast.error('Could not open print window. Please allow popups.', { id: loadingToast });
+      }
+    } catch (error) {
+      console.error('Print card error:', error);
+      toast.error('Failed to open print dialog.', { id: loadingToast });
+    }
   };
 
   const districtName = DISTRICTS.find(d => d.code === member.district)?.name || member.district;
@@ -662,30 +954,57 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
         <div className="flex flex-col gap-4 w-full px-2 pb-24 shrink-0 transition-all font-sans">
           {(member.status === 'active' || member.isApproved || isAdmin) && (
             <div className="flex flex-col gap-3">
-              {/* Visual Instructional Banner */}
-              <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 rounded-[20px] p-4 space-y-2 text-center shadow-xs">
-                <div className="flex items-center justify-center gap-2 text-amber-800 font-black text-[12px] uppercase tracking-wider">
-                  <Camera className="w-4 h-4 text-brand-magenta animate-pulse" />
-                  <span>കാർഡ് സംരക്ഷിക്കുന്ന വിധം</span>
-                </div>
-                <p className="text-[12px] font-extrabold text-slate-900 leading-relaxed font-sans">
-                  താഴെയുള്ള ബട്ടൺ അമർത്തുമ്പോൾ കാർഡ് മാത്രം പൂർണ്ണ സ്ക്രീനിൽ പ്രദർശിപ്പിക്കും. പശ്ചാത്തലം സ്വയമേവ മറയും. തുടർന്ന് Screenshot എടുത്ത് കാർഡ് സംരക്ഷിക്കാം.
-                </p>
+              {/* Primary Actions Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {/* 1. DOWNLOAD A4 PRINT PDF BUTTON */}
+                <Button 
+                  onClick={downloadA4PDF}
+                  className="w-full h-auto min-h-13 py-3 px-4 font-black rounded-2xl text-xs sm:text-sm uppercase tracking-wider shadow-md bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white flex flex-col items-center justify-center gap-0.5 transition-transform active:scale-95 border border-red-500/20 cursor-pointer"
+                >
+                  <div className="flex items-center gap-2 justify-center">
+                    <FileText className="w-4 h-4 text-white shrink-0" />
+                    <span>ഡൗൺലോഡ് PDF (A4 PRINT)</span>
+                  </div>
+                  <span className="text-[11px] font-bold tracking-normal block text-red-100 font-sans">
+                    (പ്രിന്റ് എടുക്കാൻ പാകത്തിലുള്ള PDF)
+                  </span>
+                </Button>
+
+                {/* 2. SHARE PDF VIA WHATSAPP BUTTON */}
+                <Button 
+                  onClick={shareCardPDF}
+                  className="w-full h-auto min-h-13 py-3 px-4 font-black rounded-2xl text-xs sm:text-sm uppercase tracking-wider shadow-md bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 flex flex-col items-center justify-center gap-0.5 transition-transform active:scale-95 border border-green-400/30 cursor-pointer"
+                >
+                  <div className="flex items-center gap-2 justify-center">
+                    <Share2 className="w-4 h-4 text-slate-950 shrink-0" />
+                    <span>വാട്സാപ്പിൽ PDF അയക്കുക</span>
+                  </div>
+                  <span className="text-[11px] font-bold tracking-normal block text-slate-900 font-sans">
+                    (Share PDF directly to WhatsApp)
+                  </span>
+                </Button>
               </div>
 
-              {/* SINGLE SCREENSHOT MODE BUTTON */}
-              <div className="grid grid-cols-1">
+              {/* Secondary Utility Controls */}
+              <div className="grid grid-cols-2 gap-2.5">
+                {/* 3. DOWNLOAD PNG IMAGE */}
+                <Button 
+                  onClick={downloadPNG}
+                  variant="outline"
+                  className="w-full h-11 py-2 px-3 font-black rounded-xl text-xs uppercase tracking-wider shadow-xs border-slate-300 text-slate-800 bg-white hover:bg-slate-50 flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="w-4 h-4 text-brand-blue shrink-0" />
+                  <span>ചിത്രം ഡൗൺലോഡ് (PNG)</span>
+                </Button>
+
+                {/* 4. SCREENSHOT MODE */}
                 <Button 
                   onClick={() => setIsScreenshotMode(true)}
-                  className="w-full h-auto min-h-12 py-3 px-4 font-black rounded-xl text-[10.5px] sm:text-xs uppercase tracking-wider shadow-md bg-[#0054A6] hover:bg-[#004ca0] text-white flex flex-col items-center justify-center gap-0.5 transition-transform active:scale-95 border border-blue-500/10"
+                  variant="outline"
+                  className="w-full h-11 py-2 px-3 font-black rounded-xl text-xs uppercase tracking-wider shadow-xs border-slate-300 text-slate-800 bg-white hover:bg-slate-50 flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  <div className="flex items-center gap-1.5 justify-center">
-                    <Camera className="w-4 h-4 text-white shrink-0" />
-                    <span>SCREENSHOT MODE</span>
-                  </div>
-                  <span className="text-[10px] sm:text-[11px] font-bold tracking-normal block text-blue-100/90 font-sans">
-                    (കാർഡ് മാത്രം കാണിക്കുക)
-                  </span>
+                  <Camera className="w-4 h-4 text-brand-magenta shrink-0" />
+                  <span>സ്ക്രീൻഷോട്ട് മോഡ്</span>
                 </Button>
               </div>
             </div>
@@ -695,9 +1014,9 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
               <Button 
                  variant="ghost" 
                  onClick={onLogout} 
-                 className="font-bold text-[9px] uppercase tracking-widest text-red-500 hover:text-red-650 hover:bg-red-50/50 px-6 h-9 rounded-xl"
+                 className="font-black text-xs uppercase tracking-widest text-red-700 hover:text-red-900 hover:bg-red-50 px-6 h-9 rounded-xl cursor-pointer"
               >
-                <LogOut className="w-3.5 h-3.5 mr-1" />
+                <LogOut className="w-4 h-4 mr-1.5 text-red-700" />
                 Sign Out
               </Button>
             </div>
@@ -707,7 +1026,7 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
 
       {/* Minimal Bottom Guide */}
       {isScreenshotMode && (
-        <p className="absolute bottom-6 text-center text-slate-400 text-[10.5px] font-bold tracking-wider uppercase select-none pointer-events-none opacity-85 px-4 font-sans">
+        <p className="absolute bottom-6 text-center text-slate-200 text-xs font-black tracking-wider uppercase select-none pointer-events-none px-4 font-sans drop-shadow-md">
           തെയ്യാറാണ്! സ്ക്രീൻഷോട്ട് എടുക്കുക • മടങ്ങാൻ എവിടെയെങ്കിലും തൊടുക
         </p>
       )}

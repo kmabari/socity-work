@@ -13,6 +13,13 @@ import BackupRestoreManager from './BackupRestoreManager';
 import CampaignTemplateManager from './CampaignTemplateManager';
 import AdminReportsTab from './AdminReportsTab';
 import { 
+  printCourtClaimReport, 
+  printCourtComboReport, 
+  printFullAdminClaimReport, 
+  printFullAdminComboReport,
+  printMemberComboReport
+} from '../lib/claimPrint';
+import { 
   Crown,
   Users, 
   Search, 
@@ -55,7 +62,8 @@ import {
   Copy,
   AlertTriangle,
   Layers,
-  Printer
+  Printer,
+  FileText
 } from 'lucide-react';
 import { DISTRICTS, BLOOD_GROUPS, CONSTITUENCIES, FALLBACK_LOGO_URL, SHARED_URL, getAssemblyCode } from '@/src/constants';
 import { UserProfile } from '@/src/types';
@@ -112,6 +120,7 @@ interface AdminDashboardProps {
   onUpdate: (id: string, data: Partial<UserProfile>) => void;
   onDelete: (id: string) => void;
   onResetPin?: (id: string) => void;
+  onBulkResetAllPins?: () => void;
   onUpdatePhoto?: (file: File, uid: string) => void;
   onUpdateDistrictQuota?: (districtCode: string, total: number) => void;
   onSyncQuotas?: () => void;
@@ -207,6 +216,7 @@ export default function AdminDashboard({
   onUpdate, 
   onDelete, 
   onResetPin, 
+  onBulkResetAllPins,
   onUpdatePhoto,
   onUpdateDistrictQuota,
   onSyncQuotas,
@@ -245,565 +255,6 @@ export default function AdminDashboard({
     const last10_1 = clean1.slice(-10);
     const last10_2 = clean2.slice(-10);
     return last10_1.length === 10 && last10_2.length === 10 && last10_1 === last10_2;
-  };
-
-  const getComboGroups = (sourceClaims: any[]) => {
-    const groups: any[][] = [];
-
-    sourceClaims.forEach((claim) => {
-      const existingGroup = groups.find(group =>
-        group.some(existingClaim =>
-          compareMobiles(existingClaim.userMobile, claim.userMobile)
-        )
-      );
-
-      if (existingGroup) {
-        existingGroup.push(claim);
-      } else {
-        groups.push([claim]);
-      }
-    });
-
-    return groups.filter(group => group.length > 1);
-  };
-
-  const printComboClaims = (comboClaims: any[]) => {
-    if (!comboClaims || comboClaims.length === 0) return;
-
-    const money = (value: any) =>
-      `₹${Number(value || 0).toLocaleString('en-IN')}`;
-
-    const escapeHtml = (value: any) =>
-      String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-
-    const relationLabel = (relation: any) => {
-      const labels: Record<string, string> = {
-        Self: 'സ്വന്തം (Self)',
-        Mother: 'അമ്മ (Mother)',
-        Father: 'അച്ഛൻ (Father)',
-        Son: 'മകൻ (Son)',
-        Daughter: 'മകൾ (Daughter)',
-        Wife: 'ഭാര്യ (Wife)',
-        Husband: 'ഭർത്താവ് (Husband)',
-      };
-      return labels[relation] || relation || '';
-    };
-
-    const hardshipLabel = (value: string) => {
-      const labels: Record<string, string> = {
-        bank: 'BANK SEIZURE',
-        crisis: 'FINANCIAL CRISIS',
-        medical: 'MEDICAL EMERGENCY',
-      };
-      return labels[value] || value || '';
-    };
-
-    const pages = comboClaims.map((claim, index) => {
-      const categoryDetails = claim.categoryDetails || {};
-      const categoryRows = Object.entries(categoryDetails)
-        .map(([catId, detail]: [string, any]) => `
-          <tr>
-            <td>${escapeHtml(getCategoryLabel(catId))}</td>
-            <td>${money(detail?.paid)}</td>
-            <td>${money(detail?.received)}</td>
-            <td class="pending">${money(detail?.pending)}</td>
-          </tr>
-        `)
-        .join('');
-
-      const hardship = Array.isArray(claim.hardshipStatus)
-        ? claim.hardshipStatus.map(h => hardshipLabel(h)).join(', ')
-        : 'NONE';
-
-      const futurePreference =
-        claim.futurePreference === 'settlement'
-          ? 'Prefer settlement and closure after receiving balance'
-          : claim.futurePreference === 'wait'
-            ? 'Willing to wait if company continues and grows'
-            : claim.futurePreference
-              ? 'Ready to continue with company based on future plans'
-              : 'N/A';
-
-      return `
-        <section class="page">
-
-          <div class="top-header">
-            <div>
-              <div class="brand">HCRS SUPPORT CLAIM</div>
-              <div class="document-title">MEMBER CLAIM DETAILS &amp; VERIFICATION</div>
-            </div>
-            <div class="page-meta">
-              COMBO CLAIM<br>
-              ${index + 1} / ${comboClaims.length}
-            </div>
-          </div>
-
-          <div class="section-title">1. MEMBER / CLAIMANT DETAILS</div>
-
-          <div class="details-grid">
-            <div class="field wide">
-              <label>Account Holder / Claimant</label>
-              <strong>${escapeHtml(claim.userName)}</strong>
-            </div>
-            <div class="field">
-              <label>Relation</label>
-              <strong>${escapeHtml(relationLabel(claim.relation))}</strong>
-            </div>
-
-            <div class="field">
-              <label>Member ID</label>
-              <strong>${escapeHtml(claim.membershipId || '')}</strong>
-            </div>
-            <div class="field">
-              <label>Serial / Claim No.</label>
-              <strong>#${escapeHtml(claim.tokenNo ?? claim.serialNo ?? '')}</strong>
-            </div>
-            <div class="field">
-              <label>Phone Number</label>
-              <strong>${escapeHtml(claim.userMobile || claim.mobile || '')}</strong>
-            </div>
-            <div class="field">
-              <label>HighRich ID</label>
-              <strong>${escapeHtml(claim.highrichId || '')}</strong>
-            </div>
-
-            <div class="field wide">
-              <label>Address</label>
-              <strong>${escapeHtml(claim.address || '')}</strong>
-            </div>
-
-            <div class="field">
-              <label>District</label>
-              <strong>${escapeHtml(
-                DISTRICTS.find(d => d.code === claim.district || '')?.name || claim.district || ''
-              )}</strong>
-            </div>
-            <div class="field">
-              <label>Constituency</label>
-              <strong>${escapeHtml(claim.constituency || '')}</strong>
-            </div>
-            <div class="field">
-              <label>Blood Group</label>
-              <strong>${escapeHtml(claim.bloodGroup || '')}</strong>
-            </div>
-            <div class="field">
-              <label>Email</label>
-              <strong>${escapeHtml(claim.email || '')}</strong>
-            </div>
-          </div>
-
-          <div class="section-title">2. CLAIM STATUS</div>
-
-          <div class="status-grid">
-            <div class="status-box">
-              <label>Priority Status</label>
-              <strong>${escapeHtml(claim.priorityStatus || 'GREEN')}</strong>
-            </div>
-            <div class="status-box">
-              <label>Emergency Verified</label>
-              <strong>${claim.isEmergency ? 'YES' : 'NO'}</strong>
-            </div>
-            <div class="status-box">
-              <label>Claim Submitted</label>
-              <strong>${escapeHtml(formatClaimDate(claim.createdAt))}</strong>
-            </div>
-          </div>
-
-          <div class="section-title">3. AMOUNT BREAKDOWN</div>
-
-          <div class="amount-grid">
-            <div>
-              <label>Total Paid</label>
-              <strong>${money(claim.totalPaid)}</strong>
-            </div>
-            <div>
-              <label>Total Received</label>
-              <strong>${money(claim.totalReceived)}</strong>
-            </div>
-            <div>
-              <label>Total Pending</label>
-              <strong>${money(claim.totalPending)}</strong>
-            </div>
-          </div>
-
-          ${categoryRows ? `
-            <div class="sub-title">Category-wise Claim Breakdown</div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Category</th>
-                  <th>Paid</th>
-                  <th>Received</th>
-                  <th>Pending</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${categoryRows}
-              </tbody>
-            </table>
-          ` : ''}
-
-          ${claim.notes ? `
-            <div class="section-title">4. REMARKS / NOTES</div>
-            <div class="text-box">${escapeHtml(claim.notes)}</div>
-          ` : ''}
-
-          <div class="two-column">
-
-            <div>
-              <div class="section-title">5. FUTURE PREFERENCE</div>
-              <div class="text-box">${escapeHtml(futurePreference)}</div>
-            </div>
-
-            <div>
-              <div class="section-title">6. HARDSHIP DECLARATION</div>
-              <div class="text-box">${escapeHtml(hardship)}</div>
-            </div>
-
-          </div>
-
-          <div class="verification">
-            <div class="section-title">7. CLAIM VERIFICATION</div>
-            <p>
-              The above information represents the claim details available in
-              the company's records. The claim amount and related particulars
-              may be verified against the company's records before submission
-              to the concerned authorities.
-            </p>
-
-            <div class="signature-grid">
-              <div>
-                <span>Member / Claimant Confirmation</span>
-                <div class="signature-line"></div>
-              </div>
-              <div>
-                <span>Verified by Company / Authorized Representative</span>
-                <div class="signature-line"></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="footer">
-            HCRS SUPPORT CLAIM · Claim #${escapeHtml(claim.tokenNo ?? claim.serialNo ?? '')}
-            · ${escapeHtml(formatClaimDate(claim.createdAt))}
-          </div>
-
-        </section>
-      `;
-    }).join('');
-
-    const printWindow = window.open('', '_blank', 'width=1000,height=1200');
-
-    if (!printWindow) {
-      toast.error('Print window blocked. Please allow pop-ups.');
-      return;
-    }
-
-    printWindow.document.write(`
-      <!doctype html>
-      <html>
-        <head>
-          <meta charset="utf-8" />
-          <title>HCRS Support Claims</title>
-
-          <style>
-            @page {
-              size: A4 portrait;
-              margin: 7mm;
-            }
-
-            * {
-              box-sizing: border-box;
-            }
-
-            html, body {
-              margin: 0;
-              padding: 0;
-              background: #fff;
-              color: #172033;
-              font-family: Arial, "Noto Sans", sans-serif;
-            }
-
-            body {
-              font-size: 10px;
-            }
-
-            .page {
-              width: 100%;
-              min-height: 283mm;
-              position: relative;
-              page-break-after: always;
-              break-after: page;
-              padding: 6mm 6mm 14mm;
-              border: 1.5px solid #172b5c;
-              border-radius: 1mm;
-              overflow: hidden;
-            }
-
-            .page:last-child {
-              page-break-after: auto;
-              break-after: auto;
-            }
-
-            .top-header {
-              display: flex;
-              justify-content: space-between;
-              align-items: flex-start;
-              border-bottom: 2px solid #172b5c;
-              padding-bottom: 10px;
-              margin-bottom: 14px;
-            }
-
-            .brand {
-              font-size: 20px;
-              font-weight: 900;
-              color: #172b5c;
-            }
-
-            .document-title {
-              margin-top: 3px;
-              font-size: 9px;
-              font-weight: 800;
-              color: #64748b;
-              letter-spacing: .4px;
-            }
-
-            .page-meta {
-              text-align: right;
-              font-size: 8px;
-              line-height: 1.5;
-              font-weight: 900;
-              color: #64748b;
-            }
-
-            .section-title {
-              background: #172b5c;
-              color: white;
-              font-size: 10px;
-              font-weight: 900;
-              padding: 8px 9px;
-              margin-top: 13px;
-              margin-bottom: 9px;
-              letter-spacing: .4px;
-            }
-
-            .details-grid {
-              display: grid;
-              grid-template-columns: repeat(4, 1fr);
-              gap: 8px;
-            }
-
-            .field {
-              border: 1px solid #dbe3ed;
-              padding: 10px;
-              min-height: 48px;
-            }
-
-            .field.wide {
-              grid-column: span 2;
-            }
-
-            .field label,
-            .status-box label,
-            .amount-grid label {
-              display: block;
-              color: #64748b;
-              font-size: 7px;
-              font-weight: 900;
-              text-transform: uppercase;
-              margin-bottom: 3px;
-            }
-
-            .field strong {
-              display: block;
-              font-size: 9.5px;
-              line-height: 1.4;
-              word-break: break-word;
-            }
-
-            .status-grid {
-              display: grid;
-              grid-template-columns: repeat(3, 1fr);
-              gap: 8px;
-            }
-
-            .status-box {
-              border: 1px solid #dbe3ed;
-              padding: 10px;
-              min-height: 48px;
-            }
-
-            .status-box strong {
-              font-size: 10px;
-              font-weight: 900;
-            }
-
-            .amount-grid {
-              display: grid;
-              grid-template-columns: repeat(3, 1fr);
-              gap: 8px;
-            }
-
-            .amount-grid > div {
-              border: 1px solid #dbe3ed;
-              padding: 14px 10px;
-              min-height: 68px;
-              text-align: center;
-            }
-
-            .amount-grid > div:nth-child(1) {
-              background: #f1f5f9;
-            }
-
-            .amount-grid > div:nth-child(2) {
-              background: #f0fdf4;
-            }
-
-            .amount-grid > div:nth-child(3) {
-              background: #fdf2f8;
-            }
-
-            .amount-grid strong {
-              display: block;
-              font-size: 16px;
-              font-weight: 900;
-            }
-
-            .sub-title {
-              margin-top: 7px;
-              margin-bottom: 4px;
-              font-size: 8px;
-              font-weight: 900;
-              color: #334155;
-            }
-
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              font-size: 8px;
-            }
-
-            th {
-              background: #f1f5f9;
-              color: #334155;
-              font-weight: 900;
-              text-transform: uppercase;
-            }
-
-            th, td {
-              border: 1px solid #dbe3ed;
-              padding: 8px 7px;
-              text-align: left;
-            }
-
-            td:nth-child(2),
-            td:nth-child(3),
-            td:nth-child(4),
-            th:nth-child(2),
-            th:nth-child(3),
-            th:nth-child(4) {
-              text-align: right;
-            }
-
-            td.pending {
-              font-weight: 900;
-            }
-
-            .two-column {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 8px;
-            }
-
-            .text-box {
-              border: 1px solid #dbe3ed;
-              background: #f8fafc;
-              padding: 11px;
-              min-height: 52px;
-              line-height: 1.6;
-              white-space: pre-wrap;
-            }
-
-            .verification {
-              margin-top: 12px;
-              border: 1px solid #cbd5e1;
-              padding: 10px;
-            }
-
-            .verification .section-title {
-              margin: -7px -7px 7px;
-            }
-
-            .verification p {
-              margin: 0;
-              font-size: 8px;
-              line-height: 1.5;
-              color: #475569;
-            }
-
-            .signature-grid {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 35px;
-              margin-top: 30px;
-            }
-
-            .signature-grid span {
-              display: block;
-              font-size: 7px;
-              font-weight: 800;
-              color: #64748b;
-            }
-
-            .signature-line {
-              margin-top: 24px;
-              border-bottom: 1px solid #334155;
-            }
-
-            .footer {
-              position: absolute;
-              bottom: 0;
-              left: 0;
-              right: 0;
-              border-top: 1px solid #dbe3ed;
-              padding-top: 5px;
-              text-align: center;
-              color: #94a3b8;
-              font-size: 7px;
-              font-weight: 700;
-            }
-
-            @media print {
-              body {
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-              }
-
-              .page {
-                min-height: 283mm;
-                border: 1.5px solid #172b5c;
-              }
-            }
-          </style>
-        </head>
-
-        <body>
-          ${pages}
-        </body>
-      </html>
-    `);
-
-    printWindow.document.close();
-    printWindow.focus();
-
-    setTimeout(() => {
-      printWindow.print();
-    }, 500);
   };
 
   const formatClaimDate = (createdAt: any): string => {
@@ -1121,6 +572,7 @@ export default function AdminDashboard({
   const [selectedClaim, setSelectedClaim] = useState<any>(null);
   const [editingClaim, setEditingClaim] = useState<any>(null);
   const [deletingClaimId, setDeletingClaimId] = useState<string | null>(null);
+  const [claimsViewMode, setClaimsViewMode] = useState<'individual' | 'combo'>('individual');
 
   // Claims Bulk Import States
   const [isClaimsImportOpen, setIsClaimsImportOpen] = useState(false);
@@ -1865,7 +1317,16 @@ export default function AdminDashboard({
       toast.error('മൊബൈൽ നമ്പർ കൃത്യം 10 അക്കങ്ങൾ ആയിരിക്കണം. ദയവായി പരിശോധിക്കുക. (Mobile number must be exactly 10 digits.)');
       return;
     }
-    const updatedMember = { ...editingMember, mobile: cleanMobile };
+    const cleanPin = (editingMember.pin || '123456').trim();
+    const isDefaultPin = cleanPin === '123456';
+    const updatedMember = { 
+      ...editingMember, 
+      mobile: cleanMobile,
+      pin: cleanPin,
+      mustChangePassword: isDefaultPin,
+      pinResetRequested: isDefaultPin,
+      mustCompleteProfile: false
+    };
     onUpdate(updatedMember.uid, updatedMember);
     setEditingMember(null);
   };
@@ -2167,6 +1628,60 @@ export default function AdminDashboard({
     });
   }, [claims, claimSearchTerm, claimDistrictFilter, claimPriorityFilter, claimCategoryFilter]);
 
+  const comboGroups = useMemo(() => {
+    const map = new Map<string, {
+      mobile: string;
+      primaryName: string;
+      memberObj?: UserProfile;
+      claims: any[];
+      totalPaid: number;
+      totalReceived: number;
+      totalPending: number;
+      isEmergency: boolean;
+      highestPriority: string;
+      district: string;
+      membershipId: string;
+    }>();
+
+    for (const c of filteredClaims) {
+      const rawMob = (c.userMobile || '').trim().replace(/\D/g, '');
+      const mob = rawMob || `nomob_${c.id}`;
+      if (!map.has(mob)) {
+        const memberObj = members.find(m => compareMobiles(m.mobile, mob));
+        map.set(mob, {
+          mobile: mob.startsWith('nomob_') ? (c.userMobile || '') : mob,
+          primaryName: memberObj?.name || c.userName || 'N/A',
+          memberObj,
+          claims: [],
+          totalPaid: 0,
+          totalReceived: 0,
+          totalPending: 0,
+          isEmergency: false,
+          highestPriority: 'GREEN',
+          district: c.userDistrict || memberObj?.district || 'KSD',
+          membershipId: c.membershipId || memberObj?.membershipId || 'N/A'
+        });
+      }
+      const grp = map.get(mob)!;
+      // Prevent duplicate claims in the same combo group
+      if (!grp.claims.some(existing => existing.id === c.id)) {
+        grp.claims.push(c);
+        grp.totalPaid += (c.totalPaid || 0);
+        grp.totalReceived += (c.totalReceived || 0);
+        grp.totalPending += (c.totalPending || 0);
+        if (c.isEmergency) grp.isEmergency = true;
+        if (c.priorityStatus === 'EMERGENCY RED') grp.highestPriority = 'EMERGENCY RED';
+        else if (c.priorityStatus === 'RED' && grp.highestPriority !== 'EMERGENCY RED') grp.highestPriority = 'RED';
+        else if (c.priorityStatus === 'ORANGE' && !['EMERGENCY RED', 'RED'].includes(grp.highestPriority)) grp.highestPriority = 'ORANGE';
+      }
+    }
+
+    // STRICT COMBO RULE: ONLY include groups that have more than 1 claim (COMBO members only). Normal/single members (1 claim) MUST NOT appear in the COMBO section!
+    return Array.from(map.values())
+      .filter(grp => grp.claims.length > 1)
+      .sort((a, b) => b.totalPending - a.totalPending);
+  }, [filteredClaims, members]);
+
   const claimStats = useMemo(() => {
     let totalPending = 0;
     let emergencyCount = 0;
@@ -2301,24 +1816,53 @@ export default function AdminDashboard({
           </button>
 
           <button
-            onClick={() => setActiveTab2('claims')}
+            onClick={() => {
+              setActiveTab2('claims');
+              setClaimsViewMode('individual');
+            }}
             className={cn(
               "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
-              activeTab === 'claims' 
+              activeTab === 'claims' && claimsViewMode === 'individual'
                 ? "bg-brand-blue text-white shadow-md shadow-brand-blue/10" 
                 : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
             )}
           >
             <div className="flex items-center gap-3">
-              <MessageCircle className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'claims' ? 'text-white' : 'text-slate-400')} />
-              <span>Claims Support</span>
+              <FileText className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'claims' && claimsViewMode === 'individual' ? 'text-white' : 'text-slate-400')} />
+              <span>Common Claims</span>
             </div>
             {claims.length > 0 && (
               <span className={cn(
                 "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
-                activeTab === 'claims' ? 'bg-white/25 text-white' : 'bg-red-50 text-red-500'
+                activeTab === 'claims' && claimsViewMode === 'individual' ? 'bg-white/25 text-white' : 'bg-red-50 text-red-500'
               )}>
                 {claims.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab2('claims');
+              setClaimsViewMode('combo');
+            }}
+            className={cn(
+              "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+              activeTab === 'claims' && claimsViewMode === 'combo'
+                ? "bg-brand-magenta text-white shadow-md shadow-brand-magenta/15" 
+                : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-800"
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <Users className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'claims' && claimsViewMode === 'combo' ? 'text-white' : 'text-slate-400')} />
+              <span>COMBO Section</span>
+            </div>
+            {comboGroups.length > 0 && (
+              <span className={cn(
+                "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
+                activeTab === 'claims' && claimsViewMode === 'combo' ? 'bg-white/25 text-white' : 'bg-pink-50 text-brand-magenta'
+              )}>
+                {comboGroups.length}
               </span>
             )}
           </button>
@@ -2437,14 +1981,24 @@ export default function AdminDashboard({
                 <span>New Requests</span>
               </button>
               <button 
-                onClick={() => { setActiveTab2('claims'); setMobileSidebarOpen(false); }} 
+                onClick={() => { setActiveTab2('claims'); setClaimsViewMode('individual'); setMobileSidebarOpen(false); }} 
                 className={cn(
                   "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
-                  activeTab === 'claims' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
+                  activeTab === 'claims' && claimsViewMode === 'individual' ? 'bg-brand-blue/5 text-brand-blue' : 'text-slate-600 hover:bg-slate-50'
                 )}
               >
-                <MessageCircle className="w-4 h-4 text-slate-400" />
-                <span>Claims Support</span>
+                <FileText className="w-4 h-4 text-slate-400" />
+                <span>Common Claims</span>
+              </button>
+              <button 
+                onClick={() => { setActiveTab2('claims'); setClaimsViewMode('combo'); setMobileSidebarOpen(false); }} 
+                className={cn(
+                  "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
+                  activeTab === 'claims' && claimsViewMode === 'combo' ? 'bg-brand-magenta/5 text-brand-magenta' : 'text-slate-600 hover:bg-slate-50'
+                )}
+              >
+                <Users className="w-4 h-4 text-slate-400" />
+                <span>COMBO Section</span>
               </button>
 
               {isSuperAdmin && (
@@ -3029,116 +2583,110 @@ export default function AdminDashboard({
             <Tabs value={activeTab} onValueChange={(val) => setActiveTab2(val)} className="space-y-6">
               {/* Row 1: Nav Tabs */}
               <div className="w-full">
-                <TabsList className="bg-slate-100/80 backdrop-blur-md border border-slate-200/40 p-1.5 !h-auto flex flex-wrap justify-start items-center rounded-2xl w-full gap-1">
-                  <TabsTrigger value="list" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex-1 md:flex-none py-2 px-3 transition-all">
-                    Directory <Badge className="ml-1.5 bg-slate-100 text-slate-500 border-none text-[8px] px-1.5 py-0">{stats.active}</Badge>
+                <TabsList className="bg-slate-200/80 backdrop-blur-md border border-slate-300 p-1.5 !h-auto flex flex-wrap justify-start items-center rounded-2xl w-full gap-1.5 shadow-xs">
+                  <TabsTrigger value="list" className="data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-md font-extrabold text-[11px] uppercase text-slate-700 hover:text-slate-900 rounded-xl flex-1 md:flex-none py-2 px-3 transition-all cursor-pointer">
+                    Directory <Badge className="ml-1.5 bg-slate-300 text-slate-900 border-none text-[9px] font-black px-1.5 py-0">{stats.active}</Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="requests" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex-1 md:flex-none py-2 px-3 transition-all">
-                    Requests <Badge className="ml-1.5 bg-brand-blue/10 text-brand-blue border-none text-[8px] px-1.5 py-0">{stats.pending}</Badge>
+                  <TabsTrigger value="requests" className="data-[state=active]:bg-brand-blue data-[state=active]:text-white data-[state=active]:shadow-md font-extrabold text-[11px] uppercase text-blue-900 bg-blue-50/80 hover:bg-blue-100 rounded-xl flex-1 md:flex-none py-2 px-3 transition-all cursor-pointer">
+                    Requests <Badge className="ml-1.5 bg-brand-blue/20 text-brand-blue data-[state=active]:bg-white/20 data-[state=active]:text-white border-none text-[9px] font-black px-1.5 py-0">{stats.pending}</Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="deleted" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex-1 md:flex-none py-2 px-3 transition-all">
-                    Deactivated <Badge className="ml-1.5 bg-red-550/10 text-red-500 border-none text-[8px] px-1.5 py-0">{members.filter(m => m.status === 'deleted').length}</Badge>
+                  <TabsTrigger value="deleted" className="data-[state=active]:bg-red-600 data-[state=active]:text-white data-[state=active]:shadow-md font-extrabold text-[11px] uppercase text-red-800 bg-red-50/80 hover:bg-red-100 rounded-xl flex-1 md:flex-none py-2 px-3 transition-all cursor-pointer">
+                    Deactivated <Badge className="ml-1.5 bg-red-200 text-red-900 border-none text-[9px] font-black px-1.5 py-0">{members.filter(m => m.status === 'deleted').length}</Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="renewals" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex-1 md:flex-none py-2 px-3 transition-all">
-                    Renewals <Badge className="ml-1.5 bg-orange-100 text-orange-600 border-none text-[8px] px-1.5 py-0">{stats.renewals}</Badge>
+                  <TabsTrigger value="renewals" className="data-[state=active]:bg-amber-600 data-[state=active]:text-white data-[state=active]:shadow-md font-extrabold text-[11px] uppercase text-amber-900 bg-amber-50/80 hover:bg-amber-100 rounded-xl flex-1 md:flex-none py-2 px-3 transition-all cursor-pointer">
+                    Renewals <Badge className="ml-1.5 bg-amber-200 text-amber-900 border-none text-[9px] font-black px-1.5 py-0">{stats.renewals}</Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="valid_active" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex-1 md:flex-none py-2 px-3 transition-all">
-                    Active & Valid (വാലിഡിറ്റിയുള്ളവർ) <Badge className="ml-1.5 bg-green-100 text-green-600 border-none text-[8px] px-1.5 py-0">{validActiveCount}</Badge>
+                  <TabsTrigger value="valid_active" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md font-extrabold text-[11px] uppercase text-emerald-900 bg-emerald-50/80 hover:bg-emerald-100 rounded-xl flex-1 md:flex-none py-2 px-3 transition-all cursor-pointer">
+                    Active & Valid (വാലിഡിറ്റിയുള്ളവർ) <Badge className="ml-1.5 bg-emerald-200 text-emerald-900 border-none text-[9px] font-black px-1.5 py-0">{validActiveCount}</Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="reports" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-sm font-black text-[10px] uppercase text-emerald-700 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400 rounded-lg flex-1 md:flex-none py-2 px-3 transition-all">
+                  <TabsTrigger value="reports" className="data-[state=active]:bg-emerald-700 data-[state=active]:text-white data-[state=active]:shadow-md font-black text-[11px] uppercase text-emerald-950 bg-emerald-100 hover:bg-emerald-200 border border-emerald-400 rounded-xl flex-1 md:flex-none py-2 px-3.5 transition-all cursor-pointer shadow-xs">
                     📊 Payment & Reports
                   </TabsTrigger>
                   {!isSecondary && (
                     <>
-                      <TabsTrigger value="quotas" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                        <Settings className="w-3 h-3 text-slate-400" />
+                      <TabsTrigger value="quotas" className="data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-md font-extrabold text-[11px] uppercase text-slate-700 hover:text-slate-900 rounded-xl flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all cursor-pointer">
+                        <Settings className="w-3.5 h-3.5 text-slate-600" />
                         Settings & Quotas (വാട്സപ്പ് സെറ്റിങ്സ്/കോട്ട)
                       </TabsTrigger>
-                      <TabsTrigger value="districts" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                        <Lock className="w-3 h-3 text-slate-400" />
+                      <TabsTrigger value="districts" className="data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-md font-extrabold text-[11px] uppercase text-slate-700 hover:text-slate-900 rounded-xl flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all cursor-pointer">
+                        <Lock className="w-3.5 h-3.5 text-slate-600" />
                         District URLs
                       </TabsTrigger>
                     </>
                   )}
-                  <TabsTrigger value="claims" className="data-[state=active]:bg-white data-[state=active]:text-brand-magenta data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                    <MessageCircle className="w-3 h-3 text-brand-magenta" />
-                    Claims <Badge className="ml-1.5 bg-brand-magenta text-white border-none text-[8px] px-1.5 py-0">{claims.length}</Badge>
+                  <TabsTrigger value="claims" className="data-[state=active]:bg-brand-magenta data-[state=active]:text-white data-[state=active]:shadow-md font-black text-[11px] uppercase text-pink-950 bg-pink-100 hover:bg-pink-200 border border-pink-300 rounded-xl flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3.5 transition-all cursor-pointer shadow-xs">
+                    <MessageCircle className="w-3.5 h-3.5 text-brand-magenta" />
+                    Claims <Badge className="ml-1.5 bg-brand-magenta text-white border-none text-[9px] font-black px-1.5 py-0">{claims.length}</Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="combo" className="data-[state=active]:bg-white data-[state=active]:text-brand-magenta data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                    <Layers className="w-3 h-3 text-brand-magenta" />
-                    Combo <Badge className="ml-1.5 bg-brand-magenta text-white border-none text-[8px] px-1.5 py-0">{getComboGroups(claims).length}</Badge>
-                  </TabsTrigger>
-
-                  <TabsTrigger value="fast_entry" className="data-[state=active]:bg-white data-[state=active]:text-brand-magenta data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                    <UserPlus className="w-3 h-3 text-brand-magenta" />
+                  <TabsTrigger value="fast_entry" className="data-[state=active]:bg-brand-magenta data-[state=active]:text-white data-[state=active]:shadow-md font-black text-[11px] uppercase text-pink-900 bg-pink-50 hover:bg-pink-100 rounded-xl flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all cursor-pointer">
+                    <UserPlus className="w-3.5 h-3.5 text-brand-magenta" />
                     Fast Entry
                   </TabsTrigger>
-                  <TabsTrigger value="tickets" className="data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                    <Headphones className="w-3 h-3 text-emerald-500" />
-                    AI Support Inquiries <Badge className="ml-1.5 bg-emerald-500 text-white border-none text-[8px] px-1.5 py-0">{supportTickets.filter(t => t.status === 'pending').length}</Badge>
+                  <TabsTrigger value="tickets" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md font-extrabold text-[11px] uppercase text-emerald-900 bg-emerald-50 hover:bg-emerald-100 rounded-xl flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all cursor-pointer">
+                    <Headphones className="w-3.5 h-3.5 text-emerald-600" />
+                    AI Support Inquiries <Badge className="ml-1.5 bg-emerald-600 text-white border-none text-[9px] font-black px-1.5 py-0">{supportTickets.filter(t => t.status === 'pending').length}</Badge>
                   </TabsTrigger>
                   {isSuperAdmin && (
-                    <TabsTrigger value="life_members" className="data-[state=active]:bg-white data-[state=active]:text-amber-600 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                      <Crown className="w-3 h-3 text-amber-500" />
+                    <TabsTrigger value="life_members" className="data-[state=active]:bg-amber-600 data-[state=active]:text-white data-[state=active]:shadow-md font-black text-[11px] uppercase text-amber-900 bg-amber-50 hover:bg-amber-100 rounded-xl flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all cursor-pointer">
+                      <Crown className="w-3.5 h-3.5 text-amber-600" />
                       Life Members
                     </TabsTrigger>
                   )}
                   {isSuperAdmin && (
-                    <TabsTrigger value="bulk_import" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                      <Download className="w-3 h-3 text-slate-400" />
+                    <TabsTrigger value="bulk_import" className="data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-md font-extrabold text-[11px] uppercase text-slate-700 hover:text-slate-900 rounded-xl flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all cursor-pointer">
+                      <Download className="w-3.5 h-3.5 text-slate-600" />
                       Import Old Members
                     </TabsTrigger>
                   )}
                   {!isSecondary && (
-                    <TabsTrigger value="branding" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                      <Globe className="w-3 h-3 text-slate-400" />
+                    <TabsTrigger value="branding" className="data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-md font-extrabold text-[11px] uppercase text-slate-700 hover:text-slate-900 rounded-xl flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all cursor-pointer">
+                      <Globe className="w-3.5 h-3.5 text-slate-600" />
                       Branding & CMS
                     </TabsTrigger>
                   )}
                   {!isSecondary && (
-                    <TabsTrigger value="language" className="data-[state=active]:bg-white data-[state=active]:text-brand-magenta data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                      <Globe className="w-3 h-3 text-brand-magenta" />
+                    <TabsTrigger value="language" className="data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-md font-extrabold text-[11px] uppercase text-pink-900 bg-pink-50 hover:bg-pink-100 rounded-xl flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all cursor-pointer">
+                      <Globe className="w-3.5 h-3.5 text-brand-magenta" />
                       Language Manager
                     </TabsTrigger>
                   )}
                   {(isSuperAdmin || user?.role === 'admin') && (
-                    <TabsTrigger value="gallery_mgmt" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                      <ImageIcon className="w-3 h-3 text-slate-400" />
+                    <TabsTrigger value="gallery_mgmt" className="data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-md font-extrabold text-[11px] uppercase text-slate-700 hover:text-slate-900 rounded-xl flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all cursor-pointer">
+                      <ImageIcon className="w-3.5 h-3.5 text-slate-600" />
                       Gallery Management
                     </TabsTrigger>
                   )}
                   {isSuperAdmin && (
-                    <TabsTrigger value="committee_mgmt" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                      <Users className="w-3 h-3 text-slate-400" />
+                    <TabsTrigger value="committee_mgmt" className="data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-md font-extrabold text-[11px] uppercase text-slate-700 hover:text-slate-900 rounded-xl flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all cursor-pointer">
+                      <Users className="w-3.5 h-3.5 text-slate-600" />
                       Committees
                     </TabsTrigger>
                   )}
                   {isSuperAdmin && (
-                    <TabsTrigger value="backup_restore" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                      <Database className="w-3 h-3 text-slate-400" />
+                    <TabsTrigger value="backup_restore" className="data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-md font-extrabold text-[11px] uppercase text-slate-700 hover:text-slate-900 rounded-xl flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all cursor-pointer">
+                      <Database className="w-3.5 h-3.5 text-slate-600" />
                       Database Restore (ബാക്കപ്പ്)
                     </TabsTrigger>
                   )}
                   {!isSecondary && (
-                    <TabsTrigger value="campaign_templates" className="data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-sm font-bold text-[10px] uppercase text-slate-500 rounded-lg flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all">
-                      <Mail className="w-3 h-3 text-slate-400" />
+                    <TabsTrigger value="campaign_templates" className="data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-md font-extrabold text-[11px] uppercase text-slate-700 hover:text-slate-900 rounded-xl flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all cursor-pointer">
+                      <Mail className="w-3.5 h-3.5 text-slate-600" />
                       📧 Operation Janamail
                     </TabsTrigger>
                   )}
-                
-</TabsList>
+                </TabsList>
               </div>
 
               {/* Row 2: Search & Filter controls */}
               {['list', 'deleted', 'requests', 'renewals', 'valid_active', 'quotas', 'districts', 'claims'].includes(activeTab) && (
-                <div className="bg-slate-50/50 dark:bg-slate-900/40 border border-slate-100/80 dark:border-slate-800/60 p-4 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="bg-white border-2 border-slate-200 p-4 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm animate-in fade-in slide-in-from-top-1 duration-200">
                   {/* Search Bar */}
                   <div className="flex-1 min-w-[280px]">
                     <div className="relative w-full">
-                      <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
+                      <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-600" />
                       <Input 
                         placeholder="Search member by name, phone or ID... (അംഗങ്ങളെ പേര്, ഫോൺ അല്ലെങ്കിൽ ID വഴി തിരയുക)" 
-                        className="pl-10 pr-4 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-850 h-11 rounded-xl text-xs font-bold w-full focus:border-brand-blue/30 focus:ring-1 focus:ring-brand-blue/10 transition-all placeholder:text-slate-500"
+                        className="pl-10 pr-4 bg-slate-50 border-2 border-slate-300 focus:border-brand-blue focus:bg-white text-slate-900 h-11 rounded-xl text-xs font-bold w-full shadow-xs placeholder:text-slate-500 transition-all"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                       />
@@ -3153,16 +2701,30 @@ export default function AdminDashboard({
                         size="sm"
                         disabled={isSyncingMembers}
                         onClick={onRefreshMembers}
-                        className="h-11 px-4 gap-2 font-bold border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:text-brand-blue bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 rounded-xl text-xs cursor-pointer select-none active:scale-[0.98] transition-all"
+                        className="h-11 px-4 gap-2 font-black border-2 border-slate-300 text-slate-800 hover:text-brand-blue bg-white hover:bg-slate-100 rounded-xl text-xs cursor-pointer select-none active:scale-[0.98] transition-all shadow-xs"
                       >
-                        <RefreshCw className={cn("w-3.5 h-3.5 text-slate-400", isSyncingMembers && "animate-spin")} />
+                        <RefreshCw className={cn("w-3.5 h-3.5 text-slate-600", isSyncingMembers && "animate-spin")} />
                         {isSyncingMembers ? 'Syncing...' : 'Refresh'}
+                      </Button>
+                    )}
+
+                    {isSuperAdmin && onBulkResetAllPins && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={onBulkResetAllPins}
+                        className="h-11 px-3.5 gap-2 font-black border-2 border-amber-300 text-amber-900 hover:text-amber-950 bg-amber-50 hover:bg-amber-100 rounded-xl text-xs cursor-pointer select-none active:scale-[0.98] transition-all shadow-xs"
+                        title="എല്ലാ അംഗങ്ങളുടെയും പാസ്‌വേഡ് 123456 ആക്കി റീസെറ്റ് ചെയ്യുക (Reset All Members' Passwords to 123456)"
+                      >
+                        <KeyRound className="w-4 h-4 text-amber-700" />
+                        <span>എല്ലാവരുടെയും പാസ്‌വേഡ് 123456 ആക്കുക</span>
                       </Button>
                     )}
                     
                     <div className="flex items-center gap-2 w-full sm:w-auto">
                       <Select disabled={!isSuperAdmin && !!user?.district} value={districtFilter} onValueChange={setDistrictFilter}>
-                        <SelectTrigger className="flex-1 sm:w-[130px] h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-850 rounded-xl text-xs font-bold disabled:opacity-75 focus:outline-none">
+                        <SelectTrigger className="flex-1 sm:w-[130px] h-11 bg-white border-2 border-slate-300 rounded-xl text-xs font-extrabold text-slate-900 disabled:opacity-75 focus:outline-none shadow-xs hover:border-slate-400">
                           <SelectValue placeholder="District" />
                         </SelectTrigger>
                         <SelectContent className="max-h-60 overflow-y-auto">
@@ -3172,7 +2734,7 @@ export default function AdminDashboard({
                       </Select>
 
                       <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                        <SelectTrigger className="flex-1 sm:w-[130px] h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-850 rounded-xl text-xs font-bold focus:outline-none">
+                        <SelectTrigger className="flex-1 sm:w-[130px] h-11 bg-white border-2 border-slate-300 rounded-xl text-xs font-extrabold text-slate-900 focus:outline-none shadow-xs hover:border-slate-400">
                           <SelectValue placeholder="Source" />
                         </SelectTrigger>
                         <SelectContent>
@@ -3183,7 +2745,7 @@ export default function AdminDashboard({
                       </Select>
 
                       <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                        <SelectTrigger className="flex-1 sm:w-[130px] h-11 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-850 rounded-xl text-xs font-bold focus:outline-none">
+                        <SelectTrigger className="flex-1 sm:w-[130px] h-11 bg-white border-2 border-slate-300 rounded-xl text-xs font-extrabold text-slate-900 focus:outline-none shadow-xs hover:border-slate-400">
                           <SelectValue placeholder="Category" />
                         </SelectTrigger>
                         <SelectContent>
@@ -3387,6 +2949,7 @@ export default function AdminDashboard({
                     <TableHead className="hidden lg:table-cell">District/Assly</TableHead>
                     <TableHead className="hidden md:table-cell">Source</TableHead>
                     <TableHead className="hidden md:table-cell">ID Details</TableHead>
+                    <TableHead className="hidden sm:table-cell">Claims / Combo</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -3524,6 +3087,45 @@ export default function AdminDashboard({
                           </div>
                         </div>
                       </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        {(() => {
+                          const mClaims = claims.filter(c => c.uid === member.uid || compareMobiles(c.userMobile, member.mobile));
+                          if (mClaims.length === 0) {
+                            return (
+                              <span className="text-[10px] font-bold text-slate-300 uppercase">No Claims</span>
+                            );
+                          }
+                          const totalPending = mClaims.reduce((acc, c) => acc + (c.totalPending || 0), 0);
+                          return (
+                            <div className="space-y-1.5 min-w-[140px]">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {mClaims.length > 1 ? (
+                                  <Badge className="bg-[#FF1493] hover:bg-[#FF1493] text-white text-[8px] font-black uppercase rounded-lg px-2 py-0.5 border-none shadow-2xs">
+                                    👥 COMBO ({mClaims.length})
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-[8px] font-black uppercase text-brand-blue border-brand-blue/30 bg-brand-blue/5 py-0.5 px-2">
+                                    📋 CLAIM (1)
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="text-[10px] font-black text-slate-700 font-mono">
+                                Total: <span className="text-[#FF1493]">₹{totalPending.toLocaleString('en-IN')}</span>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => printMemberComboReport(member, mClaims)}
+                                className="h-6 px-2 text-[8px] font-black uppercase tracking-wider rounded-lg border-brand-magenta/30 text-brand-magenta hover:bg-brand-magenta/5 flex items-center gap-1 shadow-2xs"
+                                title="Print Court-ready A4 Claim/Combo Report"
+                              >
+                                <Printer className="w-2.5 h-2.5" />
+                                <span>Print A4</span>
+                              </Button>
+                            </div>
+                          );
+                        })()}
+                      </TableCell>
                       <TableCell>
                          <div className="space-y-2">
                             {member.waStatus === 'Pending' && (
@@ -3578,6 +3180,18 @@ export default function AdminDashboard({
                               variant="ghost"
                               size="icon"
                               onClick={() => {
+                                const mClaims = claims.filter(c => c.uid === member.uid || compareMobiles(c.userMobile, member.mobile));
+                                printMemberComboReport(member, mClaims);
+                              }}
+                              className="h-8 w-8 text-brand-magenta hover:bg-brand-magenta/10"
+                              title="Print A4 Report"
+                            >
+                              <Printer className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
                                 sendWAMessage({
                                   name: member.name,
                                   mobile: member.mobile,
@@ -3603,6 +3217,15 @@ export default function AdminDashboard({
                           <Button
                             variant="ghost"
                             size="icon"
+                            onClick={() => onResetPin?.(member.uid)}
+                            className="h-8 w-8 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                            title="പാസ്‌വേഡ് 123456 ആക്കുക (Reset PIN to 123456)"
+                          >
+                            <KeyRound className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => setEditingMember(member)}
                             className="h-8 w-8 text-slate-600 hover:bg-slate-100"
                             title="Edit"
@@ -3624,6 +3247,13 @@ export default function AdminDashboard({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48 p-1 bg-white border border-slate-200 shadow-xl z-[100]">
                               <DropdownMenuLabel className="text-xs font-bold text-slate-400 uppercase tracking-widest px-2 py-1.5">More Options</DropdownMenuLabel>
+                              <DropdownMenuItem 
+                                onClick={() => onResetPin?.(member.uid)}
+                                className="rounded-md font-medium text-amber-700 hover:bg-amber-50"
+                              >
+                                <KeyRound className="w-4 h-4 mr-2 text-amber-600" />
+                                Reset PIN to 123456
+                              </DropdownMenuItem>
                               <DropdownMenuItem 
                                 onClick={() => {
                                   onUpdate(member.uid, { role: 'admin', isAdmin: true });
@@ -3747,6 +3377,7 @@ export default function AdminDashboard({
                     <TableHead className="hidden lg:table-cell">District/Assly</TableHead>
                     <TableHead className="hidden md:table-cell">Source</TableHead>
                     <TableHead className="hidden md:table-cell">ID Details</TableHead>
+                    <TableHead className="hidden sm:table-cell">Claims / Combo</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -3884,6 +3515,45 @@ export default function AdminDashboard({
                           </div>
                         </div>
                       </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        {(() => {
+                          const mClaims = claims.filter(c => c.uid === member.uid || compareMobiles(c.userMobile, member.mobile));
+                          if (mClaims.length === 0) {
+                            return (
+                              <span className="text-[10px] font-bold text-slate-300 uppercase">No Claims</span>
+                            );
+                          }
+                          const totalPending = mClaims.reduce((acc, c) => acc + (c.totalPending || 0), 0);
+                          return (
+                            <div className="space-y-1.5 min-w-[140px]">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {mClaims.length > 1 ? (
+                                  <Badge className="bg-[#FF1493] hover:bg-[#FF1493] text-white text-[8px] font-black uppercase rounded-lg px-2 py-0.5 border-none shadow-2xs">
+                                    👥 COMBO ({mClaims.length})
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-[8px] font-black uppercase text-brand-blue border-brand-blue/30 bg-brand-blue/5 py-0.5 px-2">
+                                    📋 CLAIM (1)
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="text-[10px] font-black text-slate-700 font-mono">
+                                Total: <span className="text-[#FF1493]">₹{totalPending.toLocaleString('en-IN')}</span>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => printMemberComboReport(member, mClaims)}
+                                className="h-6 px-2 text-[8px] font-black uppercase tracking-wider rounded-lg border-brand-magenta/30 text-brand-magenta hover:bg-brand-magenta/5 flex items-center gap-1 shadow-2xs"
+                                title="Print Court-ready A4 Claim/Combo Report"
+                              >
+                                <Printer className="w-2.5 h-2.5" />
+                                <span>Print A4</span>
+                              </Button>
+                            </div>
+                          );
+                        })()}
+                      </TableCell>
                       <TableCell>
                          <div className="space-y-2">
                              <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none px-2.5 py-0.5 rounded-full font-bold">Active & Valid</Badge>
@@ -3891,6 +3561,18 @@ export default function AdminDashboard({
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                const mClaims = claims.filter(c => c.uid === member.uid || compareMobiles(c.userMobile, member.mobile));
+                                printMemberComboReport(member, mClaims);
+                              }}
+                              className="h-8 w-8 text-brand-magenta hover:bg-brand-magenta/10"
+                              title="Print A4 Report"
+                            >
+                              <Printer className="w-4 h-4" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -3916,6 +3598,15 @@ export default function AdminDashboard({
                             title="View Details"
                           >
                             <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onResetPin?.(member.uid)}
+                            className="h-8 w-8 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                            title="പാസ്‌വേഡ് 123456 ആക്കുക (Reset PIN to 123456)"
+                          >
+                            <KeyRound className="w-4 h-4" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -4847,7 +4538,6 @@ export default function AdminDashboard({
                                     const input = document.getElementById(`quota-input-${op.uid}`) as HTMLInputElement;
                                     const val = input.value === '' ? 0 : parseInt(input.value);
                                     if (!isNaN(val)) {
-                                      // If it was just a member, we might want to ensure they become an operator or at least have the quota field
                                       onUpdate(op.uid, { quota: val, role: op.role === 'member' ? 'operator' : op.role });
                                       toast.success(`Limit of ${val} set for ${op.name}`);
                                     }
@@ -4930,17 +4620,10 @@ export default function AdminDashboard({
                      {DISTRICTS.map((d) => {
                         const email = `hcrs${d.name.toLowerCase()}@hcrs.society`;
                         const pwd = "246810";
-                        // More robust URL detection
                         const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
-                        
-                        // We prefer the current origin unless it's obviously a dev setup AND we have a stable fallback
-                        // However, on AI Studio, origin changes frequently, so using window.location.origin is usually SAFEST
                         const effectiveBase = currentOrigin || SHARED_URL;
-
-                        // Remove trailing slash if exists to avoid double slash
                         const cleanBase = effectiveBase.endsWith('/') ? effectiveBase.slice(0, -1) : effectiveBase;
                         const directLoginUrl = `${cleanBase}/?distLogin=${d.name.toLowerCase()}`;
-                        
                         const shareText = `*HCRS Kerala District Admin Login*%0A%0Aജില്ല: ${d.name}%0A%0Aതാഴെ കാണുന്ന ലിങ്കിൽ ക്ലിക്ക് ചെയ്താൽ നേരിട്ട് ലോഗിൻ ചെയ്യാം:%0A${directLoginUrl}%0A%0AUser ID: ${email}%0APassword: ${pwd}%0A%0A_ശ്രദ്ധിക്കുക: ലിങ്ക് ഓപ്പൺ ചെയ്ത ശേഷം 'BACK TO ENTRY' ബട്ടൺ ഉപയോഗിച്ച് ലിസ്റ്റ് കാണാവുന്നതാണ്._`;
                         
                         return (
@@ -4985,140 +4668,92 @@ export default function AdminDashboard({
                </CardContent>
             </Card>
           </TabsContent>
-          
-          <TabsContent value="combo">
-            <div className="space-y-4">
-              {(() => {
-                const comboGroups = getComboGroups(claims);
 
-                if (comboGroups.length === 0) {
-                  return (
-                    <Card className="border-none shadow-sm rounded-3xl bg-white">
-                      <div className="py-16 text-center">
-                        <p className="text-slate-400 font-black uppercase text-xs tracking-widest">
-                          No Combo Claims Found
-                        </p>
-                      </div>
-                    </Card>
-                  );
-                }
-
-                return (
-                  <>
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-lg font-black text-slate-800 uppercase">
-                          Combo Claims
-                        </h3>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                          {comboGroups.length} Combo Groups
-                        </p>
-                      </div>
-
-                      <Button
-                        onClick={() => printComboClaims(comboGroups.flat())}
-                        className="bg-brand-blue hover:bg-brand-blue/90 text-white font-black text-xs uppercase rounded-xl"
-                      >
-                        <Printer className="w-4 h-4 mr-2" />
-                        Print All Combos
-                      </Button>
-                    </div>
-
-                    <Card className="border-none shadow-sm overflow-hidden rounded-3xl bg-white">
-                      <div className="divide-y divide-slate-100">
-                        {comboGroups.map((group, groupIndex) => {
-                          const first = group[0];
-
-                          return (
-                            <div
-                              key={`combo-${first.userMobile}-${groupIndex}`}
-                              className="px-5 py-4 flex items-center justify-between gap-4 hover:bg-slate-50/70 transition-colors"
-                            >
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-3 flex-wrap">
-                                  <span className="font-black text-slate-800 text-sm">
-                                    {first.userName || 'N/A'}
-                                  </span>
-
-                                  <Badge className="bg-brand-magenta text-white border-none font-black text-[9px] uppercase">
-                                    👥 Combo · {group.length} Claims
-                                  </Badge>
-                                </div>
-
-                                <div className="flex items-center gap-4 mt-1.5 flex-wrap">
-                                  <span className="text-[10px] font-bold text-slate-500">
-                                    {first.userMobile || 'N/A'}
-                                  </span>
-
-                                  {first.membershipId && (
-                                    <span className="text-[9px] font-black text-brand-blue uppercase">
-                                      {first.membershipId}
-                                    </span>
-                                  )}
-
-                                  <span className="text-[9px] font-bold text-slate-400">
-                                    Claims: {group.map((claim, i) =>
-                                      `#${claim.tokenNo ?? claim.serialNo ?? ''}`
-                                    ).join(', ')}
-                                  </span>
-                                </div>
-                              </div>
-
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => printComboClaims(group)}
-                                className="h-8 shrink-0 rounded-xl font-black text-[9px] uppercase text-brand-blue border-blue-200 hover:bg-blue-50"
-                              >
-                                <Printer className="w-3.5 h-3.5 mr-1" />
-                                Print Combo
-                              </Button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </Card>
-                  </>
-                );
-              })()}
-            </div>
-          </TabsContent>
           <TabsContent value="claims">
             <div className="space-y-6">
+               {/* View Switcher: Common Claims vs COMBO Section */}
+               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-white p-3 rounded-2xl border-2 border-slate-200 shadow-sm">
+                 <div className="flex items-center gap-2.5">
+                   <button
+                     onClick={() => setClaimsViewMode('individual')}
+                     className={cn(
+                       "flex items-center gap-2.5 px-5 py-2.5 rounded-xl font-black text-xs transition-all uppercase tracking-wider cursor-pointer",
+                       claimsViewMode === 'individual'
+                         ? "bg-brand-blue text-white shadow-md shadow-brand-blue/30"
+                         : "bg-white border-2 border-slate-300 text-slate-800 hover:bg-slate-100 hover:text-slate-950 shadow-2xs"
+                     )}
+                   >
+                     <FileText className="w-4 h-4" />
+                     <span>1. Common Claims</span>
+                     <Badge className={cn(
+                       "text-[9px] font-black px-2 py-0.5 rounded-full border-none",
+                       claimsViewMode === 'individual' ? "bg-white/25 text-white" : "bg-slate-200 text-slate-800"
+                     )}>
+                       {filteredClaims.length} Individuals
+                     </Badge>
+                   </button>
+
+                   <button
+                     onClick={() => setClaimsViewMode('combo')}
+                     className={cn(
+                       "flex items-center gap-2.5 px-5 py-2.5 rounded-xl font-black text-xs transition-all uppercase tracking-wider cursor-pointer",
+                       claimsViewMode === 'combo'
+                         ? "bg-brand-magenta text-white shadow-md shadow-brand-magenta/30"
+                         : "bg-white border-2 border-pink-300 text-pink-900 hover:bg-pink-50 hover:text-pink-950 shadow-2xs"
+                     )}
+                   >
+                     <Users className="w-4 h-4" />
+                     <span>2. COMBO Section</span>
+                     <Badge className={cn(
+                       "text-[9px] font-black px-2 py-0.5 rounded-full border-none",
+                       claimsViewMode === 'combo' ? "bg-white/25 text-white" : "bg-pink-100 text-brand-magenta"
+                     )}>
+                       {comboGroups.length} Combos
+                     </Badge>
+                   </button>
+                 </div>
+
+                 <div className="text-xs font-extrabold text-slate-700 px-3 hidden md:block">
+                   {claimsViewMode === 'individual' 
+                     ? "Displaying each individual person as a distinct claim record" 
+                     : "Displaying persons grouped by Mobile as 1 Combo record (Print will generate 1 A4 page per person)"}
+                 </div>
+               </div>
+
                {/* Claims Analytics */}
                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                 <Card className="border-2 border-slate-100 bg-white rounded-3xl p-6 shadow-sm">
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Pending Amount</p>
-                   <h3 className="text-3xl font-black text-slate-800">₹{claimStats.totalPending.toLocaleString('en-IN')}</h3>
+                 <Card className="border-2 border-slate-200 bg-white rounded-3xl p-6 shadow-sm">
+                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Total Pending Amount</p>
+                   <h3 className="text-3xl font-black text-slate-900">₹{claimStats.totalPending.toLocaleString('en-IN')}</h3>
                    <div className="mt-4 flex items-center gap-2">
-                     <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
+                     <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700">
                        <IndianRupee className="w-4 h-4" />
                      </div>
-                     <p className="text-[9px] font-bold text-slate-400 uppercase">Total amount across all claims</p>
+                     <p className="text-[10px] font-extrabold text-slate-600 uppercase">Total amount across all claims</p>
                    </div>
                  </Card>
 
-                 <Card className="border-2 border-red-100 bg-white rounded-3xl p-6 shadow-sm">
-                   <p className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-1">Emergency Cases</p>
+                 <Card className="border-2 border-red-200 bg-white rounded-3xl p-6 shadow-sm">
+                   <p className="text-[10px] font-black text-red-600 uppercase tracking-widest mb-1">Emergency Cases</p>
                    <h3 className="text-3xl font-black text-red-600">{claimStats.emergencyCount}</h3>
                    <div className="mt-4 flex items-center gap-2">
                      <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600">
                        <ShieldAlert className="w-4 h-4" />
                      </div>
-                     <p className="text-[9px] font-black text-red-400 uppercase">Requires immediate attention</p>
+                     <p className="text-[10px] font-black text-red-600 uppercase">Requires immediate attention</p>
                    </div>
                  </Card>
 
-                 <Card className="border-2 border-brand-blue/10 bg-white rounded-3xl p-6 shadow-sm md:col-span-2 overflow-hidden">
+                 <Card className="border-2 border-slate-200 bg-white rounded-3xl p-6 shadow-sm md:col-span-2 overflow-hidden">
                     <div className="flex justify-between items-start mb-4">
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Category Distribution</p>
-                       <Badge variant="outline" className="text-[9px] uppercase font-black">{claims.length} Claims</Badge>
+                       <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Category Distribution</p>
+                       <Badge variant="outline" className="text-[10px] uppercase font-black border-slate-300 text-slate-800">{claims.length} Claims</Badge>
                     </div>
                     <div className="flex flex-wrap gap-2">
                        {Object.entries(claimStats.projectCounts).map(([cat, count]) => (
-                         <div key={cat} className="bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100 flex items-center gap-2">
-                           <span className="text-[10px] font-black text-slate-600 uppercase">{cat}</span>
-                           <Badge className="bg-brand-blue text-white text-[9px] h-4 min-w-[20px] px-1 flex justify-center">{count as number}</Badge>
+                         <div key={cat} className="bg-slate-100 px-3 py-1.5 rounded-full border border-slate-300 flex items-center gap-2">
+                           <span className="text-[10px] font-black text-slate-800 uppercase">{cat}</span>
+                           <Badge className="bg-brand-blue text-white text-[9px] h-4 min-w-[20px] px-1 flex justify-center font-black">{count as number}</Badge>
                          </div>
                        ))}
                     </div>
@@ -5126,20 +4761,20 @@ export default function AdminDashboard({
                </div>
 
                {/* Filters Bar Specific for Claims */}
-               <Card className="border-none shadow-sm rounded-3xl bg-white p-4">
+               <Card className="border-2 border-slate-200 shadow-sm rounded-3xl bg-white p-4">
                  <div className="flex flex-col md:flex-row gap-4 items-center">
                     <div className="relative flex-1 w-full">
-                      <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                      <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-600" />
                       <Input 
                         placeholder="Search by Name, Mobile, Membership ID or HR ID..." 
-                        className="pl-10 h-11 bg-slate-50 border-none rounded-xl text-xs font-bold"
+                        className="pl-10 h-11 bg-slate-50 border-2 border-slate-300 focus:bg-white focus:border-brand-blue rounded-xl text-xs font-bold text-slate-900 placeholder:text-slate-500 shadow-xs"
                         value={claimSearchTerm}
                         onChange={(e) => setClaimSearchTerm(e.target.value)}
                       />
                     </div>
                     <div className="flex flex-wrap gap-2 w-full md:w-auto">
                       <Select value={claimDistrictFilter} onValueChange={setClaimDistrictFilter}>
-                        <SelectTrigger className="w-[120px] h-11 bg-slate-50 border-none rounded-xl text-[10px] font-black uppercase">
+                        <SelectTrigger className="w-[130px] h-11 bg-white border-2 border-slate-300 rounded-xl text-xs font-extrabold text-slate-900 uppercase shadow-xs hover:border-slate-400">
                           <SelectValue placeholder="District" />
                         </SelectTrigger>
                         <SelectContent>
@@ -5149,7 +4784,7 @@ export default function AdminDashboard({
                       </Select>
 
                       <Select value={claimCategoryFilter} onValueChange={setClaimCategoryFilter}>
-                        <SelectTrigger className="w-[120px] h-11 bg-slate-50 border-none rounded-xl text-[10px] font-black uppercase">
+                        <SelectTrigger className="w-[140px] h-11 bg-white border-2 border-slate-300 rounded-xl text-xs font-extrabold text-slate-900 uppercase shadow-xs hover:border-slate-400">
                           <SelectValue placeholder="Category" />
                         </SelectTrigger>
                         <SelectContent>
@@ -5163,7 +4798,7 @@ export default function AdminDashboard({
                       </Select>
 
                       <Select value={claimPriorityFilter} onValueChange={setClaimPriorityFilter}>
-                        <SelectTrigger className="w-[120px] h-11 bg-slate-50 border-none rounded-xl text-[10px] font-black uppercase">
+                        <SelectTrigger className="w-[130px] h-11 bg-white border-2 border-slate-300 rounded-xl text-xs font-extrabold text-slate-900 uppercase shadow-xs hover:border-slate-400">
                           <SelectValue placeholder="Priority" />
                         </SelectTrigger>
                         <SelectContent>
@@ -5296,188 +4931,363 @@ service cloud.firestore {
                  </div>
                )}
 
-               {/* Claims Table */}
-               <div className="flex justify-end mb-3">
-                 <Button
-                   onClick={() => {
-                     const comboGroups = getComboGroups(claims);
-                     if (comboGroups.length === 0) {
-                       toast.info('No Combo claims found.');
-                       return;
-                     }
-                     const allComboClaims = comboGroups.flat();
-                     printComboClaims(allComboClaims);
-                   }}
-                   className="bg-brand-blue hover:bg-brand-blue/90 text-white font-black text-xs uppercase rounded-xl px-4"
-                 >
-                   <Printer className="w-4 h-4 mr-2" />
-                   Print All Combos
-                 </Button>
-               </div>
-
-               <Card className="border-none shadow-sm overflow-hidden rounded-3xl bg-white">
-                  {claimsLoading ? (
-                    <div className="py-20 text-center space-y-4">
-                       <RefreshCw className="w-8 h-8 animate-spin mx-auto text-brand-blue" />
-                       <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Loading support claims...</p>
-                    </div>
-                  ) : (
-                    <div className="w-full overflow-x-auto">
-                      <div className="min-w-[1100px]">
-                    <Table>
-                      <TableHeader className="bg-slate-50">
-                        <TableRow>
-                          <TableHead className="text-[10px] font-black uppercase tracking-widest px-6 w-[100px]">Serial No</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase tracking-widest px-6">Member Info</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase tracking-widest">Combo</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase tracking-widest">Relation</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase tracking-widest">Amount Details</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase tracking-widest">Categories</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase tracking-widest">Priority Status</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase tracking-widest">Date</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase tracking-widest text-right px-6">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredClaims.map(claim => (
-                          <TableRow key={claim.id} className="hover:bg-slate-50/50 transition-colors">
-                            <TableCell className="px-6 py-4 font-black text-[#FF1493] text-sm font-mono">
-                              <span className="bg-[#FF1493]/5 border border-[#FF1493]/15 py-1 px-2.5 rounded-lg text-[#FF1493]">
-                                #{claim.tokenNo ?? claim.serialNo ?? ''}
-                              </span>
-                            </TableCell>
-                            <TableCell className="px-6 py-4">
-                              <div className="space-y-1">
-                                <p className="font-black text-slate-800 text-sm">{claim.userName}</p>
-                                <p className="text-xs font-bold text-slate-500">{claim.userMobile}</p>
-                                {(() => {
-                                  const comboCount = claims.filter(c => compareMobiles(c.userMobile, claim.userMobile)).length;
-                                  if (comboCount > 1) {
-                                    return (
-                                      <div className="mt-1">
-                                        <Badge variant="outline" className="text-[8px] h-4.5 font-bold uppercase text-[#FF1493] bg-[#FF1493]/5 border-[#FF1493]/20 py-0.5">
-                                          👥 Combo (കോംബോ - {comboCount} Claims)
-                                        </Badge>
-                                      </div>
-                                    );
-                                  }
-                                  return null;
-                                })()}
-                                <p className="text-[9px] font-black text-brand-blue uppercase">{claim.membershipId}</p>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {(() => {
-                                const comboClaims = claims.filter(c =>
-                                  compareMobiles(c.userMobile, claim.userMobile)
-                                );
-
-                                if (comboClaims.length <= 1) {
-                                  return <span className="text-[9px] text-slate-300 font-bold">—</span>;
-                                }
-
-                                return (
-                                  <div className="flex flex-col items-start gap-1.5">
-                                    <Badge
-                                      variant="outline"
-                                      className="text-[8px] h-5 font-black uppercase text-[#FF1493] bg-[#FF1493]/5 border-[#FF1493]/20"
-                                    >
-                                      👥 Combo · {comboClaims.length}
-                                    </Badge>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => printComboClaims(comboClaims)}
-                                      className="h-7 px-2 rounded-lg text-[8px] font-black uppercase text-brand-blue border-blue-200 hover:bg-blue-50"
-                                    >
-                                      <Printer className="w-3 h-3 mr-1" />
-                                      Print
-                                    </Button>
-                                  </div>
-                                );
-                              })()}
-                            </TableCell>
-                            <TableCell>
-                              {claim.relation && (
-                                <Badge variant="outline" className="text-[9px] h-6 py-1 px-2.5 font-bold uppercase text-brand-magenta border-brand-magenta/30 bg-brand-magenta/[0.03] rounded-lg">
-                                  {claim.relation === 'Self' ? 'സ്വന്തം (Self)' :
-                                   claim.relation === 'Mother' ? 'അമ്മ (Mother)' :
-                                   claim.relation === 'Father' ? 'അച്ഛൻ (Father)' :
-                                   claim.relation === 'Son' ? 'മകൻ (Son)' :
-                                   claim.relation === 'Daughter' ? 'മകൾ (Daughter)' : 
-                                   claim.relation === 'Wife' ? 'ഭാര്യ (Wife)' :
-                                   claim.relation === 'Husband' ? 'ഭർത്താവ് (Husband)' : claim.relation}
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                               <div className="space-y-1">
-                                  <div className="flex items-center gap-1.5 font-black text-slate-700 text-sm">
-                                    <span className="text-[10px] opacity-40">₹</span> {claim.totalPending?.toLocaleString('en-IN')}
-                                    <Badge variant="outline" className="text-[8px] h-4 py-0 font-bold border-slate-200">Pending</Badge>
-                                  </div>
-                                  <p className="text-[9px] font-bold text-slate-400">Paid: ₹{claim.totalPaid?.toLocaleString('en-IN')}</p>
-                                  {claim.highrichId && (
-                                    <p className="text-[9px] font-black text-brand-magenta uppercase bg-brand-magenta/5 px-2 py-0.5 rounded w-fit mt-1">HR ID: {claim.highrichId}</p>
-                                  )}
-                               </div>
-                            </TableCell>
-                            <TableCell>
-                               <div className="flex flex-wrap gap-1 max-w-[200px]">
-                                  {claim.categories?.slice(0, 3).map((cat: string, idx: number) => (
-                                    <Badge key={`${cat}-${idx}`} variant="secondary" className="text-[8px] bg-slate-100 font-bold uppercase">{getCategoryLabel(cat)}</Badge>
-                                  ))}
-                                  {claim.categories?.length > 3 && <span className="text-[8px] font-black text-slate-300">+{claim.categories.length - 3}</span>}
-                               </div>
-                            </TableCell>
-                            <TableCell>
-                               <div className="flex flex-col gap-1.5">
-                                  <Badge className={cn(
-                                    "w-fit font-black text-[9px] px-3 py-1 text-white border-0",
-                                    claim.priorityStatus === 'EMERGENCY RED' ? 'bg-red-600' :
-                                    claim.priorityStatus === 'RED' ? 'bg-red-500' :
-                                    claim.priorityStatus === 'ORANGE' ? 'bg-orange-500' : 'bg-green-500'
-                                  )}>
-                                     {claim.priorityStatus}
-                                  </Badge>
-                                  {claim.isEmergency && <span className="text-[8px] font-black text-red-500 flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> EMERGENCY</span>}
-                               </div>
-                            </TableCell>
-                            <TableCell className="text-xs font-bold text-slate-500 whitespace-nowrap">
-                              {formatClaimDate(claim.createdAt)}
-                            </TableCell>
-                            <TableCell className="text-right px-6">
-                               <div className="flex items-center justify-end gap-1">
-                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full text-slate-400 hover:text-brand-blue" onClick={() => {
-                                   setSelectedClaim(claim);
-                                 }} title="വിശദവിവരങ്ങൾ കാണുക">
-                                    <Eye className="w-4 h-4" />
-                                 </Button>
-                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full text-slate-400 hover:text-amber-500" onClick={() => {
-                                   setEditingClaim(claim);
-                                 }} title="എഡിറ്റ് ചെയ്യുക">
-                                    <Pencil className="w-4 h-4" />
-                                 </Button>
-                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full text-slate-400 hover:text-red-500" onClick={() => {
-                                   setDeletingClaimId(claim.id);
-                                 }} title="റിമൂവ് ചെയ്യുക">
-                                    <Trash2 className="w-4 h-4" />
-                                 </Button>
-                               </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+               {/* View 1: COMMON CLAIMS (Individual Person Records) */}
+               {claimsViewMode === 'individual' && (
+                 <Card className="border-none shadow-sm overflow-hidden rounded-3xl bg-white">
+                    {claimsLoading ? (
+                      <div className="py-20 text-center space-y-4">
+                         <RefreshCw className="w-8 h-8 animate-spin mx-auto text-brand-blue" />
+                         <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Loading support claims...</p>
                       </div>
-                    </div>
-                  )}
-                  {!claimsLoading && filteredClaims.length === 0 && (
-                    <div className="py-20 text-center bg-white">
-                       <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">No matching support claims found</p>
-                    </div>
-                  )}
-               </Card>
+                    ) : (
+                      <Table>
+                        <TableHeader className="bg-slate-50">
+                          <TableRow>
+                            <TableHead className="text-[10px] font-black uppercase tracking-widest px-6 w-[100px]">Serial No</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase tracking-widest px-6">Member Info</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase tracking-widest">Relation</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase tracking-widest">Amount Details</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase tracking-widest">Combo Status</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase tracking-widest">Categories</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase tracking-widest">Priority Status</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase tracking-widest">Date</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase tracking-widest text-right px-6">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredClaims.map(claim => (
+                            <TableRow key={claim.id} className="hover:bg-slate-50/50 transition-colors">
+                              <TableCell className="px-6 py-4 font-black text-[#FF1493] text-sm font-mono">
+                                <span className="bg-[#FF1493]/5 border border-[#FF1493]/15 py-1 px-2.5 rounded-lg text-[#FF1493]">
+                                  #{claim.tokenNo ?? claim.serialNo ?? 'N/A'}
+                                </span>
+                              </TableCell>
+                              <TableCell className="px-6 py-4">
+                                <div className="space-y-1">
+                                  <p className="font-black text-slate-800 text-sm">{claim.userName}</p>
+                                  <p className="text-xs font-bold text-slate-500">{claim.userMobile}</p>
+                                  {(() => {
+                                    const comboCount = claims.filter(c => compareMobiles(c.userMobile, claim.userMobile)).length;
+                                    if (comboCount > 1) {
+                                      return (
+                                        <div className="mt-1">
+                                          <Badge variant="outline" className="text-[8px] h-4.5 font-bold uppercase text-[#FF1493] bg-[#FF1493]/5 border-[#FF1493]/20 py-0.5">
+                                            👥 Combo (കോംബോ - {comboCount} Claims)
+                                          </Badge>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
+                                  <p className="text-[9px] font-black text-brand-blue uppercase">{claim.membershipId}</p>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {claim.relation && (
+                                  <Badge variant="outline" className="text-[9px] h-6 py-1 px-2.5 font-bold uppercase text-brand-magenta border-brand-magenta/30 bg-brand-magenta/[0.03] rounded-lg">
+                                    {claim.relation === 'Self' ? 'സ്വന്തം (Self)' :
+                                     claim.relation === 'Mother' ? 'അമ്മ (Mother)' :
+                                     claim.relation === 'Father' ? 'അച്ഛൻ (Father)' :
+                                     claim.relation === 'Son' ? 'മകൻ (Son)' :
+                                     claim.relation === 'Daughter' ? 'മകൾ (Daughter)' : 
+                                     claim.relation === 'Wife' ? 'ഭാര്യ (Wife)' :
+                                     claim.relation === 'Husband' ? 'ഭർത്താവ് (Husband)' : claim.relation}
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                 <div className="space-y-1">
+                                    <div className="flex items-center gap-1.5 font-black text-slate-700 text-sm">
+                                      <span className="text-[10px] opacity-40">₹</span> {claim.totalPending?.toLocaleString('en-IN')}
+                                      <Badge variant="outline" className="text-[8px] h-4 py-0 font-bold border-slate-200">Pending</Badge>
+                                    </div>
+                                    <p className="text-[9px] font-bold text-slate-400">Paid: ₹{claim.totalPaid?.toLocaleString('en-IN')}</p>
+                                    {claim.highrichId && (
+                                      <p className="text-[9px] font-black text-brand-magenta uppercase bg-brand-magenta/5 px-2 py-0.5 rounded w-fit mt-1">HR ID: {claim.highrichId}</p>
+                                    )}
+                                 </div>
+                              </TableCell>
+                              <TableCell>
+                                {(() => {
+                                  const mClaims = claims.filter(c => compareMobiles(c.userMobile, claim.userMobile));
+                                  const isCombo = mClaims.length > 1;
+                                  const memberObj = members.find(m => m.uid === claim.uid || compareMobiles(m.mobile, claim.userMobile));
+                                  return (
+                                    <div className="space-y-1.5 min-w-[120px]">
+                                      {isCombo ? (
+                                        <div className="space-y-1">
+                                          <Badge className="bg-[#FF1493] text-white text-[8px] font-black uppercase rounded-lg px-2 py-0.5 border-none shadow-2xs">
+                                            👥 COMBO ({mClaims.length})
+                                          </Badge>
+                                          <div className="flex flex-col gap-1">
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={() => printCourtComboReport(memberObj, mClaims)}
+                                              className="h-6 px-1.5 text-[7.5px] font-black uppercase tracking-wider rounded-lg border-emerald-600/30 text-emerald-700 hover:bg-emerald-50 flex items-center gap-1 shadow-2xs w-full justify-center"
+                                              title="Print Court Statement (1 A4 Page Per Person)"
+                                            >
+                                              <Printer className="w-2.5 h-2.5" />
+                                              <span>Court ({mClaims.length}p)</span>
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={() => printFullAdminComboReport(memberObj, mClaims)}
+                                              className="h-6 px-1.5 text-[7.5px] font-black uppercase tracking-wider rounded-lg border-brand-magenta/30 text-brand-magenta hover:bg-brand-magenta/5 flex items-center gap-1 shadow-2xs w-full justify-center"
+                                              title="Print Full Admin Record (1 A4 Page Per Person)"
+                                            >
+                                              <FileSpreadsheet className="w-2.5 h-2.5" />
+                                              <span>Admin ({mClaims.length}p)</span>
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className="space-y-1">
+                                          <Badge variant="outline" className="text-[8px] font-bold text-slate-500 border-slate-200 py-0.5 px-1.5">
+                                            Single Claim
+                                          </Badge>
+                                          <div className="flex flex-col gap-1">
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={() => printCourtClaimReport(claim, memberObj)}
+                                              className="h-6 px-1.5 text-[7.5px] font-black uppercase tracking-wider rounded-lg border-emerald-600/30 text-emerald-700 hover:bg-emerald-50 flex items-center gap-1 shadow-2xs w-full justify-center"
+                                              title="Print Court / Official Statement (A4)"
+                                            >
+                                              <Printer className="w-2.5 h-2.5" />
+                                              <span>Court A4</span>
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={() => printFullAdminClaimReport(claim, memberObj)}
+                                              className="h-6 px-1.5 text-[7.5px] font-black uppercase tracking-wider rounded-lg border-brand-blue/30 text-brand-blue hover:bg-brand-blue/5 flex items-center gap-1 shadow-2xs w-full justify-center"
+                                              title="Print Full Admin Report (A4)"
+                                            >
+                                              <FileSpreadsheet className="w-2.5 h-2.5" />
+                                              <span>Admin A4</span>
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </TableCell>
+                              <TableCell>
+                                 <div className="flex flex-wrap gap-1 max-w-[200px]">
+                                    {claim.categories?.slice(0, 3).map((cat: string, idx: number) => (
+                                      <Badge key={`${cat}-${idx}`} variant="secondary" className="text-[8px] bg-slate-100 font-bold uppercase">{getCategoryLabel(cat)}</Badge>
+                                    ))}
+                                    {claim.categories?.length > 3 && <span className="text-[8px] font-black text-slate-300">+{claim.categories.length - 3}</span>}
+                                 </div>
+                              </TableCell>
+                              <TableCell>
+                                 <div className="flex flex-col gap-1.5">
+                                    <Badge className={cn(
+                                      "w-fit font-black text-[9px] px-3 py-1 text-white border-0",
+                                      claim.priorityStatus === 'EMERGENCY RED' ? 'bg-red-600' :
+                                      claim.priorityStatus === 'RED' ? 'bg-red-500' :
+                                      claim.priorityStatus === 'ORANGE' ? 'bg-orange-500' : 'bg-green-500'
+                                    )}>
+                                       {claim.priorityStatus}
+                                    </Badge>
+                                    {claim.isEmergency && <span className="text-[8px] font-black text-red-500 flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> EMERGENCY</span>}
+                                 </div>
+                              </TableCell>
+                              <TableCell className="text-xs font-bold text-slate-500 whitespace-nowrap">
+                                {formatClaimDate(claim.createdAt)}
+                              </TableCell>
+                              <TableCell className="text-right px-6">
+                                 <div className="flex items-center justify-end gap-1">
+                                   <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="h-8 w-8 p-0 rounded-full text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800" 
+                                      onClick={() => {
+                                        const memberObj = members.find(m => m.uid === claim.uid || compareMobiles(m.mobile, claim.userMobile));
+                                        printCourtClaimReport(claim, memberObj);
+                                      }} 
+                                      title="Print Court / Official Statement (A4)"
+                                    >
+                                       <Printer className="w-4 h-4" />
+                                    </Button>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="h-8 w-8 p-0 rounded-full text-brand-blue hover:bg-brand-blue/10 hover:text-brand-blue" 
+                                      onClick={() => {
+                                        const memberObj = members.find(m => m.uid === claim.uid || compareMobiles(m.mobile, claim.userMobile));
+                                        printFullAdminClaimReport(claim, memberObj);
+                                      }} 
+                                      title="Print Full Admin Record (A4)"
+                                    >
+                                       <FileSpreadsheet className="w-4 h-4" />
+                                    </Button>
+                                   <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full text-slate-400 hover:text-brand-blue" onClick={() => {
+                                     setSelectedClaim(claim);
+                                   }} title="വിശദവിവരങ്ങൾ കാണുക">
+                                      <Eye className="w-4 h-4" />
+                                   </Button>
+                                   <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full text-slate-400 hover:text-amber-500" onClick={() => {
+                                     setEditingClaim(claim);
+                                   }} title="എഡിറ്റ് ചെയ്യുക">
+                                      <Pencil className="w-4 h-4" />
+                                   </Button>
+                                   <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full text-slate-400 hover:text-red-500" onClick={() => {
+                                     setDeletingClaimId(claim.id);
+                                   }} title="റിമൂവ് ചെയ്യുക">
+                                      <Trash2 className="w-4 h-4" />
+                                   </Button>
+                                 </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                    {!claimsLoading && filteredClaims.length === 0 && (
+                      <div className="py-20 text-center bg-white">
+                         <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">No matching support claims found</p>
+                      </div>
+                    )}
+                 </Card>
+               )}
+
+               {/* View 2: COMBO SECTION (Grouped as 1 Combo Record, Prints 1 A4 Page per Person) */}
+               {claimsViewMode === 'combo' && (
+                 <Card className="border-none shadow-sm overflow-hidden rounded-3xl bg-white">
+                    {claimsLoading ? (
+                      <div className="py-20 text-center space-y-4">
+                         <RefreshCw className="w-8 h-8 animate-spin mx-auto text-brand-magenta" />
+                         <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Loading combo records...</p>
+                      </div>
+                    ) : (
+                      <Table>
+                        <TableHeader className="bg-pink-50/50">
+                          <TableRow>
+                            <TableHead className="text-[10px] font-black uppercase tracking-widest px-6">Combo Primary Contact</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase tracking-widest">Persons in Combo</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase tracking-widest">Financial Summary</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase tracking-widest">Priority</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase tracking-widest text-right px-6">Print & Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {comboGroups.map((grp, idx) => {
+                            const isMulti = grp.claims.length > 1;
+                            return (
+                              <TableRow key={`combo-${grp.mobile || idx}`} className="hover:bg-slate-50/70 transition-colors">
+                                <TableCell className="px-6 py-4">
+                                  <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-black text-slate-800 text-sm">{grp.primaryName}</p>
+                                      <Badge className="bg-[#FF1493] text-white text-[8px] font-black uppercase rounded-lg px-2 py-0.5 border-none shadow-2xs">
+                                        👥 Combo ({grp.claims.length} People)
+                                      </Badge>
+                                    </div>
+                                    <p className="text-xs font-bold text-slate-500">{grp.mobile || 'No Mobile'}</p>
+                                    <div className="flex items-center gap-2 text-[9px] font-bold text-slate-400">
+                                      <span className="font-black text-brand-blue uppercase">{grp.membershipId}</span>
+                                      <span>•</span>
+                                      <span className="uppercase">{DISTRICTS.find(d => d.code === grp.district)?.name || grp.district}</span>
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="py-4">
+                                  <div className="space-y-1.5 max-w-[320px]">
+                                    <p className="text-[9px] font-black uppercase tracking-wider text-slate-400">
+                                      {grp.claims.length} Claim Records in this Combo:
+                                    </p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {grp.claims.map((c, cIdx) => (
+                                        <div key={c.id || cIdx} className="bg-slate-100/90 border border-slate-200/70 rounded-lg px-2 py-1 text-[9px] flex items-center gap-1.5">
+                                          <span className="font-extrabold text-slate-800">{c.userName || 'Person'}</span>
+                                          {c.relation && (
+                                            <span className="text-[8px] font-bold text-brand-magenta bg-brand-magenta/10 px-1 rounded">
+                                              {c.relation === 'Self' ? 'Self' : c.relation}
+                                            </span>
+                                          )}
+                                          <span className="font-black text-slate-600">₹{(c.totalPending || 0).toLocaleString('en-IN')}</span>
+                                          {c.highrichId && (
+                                            <span className="text-[8px] text-slate-400 font-mono">[{c.highrichId}]</span>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="py-4">
+                                  <div className="space-y-1">
+                                    <div className="flex items-center gap-1.5 font-black text-slate-800 text-sm">
+                                      <span className="text-[10px] opacity-40">₹</span> {grp.totalPending.toLocaleString('en-IN')}
+                                      <Badge variant="outline" className="text-[8px] h-4 py-0 font-bold border-slate-200">Net Pending</Badge>
+                                    </div>
+                                    <p className="text-[9px] font-bold text-slate-400">
+                                      Total Paid: ₹{grp.totalPaid.toLocaleString('en-IN')} • Recv: ₹{grp.totalReceived.toLocaleString('en-IN')}
+                                    </p>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="py-4">
+                                  <div className="flex flex-col gap-1">
+                                    <Badge className={cn(
+                                      "w-fit font-black text-[9px] px-3 py-1 text-white border-0",
+                                      grp.highestPriority === 'EMERGENCY RED' ? 'bg-red-600' :
+                                      grp.highestPriority === 'RED' ? 'bg-red-500' :
+                                      grp.highestPriority === 'ORANGE' ? 'bg-orange-500' : 'bg-green-500'
+                                    )}>
+                                       {grp.highestPriority}
+                                    </Badge>
+                                    {grp.isEmergency && <span className="text-[8px] font-black text-red-500 flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> EMERGENCY</span>}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right px-6 py-4">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <Button
+                                        size="sm"
+                                        onClick={() => printCourtComboReport(grp.memberObj, grp.claims)}
+                                        className="h-8 px-3 text-[8.5px] font-black uppercase tracking-wider rounded-xl bg-emerald-700 text-white hover:bg-emerald-800 shadow-md shadow-emerald-700/20 flex items-center gap-1.5"
+                                        title={`Print Court Statement (${grp.claims.length} Separate A4 Pages)`}
+                                      >
+                                        <Printer className="w-3.5 h-3.5" />
+                                        <span>Court ({grp.claims.length}p)</span>
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        onClick={() => printFullAdminComboReport(grp.memberObj, grp.claims)}
+                                        className="h-8 px-3 text-[8.5px] font-black uppercase tracking-wider rounded-xl bg-brand-magenta text-white hover:bg-brand-magenta/90 shadow-md shadow-brand-magenta/20 flex items-center gap-1.5"
+                                        title={`Print Full Admin Record (${grp.claims.length} Separate A4 Pages)`}
+                                      >
+                                        <FileSpreadsheet className="w-3.5 h-3.5" />
+                                        <span>Admin ({grp.claims.length}p)</span>
+                                      </Button>
+                                    {grp.memberObj && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 w-8 p-0 rounded-full text-slate-400 hover:text-brand-blue"
+                                        onClick={() => setViewingMember(grp.memberObj!)}
+                                        title="View Primary Member Details"
+                                      >
+                                        <Eye className="w-4 h-4" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    )}
+                    {!claimsLoading && comboGroups.length === 0 && (
+                      <div className="py-20 text-center bg-white">
+                         <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">No combo records found</p>
+                      </div>
+                    )}
+                 </Card>
+               )}
             </div>
           </TabsContent>
           <TabsContent value="tickets">
@@ -5800,16 +5610,26 @@ service cloud.firestore {
                   if (mClaims.length === 0) return null;
                   return (
                     <div className="bg-slate-50 border border-slate-200/60 p-5 rounded-[24px] space-y-4">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
                         <h4 className="text-xs font-black text-brand-blue uppercase tracking-widest flex items-center gap-2">
                           <ShieldAlert className="w-4 h-4 text-brand-magenta" />
                           Support Claims submitted ({mClaims.length} Claims) - ക്ലെയിം വിവരങ്ങൾ
                         </h4>
-                        {mClaims.length > 1 && (
-                          <Badge className="bg-brand-magenta text-white text-[9px] font-black uppercase rounded-lg px-2.5 py-1 border-none">
-                            Combo (കോംബോ കൂട്ടായ്മ)
-                          </Badge>
-                        )}
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => printMemberComboReport(viewingMember, mClaims)}
+                            className="h-8 bg-brand-magenta hover:bg-brand-magenta/90 text-white font-black text-xs uppercase px-3 rounded-xl flex items-center gap-1.5 shadow-xs"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                            <span>Print A4 Report</span>
+                          </Button>
+                          {mClaims.length > 1 && (
+                            <Badge className="bg-brand-magenta text-white text-[9px] font-black uppercase rounded-lg px-2.5 py-1 border-none">
+                              Combo (കോംബോ കൂട്ടായ്മ)
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                       
                       <div className="space-y-3.5">
@@ -6380,14 +6200,44 @@ service cloud.firestore {
                 </div>
 
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-pin">Login Password</Label>
+                  <div className="space-y-2 p-3.5 bg-amber-50/40 border border-amber-200/70 rounded-2xl">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <Label htmlFor="edit-pin" className="font-black text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5 text-amber-600" /> Login Password
+                      </Label>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="xs"
+                        onClick={() => {
+                          setEditingMember({
+                            ...editingMember,
+                            pin: '123456',
+                            mustChangePassword: true,
+                            pinResetRequested: true
+                          });
+                          if (onResetPin) {
+                            onResetPin(editingMember.uid);
+                          } else {
+                            toast.success('പാസ്‌വേഡ് 123456 ആയി സെറ്റ് ചെയ്തു. സേവ് ചെയ്യുക.');
+                          }
+                        }}
+                        className="text-[10px] h-7 px-2.5 font-black bg-amber-100 hover:bg-amber-200 border-amber-300 text-amber-900 rounded-lg flex items-center gap-1 cursor-pointer"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        Reset to 123456
+                      </Button>
+                    </div>
                     <Input 
                       id="edit-pin" 
                       value={editingMember.pin || '123456'} 
                       onChange={e => setEditingMember({...editingMember, pin: e.target.value})}
-                      maxLength={6}
+                      maxLength={12}
+                      className="bg-white font-mono font-bold text-sm"
                     />
+                    <p className="text-[10px] text-slate-500 font-bold leading-tight mt-1">
+                      * പാസ്‌വേഡ് 123456 ആക്കി റീസെറ്റ് ചെയ്താൽ അടുത്ത ലോഗിനിൽ അംഗത്തിന് നിർബന്ധമായും പുതിയ പാസ്‌വേഡ് മാറ്റേണ്ടി വരും.
+                    </p>
                   </div>
 
                   {isSuperAdmin && (
@@ -6774,11 +6624,37 @@ service cloud.firestore {
                     </div>
                  </div>
 
-                 <div className="pt-6 border-t flex items-center justify-between">
+                 <div className="pt-6 border-t flex items-center justify-between flex-wrap gap-3">
                     <div className="text-[10px] font-bold text-slate-400">
                        SUBMITTED ON: {formatClaimDateTime(selectedClaim.createdAt)}
                     </div>
-                    <Button onClick={() => setSelectedClaim(null)} className="rounded-xl font-black uppercase text-xs px-8">Close</Button>
+                    <div className="flex items-center gap-2">
+                       <Button
+                          variant="outline"
+                          onClick={() => {
+                             const memberObj = claimUser || members.find(m => m.uid === selectedClaim.uid || compareMobiles(m.mobile, selectedClaim.userMobile));
+                             printCourtClaimReport(selectedClaim, memberObj);
+                          }}
+                          className="rounded-xl font-black uppercase text-xs px-3 border-emerald-600/30 text-emerald-700 hover:bg-emerald-50 flex items-center gap-1.5 shadow-2xs"
+                          title="Print Court / Legal Statement (1 Page A4)"
+                       >
+                          <Printer className="w-3.5 h-3.5" />
+                          <span>Court / Legal Print</span>
+                       </Button>
+                       <Button
+                          variant="outline"
+                          onClick={() => {
+                             const memberObj = claimUser || members.find(m => m.uid === selectedClaim.uid || compareMobiles(m.mobile, selectedClaim.userMobile));
+                             printFullAdminClaimReport(selectedClaim, memberObj);
+                          }}
+                          className="rounded-xl font-black uppercase text-xs px-3 border-brand-magenta/30 text-brand-magenta hover:bg-brand-magenta/5 flex items-center gap-1.5 shadow-2xs"
+                          title="Print Customer / Admin Record (1 Page A4)"
+                       >
+                          <FileSpreadsheet className="w-3.5 h-3.5" />
+                          <span>Customer Print</span>
+                       </Button>
+                       <Button onClick={() => setSelectedClaim(null)} className="rounded-xl font-black uppercase text-xs px-6">Close</Button>
+                    </div>
                  </div>
               </div>
             )}

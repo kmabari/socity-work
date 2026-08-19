@@ -22,7 +22,9 @@ import {
   Camera,
   Download,
   Sparkles,
-  PartyPopper
+  PartyPopper,
+  Printer,
+  Share2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +37,7 @@ import { toast } from 'sonner';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, query, where, getDocs, deleteDoc, doc, serverTimestamp, updateDoc, runTransaction } from 'firebase/firestore';
 import { subscribeToOrgSettings, OrgSettings, defaultSettings } from '@/src/lib/cms';
+import { printCourtComboReport, printCourtClaimReport, shareCourtComboPdf, downloadCourtComboPdf } from '../lib/claimPrint';
 
 interface CategoryDetail {
   paid: number;
@@ -657,6 +660,17 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
         userConstituency: user.constituency || '',
         userEmail: user.email || '',
         userBloodGroup: user.bloodGroup || '',
+        paidFromBank: user.bankName || user.paidFromBank || '',
+        paidFromBranch: user.branch || user.paidFromBranch || '',
+        paidFromAccount: user.accountNumber || user.paidFromAccount || '',
+        paidFromIfsc: user.ifscCode || user.paidFromIfsc || '',
+        paymentDate: user.paymentDate || '',
+        transactionRef: user.transactionId || user.transactionRef || '',
+        settlementBankName: user.bankName || '',
+        settlementBranch: user.branch || '',
+        settlementAccountNumber: user.accountNumber || '',
+        settlementIfsc: user.ifscCode || '',
+        settlementAccountHolder: user.name || '',
         futurePreference,
         hardshipStatus,
         isEmergency,
@@ -893,9 +907,41 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           </div>
         </div>
 
-        <Button onClick={onClose} className="w-full h-12 rounded-xl bg-brand-blue hover:bg-brand-blue/90 text-white font-bold shadow-lg active:scale-95 transition-all text-xs uppercase tracking-wider">
-          തിരികെ ഡാഷ്‌ബോർഡിലേക്ക് (Back to Dashboard)
-        </Button>
+        <div className="flex flex-col gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <Button 
+              onClick={() => {
+                if (submittedClaims && submittedClaims.length > 0) {
+                  downloadCourtComboPdf(user, submittedClaims);
+                } else {
+                  toast.info('ക്ലെയിം വിവരങ്ങൾ ലഭ്യമല്ല');
+                }
+              }}
+              className="w-full h-12 rounded-xl bg-[#003366] hover:bg-[#002244] text-white font-black shadow-md active:scale-95 transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2 border-2 border-blue-400 cursor-pointer"
+            >
+              <Download className="w-4 h-4 text-white shrink-0" />
+              ഡൗൺലോഡ് (PDF Download)
+            </Button>
+            <Button 
+              onClick={() => {
+                if (submittedClaims && submittedClaims.length > 0) {
+                  printCourtComboReport(user, submittedClaims);
+                } else {
+                  toast.info('ക്ലെയിം വിവരങ്ങൾ ലഭ്യമല്ല');
+                }
+              }}
+              variant="outline"
+              className="w-full h-12 rounded-xl border-2 border-slate-300 text-slate-800 font-black shadow-sm active:scale-95 transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-slate-100 cursor-pointer"
+            >
+              <Printer className="w-4 h-4 text-slate-700 shrink-0" />
+              പ്രിന്റ് (Print A4)
+            </Button>
+          </div>
+
+          <Button onClick={onClose} className="w-full h-12 rounded-xl bg-brand-blue hover:bg-brand-blue/90 text-white font-bold shadow-lg active:scale-95 transition-all text-xs uppercase tracking-wider">
+            തിരികെ ഡാഷ്‌ബോർഡിലേക്ക് (Back to Dashboard)
+          </Button>
+        </div>
       </div>
     );
   }
@@ -1070,9 +1116,68 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           </p>
         </div>
 
-        <Button onClick={onClose} className="w-full h-12 rounded-xl bg-brand-blue hover:bg-brand-blue/90 text-white font-bold shadow-lg active:scale-95 transition-all text-xs uppercase tracking-wider">
-          തിരികെ ഡാഷ്‌ബോർഡിലേക്ക് (Back to Dashboard)
-        </Button>
+        <div className="flex flex-col gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <Button 
+              onClick={async () => {
+                try {
+                  const rawMob = String(user.mobile || '').replace(/\D/g, '');
+                  const cleanMob = rawMob.length >= 10 ? rawMob.slice(-10) : rawMob;
+                  const claimsSnap = await getDocs(query(collection(db, 'claims'), where('userMobile', 'in', [cleanMob, Number(cleanMob), user.mobile].filter(Boolean))));
+                  const docsList: any[] = [];
+                  claimsSnap.forEach(d => docsList.push({ id: d.id, ...d.data() }));
+                  if (docsList.length > 0) {
+                    downloadCourtComboPdf(user, docsList);
+                  } else if (submittedClaims && submittedClaims.length > 0) {
+                    downloadCourtComboPdf(user, submittedClaims);
+                  } else {
+                    toast.info('ക്ലെയിം വിവരങ്ങൾ ലഭ്യമല്ല');
+                  }
+                } catch (e) {
+                  if (submittedClaims && submittedClaims.length > 0) {
+                    downloadCourtComboPdf(user, submittedClaims);
+                  }
+                }
+              }}
+              className="w-full h-12 rounded-xl bg-[#003366] hover:bg-[#002244] text-white font-black shadow-md active:scale-95 transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2 border-2 border-blue-400 cursor-pointer"
+            >
+              <Download className="w-4 h-4 text-white shrink-0" />
+              ഡൗൺലോഡ് (PDF Download)
+            </Button>
+            <Button 
+              onClick={async () => {
+                try {
+                  const rawMob = String(user.mobile || '').replace(/\D/g, '');
+                  const cleanMob = rawMob.length >= 10 ? rawMob.slice(-10) : rawMob;
+                  const claimsSnap = await getDocs(query(collection(db, 'claims'), where('userMobile', 'in', [cleanMob, Number(cleanMob), user.mobile].filter(Boolean))));
+                  const docsList: any[] = [];
+                  claimsSnap.forEach(d => docsList.push({ id: d.id, ...d.data() }));
+                  if (docsList.length > 0) {
+                    printCourtComboReport(user, docsList);
+                  } else if (submittedClaims && submittedClaims.length > 0) {
+                    printCourtComboReport(user, submittedClaims);
+                  } else {
+                    toast.success('സ്റ്റേറ്റ്‌മെന്റ് തയ്യാറാക്കുന്നു...');
+                  }
+                } catch (e) {
+                  console.error("Print fetch error:", e);
+                  if (submittedClaims && submittedClaims.length > 0) {
+                    printCourtComboReport(user, submittedClaims);
+                  }
+                }
+              }}
+              variant="outline"
+              className="w-full h-12 rounded-xl border-2 border-slate-300 text-slate-800 font-black shadow-sm active:scale-95 transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-slate-100 cursor-pointer"
+            >
+              <Printer className="w-4 h-4 text-slate-700 shrink-0" />
+              പ്രിന്റ് (Print A4)
+            </Button>
+          </div>
+
+          <Button onClick={onClose} className="w-full h-12 rounded-xl bg-brand-blue hover:bg-brand-blue/90 text-white font-bold shadow-lg active:scale-95 transition-all text-xs uppercase tracking-wider">
+            തിരികെ ഡാഷ്‌ബോർഡിലേക്ക് (Back to Dashboard)
+          </Button>
+        </div>
       </div>
     );
   }

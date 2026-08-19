@@ -56,6 +56,10 @@ export interface UserProfile {
   username?: string;
   highrichId?: string;
   isQuotaCounted?: boolean;
+  mustChangePassword?: boolean;
+  pinResetRequested?: boolean;
+  mustCompleteProfile?: boolean;
+  profileCompleted?: boolean;
 }
 
 export interface GalleryItem {

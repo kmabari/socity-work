@@ -289,7 +289,8 @@ export default function LandingPage({
         setStage('landing');
       }
     };
-  handleHashChange();
+
+    handleHashChange();
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
@@ -508,98 +509,109 @@ export default function LandingPage({
                   </p>
                 </div>
 
-                {/* Compact Premium Campaign Card */}
+                {/* Full Display Premium Campaign Card */}
                 <div 
                   onClick={onJanamailClick}
-                  className="max-w-2xl mx-auto bg-white border border-slate-200/80 rounded-[28px] p-6 shadow-premium hover:border-blue-300 hover:shadow-projected hover:scale-[1.01] transition-all duration-300 cursor-pointer group/card"
+                  className="max-w-3xl mx-auto bg-white border-2 border-slate-200/90 rounded-[32px] p-5 sm:p-7 shadow-premium hover:border-blue-400 hover:shadow-projected transition-all duration-300 cursor-pointer group/card space-y-6"
                 >
-                  <div className="flex flex-col md:flex-row gap-6 items-center">
-                    {/* Small Banner / Compact cover */}
-                    <div className="w-full md:w-1/3 aspect-[4/3] overflow-hidden rounded-2xl bg-slate-900 shadow-inner shrink-0 relative">
-                      <img
-                        src={janamailConfig?.artworkUrl || "https://i.ibb.co/B5YWH43C/IMG-20260706-WA0108.jpg"}
-                        alt="Operation Janamail Campaign Banner"
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-500"
-                      />
-                      {(() => {
-                        const status = janamailConfig?.campaignStatus;
-                        if (status === "draft") {
-                          return (
-                            <div className="absolute top-3 left-3 bg-amber-500 text-white text-[9px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-full shadow-md flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                              <span>DRAFT CAMPAIGN</span>
-                            </div>
-                          );
-                        } else if (status === "completed" || status === "disabled") {
-                          return (
-                            <div className="absolute top-3 left-3 bg-red-600 text-white text-[9px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-full shadow-md flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                              <span>CAMPAIGN COMPLETED</span>
-                            </div>
-                          );
-                        } else {
-                          return (
-                            <div className="absolute top-3 left-3 bg-[#c9a227] text-white text-[9px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-full shadow-md flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                              <span>ACTIVE CAMPAIGN</span>
-                            </div>
-                          );
-                        }
-                      })()}
-                    </div>
+                  {/* Full Image Display Container */}
+                  <div className="w-full overflow-hidden rounded-2xl bg-slate-900/5 border border-slate-200 relative flex items-center justify-center p-2 sm:p-3">
+                    <img
+                      src={janamailConfig?.artworkUrl || "https://i.ibb.co/B5YWH43C/IMG-20260706-WA0108.jpg"}
+                      alt="Operation Janamail Campaign Banner"
+                      referrerPolicy="no-referrer"
+                      className="w-full h-auto max-h-[580px] sm:max-h-[680px] object-contain rounded-xl shadow-xs transition-transform duration-500 group-hover/card:scale-[1.01]"
+                    />
+                    {(() => {
+                      const status = janamailConfig?.campaignStatus;
+                      if (status === "draft") {
+                        return (
+                          <div className="absolute top-4 left-4 bg-amber-500 text-white text-[10px] sm:text-xs font-black uppercase tracking-widest px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 border border-white/20">
+                            <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                            <span>DRAFT CAMPAIGN</span>
+                          </div>
+                        );
+                      } else if (status === "completed" || status === "disabled") {
+                        return (
+                          <div className="absolute top-4 left-4 bg-red-600 text-white text-[10px] sm:text-xs font-black uppercase tracking-widest px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 border border-white/20">
+                            <span className="w-2 h-2 rounded-full bg-white" />
+                            <span>CAMPAIGN COMPLETED</span>
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <div className="absolute top-4 left-4 bg-[#c9a227] text-white text-[10px] sm:text-xs font-black uppercase tracking-widest px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 border border-white/20">
+                            <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+                            <span>ACTIVE CAMPAIGN</span>
+                          </div>
+                        );
+                      }
+                    })()}
+                  </div>
 
-                    {/* Campaign details */}
-                    <div className="flex-1 text-left space-y-3 font-sans">
-                      <h3 className="text-xl font-black text-[#1a2b5c] tracking-tight leading-tight uppercase font-heading group-hover/card:text-blue-600 transition-colors duration-200">
-                        {janamailConfig?.campaignName || "Operation Janamail"}
-                      </h3>
-                      
-                      {/* Slogan & short description */}
-                      <p className="text-sm font-bold text-red-600 tracking-tight leading-snug">
-                        {janamailConfig?.campaignTagline || "ജനങ്ങൾ ഉണർന്നു... അധികാരികളേ ഉണരൂ"}
-                      </p>
-                      <p className="text-slate-500 font-medium text-xs leading-relaxed line-clamp-3">
-                        {janamailConfig?.campaignIntroduction || "ഭരണകൂടത്തിന്റെ കണ്ണുതുറപ്പിക്കാൻ ഒരു ജനകീയ ഇമെയിൽ പ്രസ്ഥാനം. പൊതുജനങ്ങളുടെ അഭിപ്രായങ്ങളും ആവശ്യങ്ങളും ബന്ധപ്പെട്ട അധികാരികളെ അറിയിക്കാനുള്ള പൊതുപങ്കാളിത്ത ഇമെയിൽ ക്യാമ്പയിൻ."}
-                      </p>
-
-                      <div className="pt-2">
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onJanamailClick?.();
-                          }}
-                          className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs px-6 py-5 rounded-xl shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 duration-200 flex items-center gap-2 group cursor-pointer"
-                        >
-                          <span className="text-sm">📧</span>
-                          <span>Participate Now / പങ്കാളിയാവുക</span>
-                          <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                        </Button>
+                  {/* Campaign Details Section */}
+                  <div className="space-y-4 text-left font-sans px-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                      <div>
+                        <h3 className="text-xl sm:text-2xl md:text-3xl font-black text-[#1a2b5c] tracking-tight uppercase font-heading group-hover/card:text-blue-600 transition-colors leading-snug">
+                          {janamailConfig?.campaignName || "Operation Janamail"}
+                        </h3>
+                        <p className="text-sm sm:text-base font-black text-red-600 tracking-tight leading-snug mt-1">
+                          {janamailConfig?.campaignTagline || "ജനങ്ങൾ ഉണർന്നു... അധികാരികളേ ഉണരൂ"}
+                        </p>
                       </div>
+                      <div className="shrink-0">
+                        <span className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-800 px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider border border-blue-200 shadow-xs">
+                          <Mail className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Official Campaign</span>
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <p className="text-slate-700 font-medium text-xs sm:text-sm leading-relaxed">
+                      {janamailConfig?.campaignIntroduction || "ഭരണകൂടത്തിന്റെ കണ്ണുതുറപ്പിക്കാൻ ഒരു ജനകീയ ഇമെയിൽ പ്രസ്ഥാനം. പൊതുജനങ്ങളുടെ അഭിപ്രായങ്ങളും ആവശ്യങ്ങളും ബന്ധപ്പെട്ട അധികാരികളെ അറിയിക്കാനുള്ള പൊതുപങ്കാളിത്ത ഇമെയിൽ ക്യാമ്പയിൻ."}
+                    </p>
+
+                    <div className="pt-2">
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onJanamailClick?.();
+                        }}
+                        className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-black text-xs sm:text-sm px-8 py-5.5 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5 duration-200 flex items-center justify-center gap-2.5 group cursor-pointer"
+                      >
+                        <span className="text-base">📧</span>
+                        <span>Participate Now / ഇമെയിൽ അയയ്ക്കാം (പങ്കാളിയാവുക)</span>
+                        <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      </Button>
                     </div>
                   </div>
                 </div>
 
-                {/* Directly BELOW the campaign card, create a "Public Sharing" section */}
-                <div className="max-w-2xl mx-auto bg-white border border-white/10 rounded-[28px] p-6 shadow-premium flex flex-col md:flex-row items-center gap-6">
+                {/* Directly BELOW the campaign card, Public Sharing section with high-contrast theme */}
+                <div className="max-w-3xl mx-auto bg-[#1a2b5c] border border-[#233875] rounded-[28px] p-6 shadow-premium flex flex-col md:flex-row items-center gap-6">
                   {/* QR Code Canvas */}
-                  <div className="relative bg-white p-3 rounded-2xl shadow-xs border border-slate-200/80 w-36 h-36 flex items-center justify-center shrink-0">
+                  <div className="relative bg-white p-3 rounded-2xl shadow-xs border border-slate-200/80 w-36 h-36 flex flex-col items-center justify-center shrink-0">
                     <canvas ref={qrCanvasRef} className="w-28 h-28 block" />
                   </div>
 
                   {/* Sharing details and actions */}
                   <div className="flex-1 text-left space-y-3 font-sans w-full">
-                    <h4 className="text-sm font-black text-[#1a2b5c] uppercase tracking-wider flex items-center gap-2">
-                      <QrCode className="w-4 h-4 text-blue-400 animate-pulse" />
+                    <div className="inline-flex items-center gap-1.5 bg-amber-400/20 border border-amber-400/40 text-amber-300 px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider">
+                      <QrCode className="w-3.5 h-3.5" />
+                      <span>QR &amp; SHARE</span>
+                    </div>
+
+                    <h4 className="text-base font-black text-white uppercase tracking-tight leading-snug">
                       ക്യാമ്പയിൻ പങ്കുവെക്കാം (Public Sharing)
                     </h4>
                     
-                    <p className="text-xs text-slate-700 font-medium leading-relaxed">
+                    <p className="text-xs text-slate-200 font-medium leading-relaxed">
                       ഈ ക്യാമ്പയിൻ ലിങ്ക് മറ്റുള്ളവരിലേക്ക് ഷെയർ ചെയ്തുകൊണ്ട് എല്ലാവരെയും ഇതിന്റെ ഭാഗമാക്കൂ.
                     </p>
 
                     {/* Public Campaign Link Box */}
-                    <div className="bg-slate-950/80 border border-white/20 rounded-xl px-3 py-2 text-xs font-mono text-amber-300 select-all break-all shadow-inner">
+                    <div className="bg-slate-950/90 border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-mono text-amber-300 select-all break-all shadow-inner font-bold">
                       {campaignUrl}
                     </div>
 
@@ -607,7 +619,7 @@ export default function LandingPage({
                       {/* Share Button */}
                       <Button
                         onClick={handleShare}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs h-10 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                        className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs h-10 rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition-colors"
                       >
                         <Share2 className="w-3.5 h-3.5" />
                         <span>ഷെയർ ചെയ്യാം (Share)</span>
@@ -618,10 +630,10 @@ export default function LandingPage({
                         onClick={handleCopyLink}
                         variant="outline"
                         className={cn(
-                          "flex-1 font-extrabold text-xs h-10 rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer border",
+                          "flex-1 font-black text-xs h-10 rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer border transition-colors",
                           copiedLink
-                            ? "bg-emerald-500 border-emerald-500 text-white hover:bg-emerald-600 hover:text-white"
-                            : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+                            ? "bg-emerald-600 border-emerald-500 text-white hover:bg-emerald-700 hover:text-white"
+                            : "bg-white/10 border-white/25 text-white hover:bg-white/20 hover:text-white"
                         )}
                       >
                         {copiedLink ? (

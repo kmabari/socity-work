@@ -119,16 +119,16 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
         </div>
 
         {/* Centered Card with Subtle Border Glow and Kerala Kasavu Border Pattern */}
-        <div className="relative bg-white border border-slate-200 p-8 rounded-[36px] shadow-premium overflow-hidden before:content-[''] before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-[#1a2b5c] before:via-[#c9a227] before:to-[#233875] after:content-[''] after:absolute after:inset-x-0 after:bottom-0 after:h-1 after:bg-gradient-to-r after:from-[#233875] after:via-[#c9a227] after:to-[#1a2b5c]">
+        <div className="relative bg-white border-2 border-slate-200 p-8 rounded-[36px] shadow-premium overflow-hidden before:content-[''] before:absolute before:inset-x-0 before:top-0 before:h-1.5 before:bg-gradient-to-r before:from-[#1a2b5c] before:via-[#c9a227] before:to-[#233875] after:content-[''] after:absolute after:inset-x-0 after:bottom-0 after:h-1.5 after:bg-gradient-to-r after:from-[#233875] after:via-[#c9a227] after:to-[#1a2b5c]">
           <div className="flex items-center gap-4 mb-8">
-            <div className="w-12 h-12 rounded-xl bg-[#1a2b5c]/5 flex items-center justify-center text-[#1a2b5c] shadow-sm border border-[#1a2b5c]/10">
+            <div className="w-12 h-12 rounded-xl bg-[#1a2b5c]/10 flex items-center justify-center text-[#1a2b5c] shadow-xs border border-[#1a2b5c]/20">
               <KeyRound className="w-6 h-6 text-[#1a2b5c]" />
             </div>
             <div>
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">
+              <h3 className="text-base font-black text-slate-950 uppercase tracking-wide">
                 {t('login_title', 'Account Login')}
               </h3>
-              <p className="text-[9px] text-slate-500 font-extrabold uppercase tracking-widest mt-1 leading-none">
+              <p className="text-[10px] text-slate-700 font-extrabold uppercase tracking-widest mt-1 leading-none">
                 {t('hero_title_1', 'HIGHRICH COMMUNITY')}
               </p>
             </div>
@@ -141,12 +141,12 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
                 name="mobile"
                 render={({ field, fieldState }) => (
                   <FormItem className="space-y-1.5">
-                    <FormLabel className="text-slate-600 font-extrabold uppercase text-[10px] tracking-wider ml-1">
+                    <FormLabel className="text-slate-900 font-black uppercase text-xs tracking-wider ml-1">
                       മൊബൈൽ നമ്പർ
                     </FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Smartphone className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${field.value ? 'text-[#c9a227]' : 'text-slate-300'}`} />
+                        <Smartphone className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${field.value ? 'text-[#1a2b5c]' : 'text-slate-500'}`} />
                         <Input 
                           {...field} 
                           type="text"
@@ -161,11 +161,11 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
                               field.onChange(val.replace(/\D/g, '').slice(0, 10));
                             }
                           }}
-                          className={`pl-12 h-13 bg-slate-50 border-2 border-slate-200 focus:border-[#1a2b5c] focus:ring-1 focus:ring-[#1a2b5c]/30 transition-all rounded-2xl font-bold text-sm text-slate-800 placeholder:text-slate-400 ${fieldState.error ? 'border-red-500' : ''}`} 
+                          className={`pl-12 h-13 bg-white border-2 border-slate-300 focus:border-[#1a2b5c] focus:ring-2 focus:ring-[#1a2b5c]/20 transition-all rounded-2xl font-bold text-sm text-slate-950 placeholder:text-slate-500 shadow-xs ${fieldState.error ? 'border-red-500' : ''}`} 
                         />
                       </div>
                     </FormControl>
-                    <FormMessage className="text-[10px] font-bold text-red-500" />
+                    <FormMessage className="text-xs font-bold text-red-600" />
                   </FormItem>
                 )}
               />
@@ -176,32 +176,32 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
                 render={({ field, fieldState }) => (
                   <FormItem className="space-y-1.5">
                     <div className="flex justify-between items-center mb-1 bg-transparent px-1">
-                      <FormLabel className="text-slate-600 font-extrabold uppercase text-[10px] tracking-wider">
+                      <FormLabel className="text-slate-900 font-black uppercase text-xs tracking-wider">
                         PASSWORD
                       </FormLabel>
                       <button 
                         type="button" 
                         disabled={isLoading}
                         onClick={handleForgotPassword}
-                        className="text-[10px] text-[#c9a227] hover:text-[#ab851c] hover:underline transition-colors font-black uppercase tracking-wider disabled:opacity-50"
+                        className="text-xs text-blue-700 hover:text-blue-950 hover:underline transition-colors font-black uppercase tracking-wider disabled:opacity-50 cursor-pointer"
                       >
                         {t('btn_reset_password', 'Reset Password')}
                       </button>
                     </div>
                     <FormControl>
                       <div className="relative">
-                        <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${field.value ? 'text-[#c9a227]' : 'text-slate-300'}`} />
+                        <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${field.value ? 'text-[#1a2b5c]' : 'text-slate-500'}`} />
                         <Input 
                           {...field} 
                           type="password" 
                           placeholder="Password" 
                           disabled={isLoading}
                           maxLength={20}
-                          className={`pl-12 h-13 bg-slate-50 border-2 border-slate-200 focus:border-[#1a2b5c] focus:ring-1 focus:ring-[#1a2b5c]/30 transition-all rounded-2xl font-bold text-sm text-slate-800 placeholder:text-slate-400 ${fieldState.error ? 'border-red-500' : ''}`} 
+                          className={`pl-12 h-13 bg-white border-2 border-slate-300 focus:border-[#1a2b5c] focus:ring-2 focus:ring-[#1a2b5c]/20 transition-all rounded-2xl font-bold text-sm text-slate-950 placeholder:text-slate-500 shadow-xs ${fieldState.error ? 'border-red-500' : ''}`} 
                         />
                       </div>
                     </FormControl>
-                    <FormMessage className="text-[10px] font-bold text-red-500" />
+                    <FormMessage className="text-xs font-bold text-red-600" />
                   </FormItem>
                 )}
               />
@@ -209,7 +209,7 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
               <Button 
                 type="submit" 
                 disabled={isLoading}
-                className="w-full h-13 rounded-2xl text-xs font-black shadow-md shadow-[#1a2b5c]/10 transition-all hover:scale-[1.01] active:scale-100 group uppercase tracking-widest bg-gradient-to-r from-[#1a2b5c] to-[#233875] hover:from-[#233875] hover:to-[#1a2b5c] text-white hover:opacity-95 flex items-center justify-center gap-2"
+                className="w-full h-13 rounded-2xl text-xs sm:text-sm font-black shadow-lg shadow-[#1a2b5c]/20 transition-all hover:scale-[1.01] active:scale-100 group uppercase tracking-widest bg-gradient-to-r from-[#1a2b5c] to-[#233875] hover:from-[#0d1733] hover:to-[#1a2b5c] text-white flex items-center justify-center gap-2 cursor-pointer"
               >
                 {isLoading ? t('btn_processing', 'Processing...') : `${t('login_btn', 'Log In')} →`}
                 {!isLoading && <ArrowRight className="ml-2 w-4 h-4 text-white group-hover:translate-x-0.5 transition-transform" />}
@@ -217,9 +217,9 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
 
               <div className="relative py-2">
                 <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-slate-100" />
+                  <span className="w-full border-t-2 border-slate-200" />
                 </div>
-                <div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest text-slate-400">
+                <div className="relative flex justify-center text-xs uppercase font-black tracking-widest text-slate-500">
                   <span className="bg-white px-3 font-sans">OR</span>
                 </div>
               </div>
@@ -229,7 +229,7 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
                 variant="outline"
                 disabled={isLoading}
                 onClick={onGoogleLogin}
-                className="w-full h-13 rounded-2xl text-xs font-black border-2 border-slate-200 hover:bg-slate-50 transition-all hover:scale-[1.01] active:scale-100 uppercase tracking-widest flex items-center justify-center gap-3 text-slate-700 bg-white font-sans"
+                className="w-full h-13 rounded-2xl text-xs sm:text-sm font-black border-2 border-slate-300 hover:bg-slate-100 transition-all hover:scale-[1.01] active:scale-100 uppercase tracking-widest flex items-center justify-center gap-3 text-slate-900 bg-white font-sans cursor-pointer shadow-xs"
               >
                 <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -246,23 +246,23 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
         <div className="mt-8 flex flex-col items-center gap-4">
           <Button 
             type="button" 
-            variant="ghost" 
+            variant="outline" 
             onClick={onBack}
             disabled={isLoading}
-            className="text-slate-400 hover:text-slate-700 font-extrabold uppercase tracking-widest text-[10px] hover:bg-slate-100 rounded-2xl px-6 h-11 transition-all"
+            className="text-slate-800 hover:text-slate-950 font-black uppercase tracking-widest text-xs border-2 border-slate-300 bg-white hover:bg-slate-100 rounded-2xl px-6 h-11 transition-all shadow-xs cursor-pointer"
           >
-            <ArrowLeft className="mr-1.5 w-4 h-4 text-[#c9a227]" />
+            <ArrowLeft className="mr-1.5 w-4 h-4 text-[#1a2b5c]" />
             {t('btn_back_home', 'Go to Home Page')}
           </Button>
 
-          <div className="pt-4 border-t border-slate-100 w-full flex justify-center">
+          <div className="pt-4 border-t border-slate-200 w-full flex justify-center">
             <button
                type="button"
                disabled={isLoading}
                onClick={onGoogleLogin}
-               className="text-[9.5px] font-black uppercase tracking-widest text-slate-400 hover:text-[#1a2b5c] transition-all flex items-center gap-1.5 group"
+               className="text-xs font-black uppercase tracking-widest text-slate-700 hover:text-[#1a2b5c] transition-all flex items-center gap-1.5 group cursor-pointer"
             >
-               <ShieldCheck className="w-4 h-4 text-[#c9a227] group-hover:text-[#1a2b5c] transition-colors" />
+               <ShieldCheck className="w-4 h-4 text-[#1a2b5c] group-hover:scale-110 transition-transform" />
                Verified Official Channel
             </button>
           </div>

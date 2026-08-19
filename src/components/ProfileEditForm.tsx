@@ -16,43 +16,15 @@ interface ProfileEditFormProps {
   isMandatory?: boolean;
 }
 
-export default function ProfileEditForm({
-  user,
-  onSave,
-  onCancel,
-  isMandatory = false
-}: ProfileEditFormProps) {
+export default function ProfileEditForm({ user, onSave, onCancel, isMandatory = false }: ProfileEditFormProps) {
   const [address, setAddress] = useState(user.address || '');
   const [email, setEmail] = useState(user.email || '');
   const [pincode, setPincode] = useState(user.pincode || '');
   const [postOffice, setPostOffice] = useState(user.postOffice || '');
   const [bloodGroup, setBloodGroup] = useState(user.bloodGroup || '');
   const [gender, setGender] = useState(user.gender || '');
-  const formatDobForDisplay = (value: string) => {
-    if (!value) return '';
-    const parts = value.split('-');
-    if (parts.length === 3 && parts[0].length === 4) {
-      return `${parts[2]}/${parts[1]}/${parts[0]}`;
-    }
-    return value;
-  };
-
-  const formatDobForStorage = (value: string) => {
-    if (!value) return '';
-    const parts = value.split('/');
-    if (parts.length === 3) {
-      const [day, month, year] = parts;
-      if (day.length === 2 && month.length === 2 && year.length === 4) {
-        return `${year}-${month}-${day}`;
-      }
-    }
-    return value;
-  };
-
-  const [dob, setDob] = useState(formatDobForDisplay(user.dob || ''));
-  // Default to '' when user has no stored district so the mandatory validation
-  // correctly blocks Save until the user explicitly selects their district.
-  const [district, setDistrict] = useState(user.district || '');
+  const [dob, setDob] = useState(user.dob || '');
+  const [district, setDistrict] = useState(user.district || DISTRICTS[0].code);
   const [assemblyConstituency, setAssemblyConstituency] = useState(user.assemblyConstituency || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -60,32 +32,10 @@ export default function ProfileEditForm({
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Mandatory profile completion validation
+    // Sanitize values
     const cleanEmail = email.trim().toLowerCase();
-    const cleanAddress = address.trim();
-    const cleanPincode = pincode.trim().replace(/\D/g, '');
-    const cleanPostOffice = postOffice.trim();
-
-    if (!district) {
-      toast.error('District is a mandatory field. Please select your district.');
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (!assemblyConstituency) {
-      toast.error('Assembly Constituency is a mandatory field. Please select your constituency.');
-      setIsSubmitting(false);
-      return;
-    }
-
     if (cleanEmail && !cleanEmail.includes('@')) {
       toast.error('Please enter a valid email address.');
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (cleanPincode && cleanPincode.length !== 6) {
-      toast.error('Please enter a valid 6-digit PIN code.');
       setIsSubmitting(false);
       return;
     }
@@ -97,9 +47,11 @@ export default function ProfileEditForm({
       postOffice: postOffice.trim(),
       bloodGroup: bloodGroup,
       gender: gender,
-      dob: formatDobForStorage(dob),
+      dob: dob,
       district: district,
-      assemblyConstituency: assemblyConstituency
+      assemblyConstituency: assemblyConstituency,
+      mustCompleteProfile: false,
+      profileCompleted: true
     };
 
     try {
@@ -121,9 +73,9 @@ export default function ProfileEditForm({
     <div className="bg-white rounded-[24px] border border-slate-200/80 shadow-premium p-6 sm:p-8 max-w-lg w-full mx-auto space-y-6 text-slate-800 animate-in fade-in slide-in-from-bottom-4 duration-300 font-sans">
       <div className="flex items-center gap-3">
         {!isMandatory && (
-          <Button
-            variant="ghost"
-            size="icon"
+          <Button 
+            variant="ghost" 
+            size="icon" 
             onClick={onCancel}
             className="rounded-full w-9 h-9 border border-slate-200 text-slate-600 hover:bg-slate-50"
           >
@@ -131,10 +83,20 @@ export default function ProfileEditForm({
           </Button>
         )}
         <div>
-          <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Edit Profile</h3>
-          <p className="text-[10px] text-slate-500 font-bold uppercase">Update edit-permissible personal details</p>
+          <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
+            {isMandatory ? 'പ്രൊഫൈൽ വിവരങ്ങൾ സ്ഥിരീകരിക്കുക' : 'Edit Profile'}
+          </h3>
+          <p className="text-[10px] text-amber-700 font-extrabold uppercase">
+            {isMandatory ? 'ആദ്യ തവണ വിവരങ്ങൾ ഉറപ്പുവരുത്തി കാർഡിലേക്ക് പ്രവേശിക്കുക (One-time profile confirmation)' : 'Update edit-permissible personal details'}
+          </p>
         </div>
       </div>
+
+      {isMandatory && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-xs font-bold text-amber-950 leading-relaxed">
+          പ്രിയ അംഗമേ, മെമ്പർഷിപ്പ് ഐഡി കാർഡ് കാണുന്നതിനായി താങ്കളുടെ മേൽവിലാസം, മണ്ഡലം, രക്തഗ്രൂപ്പ് തുടങ്ങിയ വിവരങ്ങൾ ഒരിക്കൽ പരിശോധിച്ച് താഴെ സേവ് ചെയ്യുക. പിന്നീട് ലോഗിൻ ചെയ്യുമ്പോൾ ഇത് വീണ്ടും ചോദിക്കില്ല.
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         
@@ -169,8 +131,8 @@ export default function ProfileEditForm({
               <span className="text-xs font-black text-slate-600 truncate block">{user.state || 'Kerala'}</span>
             </div>
           </div>
-          <p className="text-[9px] text-indigo-500 font-bold uppercase text-center mt-2">
-            ⚠️ Contact high-rank administrators to amend core credentials.
+          <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold text-center mt-2 bg-amber-50 dark:bg-amber-950/30 p-2 rounded-xl border border-amber-200 dark:border-amber-800">
+            പേര്, മൊബൈൽ നമ്പർ, മെമ്പർഷിപ്പ് നമ്പർ എന്നിവയിൽ മാറ്റങ്ങൾ വരുത്തുവാൻ അഡ്മിനുമായി ബന്ധപ്പെടുക. (Contact admin to update core credentials)
           </p>
         </div>
 
@@ -184,11 +146,11 @@ export default function ProfileEditForm({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider">
-                District / ജില്ലാ <span className="text-red-600">*</span>
+                District / ജില്ലാ
               </Label>
               <Select value={district} onValueChange={(val) => {
                 setDistrict(val);
-                setAssemblyConstituency('');
+                setAssemblyConstituency(CONSTITUENCIES[val]?.[0] || 'NA');
               }}>
                 <SelectTrigger className="h-11 rounded-xl border-slate-200 focus:ring-brand-blue text-xs font-black bg-white">
                   <SelectValue placeholder="Select District" />
@@ -203,7 +165,7 @@ export default function ProfileEditForm({
             
             <div className="space-y-1.5">
               <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider">
-                Assembly Constituency / മണ്ഡലം <span className="text-red-600">*</span>
+                Assembly Constituency / മണ്ഡലം
               </Label>
               <Select value={assemblyConstituency} onValueChange={setAssemblyConstituency}>
                 <SelectTrigger className="h-11 rounded-xl border-slate-200 focus:ring-brand-blue text-xs font-black bg-white">
@@ -239,25 +201,11 @@ export default function ProfileEditForm({
               <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider flex items-center gap-1">
                 <Calendar className="w-3 h-3 text-slate-400" /> Date of Birth
               </Label>
-              <Input
-                type="text"
-                inputMode="numeric"
-                maxLength={10}
-                placeholder="DD/MM/YYYY"
+              <Input 
+                type="date"
                 className="h-11 rounded-xl border-slate-200 px-3 focus-visible:ring-brand-blue text-xs font-bold"
                 value={dob}
-                onChange={e => {
-                  const digits = e.target.value.replace(/\D/g, '').slice(0, 8);
-                  let formatted = digits;
-
-                  if (digits.length > 4) {
-                    formatted = `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
-                  } else if (digits.length > 2) {
-                    formatted = `${digits.slice(0, 2)}/${digits.slice(2)}`;
-                  }
-
-                  setDob(formatted);
-                }}
+                onChange={e => setDob(e.target.value)}
               />
             </div>
             
@@ -343,11 +291,11 @@ export default function ProfileEditForm({
 
         <div className="flex gap-3 pt-2">
           {!isMandatory && (
-            <Button
-              type="button"
-              variant="outline"
+            <Button 
+              type="button" 
+              variant="outline" 
               onClick={onCancel}
-              className="flex-1 h-11 rounded-xl border-slate-200 text-slate-700 font-bold uppercase text-xs tracking-wider"
+              className="flex-1 h-12 rounded-xl border-slate-200 text-slate-700 font-bold uppercase text-xs tracking-wider"
             >
               Cancel
             </Button>
@@ -355,9 +303,9 @@ export default function ProfileEditForm({
           <Button 
             type="submit" 
             disabled={isSubmitting}
-            className="flex-1 h-11 rounded-xl bg-brand-magenta hover:bg-brand-magenta/95 text-white font-black uppercase text-xs tracking-wider flex items-center justify-center gap-2"
+            className={`h-12 rounded-xl bg-brand-magenta hover:bg-brand-magenta/95 text-slate-950 font-black uppercase text-xs tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer ${isMandatory ? 'w-full' : 'flex-1'}`}
           >
-            <Save className="w-4 h-4" /> {isSubmitting ? 'Saving...' : 'Save Profile'}
+            <Save className="w-4 h-4" /> {isSubmitting ? 'Saving...' : (isMandatory ? 'വിവരങ്ങൾ സേവ് ചെയ്ത് കാർഡ് കാണുക (Save & View Card)' : 'Save Profile')}
           </Button>
         </div>
       </form>
