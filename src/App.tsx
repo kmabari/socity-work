@@ -417,31 +417,26 @@ export default function App() {
       await signInWithPopup(auth, googleProvider);
       toast.success('Signed in with Google!', { id: loadingToast });
     } catch (error: any) {
-      console.warn("Google login notification:", error?.code || error?.message);
+      console.warn("Google login error details:", error?.code, error?.message);
       setView('login');
-      const isCustomDomain = typeof window !== 'undefined' && 
-        !window.location.origin.includes('vercel.app') && 
-        !window.location.origin.includes('localhost') && 
-        !window.location.origin.includes('127.0.0.1') && 
-        !window.location.origin.includes('ais-');
+      const currentHost = typeof window !== 'undefined' ? window.location.hostname : '';
 
       if (error?.code === 'auth/popup-closed-by-user' || error?.code === 'auth/cancelled-popup-request' || error?.message?.includes('closed-by-user')) {
-        toast.info('Google sign-in was cancelled.', { id: loadingToast });
-      } else if (error?.code === 'auth/unauthorized-domain' || isCustomDomain) {
+        toast.info('Google sign-in was cancelled (ലോഗിൻ ക്യാൻസൽ ചെയ്തു).', { id: loadingToast });
+      } else if (error?.code === 'auth/unauthorized-domain' || error?.message?.includes('unauthorized-domain')) {
         toast.error(
-          'ഗൂഗിൾ വൈരിഫൈഡ് ലോഗിൻ നേരിട്ട് പ്രവർത്തിക്കില്ല! കസ്റ്റം ഡൊമൈൻ ആയതു കൊണ്ട് ഗൂഗിൾ സുരക്ഷാ നിയമങ്ങൾ ഇതിനെ തടയുന്നു.', 
+          `ഗൂഗിൾ ലോഗിൻ തടസ്സപ്പെട്ടു: ഈ ഡൊമൈൻ (${currentHost}) Firebase-ൽ ആഡ് ചെയ്തിട്ടില്ല.`, 
           { 
             id: loadingToast,
             duration: 15000, 
-            description: 'പരിഹാരം: ദയവായി https://hcrs-kappa.vercel.app ഓപ്പൺ ചെയ്ത് ഗൂഗിൾ ലോഗിൻ വഴി കയറി മുകളിൽ കാണുന്ന "Set Domain PIN" വഴി നിങ്ങളുടെ പാസ്‌വേഡ് സെറ്റ് ചെയ്യുക. ശേഷം നിങ്ങളുടെ ഇമെയിലും ആ പാസ്‌വേഡും ഉപയോഗിച്ച് നേരിട്ട് www.hcrs.in ലോഗിൻ ചെയ്യുക!',
-            action: {
-              label: 'Vercel fallback വഴി തുറക്കുക',
-              onClick: () => window.open('https://hcrs-kappa.vercel.app', '_blank')
-            }
+            description: `പരിഹാരം: 1) Firebase Console -> Authentication -> Settings -> Authorized Domains-ൽ "${currentHost}" ആഡ് ചെയ്യുക. അല്ലെങ്കിൽ 2) നിങ്ങളുടെ ഇമെയിലും (${user?.email || 'kmabarikiyafoods@gmail.com'}) പാസ്‌വേഡും നേരിട്ട് നൽകി ലോഗിൻ ചെയ്യുക.`
           }
         );
+      } else if (error?.code === 'auth/popup-blocked' || error?.message?.includes('popup-blocked')) {
+        toast.error('Browser Popup തടയപ്പെട്ടു. ദയവായി ബ്രൗസറിൽ Popup അനുമതി നൽകുക, അല്ലെങ്കിൽ Email & Password ഉപയോഗിച്ച് ലോഗിൻ ചെയ്യുക.', { id: loadingToast, duration: 8000 });
       } else {
-        toast.error('Google sign-in failed. Please try again.', { id: loadingToast });
+        const errorMsg = error?.message || 'Google sign-in failed. Please use Email & Password.';
+        toast.error(`ഗൂഗിൾ ലോഗിൻ പരാജയപ്പെട്ടു (${error?.code || 'Error'}). ദയവായി നിങ്ങളുടെ ഇമെയിലും പാസ്‌വേഡും ഉപയോഗിച്ച് ലോഗിൻ ചെയ്യുക.`, { id: loadingToast, duration: 8000, description: errorMsg });
       }
     } finally {
       setIsGoogleLoggingIn(false);
