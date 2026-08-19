@@ -183,15 +183,16 @@ export default function App() {
     try {
       let q;
       const currentEmail = (activeUser.email || '').toLowerCase().trim();
-      if (isAdmin) {
-         const isSuper = MAIN_ADMINS.some(e => e.toLowerCase() === currentEmail) || !activeUser.district;
-         q = isSuper 
-           ? query(collection(db, 'users')) 
-           : query(collection(db, 'users'), where('district', '==', activeUser.district));
+      const isSuperAdminEmail = MAIN_ADMINS.some(e => e.toLowerCase() === currentEmail);
+      const isMasterAdmin = isAdmin || isSuperAdminEmail || activeUser.role === 'admin' || activeUser.isAdmin === true || currentViewRef.current === 'admin';
+
+      if (isMasterAdmin) {
+         // Master Admin mode queries the entire users collection across all Kerala districts (all 7777+ members)
+         q = query(collection(db, 'users'));
+      } else if (activeUser.district) {
+         q = query(collection(db, 'users'), where('district', '==', activeUser.district));
       } else {
-         q = activeUser.district 
-           ? query(collection(db, 'users'), where('district', '==', activeUser.district))
-           : query(collection(db, 'users'), where('registeredBy', '==', activeUser.uid));
+         q = query(collection(db, 'users'), where('registeredBy', '==', activeUser.uid));
       }
 
       let cleanList: UserProfile[] = [];

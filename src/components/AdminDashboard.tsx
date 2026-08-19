@@ -369,7 +369,10 @@ export default function AdminDashboard({
     return clean.substring(0, 3);
   };
 
-  const isSuperAdmin = MAIN_ADMINS.includes(user?.email || '');
+  const isSuperAdmin = useMemo(() => {
+    const email = (user?.email || '').toLowerCase().trim();
+    return MAIN_ADMINS.some(e => e.toLowerCase() === email) || user?.role === 'admin' || user?.isAdmin === true;
+  }, [user]);
   
   const countOf2026Members = useMemo(() => {
     return members.filter(m => {
@@ -1048,6 +1051,7 @@ export default function AdminDashboard({
         console.warn("localStorage set claims failed:", e);
       }
       setClaims(data);
+      setClaimsError(null);
       setClaimsLoading(false);
     }, (err: any) => {
       console.error("Claims fetch error:", err);

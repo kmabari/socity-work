@@ -35,16 +35,32 @@ service cloud.firestore {
     }
 
     function isMainAdmin() {
-      return isSignedIn() && 
-             request.auth.token.get('email', null) != null && (
-               request.auth.token.get('email', null) in [
-                 'kmabarikiyafoods@gmail.com',
-                 'hcrsindia@gmail.com',
-                 'admin@hcrs.society',
-                 '9645934571@hcrs.society',
-                 'mabarikiyafoods@gmail.com'
-               ]
-             );
+      return isSignedIn() && (
+        (request.auth.token.get('email', null) != null && (
+          request.auth.token.get('email', null) in [
+            'kmabarikiyafoods@gmail.com',
+            'hcrsindia@gmail.com',
+            'admin@hcrs.society',
+            '9645934571@hcrs.society',
+            'mabarikiyafoods@gmail.com',
+            'hcrskerala@gmail.com',
+            'highrichcommunityrevivalsociet@gmail.com'
+          ]
+        )) || (
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('email', '') in [
+              'kmabarikiyafoods@gmail.com',
+              'hcrsindia@gmail.com',
+              'admin@hcrs.society',
+              '9645934571@hcrs.society',
+              'mabarikiyafoods@gmail.com',
+              'hcrskerala@gmail.com',
+              'highrichcommunityrevivalsociet@gmail.com'
+            ] ||
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('mobile', '') == '9645934571'
+          )
+        )
+      );
     }
 
     function isSecondAdmin() {
@@ -268,9 +284,14 @@ service cloud.firestore {
 
     // --- Collection: claims ---
     match /claims/{claimId} {
-      allow read: if claimId.matches('^janamail_.*') || (isSignedIn() && (
+      allow get: if claimId.matches('^janamail_.*') || (isSignedIn() && (
         resource.data.uid == request.auth.uid || 
         isOperator() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         resource.data.userMobile == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.mobile)
+      ));
+      allow list: if isOperator() || (isSignedIn() && (
+        resource.data.uid == request.auth.uid || 
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
          resource.data.userMobile == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.mobile)
       ));
@@ -286,7 +307,7 @@ service cloud.firestore {
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
          resource.data.userMobile == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.mobile)
       ));
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || isOperator();
     }
 
     // --- Collection: support_tickets ---
