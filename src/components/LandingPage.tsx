@@ -27,6 +27,7 @@ import {
   Globe, 
   LayoutGrid, 
   AlertTriangle,
+  AlertCircle,
   Megaphone,
   Image as ImageIcon,
   Users,
@@ -94,7 +95,7 @@ interface LandingPageProps {
   onGalleryClick: () => void;
   onRenewWithMobile?: (mobile: string) => void;
   onRegisterWithMobile?: (mobile: string) => void;
-  onLoginDirect?: (mobile: string, pin: string) => Promise<boolean>;
+  onLoginDirect?: (mobile: string, pin: string) => Promise<{ success: boolean; error?: string } | boolean>;
   onJanamailClick?: () => void;
 }
 
@@ -235,6 +236,7 @@ export default function LandingPage({
   // States for claim lookup system
   const [claimMobile, setClaimMobile] = useState('');
   const [claimPin, setClaimPin] = useState('');
+  const [claimPinError, setClaimPinError] = useState<string | null>(null);
   const [checkingClaim, setCheckingClaim] = useState(false);
   const [loggingInClaim, setLoggingInClaim] = useState(false);
   const [claimResult, setClaimResult] = useState<'found' | 'not_found' | 'registered' | null>(null);
@@ -2635,10 +2637,21 @@ export default function LandingPage({
                           type="password"
                           maxLength={12}
                           value={claimPin}
-                          onChange={(e) => setClaimPin(e.target.value)}
+                          onChange={(e) => {
+                            setClaimPin(e.target.value);
+                            if (claimPinError) setClaimPinError(null);
+                          }}
                           placeholder="••••"
-                          className="h-12 bg-white border border-slate-200 focus:border-[#c9a227] focus:ring-0 transition-all rounded-[6px] font-semibold text-center text-lg tracking-widest font-mono text-slate-900"
+                          className={`h-12 bg-white border ${claimPinError ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/20' : 'border-slate-200 focus:border-[#c9a227]'} focus:ring-0 transition-all rounded-[6px] font-semibold text-center text-lg tracking-widest font-mono text-slate-900`}
                         />
+                        {claimPinError && (
+                          <div className="p-3.5 bg-red-50 border-2 border-red-500 rounded-lg flex items-start gap-2.5 text-red-800 shadow-xs animate-in fade-in slide-in-from-top-1 duration-200">
+                            <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                            <div className="text-xs font-bold leading-relaxed">
+                              {claimPinError}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -2647,25 +2660,30 @@ export default function LandingPage({
                         <Button 
                           onClick={async () => {
                             if (!claimPin || claimPin.length < 4) {
+                              setClaimPinError('സാധുവായ PIN നൽകുക / Please enter your secure PIN');
                               toast.error('സാധുവായ PIN നൽകുക / Please enter your secure PIN');
                               return;
                             }
+                            setClaimPinError(null);
                             setLoggingInClaim(true);
                             try {
                               if (typeof window !== 'undefined') {
                                 sessionStorage.setItem('hcrs_claim_redirect', 'true');
                               }
-                              const success = await onLoginDirect?.(claimMobile, claimPin);
-                              if (success === false) {
+                              const res: any = await onLoginDirect?.(claimMobile, claimPin);
+                              const isSuccess = res === true || (res && res.success === true);
+                              if (!isSuccess) {
                                 if (typeof window !== 'undefined') {
                                   sessionStorage.removeItem('hcrs_claim_redirect');
                                 }
-                                toast.error('PIN തെറ്റാണ്. ദയവായി വീണ്ടും ശ്രമിക്കുക. (Invalid security PIN. Please try again.)');
+                                const errText = (res && res.error) || 'തെറ്റായ പാസ്‌വേഡ്! താങ്കളുടെ ശരിയായ 6 അക്ക പാസ്‌വേഡ് നൽകുക.';
+                                setClaimPinError(errText);
                               }
-                            } catch (err) {
+                            } catch (err: any) {
                               if (typeof window !== 'undefined') {
                                 sessionStorage.removeItem('hcrs_claim_redirect');
                               }
+                              setClaimPinError(err?.message || 'ലോഗിൻ പരാജയപ്പെട്ടു.');
                               console.error(err);
                             } finally {
                               setLoggingInClaim(false);
@@ -2684,6 +2702,7 @@ export default function LandingPage({
                           setClaimResult(null);
                           setClaimMobile('');
                           setClaimPin('');
+                          setClaimPinError(null);
                         }}
                         className="w-full h-12 border border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold uppercase text-[10px] rounded-[10px]"
                       >

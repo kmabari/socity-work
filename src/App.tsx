@@ -27,7 +27,7 @@ import { setDoc, doc, updateDoc, deleteDoc, collection, onSnapshot, query, getDo
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from './lib/imageUtils';
 import { googleProvider } from './lib/firebase';
-import { printCourtComboReport, printCourtClaimReport, shareCourtComboPdf, downloadCourtComboPdf } from './lib/claimPrint';
+import { printCourtComboReport, printCourtClaimReport, shareCourtComboPdf, downloadCourtComboPdf, getCourtComboHtml, getSingleCourtClaimHtml } from './lib/claimPrint';
 import OperationJanamail from "./components/OperationJanamail";
 const MAIN_ADMINS = [
   'kmabarikiyafoods@gmail.com',
@@ -129,6 +129,8 @@ export default function App() {
   const [hasSubmittedClaim, setHasSubmittedClaim] = useState(false);
   const [submittedClaimsCount, setSubmittedClaimsCount] = useState(0);
   const [userSubmittedClaims, setUserSubmittedClaims] = useState<any[]>([]);
+  const [selectedCardClaimTab, setSelectedCardClaimTab] = useState<number>(-1);
+  const [isPreviewingClaim, setIsPreviewingClaim] = useState(false);
   const [claimRefreshTrigger, setClaimRefreshTrigger] = useState(0);
   const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
   const [isSyncingDocs, setIsSyncingDocs] = useState(false);
@@ -323,6 +325,26 @@ export default function App() {
                 console.warn("checkClaimSubmission cleanMobile query notice:", err);
                 return null;
               })
+          );
+          queryPromises.push(
+            getDocs(query(collection(db, 'claims'), where('userMobile', '==', `+91${cleanMobile}`)))
+              .catch(err => null)
+          );
+          queryPromises.push(
+            getDocs(query(collection(db, 'claims'), where('userMobile', '==', `+91 ${cleanMobile}`)))
+              .catch(err => null)
+          );
+        }
+        if (user.mobile && user.mobile !== cleanMobile) {
+          queryPromises.push(
+            getDocs(query(collection(db, 'claims'), where('userMobile', '==', user.mobile)))
+              .catch(err => null)
+          );
+        }
+        if (user.membershipId) {
+          queryPromises.push(
+            getDocs(query(collection(db, 'claims'), where('membershipId', '==', user.membershipId)))
+              .catch(err => null)
           );
         }
         const numericMobile = Number(cleanMobile);
@@ -1075,7 +1097,7 @@ export default function App() {
     }
   };
 
-  const handleLogin = async (values: { email: string, pin: string }, originView: 'login' | 'landing' = 'login'): Promise<boolean> => {
+  const handleLogin = async (values: { email: string, pin: string }, originView: 'login' | 'landing' = 'login'): Promise<{ success: boolean; error?: string } | boolean> => {
     const loadingToast = toast.loading('Logging you in...');
     const originalInput = (values.email || '').trim();
     const trimmedPin = (values.pin || '').trim();
@@ -1152,22 +1174,12 @@ export default function App() {
       let mappedUserData: any = null;
       let targetEmail = '';
 
-      const selectBestDocument = (docs: any[], enteredPin?: string) => {
+      const selectBestDocument = (docs: any[]) => {
         if (!docs || docs.length === 0) return null;
         // Sort documents to prioritize the active, non-expired/latest valid account
         const sorted = [...docs].sort((a, b) => {
           const dataA = a.data();
           const dataB = b.data();
-          
-          // Priority 0: Exact entered-PIN matching
-          if (enteredPin) {
-            const pinA = String(dataA.pin || '').trim();
-            const pinB = String(dataB.pin || '').trim();
-            const matchA = pinA === enteredPin;
-            const matchB = pinB === enteredPin;
-            if (matchA && !matchB) return -1;
-            if (matchB && !matchA) return 1;
-          }
 
           // Priority 1: User with mustChangePassword === false over mustChangePassword === true
           const changedA = dataA.mustChangePassword === false;
@@ -1241,7 +1253,7 @@ export default function App() {
         }
 
         if (!querySnap.empty) {
-          const selectedDoc = selectBestDocument(querySnap.docs, trimmedPin);
+          const selectedDoc = selectBestDocument(querySnap.docs);
           mappedUserData = selectedDoc?.data() || querySnap.docs[0].data();
           targetEmail = mappedUserData.email || `${sanitizedMobile}@hcrs.society`;
         } else {
@@ -1259,7 +1271,7 @@ export default function App() {
         }
 
         if (!querySnap.empty) {
-          const selectedDoc = selectBestDocument(querySnap.docs, trimmedPin);
+          const selectedDoc = selectBestDocument(querySnap.docs);
           mappedUserData = selectedDoc?.data() || querySnap.docs[0].data();
           targetEmail = mappedUserData.email || `${mappedUserData.mobile || 'user'}@hcrs.society`;
         } else if (originalInput.includes('@')) {
@@ -1267,7 +1279,7 @@ export default function App() {
           const qEmail = query(usersRef, where('email', '==', originalInput.toLowerCase()), limit(5));
           const querySnapEmail = await getDocs(qEmail);
           if (!querySnapEmail.empty) {
-            const selectedDoc = selectBestDocument(querySnapEmail.docs, trimmedPin);
+            const selectedDoc = selectBestDocument(querySnapEmail.docs);
             mappedUserData = selectedDoc?.data() || querySnapEmail.docs[0].data();
             targetEmail = mappedUserData.email;
           } else {
@@ -1279,7 +1291,7 @@ export default function App() {
           const qFallback = query(usersRef, where('email', '==', fallbackEmail), limit(5));
           const querySnapFallback = await getDocs(qFallback);
           if (!querySnapFallback.empty) {
-            const selectedDoc = selectBestDocument(querySnapFallback.docs, trimmedPin);
+            const selectedDoc = selectBestDocument(querySnapFallback.docs);
             mappedUserData = selectedDoc?.data() || querySnapFallback.docs[0].data();
             targetEmail = mappedUserData.email;
           } else {
@@ -1296,12 +1308,29 @@ export default function App() {
       const isAdmin = isSuperAdmin || isSecondAdmin;
       const isAdminMasterPin = isAdmin && (trimmedPin === '246810' || trimmedPin === '123456');
 
-      const isDbPinMatched = isAdminMasterPin || (mappedUserData && (
-        trimmedPin === String(mappedUserData.pin || '').trim() ||
-        trimmedPin === '123456' ||
-        (mappedUserData.mustChangePassword !== false && !mappedUserData.pin && trimmedPin === '123456') ||
-        (mappedUserData.mustChangePassword === true && trimmedPin === '123456')
-      )) || trimmedPin === '123456';
+      const storedPin = mappedUserData?.pin ? String(mappedUserData.pin).trim() : '';
+
+      // Strict validation: if user has a custom set PIN in database and it doesn't match entered PIN
+      if (mappedUserData && storedPin && storedPin !== trimmedPin && !isAdminMasterPin) {
+        try {
+          await signOut(auth);
+          setUser(null);
+        } catch (e) {}
+        if (trimmedPin === '123456' && storedPin !== '123456') {
+          const passErr: any = new Error('തെറ്റായ പാസ്‌വേഡ്! താങ്കൾ മാറ്റിയ പുതിയ 6 അക്ക പാസ്‌വേഡ് നൽകുക. (Incorrect Password! Please enter your updated 6-digit password.)');
+          passErr.code = 'auth/wrong-password';
+          throw passErr;
+        } else {
+          const passErr: any = new Error('തെറ്റായ പാസ്‌വേഡ്! താങ്കളുടെ ശരിയായ 6 അക്ക പാസ്‌വേഡ് നൽകുക. (Incorrect Password! Please enter your correct 6-digit password.)');
+          passErr.code = 'auth/wrong-password';
+          throw passErr;
+        }
+      }
+
+      const isDbPinMatched = Boolean(isAdminMasterPin || (mappedUserData && (
+        (storedPin && trimmedPin === storedPin) ||
+        (!storedPin && mappedUserData.mustChangePassword !== false && trimmedPin === '123456')
+      )));
 
       try {
         authResult = await signInWithEmailAndPassword(auth, targetEmail, trimmedPin);
@@ -1421,9 +1450,13 @@ export default function App() {
       }
       
       toast.success('Login Successful! (ലോഗിൻ വിജയിച്ചു)', { id: loadingToast });
-      return true;
+      return { success: true };
     } catch (error: any) {
       console.error("Login error details:", error.code, error.message);
+      try {
+        await signOut(auth);
+        setUser(null);
+      } catch (e) {}
       setIsLoggingIn(false);
       setView(originView); 
       
@@ -1469,24 +1502,28 @@ export default function App() {
           setIsLoggingIn(false);
           toast.success('ഡാറ്റാബേസ് കണക്ഷൻ തകരാർ കാരണം ഓഫ്ലൈൻ ബാക്കപ്പിലേക്ക് മാറ്റി! (Database offline: fallback backup loaded successfully!)', { id: loadingToast, duration: 15000 });
           setView('admin');
-          return true;
+          return { success: true };
         } catch (err: any) {
           console.error("Auto backup loader failed:", err);
         }
       }
 
       let errorMessage = 'Login failed. Please check your credentials.';
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+      if (error.message && (error.message.includes('തെറ്റായ പാസ്‌വേഡ്') || error.message.includes('Incorrect Password') || error.message.includes('പുതിയ 6 അക്ക പാസ്‌വേഡ്'))) {
+        errorMessage = error.message;
+      } else if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        errorMessage = 'തെറ്റായ പാസ്‌വേഡ്! ദയവായി താങ്കളുടെ ശരിയായ 6 അക്ക പാസ്‌വേഡ് നൽകുക. (Incorrect Password! Please enter your correct 6-digit password.)';
+      } else if (error.code === 'auth/user-not-found') {
         errorMessage = isMobile 
-          ? 'Invalid Mobile or Password. (മൊബൈൽ അല്ലെങ്കിൽ പാസ്‌വേഡ് തെറ്റാണ്)' 
-          : 'Invalid email or Password. (ഇമെയിൽ അല്ലെങ്കിൽ പാസ്‌വേഡ് തെറ്റാണ്)';
+          ? 'രജിസ്റ്റർ ചെയ്യാത്ത മൊബൈൽ നമ്പർ! ദയവായി രജിസ്റ്റർ ചെയ്യുക. (Unregistered mobile number. Please register.)' 
+          : 'അക്കൗണ്ട് കണ്ടെത്തിയില്ല. ദയവായി വിവരങ്ങൾ പരിശോധിക്കുക. (Account not found.)';
       } else if (error.code === 'auth/too-many-requests') {
         errorMessage = 'Too many attempts. Try again later. (പലതവണ ശ്രമിച്ചു, പിന്നീട് ശ്രമിക്കുക)';
       } else if (error.code === 'auth/network-request-failed' || (error.message && error.message.includes('network-request-failed'))) {
         errorMessage = 'നെറ്റ്‌വർക്ക് തകരാർ! നിങ്ങളുടെ ഇന്റർനെറ്റ് കണക്ഷൻ പരിശോധിക്കുകയോ പേജ് റീഫ്രഷ് ചെയ്യുകയോ ചെയ്യുക. (Network connection failed. Please check your internet connection or reload the page.)';
       }
-      toast.error(errorMessage, { id: loadingToast });
-      return false;
+      toast.error(errorMessage, { id: loadingToast, duration: 8000 });
+      return { success: false, error: errorMessage };
     } finally {
       setIsLoggingIn(false);
     }
@@ -2177,30 +2214,47 @@ export default function App() {
     if (!user) return;
     const loadingToast = toast.loading('Updating password / പാസ്‌വേഡ് മാറ്റുന്നു...');
     try {
-      const trimmedNewPin = newPin.trim();
-      if (!trimmedNewPin || trimmedNewPin.length < 6) {
-        throw new Error('Password must be at least 6 characters (കുറഞ്ഞത് 6 അക്കങ്ങൾ വേണം)');
+      const cleanNewPin = newPin.replace(/\D/g, '').slice(0, 6);
+      if (!cleanNewPin || cleanNewPin.length !== 6) {
+        throw new Error('Password must be exactly 6 digits (പാസ്‌വേഡ് കൃത്യമായി 6 അക്കങ്ങൾ വേണം)');
+      }
+
+      if (cleanNewPin === '123456') {
+        throw new Error('Cannot use default password 123456 (ഡീഫോൾട്ട് പാസ്‌വേഡ് 123456 ഉപയോഗിക്കാൻ പാടില്ല)');
       }
 
       // 1. Update Firebase Auth password safely (graceful catch so session re-auth issues don't abort DB update)
       if (auth.currentUser) {
         try {
-          await updatePassword(auth.currentUser, trimmedNewPin);
+          await updatePassword(auth.currentUser, cleanNewPin);
           console.log("Firebase Auth password updated successfully.");
         } catch (authPassErr: any) {
           console.warn("Auth update password note (will sync Firestore and allow login via channel resolution):", authPassErr?.message);
         }
       }
 
-      // 2. Update Firestore user document with new PIN & clear mustChange flags
+      // 2. Update primary Firestore user document with new PIN & clear mustChange flags
       const userRef = doc(db, 'users', user.uid);
       await setDoc(userRef, {
-        pin: trimmedNewPin,
+        pin: cleanNewPin,
         mustChangePassword: false,
         pinResetRequested: false
       }, { merge: true });
 
-      // 3. Sync update to ALL documents matching user's mobile, membershipId, or email in Firestore
+      // If active auth session UID is different from user.uid, update auth UID doc as well
+      if (auth.currentUser && auth.currentUser.uid !== user.uid) {
+        try {
+          await setDoc(doc(db, 'users', auth.currentUser.uid), {
+            pin: cleanNewPin,
+            mustChangePassword: false,
+            pinResetRequested: false
+          }, { merge: true });
+        } catch (authDocErr) {
+          console.warn("Auth UID doc sync note:", authDocErr);
+        }
+      }
+
+      // 3. Sync update to all documents matching user's mobile, membershipId, or email in Firestore
       const cleanMobile = user.mobile ? String(user.mobile).replace(/\D/g, '').slice(-10) : '';
       const usersRef = collection(db, 'users');
       const updateTargets = new Set<string>();
@@ -2223,13 +2277,13 @@ export default function App() {
       }
 
       for (const docId of updateTargets) {
-        if (docId !== user.uid) {
+        if (docId !== user.uid && (!auth.currentUser || docId !== auth.currentUser.uid)) {
           try {
-            await updateDoc(doc(db, 'users', docId), {
-              pin: trimmedNewPin,
+            await setDoc(doc(db, 'users', docId), {
+              pin: cleanNewPin,
               mustChangePassword: false,
               pinResetRequested: false
-            });
+            }, { merge: true });
           } catch (e) {
             console.warn("Target doc update note:", docId, e);
           }
@@ -2239,7 +2293,7 @@ export default function App() {
       // 4. Update local state & members list
       const updatedUser: UserProfile = {
         ...user,
-        pin: trimmedNewPin,
+        pin: cleanNewPin,
         mustChangePassword: false,
         pinResetRequested: false
       };
@@ -2250,13 +2304,16 @@ export default function App() {
         (user.membershipId && m.membershipId === user.membershipId)
       ) ? {
         ...m,
-        pin: trimmedNewPin,
+        pin: cleanNewPin,
         mustChangePassword: false,
         pinResetRequested: false
       } : m));
 
       try {
         localStorage.setItem(`hcrs_cached_user_${user.uid}`, JSON.stringify(updatedUser));
+        if (auth.currentUser) {
+          localStorage.setItem(`hcrs_cached_user_${auth.currentUser.uid}`, JSON.stringify(updatedUser));
+        }
       } catch (e) {
         console.warn("Could not update cached user in localStorage:", e);
       }
@@ -2998,21 +3055,6 @@ export default function App() {
 
                 {/* Account Controls Buttons Group */}
                 <div className="flex flex-col gap-2.5 w-full mt-6">
-                  {submittedClaimsCount > 0 && (
-                    <Button 
-                      onClick={() => {
-                        if (userSubmittedClaims.length > 0) {
-                          downloadCourtComboPdf(user, userSubmittedClaims);
-                        } else {
-                          toast.info('ക്ലെയിം വിവരങ്ങൾ ലഭ്യമാക്കുന്നു... അല്പസമയത്തിനകം വീണ്ടും ക്ലിക്ക് ചെയ്യുക.');
-                        }
-                      }}
-                      className="w-full h-12 rounded-xl font-black bg-emerald-600 hover:bg-emerald-700 text-white uppercase tracking-wider text-[11px] flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-95 transition-all shadow-md cursor-pointer border-2 border-emerald-400"
-                    >
-                      <Download className="w-4 h-4 shrink-0 text-white" />
-                      Download Court Form (PDF ഡൗൺലോഡ്)
-                    </Button>
-                  )}
                   <Button 
                     onClick={() => setIsEditingProfile(true)}
                     className="w-full h-12 rounded-xl font-black bg-[#1a2b5c] dark:bg-[#1a2b5c] border-2 border-amber-400 text-amber-400 hover:bg-amber-400 hover:text-slate-950 uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-95 transition-all shadow-md"
@@ -3058,82 +3100,164 @@ export default function App() {
                 {!isScreenshotMode && (
                   <div className="w-full mt-6 space-y-4">
                     {/* Consignment Advance Refund Form Section (Above Billing) */}
-                    <div className="w-full bg-white dark:bg-slate-900 border-2 border-[#003366]/30 dark:border-blue-800/40 rounded-2xl p-4 sm:p-5 shadow-md relative overflow-hidden">
-                      <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-9 h-9 rounded-xl bg-[#003366]/10 dark:bg-blue-900/40 flex items-center justify-center text-[#003366] dark:text-blue-400 shrink-0">
+                    <div className="w-full bg-white dark:bg-slate-900 border-2 border-[#003366]/35 dark:border-blue-800/50 rounded-2xl shadow-md overflow-hidden">
+                      {/* Card Header Bar */}
+                      <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-900 via-[#003366] to-[#002244] text-white flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-amber-300 shrink-0 border border-white/15 shadow-inner">
                             <FileText className="w-5 h-5" />
                           </div>
                           <div>
-                            <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                            <h4 className="text-xs sm:text-sm font-black uppercase tracking-tight text-white flex items-center gap-2">
                               കൺസൈൻമെന്റ് അഡ്വാൻസ് റീഫണ്ട് ഫോം
+                              <Badge className="bg-amber-400 text-slate-950 text-[9px] font-black uppercase px-2 py-0.5 tracking-wider">
+                                {userSubmittedClaims.length > 0 ? `കോർട്ട് റെക്കോർഡ് (${userSubmittedClaims.length} പേജ്)` : 'ഔദ്യോഗിക ഫോം'}
+                              </Badge>
                             </h4>
-                            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                              Consignment Advance Refund Form (Official A4)
+                            <p className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">
+                              Consignment Advance Court & Admin Verified Statement
                             </p>
                           </div>
                         </div>
-                        <Badge className="bg-[#003366] text-white text-[9px] font-black uppercase px-2 py-0.5 tracking-wider shrink-0">
-                          {userSubmittedClaims.length > 0 ? `${userSubmittedClaims.length} Persons` : 'Official Form'}
-                        </Badge>
+
+                        {/* Action Buttons */}
+                        {userSubmittedClaims.length > 0 && (
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => printCourtComboReport(user, userSubmittedClaims)}
+                              className="h-9 px-3.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer border border-blue-300/40"
+                              title="Print A4 Copy / Save as PDF"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                              <span>പ്രിന്റ് (A4)</span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => downloadCourtComboPdf(user, userSubmittedClaims)}
+                              className="h-9 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer border border-emerald-400/40"
+                              title="Download PDF"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              <span>PDF</span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => setIsPreviewingClaim(true)}
+                              variant="outline"
+                              className="h-9 px-3 border-white/20 bg-white/10 hover:bg-white/20 text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 cursor-pointer"
+                              title="Full Screen View"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-amber-300" />
+                              <span className="hidden sm:inline">ഫുൾ വ്യൂ</span>
+                            </Button>
+                          </div>
+                        )}
                       </div>
 
                       {userSubmittedClaims.length > 0 ? (
-                        <div className="mt-3.5 space-y-3.5">
-                          {/* Financial Mini Summary */}
-                          <div className="grid grid-cols-3 gap-2 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 text-center">
-                            <div>
-                              <span className="block text-[9px] font-extrabold text-slate-500 uppercase">Adv. Paid</span>
-                              <span className="text-[12px] sm:text-[13px] font-mono font-bold text-slate-800 dark:text-slate-200">
-                                ₹{userSubmittedClaims.reduce((s, c) => s + (Number(c.totalPaid) || 0), 0).toLocaleString('en-IN')}
-                              </span>
+                        <div className="p-3 sm:p-4 bg-slate-100 dark:bg-slate-950 space-y-3">
+                          {/* Financial Summary & Member Page Tabs */}
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                            {/* Member Page Switcher Tabs */}
+                            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-thin">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedCardClaimTab(-1)}
+                                className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all shrink-0 cursor-pointer ${
+                                  selectedCardClaimTab === -1
+                                    ? 'bg-[#003366] text-white shadow-sm'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                                }`}
+                              >
+                                എല്ലാം ഒരുമിച്ച് ({userSubmittedClaims.length} പേജ്)
+                              </button>
+                              {userSubmittedClaims.map((claim, idx) => {
+                                const relMalayalam = 
+                                  claim.relation === 'Self' ? 'സ്വന്തം' :
+                                  claim.relation === 'Mother' ? 'അമ്മ' :
+                                  claim.relation === 'Father' ? 'അച്ഛൻ' :
+                                  claim.relation === 'Son' ? 'മകൻ' :
+                                  claim.relation === 'Daughter' ? 'മകൾ' :
+                                  claim.relation === 'Wife' ? 'ഭാര്യ' :
+                                  claim.relation === 'Husband' ? 'ഭർത്താവ്' : (claim.relation || `പേജ് ${idx + 1}`);
+                                return (
+                                  <button
+                                    key={claim.id || idx}
+                                    type="button"
+                                    onClick={() => setSelectedCardClaimTab(idx)}
+                                    className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all shrink-0 cursor-pointer flex items-center gap-1 ${
+                                      selectedCardClaimTab === idx
+                                        ? 'bg-[#003366] text-white shadow-sm'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                                    }`}
+                                  >
+                                    <span>{idx + 1}. {relMalayalam}</span>
+                                    <span className="opacity-70 font-mono text-[9px]">({claim.userName || user.name})</span>
+                                  </button>
+                                );
+                              })}
                             </div>
-                            <div className="border-x border-slate-200 dark:border-slate-700">
-                              <span className="block text-[9px] font-extrabold text-slate-500 uppercase">Received</span>
-                              <span className="text-[12px] sm:text-[13px] font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                                ₹{userSubmittedClaims.reduce((s, c) => s + (Number(c.totalReceived) || 0), 0).toLocaleString('en-IN')}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="block text-[9px] font-extrabold text-slate-500 uppercase">Balance</span>
-                              <span className="text-[12px] sm:text-[13px] font-mono font-black text-[#003366] dark:text-blue-400">
+
+                            {/* Balance indicator */}
+                            <div className="flex items-center gap-3 px-3 py-1 bg-blue-50 dark:bg-blue-950/40 rounded-lg border border-blue-200 dark:border-blue-900/40 text-right shrink-0">
+                              <span className="text-[10px] font-extrabold text-slate-600 dark:text-slate-400 uppercase">ആകെ ബാലൻസ്:</span>
+                              <span className="text-xs font-black font-mono text-[#003366] dark:text-blue-400">
                                 ₹{userSubmittedClaims.reduce((s, c) => s + (Number(c.totalPending) || 0), 0).toLocaleString('en-IN')}
                               </span>
                             </div>
                           </div>
 
-                          {/* Print & Download Action Grid */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                            <Button
-                              onClick={() => downloadCourtComboPdf(user, userSubmittedClaims)}
-                              className="w-full h-12 rounded-xl font-black bg-[#003366] hover:bg-[#002244] text-white text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all cursor-pointer border-2 border-blue-400"
-                              title="Download Official PDF File"
-                            >
-                              <Download className="w-4 h-4 shrink-0 text-white" />
-                              ഡൗൺലോഡ് (PDF Download)
-                            </Button>
-                            <Button
-                              onClick={() => printCourtComboReport(user, userSubmittedClaims)}
-                              variant="outline"
-                              className="w-full h-12 rounded-xl font-black border-2 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 shadow-sm active:scale-95 transition-all cursor-pointer"
-                              title="Print A4 Copy / Preview"
-                            >
-                              <Printer className="w-4 h-4 shrink-0 text-slate-700 dark:text-slate-300" />
-                              പ്രിന്റ് (Print A4)
-                            </Button>
+                          {/* Direct Inline Document Frame */}
+                          <div className="w-full h-[620px] rounded-xl overflow-hidden border border-slate-300 dark:border-slate-800 bg-white shadow-inner relative">
+                            <iframe
+                              srcDoc={
+                                selectedCardClaimTab === -1
+                                  ? getCourtComboHtml(user, userSubmittedClaims)
+                                  : getSingleCourtClaimHtml(user, userSubmittedClaims[selectedCardClaimTab], selectedCardClaimTab + 1, userSubmittedClaims.length)
+                              }
+                              title="Official Court Statement Document"
+                              className="w-full h-full border-0 bg-white"
+                            />
+                          </div>
+
+                          {/* Bottom Action Footer */}
+                          <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-1">
+                            <p className="text-[10px] text-slate-600 dark:text-slate-400 font-bold">
+                              ✓ ഈ ഫോം തന്നെയാണ് അഡ്മിൻ പാനലിലും കോടതി സമർപ്പണത്തിനും ഔദ്യോഗികമായി ഉപയോഗിക്കുന്നത്.
+                            </p>
+                            <div className="flex items-center gap-2 w-full sm:w-auto">
+                              <Button
+                                size="sm"
+                                onClick={() => printCourtComboReport(user, userSubmittedClaims)}
+                                className="flex-1 sm:flex-none h-9 px-4 bg-[#003366] hover:bg-[#002244] text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                              >
+                                <Printer className="w-3.5 h-3.5" />
+                                <span>പ്രിന്റ് (Print A4)</span>
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => downloadCourtComboPdf(user, userSubmittedClaims)}
+                                variant="outline"
+                                className="flex-1 sm:flex-none h-9 px-4 border-slate-300 text-slate-800 hover:bg-slate-100 text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 cursor-pointer bg-white shadow-sm"
+                              >
+                                <Download className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>ഡൗൺലോഡ് (PDF)</span>
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       ) : (
-                        <div className="mt-3 text-center space-y-3">
-                          <p className="text-xs text-slate-600 dark:text-slate-300 font-semibold leading-relaxed">
-                            താങ്കളുടെ ഔദ്യോഗിക കൺസൈൻമെന്റ് അഡ്വാൻസ് റീഫണ്ട് ഫോം തയ്യാറാക്കുന്നതിനായി ക്ലെയിം വിവരങ്ങൾ രേഖപ്പെടുത്തുക.
+                        <div className="p-6 text-center space-y-3 bg-slate-50 dark:bg-slate-900/60">
+                          <p className="text-xs text-slate-600 dark:text-slate-300 font-semibold leading-relaxed max-w-md mx-auto">
+                            ക്ലെയിം വിവരങ്ങൾ രേഖപ്പെടുത്തിയ ശേഷം കോർട്ടിലേക്കും അഡ്മിൻ പാനലിലേക്കുമുള്ള ഔദ്യോഗിക ഫോം (Court Statement Record) ഇവിടെ നേരിട്ട് ലഭ്യമാകുന്നതാണ്.
                           </p>
                           <Button
                             onClick={() => setView('support')}
-                            className="w-full h-11 rounded-xl font-black bg-[#003366] hover:bg-[#002244] text-white text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                            className="h-11 px-6 rounded-xl font-black bg-[#003366] hover:bg-[#002244] text-white text-xs uppercase tracking-wider inline-flex items-center justify-center gap-2 shadow-md cursor-pointer"
                           >
                             <FileText className="w-4 h-4" />
-                            വിവരങ്ങൾ നൽകി ഫോം തയ്യാറാക്കുക (Fill Form)
+                            വിവര രജിസ്ട്രി ഫോം പൂരിപ്പിക്കുക (Fill Info Registry)
                           </Button>
                         </div>
                       )}
@@ -3143,6 +3267,69 @@ export default function App() {
                     <PaymentReceipts user={user} />
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Claim Form Live Preview Modal */}
+          {isPreviewingClaim && user && userSubmittedClaims.length > 0 && (
+            <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center p-2 sm:p-4">
+              <div className="bg-white dark:bg-slate-900 w-full max-w-5xl h-[94vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-slate-800">
+                {/* Modal Header */}
+                <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 bg-slate-900 text-white border-b border-slate-800 shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-600/30 flex items-center justify-center text-blue-400">
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black uppercase tracking-tight text-white flex items-center gap-2">
+                        കൺസൈൻമെന്റ് അഡ്വാൻസ് റീഫണ്ട് ഫോം
+                        <Badge className="bg-blue-600 text-white text-[9px] font-bold px-2 py-0.5 uppercase">
+                          {userSubmittedClaims.length} {userSubmittedClaims.length === 1 ? 'പേജ്' : 'പേജുകൾ'}
+                        </Badge>
+                      </h3>
+                      <p className="text-[10px] text-slate-400 font-semibold">
+                        Official A4 Record • {user.name}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => printCourtComboReport(user, userSubmittedClaims)}
+                      className="h-9 px-3.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">പ്രിന്റ് / സേവ് PDF</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => downloadCourtComboPdf(user, userSubmittedClaims)}
+                      variant="outline"
+                      className="h-9 px-3.5 border-slate-700 text-slate-200 hover:bg-slate-800 hover:text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">ഡൗൺലോഡ്</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setIsPreviewingClaim(false)}
+                      className="h-9 px-3 text-slate-400 hover:text-white hover:bg-slate-800 text-sm font-black rounded-xl cursor-pointer"
+                    >
+                      ✕
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Preview Content (Rendered Iframe displaying the exact court statement) */}
+                <div className="flex-1 bg-slate-100 dark:bg-slate-950 p-2 sm:p-4 overflow-hidden">
+                  <iframe
+                    srcDoc={getCourtComboHtml(user, userSubmittedClaims)}
+                    title="Consignment Advance Statement Preview"
+                    className="w-full h-full rounded-xl border border-slate-300 dark:border-slate-800 bg-white shadow-inner"
+                  />
+                </div>
               </div>
             </div>
           )}

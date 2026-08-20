@@ -2,7 +2,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { motion } from 'motion/react';
-import { Lock, ArrowRight, ArrowLeft, KeyRound, Smartphone, ShieldCheck } from 'lucide-react';
+import { Lock, ArrowRight, ArrowLeft, KeyRound, Smartphone, ShieldCheck, AlertCircle } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -34,7 +35,7 @@ const loginSchema = z.object({
 type LoginValues = z.infer<typeof loginSchema>;
 
 interface LoginFormProps {
-  onLogin: (values: { email: string; pin: string }) => void;
+  onLogin: (values: { email: string; pin: string }) => Promise<{ success: boolean; error?: string } | boolean> | void;
   onGoogleLogin: () => void;
   onBack: () => void;
   isLoading?: boolean;
@@ -42,6 +43,7 @@ interface LoginFormProps {
 
 export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = false }: LoginFormProps) {
   const { t } = useI18n();
+  const [authError, setAuthError] = useState<string | null>(null);
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -50,8 +52,18 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
     },
   });
 
-  const onSubmit = (values: LoginValues) => {
-    onLogin({ email: values.mobile, pin: values.pin });
+  const onSubmit = async (values: LoginValues) => {
+    setAuthError(null);
+    try {
+      const result: any = await onLogin({ email: values.mobile, pin: values.pin });
+      if (result && typeof result === 'object' && result.success === false) {
+        setAuthError(result.error || 'ലോഗിൻ പരാജയപ്പെട്ടു. വിവരങ്ങൾ പരിശോധിക്കുക.');
+      } else if (result === false) {
+        setAuthError('തെറ്റായ പാസ്‌വേഡ്! താങ്കളുടെ ശരിയായ 6 അക്ക പാസ്‌വേഡ് നൽകുക.');
+      }
+    } catch (err: any) {
+      setAuthError(err?.message || 'ലോഗിൻ പരാജയപ്പെട്ടു.');
+    }
   };
 
   const handleForgotPassword = async () => {
@@ -154,6 +166,7 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
                           placeholder="10 അക്ക മൊബൈൽ നമ്പർ" 
                           disabled={isLoading}
                           onChange={(e) => {
+                            if (authError) setAuthError(null);
                             const val = e.target.value;
                             if (val.includes('@')) {
                               field.onChange(val);
@@ -161,7 +174,7 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
                               field.onChange(val.replace(/\D/g, '').slice(0, 10));
                             }
                           }}
-                          className={`pl-12 h-13 bg-white border-2 border-slate-300 focus:border-[#1a2b5c] focus:ring-2 focus:ring-[#1a2b5c]/20 transition-all rounded-2xl font-bold text-sm text-slate-950 placeholder:text-slate-500 shadow-xs ${fieldState.error ? 'border-red-500' : ''}`} 
+                          className={`pl-12 h-13 bg-white border-2 ${authError ? 'border-red-400 bg-red-50/10' : 'border-slate-300'} focus:border-[#1a2b5c] focus:ring-2 focus:ring-[#1a2b5c]/20 transition-all rounded-2xl font-bold text-sm text-slate-950 placeholder:text-slate-500 shadow-xs ${fieldState.error ? 'border-red-500' : ''}`} 
                         />
                       </div>
                     </FormControl>
@@ -197,7 +210,11 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
                           placeholder="Password" 
                           disabled={isLoading}
                           maxLength={20}
-                          className={`pl-12 h-13 bg-white border-2 border-slate-300 focus:border-[#1a2b5c] focus:ring-2 focus:ring-[#1a2b5c]/20 transition-all rounded-2xl font-bold text-sm text-slate-950 placeholder:text-slate-500 shadow-xs ${fieldState.error ? 'border-red-500' : ''}`} 
+                          onChange={(e) => {
+                            if (authError) setAuthError(null);
+                            field.onChange(e.target.value);
+                          }}
+                          className={`pl-12 h-13 bg-white border-2 ${authError ? 'border-red-500 bg-red-50/30' : 'border-slate-300'} focus:border-[#1a2b5c] focus:ring-2 focus:ring-[#1a2b5c]/20 transition-all rounded-2xl font-bold text-sm text-slate-950 placeholder:text-slate-500 shadow-xs ${fieldState.error ? 'border-red-500' : ''}`} 
                         />
                       </div>
                     </FormControl>
@@ -205,6 +222,15 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
                   </FormItem>
                 )}
               />
+
+              {authError && (
+                <div className="p-4 bg-red-50 border-2 border-red-500 rounded-2xl flex items-start gap-3 text-red-800 shadow-sm animate-in fade-in slide-in-from-top-1 duration-200">
+                  <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                  <div className="text-xs font-bold leading-relaxed space-y-0.5">
+                    <p className="text-red-950 font-black">{authError}</p>
+                  </div>
+                </div>
+              )}
 
               <Button 
                 type="submit" 

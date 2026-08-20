@@ -26,23 +26,30 @@ export default function ChangePasswordForm({
   const [showConfirmPin, setShowConfirmPin] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const handleNewPinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Strictly numeric, maximum 6 digits
+    const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 6);
+    setNewPin(digitsOnly);
+  };
+
+  const handleConfirmPinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Strictly numeric, maximum 6 digits
+    const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 6);
+    setConfirmPin(digitsOnly);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanNewPin = newPin.trim();
-    const cleanConfirmPin = confirmPin.trim();
+    const cleanNewPin = newPin.replace(/\D/g, '').slice(0, 6);
+    const cleanConfirmPin = confirmPin.replace(/\D/g, '').slice(0, 6);
 
-    if (!cleanNewPin) {
-      toast.error('ദയവായി പുതിയ പാസ്‌വേഡ് നൽകുക. (Please enter a new password)');
-      return;
-    }
-
-    if (cleanNewPin.length < 6) {
-      toast.error('പാസ്‌വേഡ് കുറഞ്ഞത് 6 അക്കങ്ങൾ വേണം. (Password must be at least 6 digits)');
+    if (!cleanNewPin || cleanNewPin.length !== 6) {
+      toast.error('പാസ്‌വേഡ് കൃത്യമായി 6 അക്കങ്ങൾ (digits) ആയിരിക്കണം. (Password must be exactly 6 digits)');
       return;
     }
 
     if (cleanNewPin === '123456') {
-      toast.error('ഡീഫോൾട്ട് പാസ്‌വേഡ് (123456) ഉപയോഗിക്കാൻ പാടില്ല. മറ്റൊരു പാസ്‌വേഡ് നൽകുക. (Cannot use default password 123456)');
+      toast.error('ഡീഫോൾട്ട് പാസ്‌വേഡ് (123456) ഉപയോഗിക്കാൻ പാടില്ല. പുതിയ 6 അക്ക പാസ്‌വേഡ് നൽകുക. (Cannot use default password 123456)');
       return;
     }
 
@@ -81,7 +88,7 @@ export default function ChangePasswordForm({
           </h2>
           
           <p className="text-xs sm:text-sm text-slate-600 font-semibold leading-relaxed">
-            സുരക്ഷ മുൻനിർത്തി ആദ്യമായി ലോഗിൻ ചെയ്യുമ്പോൾ ഡീഫോൾട്ട് പാസ്‌വേഡ് (123456) മാറ്റി പുതിയ രഹസ്യ കോഡ് നൽകേണ്ടതുണ്ട്.
+            സുരക്ഷ മുൻനിർത്തി ആദ്യമായി ലോഗിൻ ചെയ്യുമ്പോൾ ഡീഫോൾട്ട് പാസ്‌വേഡ് (123456) മാറ്റി പുതിയ 6 അക്ക രഹസ്യ കോഡ് നൽകേണ്ടതുണ്ട്.
           </p>
         </div>
 
@@ -100,18 +107,25 @@ export default function ChangePasswordForm({
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="new-pin" className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-              <Lock className="w-3.5 h-3.5 text-brand-blue" />
-              പുതിയ പാസ്‌വേഡ് (New 6-Digit Password)
-            </Label>
+            <div className="flex justify-between items-center">
+              <Label htmlFor="new-pin" className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-brand-blue" />
+                പുതിയ പാസ്‌വേഡ് (New 6-Digit Password)
+              </Label>
+              <span className={`text-[11px] font-mono font-black ${newPin.length === 6 ? 'text-emerald-600' : 'text-slate-400'}`}>
+                {newPin.length}/6 digits
+              </span>
+            </div>
             <div className="relative">
               <Input
                 id="new-pin"
                 type={showNewPin ? 'text' : 'password'}
-                maxLength={20}
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
                 placeholder="6 അക്ക രഹസ്യ കോഡ് നൽകുക"
                 value={newPin}
-                onChange={e => setNewPin(e.target.value)}
+                onChange={handleNewPinChange}
                 className="h-12 rounded-xl border-slate-300 pr-11 font-mono text-base font-black focus-visible:ring-brand-blue tracking-widest"
                 required
                 autoFocus
@@ -124,22 +138,29 @@ export default function ChangePasswordForm({
                 {showNewPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-            <p className="text-[10px] text-slate-500 font-bold">കുറഞ്ഞത് 6 അക്കങ്ങൾ ഉണ്ടായിരിക്കണം (e.g. 6-digit PIN)</p>
+            <p className="text-[10px] text-slate-500 font-bold">കൃത്യമായി 6 അക്കങ്ങൾ ടൈപ്പ് ചെയ്യുക (Only 6 numbers)</p>
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="confirm-pin" className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              പാസ്‌വേഡ് വീണ്ടും നൽകുക (Confirm New Password)
-            </Label>
+            <div className="flex justify-between items-center">
+              <Label htmlFor="confirm-pin" className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                പാസ്‌വേഡ് വീണ്ടും നൽകുക (Confirm 6-Digit Password)
+              </Label>
+              <span className={`text-[11px] font-mono font-black ${confirmPin.length === 6 ? 'text-emerald-600' : 'text-slate-400'}`}>
+                {confirmPin.length}/6 digits
+              </span>
+            </div>
             <div className="relative">
               <Input
                 id="confirm-pin"
                 type={showConfirmPin ? 'text' : 'password'}
-                maxLength={20}
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
                 placeholder="പുതിയ പാസ്‌വേഡ് ഒരിക്കൽ കൂടി"
                 value={confirmPin}
-                onChange={e => setConfirmPin(e.target.value)}
+                onChange={handleConfirmPinChange}
                 className="h-12 rounded-xl border-slate-300 pr-11 font-mono text-base font-black focus-visible:ring-brand-blue tracking-widest"
                 required
               />
@@ -156,14 +177,14 @@ export default function ChangePasswordForm({
           {newPin === '123456' && (
             <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
-              123456 ഡീഫോൾട്ട് പാസ്‌വേഡ് ആയതിനാൽ പുതിയ മറ്റൊരു പാസ്‌വേഡ് തിരഞ്ഞെടുക്കുക.
+              123456 ഡീഫോൾട്ട് പാസ്‌വേഡ് ആയതിനാൽ പുതിയ മറ്റൊരു 6 അക്ക പാസ്‌വേഡ് തിരഞ്ഞെടുക്കുക.
             </div>
           )}
 
           <div className="pt-2 space-y-2.5">
             <Button
               type="submit"
-              disabled={isSubmitting || isLoading || !newPin || newPin === '123456'}
+              disabled={isSubmitting || isLoading || newPin.length !== 6 || confirmPin.length !== 6 || newPin === '123456'}
               className="w-full h-12 rounded-xl bg-brand-magenta hover:bg-brand-magenta/95 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2 cursor-pointer border-b-4 border-[#9c7203]/60"
             >
               <KeyRound className="w-4 h-4" />

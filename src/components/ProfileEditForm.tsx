@@ -131,9 +131,14 @@ export default function ProfileEditForm({ user, onSave, onCancel, isMandatory = 
               <span className="text-xs font-black text-slate-600 truncate block">{user.state || 'Kerala'}</span>
             </div>
           </div>
-          <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold text-center mt-2 bg-amber-50 dark:bg-amber-950/30 p-2 rounded-xl border border-amber-200 dark:border-amber-800">
-            പേര്, മൊബൈൽ നമ്പർ, മെമ്പർഷിപ്പ് നമ്പർ എന്നിവയിൽ മാറ്റങ്ങൾ വരുത്തുവാൻ അഡ്മിനുമായി ബന്ധപ്പെടുക. (Contact admin to update core credentials)
-          </p>
+          <div className="mt-2.5 bg-amber-50 border border-amber-300 rounded-xl p-3 text-center">
+            <p className="text-xs sm:text-sm font-bold text-amber-950 leading-snug">
+              പേര്, മൊബൈൽ നമ്പർ, മെമ്പർഷിപ്പ് നമ്പർ എന്നിവയിൽ മാറ്റങ്ങൾ വരുത്തുവാൻ അഡ്മിനുമായി ബന്ധപ്പെടുക.
+            </p>
+            <p className="text-[11px] font-semibold text-amber-800 mt-0.5">
+              (Contact admin to update core credentials)
+            </p>
+          </div>
         </div>
 
         {/* EDITABLE FIELDS SECTION */}

@@ -980,6 +980,109 @@ export const printCourtClaimReport = (claim: any, memberProfile?: any) => {
 };
 
 /**
+ * Get Court Combo Report Complete HTML string for direct in-app preview iframe / modal
+ */
+export const getCourtComboHtml = (primaryMember: any, memberClaims: any[]): string => {
+  if (!memberClaims || memberClaims.length === 0) return '';
+  const uniqueMap = new Map<string, any>();
+  for (const c of memberClaims) {
+    const key = c.id || `${c.userMobile || ''}_${c.userName || ''}_${c.highrichId || ''}_${c.relation || ''}`;
+    if (!uniqueMap.has(key)) {
+      uniqueMap.set(key, c);
+    }
+  }
+  const cleanClaims = Array.from(uniqueMap.values());
+  const totalCount = cleanClaims.length;
+
+  return `<!DOCTYPE html>
+<html lang="ml">
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      ${getCourtReportBaseStyles()}
+      body {
+        padding: 16px 12px;
+        background: #f8fafc;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 24px;
+      }
+      .page-container {
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+        border: 1.5px solid #cbd5e1;
+        background: #ffffff;
+        margin-bottom: 24px;
+      }
+      @media print {
+        body {
+          padding: 0;
+          background: #ffffff;
+        }
+        .page-container {
+          box-shadow: none;
+          border: none;
+          margin-bottom: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="watermark">CONSIGNMENT ADVANCE STATEMENT</div>
+    ${cleanClaims.map((claim, idx) => {
+      return renderPersonCourtClaimPage(claim, primaryMember, idx + 1, totalCount);
+    }).join('')}
+  </body>
+</html>`;
+};
+
+/**
+ * Get Single Court Claim Report Complete HTML string for direct in-app preview
+ */
+export const getSingleCourtClaimHtml = (primaryMember: any, claim: any, pageNum: number = 1, totalPages: number = 1): string => {
+  if (!claim) return '';
+  return `<!DOCTYPE html>
+<html lang="ml">
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      ${getCourtReportBaseStyles()}
+      body {
+        padding: 16px 12px;
+        background: #f8fafc;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .page-container {
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+        border: 1.5px solid #cbd5e1;
+        background: #ffffff;
+      }
+      @media print {
+        body {
+          padding: 0;
+          background: #ffffff;
+        }
+        .page-container {
+          box-shadow: none;
+          border: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="watermark">CONSIGNMENT ADVANCE STATEMENT</div>
+    ${renderPersonCourtClaimPage(claim, primaryMember, pageNum, totalPages)}
+  </body>
+</html>`;
+};
+
+/**
  * Print Court Combo Report (All persons in a combo, exactly 1 A4 page per person)
  */
 export const printCourtComboReport = (primaryMember: any, memberClaims: any[]) => {

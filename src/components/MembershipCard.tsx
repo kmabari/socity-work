@@ -274,33 +274,40 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
     }
   };
 
-  const shareCardPDF = async () => {
+  const shareCardImage = async () => {
     if (!cardRef.current) return;
-    const loadingToast = toast.loading('PDF തയ്യാറാക്കുന്നു (Preparing PDF)...');
+    const loadingToast = toast.loading('കാർഡ് ചിത്രം തയ്യാറാക്കുന്നു (Preparing Image)...');
     try {
-      const pdfBlob = await generateCardPdfBlob();
-      if (!pdfBlob) {
-        toast.error('PDF തയ്യാറാക്കാൻ സാധിച്ചില്ല.', { id: loadingToast });
-        return;
-      }
-      const cleanName = member.name.trim().replace(/\s+/g, '_');
-      const fileName = `HCRS_ID_${cleanName}.pdf`;
-      const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+      const canvas = await html2canvas(cardRef.current, { 
+        scale: 3.5, 
+        useCORS: true, 
+        backgroundColor: null, 
+        onclone: html2canvasOklchOnClone 
+      });
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          toast.error('ചിത്രം തയ്യാറാക്കാൻ സാധിച്ചില്ല.', { id: loadingToast });
+          return;
+        }
+        const cleanName = member.name.trim().replace(/\s+/g, '_');
+        const fileName = `HCRS_CARD_${cleanName}.png`;
+        const imageFile = new File([blob], fileName, { type: 'image/png' });
 
-      if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
-        toast.dismiss(loadingToast);
-        await navigator.share({
-          files: [pdfFile],
-          title: `HCRS ID Card - ${member.name}`,
-          text: `Highrich Community Revival Society Membership ID Card of ${member.name} (${member.membershipId || ''})`
-        });
-      } else {
-        triggerBlobDownload(pdfBlob, fileName);
-        toast.success('PDF ഫോണിലേക്ക് ഡൗൺലോഡ് ആയിട്ടുണ്ട്! വാട്സാപ്പിൽ നേരിട്ട് അറ്റാച്ച് ചെയ്ത് അയക്കാം.', { id: loadingToast, duration: 6000 });
-      }
+        if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare && navigator.canShare({ files: [imageFile] })) {
+          toast.dismiss(loadingToast);
+          await navigator.share({
+            files: [imageFile],
+            title: `HCRS ID Card - ${member.name}`,
+            text: `Highrich Community Revival Society Membership ID Card of ${member.name} (${member.membershipId || ''})`
+          });
+        } else {
+          triggerBlobDownload(blob, fileName);
+          toast.success('കാർഡ് ഇമേജ് ഡൗൺലോഡ് ആയിട്ടുണ്ട്! വാട്സാപ്പിൽ നേരിട്ട് അയക്കാം.', { id: loadingToast, duration: 6000 });
+        }
+      }, 'image/png');
     } catch (error: any) {
       if (error?.name !== 'AbortError') {
-        console.error('Share PDF error:', error);
+        console.error('Share Image error:', error);
         toast.error('ഷെയർ ചെയ്യുന്നതിൽ തടസ്സം നേരിട്ടു: ' + (error?.message || ''), { id: loadingToast });
       } else {
         toast.dismiss(loadingToast);
@@ -310,7 +317,7 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
 
   const downloadPNG = async () => {
     if (!cardRef.current) return;
-    const loadingToast = toast.loading('ചിത്രം (PNG) ഡൗൺലോഡ് ചെയ്യുന്നു...');
+    const loadingToast = toast.loading('കാർഡ് ചിത്രം (Image) ഡൗൺലോഡ് ചെയ്യുന്നു...');
     try {
       const canvas = await html2canvas(cardRef.current, { 
         scale: 3.5, 
@@ -322,7 +329,7 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
         if (blob) {
           const cleanName = member.name.trim().replace(/\s+/g, '_');
           triggerBlobDownload(blob, `HCRS_CARD_${cleanName}.png`);
-          toast.success('മെമ്പർഷിപ്പ് കാർഡ് ഇമേജ് ഡൗൺലോഡ് ആയിട്ടുണ്ട്!', { id: loadingToast });
+          toast.success('മെമ്പർഷിപ്പ് കാർഡ് ഇമേജ് വിജയകരമായി ഡൗൺലോഡ് ചെയ്‌തിട്ടുണ്ട്!', { id: loadingToast });
         }
       }, 'image/png');
     } catch (err) {
@@ -956,55 +963,45 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
             <div className="flex flex-col gap-3">
               {/* Primary Actions Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {/* 1. DOWNLOAD A4 PRINT PDF BUTTON */}
+                {/* 1. DOWNLOAD CARD IMAGE BUTTON */}
                 <Button 
-                  onClick={downloadA4PDF}
-                  className="w-full h-auto min-h-13 py-3 px-4 font-black rounded-2xl text-xs sm:text-sm uppercase tracking-wider shadow-md bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white flex flex-col items-center justify-center gap-0.5 transition-transform active:scale-95 border border-red-500/20 cursor-pointer"
+                  onClick={downloadPNG}
+                  className="w-full h-auto min-h-13 py-3 px-4 font-black rounded-2xl text-xs sm:text-sm uppercase tracking-wider shadow-md bg-gradient-to-r from-blue-700 to-indigo-800 hover:from-blue-800 hover:to-indigo-900 text-white flex flex-col items-center justify-center gap-0.5 transition-transform active:scale-95 border border-blue-400/30 cursor-pointer"
                 >
                   <div className="flex items-center gap-2 justify-center">
-                    <FileText className="w-4 h-4 text-white shrink-0" />
-                    <span>ഡൗൺലോഡ് PDF (A4 PRINT)</span>
+                    <Download className="w-4 h-4 text-white shrink-0" />
+                    <span>ഐഡി കാർഡ് ഡൗൺലോഡ്</span>
                   </div>
-                  <span className="text-[11px] font-bold tracking-normal block text-red-100 font-sans">
-                    (പ്രിന്റ് എടുക്കാൻ പാകത്തിലുള്ള PDF)
+                  <span className="text-[11px] font-bold tracking-normal block text-blue-100 font-sans">
+                    (Download Card Image / PNG)
                   </span>
                 </Button>
 
-                {/* 2. SHARE PDF VIA WHATSAPP BUTTON */}
+                {/* 2. SHARE IMAGE VIA WHATSAPP BUTTON */}
                 <Button 
-                  onClick={shareCardPDF}
+                  onClick={shareCardImage}
                   className="w-full h-auto min-h-13 py-3 px-4 font-black rounded-2xl text-xs sm:text-sm uppercase tracking-wider shadow-md bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 flex flex-col items-center justify-center gap-0.5 transition-transform active:scale-95 border border-green-400/30 cursor-pointer"
                 >
                   <div className="flex items-center gap-2 justify-center">
                     <Share2 className="w-4 h-4 text-slate-950 shrink-0" />
-                    <span>വാട്സാപ്പിൽ PDF അയക്കുക</span>
+                    <span>വാട്സാപ്പിൽ അയക്കുക</span>
                   </div>
                   <span className="text-[11px] font-bold tracking-normal block text-slate-900 font-sans">
-                    (Share PDF directly to WhatsApp)
+                    (Share Card directly to WhatsApp)
                   </span>
                 </Button>
               </div>
 
               {/* Secondary Utility Controls */}
-              <div className="grid grid-cols-2 gap-2.5">
-                {/* 3. DOWNLOAD PNG IMAGE */}
-                <Button 
-                  onClick={downloadPNG}
-                  variant="outline"
-                  className="w-full h-11 py-2 px-3 font-black rounded-xl text-xs uppercase tracking-wider shadow-xs border-slate-300 text-slate-800 bg-white hover:bg-slate-50 flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <Download className="w-4 h-4 text-brand-blue shrink-0" />
-                  <span>ചിത്രം ഡൗൺലോഡ് (PNG)</span>
-                </Button>
-
-                {/* 4. SCREENSHOT MODE */}
+              <div className="grid grid-cols-1 gap-2.5">
+                {/* 3. SCREENSHOT MODE */}
                 <Button 
                   onClick={() => setIsScreenshotMode(true)}
                   variant="outline"
                   className="w-full h-11 py-2 px-3 font-black rounded-xl text-xs uppercase tracking-wider shadow-xs border-slate-300 text-slate-800 bg-white hover:bg-slate-50 flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Camera className="w-4 h-4 text-brand-magenta shrink-0" />
-                  <span>സ്ക്രീൻഷോട്ട് മോഡ്</span>
+                  <span>സ്ക്രീൻഷോട്ട് മോഡ് (Screenshot Mode)</span>
                 </Button>
               </div>
             </div>

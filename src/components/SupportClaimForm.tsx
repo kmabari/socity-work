@@ -24,7 +24,9 @@ import {
   Sparkles,
   PartyPopper,
   Printer,
-  Share2
+  Share2,
+  FileText,
+  Plus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,7 +39,7 @@ import { toast } from 'sonner';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, query, where, getDocs, deleteDoc, doc, serverTimestamp, updateDoc, runTransaction } from 'firebase/firestore';
 import { subscribeToOrgSettings, OrgSettings, defaultSettings } from '@/src/lib/cms';
-import { printCourtComboReport, printCourtClaimReport, shareCourtComboPdf, downloadCourtComboPdf } from '../lib/claimPrint';
+import { printCourtComboReport, printCourtClaimReport, shareCourtComboPdf, downloadCourtComboPdf, getCourtComboHtml, getSingleCourtClaimHtml } from '../lib/claimPrint';
 
 interface CategoryDetail {
   paid: number;
@@ -140,6 +142,8 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
   const [orgSettings, setOrgSettings] = useState<OrgSettings>(defaultSettings);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const [submittedClaims, setSubmittedClaims] = useState<any[]>([]);
+  const [formMode, setFormMode] = useState<'statement' | 'fill'>('statement');
+  const [selectedStatementIdx, setSelectedStatementIdx] = useState<number>(-1);
   const [newlyAssignedTokens, setNewlyAssignedTokens] = useState<Record<string, string>>({});
 
   // 1. Claimant State - Self
@@ -317,6 +321,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
 
         if (docsList.length > 0) {
           setSubmittedClaims(docsList);
+          setFormMode('statement');
           
           const hasSelfDb = docsList.some(c => c.relation === 'Self');
           const hasParentDb = docsList.some(c => ['Mother', 'Father'].includes(c.relation));
@@ -849,98 +854,160 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
     }
   };
 
-  // Render Already Submitted View
-  if (alreadySubmitted && !completed) {
+  // Render Official Court Statement View
+  if ((alreadySubmitted || formMode === 'statement') && submittedClaims.length > 0 && !completed) {
     return (
-      <div className="p-8 text-center space-y-6 max-w-lg mx-auto flex flex-col justify-center min-h-screen my-auto">
-        <div className="w-16 h-16 bg-rose-50 border border-brand-magenta/30 rounded-full flex items-center justify-center mx-auto mb-2 text-brand-magenta shadow-lg">
-          <ShieldAlert className="w-8 h-8 animate-pulse text-brand-magenta" />
-        </div>
-        <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight leading-tight">സമർപ്പണം ഇതിനകം പൂർത്തിയായി!<br/>(Already Submitted)</h2>
-        <p className="text-brand-magenta text-[9px] font-black tracking-widest uppercase">REGISTRY ACCOUNT ACCESS PROTECTED</p>
+      <div className="flex flex-col h-full bg-slate-100 min-h-screen">
+        {/* Sticky Header */}
+        <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-900 via-[#003366] to-[#002244] text-white flex flex-wrap items-center justify-between gap-3 sticky top-0 z-30 shadow-md">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-amber-300 shrink-0 border border-white/15">
+              <FileText className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-xs sm:text-sm font-black uppercase tracking-tight text-white flex items-center gap-2">
+                കൺസൈൻമെന്റ് അഡ്വാൻസ് റീഫണ്ട് ഫോം
+                <Badge className="bg-amber-400 text-slate-950 text-[9px] font-black uppercase px-2 py-0.5 tracking-wider">
+                  ഔദ്യോഗിക കോർട്ട് റെക്കോർഡ് ({submittedClaims.length} പേജ്)
+                </Badge>
+              </h3>
+              <p className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">
+                Court & Admin Submission Document • {user.name}
+              </p>
+            </div>
+          </div>
 
-        {/* List of Registered Claimants */}
-        <div className="space-y-4 text-left mt-4">
-          <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-wider">രജിസ്റ്റർ ചെയ്ത ക്ലെയിമുകൾ (Registered Claims):</h4>
-          <div className="grid grid-cols-1 gap-3">
-            {submittedClaims.map((claim, idx) => (
-              <div key={claim.id || idx} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col gap-2 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-xs font-black text-slate-800 block">{claim.userName}</span>
-                    {claim.highrichId && (
-                      <span className="text-[9px] font-bold text-slate-400 bg-slate-200/50 px-1.5 py-0.5 rounded mt-1 inline-block">HR ID: {claim.highrichId}</span>
-                    )}
-                  </div>
-                  <div className="text-right flex flex-col items-end gap-1.5 shrink-0">
-                    <Badge className="text-[9px] font-black uppercase bg-brand-magenta/10 text-brand-magenta border-none rounded-lg py-1 px-2.5 leading-none">
-                      {claim.relation === 'Self' ? 'സ്വന്തം (Self)' :
-                       claim.relation === 'Mother' ? 'അമ്മ (Mother)' :
-                       claim.relation === 'Father' ? 'അച്ഛൻ (Father)' :
-                       claim.relation === 'Son' ? 'മകൻ (Son)' :
-                       claim.relation === 'Daughter' ? 'മകൾ (Daughter)' :
-                       claim.relation === 'Wife' ? 'ഭാര്യ (Wife)' :
-                       claim.relation === 'Husband' ? 'ഭർത്താവ് (Husband)' : claim.relationLabel || claim.relation || 'Self'}
-                    </Badge>
-                    <span className="text-[10px] font-black text-rose-600 bg-rose-50 px-2 py-1 rounded border border-rose-100 font-mono inline-block">
-                      സീരിയൽ: #{claim.tokenNo || claim.serialNo || 'N/A'}
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-3 gap-2 pt-2.5 mt-1.5 border-t border-slate-200/60 text-[11px] font-bold">
-                  <div>
-                    <span className="text-[9px] font-bold text-slate-400 block uppercase">Paid</span>
-                    <span className="text-slate-700 font-extrabold">₹{claim.totalPaid?.toLocaleString('en-IN') || 0}</span>
-                  </div>
-                  <div>
-                    <span className="text-[9px] font-bold text-slate-400 block uppercase">Received</span>
-                    <span className="text-green-600 font-extrabold">₹{claim.totalReceived?.toLocaleString('en-IN') || 0}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[9px] font-bold text-slate-400 block uppercase">Pending</span>
-                    <span className="text-brand-magenta font-extrabold">₹{claim.totalPending?.toLocaleString('en-IN') || 0}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div className="flex items-center gap-2">
+            {!alreadySubmitted && submittedClaims.length < 4 && (
+              <Button
+                size="sm"
+                onClick={() => setFormMode('fill')}
+                className="h-9 px-3 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-sm cursor-pointer font-bold"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>കുടുംബാംഗത്തെ ചേർക്കുക ({4 - submittedClaims.length} ബാക്കി)</span>
+              </Button>
+            )}
+            <Button
+              size="sm"
+              onClick={() => printCourtComboReport(user, submittedClaims)}
+              className="h-9 px-3.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-sm cursor-pointer border border-blue-300/40"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>പ്രിന്റ് (A4)</span>
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => downloadCourtComboPdf(user, submittedClaims)}
+              className="h-9 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-sm cursor-pointer border border-emerald-400/40"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>PDF</span>
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onClose}
+              className="h-9 px-3 text-slate-300 hover:text-white hover:bg-white/10 text-sm font-black rounded-xl cursor-pointer"
+            >
+              ✕
+            </Button>
+          </div>
+        </div>
+
+        {/* Page Switcher Subbar */}
+        <div className="px-4 py-2.5 bg-white border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 shadow-xs">
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-thin">
+            <button
+              type="button"
+              onClick={() => setSelectedStatementIdx(-1)}
+              className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                selectedStatementIdx === -1
+                  ? 'bg-[#003366] text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              എല്ലാ പേജുകളും ഒരുമിച്ച് ({submittedClaims.length} പേജ്)
+            </button>
+            {submittedClaims.map((claim, idx) => {
+              const relMalayalam = 
+                claim.relation === 'Self' ? 'സ്വന്തം' :
+                claim.relation === 'Mother' ? 'അമ്മ' :
+                claim.relation === 'Father' ? 'അച്ഛൻ' :
+                claim.relation === 'Son' ? 'മകൻ' :
+                claim.relation === 'Daughter' ? 'മകൾ' :
+                claim.relation === 'Wife' ? 'ഭാര്യ' :
+                claim.relation === 'Husband' ? 'ഭർത്താവ്' : (claim.relation || `പേജ് ${idx + 1}`);
+              return (
+                <button
+                  key={claim.id || idx}
+                  type="button"
+                  onClick={() => setSelectedStatementIdx(idx)}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 ${
+                    selectedStatementIdx === idx
+                      ? 'bg-[#003366] text-white shadow-sm'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  <span>{idx + 1}. {relMalayalam}</span>
+                  <span className="opacity-70 font-mono text-[9px]">({claim.userName || user.name})</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
+            <span>ആകെ റീഫണ്ട് വിഹിതം:</span>
+            <span className="font-mono font-black text-[#003366]">
+              ₹{submittedClaims.reduce((s, c) => s + (Number(c.totalPending) || 0), 0).toLocaleString('en-IN')}
+            </span>
           </div>
         </div>
 
-        <div className="flex flex-col gap-2.5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            <Button 
-              onClick={() => {
-                if (submittedClaims && submittedClaims.length > 0) {
-                  downloadCourtComboPdf(user, submittedClaims);
-                } else {
-                  toast.info('ക്ലെയിം വിവരങ്ങൾ ലഭ്യമല്ല');
-                }
-              }}
-              className="w-full h-12 rounded-xl bg-[#003366] hover:bg-[#002244] text-white font-black shadow-md active:scale-95 transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2 border-2 border-blue-400 cursor-pointer"
-            >
-              <Download className="w-4 h-4 text-white shrink-0" />
-              ഡൗൺലോഡ് (PDF Download)
-            </Button>
-            <Button 
-              onClick={() => {
-                if (submittedClaims && submittedClaims.length > 0) {
-                  printCourtComboReport(user, submittedClaims);
-                } else {
-                  toast.info('ക്ലെയിം വിവരങ്ങൾ ലഭ്യമല്ല');
-                }
-              }}
-              variant="outline"
-              className="w-full h-12 rounded-xl border-2 border-slate-300 text-slate-800 font-black shadow-sm active:scale-95 transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-slate-100 cursor-pointer"
-            >
-              <Printer className="w-4 h-4 text-slate-700 shrink-0" />
-              പ്രിന്റ് (Print A4)
-            </Button>
+        {/* Live Document Frame */}
+        <div className="flex-1 p-3 sm:p-5 max-w-5xl mx-auto w-full flex flex-col">
+          <div className="flex-1 min-h-[700px] rounded-2xl overflow-hidden border-2 border-slate-300 bg-white shadow-lg">
+            <iframe
+              srcDoc={
+                selectedStatementIdx === -1
+                  ? getCourtComboHtml(user, submittedClaims)
+                  : getSingleCourtClaimHtml(user, submittedClaims[selectedStatementIdx], selectedStatementIdx + 1, submittedClaims.length)
+              }
+              title="Consignment Advance Court Statement"
+              className="w-full h-full min-h-[700px] border-0 bg-white"
+            />
           </div>
 
-          <Button onClick={onClose} className="w-full h-12 rounded-xl bg-brand-blue hover:bg-brand-blue/90 text-white font-bold shadow-lg active:scale-95 transition-all text-xs uppercase tracking-wider">
-            തിരികെ ഡാഷ്‌ബോർഡിലേക്ക് (Back to Dashboard)
-          </Button>
+          {/* Bottom Footer with Back to Dashboard */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 pb-8">
+            <p className="text-xs text-slate-600 font-bold">
+              ✓ ഈ രേഖയാണ് കോടതിയിലേക്കും സംഘടന അഡ്മിൻ പാനലിലേക്കും സമർപ്പിക്കപ്പെട്ടിട്ടുള്ള ഔദ്യോഗിക ഫോം.
+            </p>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Button
+                onClick={() => printCourtComboReport(user, submittedClaims)}
+                className="flex-1 sm:flex-none h-11 px-5 rounded-xl bg-[#003366] hover:bg-[#002244] text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer"
+              >
+                <Printer className="w-4 h-4" />
+                പ്രിന്റ് (Print A4)
+              </Button>
+              <Button
+                onClick={() => downloadCourtComboPdf(user, submittedClaims)}
+                variant="outline"
+                className="flex-1 sm:flex-none h-11 px-5 rounded-xl border-2 border-slate-300 text-slate-800 hover:bg-slate-100 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm cursor-pointer bg-white"
+              >
+                <Download className="w-4 h-4 text-emerald-600" />
+                ഡൗൺലോഡ് (PDF)
+              </Button>
+              <Button
+                onClick={onClose}
+                variant="outline"
+                className="flex-1 sm:flex-none h-11 px-5 rounded-xl border-2 border-slate-300 text-slate-700 hover:bg-slate-100 font-black text-xs uppercase tracking-wider cursor-pointer"
+              >
+                ഡാഷ്‌ബോർഡ്
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -1185,7 +1252,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
   return (
     <div className="flex flex-col h-full bg-slate-50 relative pb-28">
       {/* Header */}
-      <div className="p-5 border-b flex items-center justify-between sticky top-0 bg-white/90 backdrop-blur-xl z-25 shadow-sm">
+      <div className="p-4 sm:p-5 border-b flex items-center justify-between sticky top-0 bg-white/90 backdrop-blur-xl z-25 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-brand-blue/10 flex items-center justify-center text-brand-blue">
             <Users className="w-5 h-5 text-brand-blue" />
@@ -1195,7 +1262,19 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
             <p className="text-[9px] font-extrabold text-slate-600 uppercase tracking-widest">Register up to 3 direct family members</p>
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={onClose} className="rounded-full w-8 h-8 p-0 font-bold">✕</Button>
+        <div className="flex items-center gap-2">
+          {submittedClaims.length > 0 && (
+            <Button
+              size="sm"
+              onClick={() => setFormMode('statement')}
+              className="h-8 px-3 rounded-lg bg-[#003366] hover:bg-[#002244] text-white text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-xs cursor-pointer"
+            >
+              <FileText className="w-3.5 h-3.5 text-amber-300" />
+              <span>ഔദ്യോഗിക ഫോം കാണുക ({submittedClaims.length})</span>
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" onClick={onClose} className="rounded-full w-8 h-8 p-0 font-bold">✕</Button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-8 max-w-2xl mx-auto w-full">
