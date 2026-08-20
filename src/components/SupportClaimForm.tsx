@@ -26,7 +26,8 @@ import {
   Printer,
   Share2,
   FileText,
-  Plus
+  Plus,
+  ShieldCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -142,7 +143,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
   const [orgSettings, setOrgSettings] = useState<OrgSettings>(defaultSettings);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const [submittedClaims, setSubmittedClaims] = useState<any[]>([]);
-  const [formMode, setFormMode] = useState<'statement' | 'fill'>('statement');
+  const [formMode, setFormMode] = useState<'statement' | 'fill'>('fill');
   const [selectedStatementIdx, setSelectedStatementIdx] = useState<number>(-1);
   const [newlyAssignedTokens, setNewlyAssignedTokens] = useState<Record<string, string>>({});
 
@@ -321,7 +322,6 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
 
         if (docsList.length > 0) {
           setSubmittedClaims(docsList);
-          setFormMode('statement');
           
           const hasSelfDb = docsList.some(c => c.relation === 'Self');
           const hasParentDb = docsList.some(c => ['Mother', 'Father'].includes(c.relation));
@@ -855,7 +855,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
   };
 
   // Render Official Court Statement View
-  if ((alreadySubmitted || formMode === 'statement') && submittedClaims.length > 0 && !completed) {
+  if (formMode === 'statement' && submittedClaims.length > 0 && !completed) {
     return (
       <div className="flex flex-col h-full bg-slate-100 min-h-screen">
         {/* Sticky Header */}
@@ -878,7 +878,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           </div>
 
           <div className="flex items-center gap-2">
-            {!alreadySubmitted && submittedClaims.length < 4 && (
+            {submittedClaims.length < 4 && (
               <Button
                 size="sm"
                 onClick={() => setFormMode('fill')}
@@ -1366,6 +1366,41 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
               </div>
             </div>
           </div>
+        )}
+
+        {/* ALL 4 SLOTS SUBMITTED BANNER */}
+        {submittedClaims.length >= 4 && (
+          <Card className="border-2 border-emerald-400/80 rounded-3xl shadow-md overflow-hidden bg-gradient-to-br from-emerald-50 via-teal-50/40 to-white p-6 text-center space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-600 text-white mx-auto flex items-center justify-center shadow-lg shadow-emerald-600/20">
+              <CheckCircle2 className="w-7 h-7" />
+            </div>
+            <div className="space-y-1.5">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 text-xs font-black">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
+                <span>എല്ലാ 4 ഫോമുകളും പൂർത്തിയായി (4/4 Complete) ✅</span>
+              </div>
+              <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight">കുടുംബത്തിലെ എല്ലാവരുടെയും വിവരങ്ങൾ സമർപ്പിച്ചു കഴിഞ്ഞു</h3>
+              <p className="text-xs font-bold text-slate-600 max-w-md mx-auto leading-relaxed">
+                ഔദ്യോഗിക കോർട്ട് റെക്കോർഡ് (Court Statement Record) കാണുന്നതിനും A4 പ്രിന്റ് / ഡൗൺലോഡ് ചെയ്യുന്നതിനും താഴെയുള്ള ബട്ടൺ ഉപയോഗിക്കുക.
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-3 pt-2">
+              <Button
+                onClick={() => setFormMode('statement')}
+                className="bg-brand-blue hover:bg-brand-blue/90 text-white font-black text-xs uppercase px-5 h-11 rounded-xl shadow-md flex items-center gap-2 cursor-pointer"
+              >
+                <FileText className="w-4 h-4" />
+                <span>ഔദ്യോഗിക കോർട്ട് സ്റ്റേറ്റ്‌മെന്റ് കാണുക</span>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={onBack || onClose}
+                className="border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs uppercase px-4 h-11 rounded-xl cursor-pointer"
+              >
+                തിരികെ ഡാഷ്‌ബോർഡിലേക്ക്
+              </Button>
+            </div>
+          </Card>
         )}
 
         {/* SLOT 1: SELF CLAIM (ആ വ്യക്തി) */}
@@ -2339,21 +2374,31 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
         >
           ← തിരികെ ഐഡി കാർഡിലേക്ക് (Back)
         </Button>
-        <Button 
-          disabled={loading || !formIsValid}
-          onClick={handleSubmit} 
-          className="h-12 flex-[2] rounded-xl bg-brand-blue text-white shadow-xl shadow-brand-blue/15 hover:shadow-2xl transition-all font-black text-xs relative overflow-hidden"
-        >
-          {loading ? (
-            <span className="flex items-center gap-2 justify-center">
-              <Clock className="w-4 h-4 animate-spin" /> സുരക്ഷാ റജിസ്റ്റർ സമർപ്പിക്കുന്നു...
-            </span>
-          ) : (
-            <span className="flex items-center gap-2 justify-center">
-              ക്ലെയിം വിവരങ്ങൾ സമർപ്പിക്കുക (Submit Claim) <ArrowRight className="w-5 h-5" />
-            </span>
-          )}
-        </Button>
+        {submittedClaims.length >= 4 ? (
+          <Button 
+            onClick={() => setFormMode('statement')}
+            className="h-12 flex-[2] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl shadow-emerald-600/15 hover:shadow-2xl transition-all font-black text-xs relative overflow-hidden flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <FileText className="w-4 h-4" />
+            <span>ഔദ്യോഗിക കോർട്ട് സ്റ്റേറ്റ്‌മെന്റ് കാണുക</span>
+          </Button>
+        ) : (
+          <Button 
+            disabled={loading || !formIsValid}
+            onClick={handleSubmit} 
+            className="h-12 flex-[2] rounded-xl bg-brand-blue text-white shadow-xl shadow-brand-blue/15 hover:shadow-2xl transition-all font-black text-xs relative overflow-hidden"
+          >
+            {loading ? (
+              <span className="flex items-center gap-2 justify-center">
+                <Clock className="w-4 h-4 animate-spin" /> സുരക്ഷാ റജിസ്റ്റർ സമർപ്പിക്കുന്നു...
+              </span>
+            ) : (
+              <span className="flex items-center gap-2 justify-center">
+                ക്ലെയിം വിവരങ്ങൾ സമർപ്പിക്കുക (Submit Claim) <ArrowRight className="w-5 h-5" />
+              </span>
+            )}
+          </Button>
+        )}
       </div>
     </div>
   );
