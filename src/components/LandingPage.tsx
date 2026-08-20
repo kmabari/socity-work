@@ -15,6 +15,7 @@ import {
   Copy,
   Share2,
   QrCode,
+  Zap,
   UserPlus, 
   RefreshCw,  
   ArrowLeft, 
@@ -364,7 +365,7 @@ export default function LandingPage({
       </nav>
 
       {/* Main Showcase / Hero Cover - Reference #2 White Card with Ambient Background Glow */}
-      <div className="w-full max-w-6xl mx-auto pt-24 sm:pt-28 pb-12 sm:pb-16 px-3 sm:px-4 md:px-6">
+      <div className="w-full max-w-6xl mx-auto pt-24 sm:pt-28 pb-6 sm:pb-8 px-3 sm:px-4 md:px-6">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -495,7 +496,129 @@ export default function LandingPage({
             exit={{ opacity: 0, y: -10 }}
             className="w-full max-w-7xl mx-auto px-4 pb-24 space-y-16 z-10 relative"
           >
-            {/* Featured Campaign Section (Moved to absolute top) */}
+            {/* Quick Actions Section - Immediately after HCRS Introduction/Core Pillars */}
+            <section className="space-y-8 max-w-6xl mx-auto pt-2" id="quick-actions">
+              <div className="text-center space-y-3 font-sans">
+                <div className="inline-flex items-center gap-2 bg-[#c9a227]/10 text-[#1a2b5c] px-4 py-2 rounded-full border border-[#c9a227]/25 shadow-xs max-w-full flex-wrap justify-center">
+                  <Zap className="w-4 h-4 text-[#c9a227] shrink-0 stroke-[2.5]" />
+                  <span className="font-black text-xs uppercase tracking-wider leading-snug break-words text-center">Quick Actions • പ്രധാന സേവനങ്ങൾ</span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-black text-[#1a2b5c] uppercase tracking-tight px-2 leading-tight">
+                  HCRS <span className="text-[#c9a227]">Quick Actions</span>
+                </h2>
+                <p className="text-slate-600 font-normal text-xs md:text-sm max-w-xl mx-auto">
+                  Access key membership services, renewal facilities, and verified member information portals with a single click.
+                </p>
+              </div>
+
+              {/* Primary Action Bento Grid - Standardized to exact symmetric specifications */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+                {/* Enrollment Card */}
+                <div
+                  className="group relative bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 shadow-premium hover:border-[#c9a227]/30 hover:shadow-projected transition-all duration-300 text-center flex flex-col items-center justify-between min-h-[380px] sm:min-h-[420px] hover:-translate-y-1.5"
+                >
+                  <div className="flex flex-col items-center gap-4 sm:gap-6 w-full">
+                    <div className="bg-[#c9a227]/10 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-[#c9a227] group-hover:scale-105 transition-transform shadow-sm border border-[#c9a227]/20 shrink-0">
+                      <UserPlus className="w-7 h-7 sm:w-8 sm:h-8 stroke-[2]" />
+                    </div>
+                    <div className="w-full flex flex-col items-center">
+                      <h2 className="text-lg sm:text-xl font-extrabold text-[#1a2b5c] tracking-tight uppercase font-heading leading-tight">
+                        {t('card_new_membership_title', 'New Membership')}
+                      </h2>
+                      <span className="inline-flex mt-2.5 sm:mt-3 bg-[#c9a227]/10 text-[#c9a227] border border-[#c9a227]/20 font-extrabold text-[10px] sm:text-[11px] tracking-wider uppercase px-3.5 sm:px-4 py-1 rounded-full shadow-xs">
+                        {t('card_new_membership_badge', 'ന്യൂ മെമ്പർഷിപ്പ് • ₹200')}
+                      </span>
+                      <p className="text-slate-600 font-normal text-xs sm:text-sm mt-3 sm:mt-4 leading-relaxed max-w-[280px]">
+                        {t('card_new_membership_desc', 'Register as an official active member to gain community credentials.')}
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={() => setStage('guidelines')}
+                    className="w-full mt-6 sm:mt-8 h-12 rounded-xl text-xs font-bold bg-[#1a2b5c] text-white hover:bg-[#233875] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-premium hover:-translate-y-0.5 duration-200 cursor-pointer"
+                  >
+                    <span>{t('card_new_membership_btn', 'Register Now')}</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                {/* Renewal Card */}
+                <div
+                  className="group relative bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 shadow-premium hover:border-[#1a2b5c]/30 hover:shadow-projected transition-all duration-300 text-center flex flex-col items-center justify-between min-h-[380px] sm:min-h-[420px] hover:-translate-y-1.5"
+                >
+                  <div className="flex flex-col items-center gap-4 sm:gap-6 w-full">
+                    <div className="bg-[#1a2b5c]/8 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-[#1a2b5c] group-hover:scale-105 transition-transform shadow-sm border border-[#1a2b5c]/15 shrink-0">
+                      <RefreshCw className="w-7 h-7 sm:w-8 sm:h-8 stroke-[2]" />
+                    </div>
+                    <div className="w-full flex flex-col items-center">
+                      <h2 className="text-lg sm:text-xl font-extrabold text-[#1a2b5c] tracking-tight uppercase font-heading leading-tight">
+                        {t('card_renew_membership_title', 'Renew card')}
+                      </h2>
+                      <span className="inline-flex mt-2.5 sm:mt-3 bg-[#1a2b5c]/8 text-[#1a2b5c] border border-[#1a2b5c]/15 font-extrabold text-[10px] sm:text-[11px] tracking-wider uppercase px-3.5 sm:px-4 py-1 rounded-full shadow-xs">
+                        {t('card_renew_membership_badge', 'അംഗത്വം പുതുക്കൽ • ₹100')}
+                      </span>
+                      <p className="text-slate-600 font-normal text-xs sm:text-sm mt-3 sm:mt-4 leading-relaxed max-w-[280px]">
+                        {t('card_renew_membership_desc', 'Renew your existing membership card easily with quick online processing.')}
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={onRenew}
+                    className="w-full mt-6 sm:mt-8 h-12 rounded-xl text-xs font-bold bg-[#1a2b5c] text-white hover:bg-[#233875] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-premium hover:-translate-y-0.5 duration-200 cursor-pointer"
+                  >
+                    <span>{t('card_renew_membership_btn', 'Renew Card Now')}</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                {/* Information Registry / Settlement Form Card */}
+                <div
+                  className="group relative bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 shadow-premium hover:border-[#c9a227]/30 hover:shadow-projected transition-all duration-300 text-center flex flex-col items-center justify-between min-h-[380px] sm:min-h-[420px] hover:-translate-y-1.5"
+                >
+                  <div className="flex flex-col items-center gap-4 sm:gap-6 w-full">
+                    <div className="bg-[#c9a227]/10 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-[#c9a227] group-hover:scale-105 transition-transform shadow-sm border border-[#c9a227]/20 shrink-0">
+                      <Info className="w-7 h-7 sm:w-8 sm:h-8 stroke-[2]" />
+                    </div>
+                    <div className="w-full flex flex-col items-center">
+                      <h2 className="text-lg sm:text-xl font-extrabold text-[#1a2b5c] tracking-tight uppercase font-heading leading-tight">
+                        {t('card_registry_title', 'Settlement Form')}
+                      </h2>
+                      <span className="inline-flex mt-2.5 sm:mt-3 bg-[#c9a227]/10 text-[#c9a227] border border-[#c9a227]/20 font-extrabold text-[10px] sm:text-[11px] tracking-wider uppercase px-3.5 sm:px-4 py-1 rounded-full shadow-xs">
+                        {t('card_registry_badge', 'വെരിഫൈഡ് വിവര ശേഖരണം')}
+                      </span>
+                      <p className="text-slate-600 font-normal text-xs sm:text-sm mt-3 sm:mt-4 leading-relaxed max-w-[280px]">
+                        {t('card_registry_desc', 'This portal is designed to collect and verify financial information from members for planning, coordination, and support purposes.')}
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={() => {
+                      setClaimMobile('');
+                      setClaimResult(null);
+                      setStage('claim_check');
+                    }}
+                    className="w-full mt-6 sm:mt-8 h-12 rounded-xl text-xs font-bold bg-[#c9a227] text-white hover:bg-[#ab851c] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-premium hover:-translate-y-0.5 duration-200 cursor-pointer"
+                  >
+                    <span>{t('card_registry_btn', 'Settlement Form')}</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Micro Access Card - Standardized button & height */}
+              <div className="flex flex-col items-center max-w-sm mx-auto bg-white/5 border border-white/10 p-6 sm:p-8 rounded-2xl shadow-premium relative overflow-hidden group mt-4">
+                <span className="text-[10px] text-slate-300 font-extrabold uppercase tracking-widest mb-3.5">Official Logins</span>
+                <Button 
+                  onClick={onLoginClick}
+                  className="w-full h-12 rounded-xl font-bold text-white bg-[#1a2b5c] hover:bg-[#233875] shadow-premium transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-2 group hover:-translate-y-0.5 duration-200 cursor-pointer"
+                >
+                  <span>Sign In to Portal</span>
+                  <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                </Button>
+              </div>
+            </section>
+
+            {/* Featured Campaign Section */}
             {janamailConfig?.active !== false && (
               <section className="space-y-8 max-w-6xl mx-auto pt-4" id="featured-campaign">
                 <div className="text-center space-y-3 font-sans">
@@ -896,117 +1019,6 @@ export default function LandingPage({
                 </div>
               );
             })()}
-
-            {/* Primary Action Bento Grid - Redesigned to exact Reference #2 specifications */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-              {/* Enrollment Card */}
-              <div
-                className="group relative bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 shadow-premium hover:border-[#c9a227]/30 hover:shadow-projected transition-all duration-300 text-center flex flex-col items-center justify-between min-h-[360px] sm:min-h-[400px] hover:-translate-y-1.5"
-              >
-                <div className="flex flex-col items-center gap-4 sm:gap-6 w-full">
-                  <div className="bg-[#c9a227]/8 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-[#c9a227] group-hover:scale-105 transition-transform shadow-sm border border-[#c9a227]/10">
-                    <UserPlus className="w-7 h-7 sm:w-8 sm:h-8 stroke-[2]" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg sm:text-xl font-extrabold text-[#1a2b5c] tracking-tight uppercase font-heading">
-                      {t('card_new_membership_title', 'New Membership')}
-                    </h2>
-                    <span className="inline-flex mt-2 sm:mt-2.5 bg-[#c9a227]/8 text-[#c9a227] border border-[#c9a227]/15 font-extrabold text-[10px] tracking-wider uppercase px-3.5 sm:px-4 py-1 rounded-full">
-                      {t('card_new_membership_badge', 'ന്യൂ മെമ്പർഷിപ്പ് • ₹200')}
-                    </span>
-                    <p className="text-slate-600 font-normal text-xs sm:text-sm mt-3 sm:mt-4 leading-relaxed max-w-[280px]">
-                      {t('card_new_membership_desc', 'Register as an official active member to gain community credentials.')}
-                    </p>
-                  </div>
-                </div>
-                <Button 
-                  onClick={() => setStage('guidelines')}
-                  className="w-full mt-6 sm:mt-8 h-11 sm:h-12 rounded-xl text-xs font-bold bg-[#1a2b5c] text-white hover:bg-[#233875] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-premium hover:-translate-y-0.5 duration-200"
-                >
-                  {t('card_new_membership_btn', 'Register Now')}
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-
-              {/* Renewal Card */}
-              <div
-                className="group relative bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 shadow-premium hover:border-[#1a2b5c]/30 hover:shadow-projected transition-all duration-300 text-center flex flex-col items-center justify-between min-h-[360px] sm:min-h-[400px] hover:-translate-y-1.5"
-              >
-                <div className="flex flex-col items-center gap-4 sm:gap-6 w-full">
-                  <div className="bg-[#1a2b5c]/8 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-[#1a2b5c] group-hover:scale-105 transition-transform shadow-sm border border-[#1a2b5c]/10">
-                    <RefreshCw className="w-7 h-7 sm:w-8 sm:h-8 stroke-[2]" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg sm:text-xl font-extrabold text-[#1a2b5c] tracking-tight uppercase font-heading">
-                      {t('card_renew_membership_title', 'Renew card')}
-                    </h2>
-                    <span className="inline-flex mt-2 sm:mt-2.5 bg-[#1a2b5c]/8 text-[#1a2b5c] border border-[#1a2b5c]/15 font-extrabold text-[10px] tracking-wider uppercase px-3.5 sm:px-4 py-1 rounded-full">
-                      {t('card_renew_membership_badge', 'അംഗത്വം പുതുക്കൽ • ₹100')}
-                    </span>
-                    <p className="text-slate-600 font-normal text-xs sm:text-sm mt-3 sm:mt-4 leading-relaxed max-w-[280px]">
-                      {t('card_renew_membership_desc', 'Renew your existing membership card easily with quick online processing.')}
-                    </p>
-                  </div>
-                </div>
-                <Button 
-                  onClick={onRenew}
-                  className="w-full mt-6 sm:mt-8 h-11 sm:h-12 rounded-xl text-xs font-bold bg-[#1a2b5c] text-white hover:bg-[#233875] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-premium hover:-translate-y-0.5 duration-200"
-                >
-                  {t('card_renew_membership_btn', 'Renew Card Now')}
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-
-              {/* Information Registry Card */}
-              <div
-                className="group relative bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 shadow-premium hover:border-[#c9a227]/30 hover:shadow-projected transition-all duration-300 text-center flex flex-col items-center justify-between min-h-[360px] sm:min-h-[400px] hover:-translate-y-1.5"
-              >
-                <div className="flex flex-col items-center gap-4 sm:gap-6 w-full">
-                  <div className="bg-[#1a2b5c]/8 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-[#1a2b5c] group-hover:scale-105 transition-transform shadow-sm border border-[#1a2b5c]/10">
-                    <Info className="w-7 h-7 sm:w-8 sm:h-8 text-[#1a2b5c] stroke-[2]" />
-                  </div>
-                  <div>
-                    <h2 className="text-base sm:text-lg font-extrabold text-[#1a2b5c] tracking-tight leading-snug uppercase font-heading">
-                      {t('card_registry_title', 'Member Financial Information Registry')}
-                    </h2>
-                    <div className="flex flex-col gap-1 items-center mt-2">
-                      <span className="inline-flex bg-[#1a2b5c]/8 text-[#1a2b5c] border border-[#1a2b5c]/15 font-extrabold text-[9px] tracking-wider uppercase px-3 py-0.5 rounded-full">
-                        {t('card_registry_badge', 'Verified Information Collection')}
-                      </span>
-                      <span className="text-[10px] font-black text-[#c9a227] uppercase tracking-widest mt-1">
-                        {t('card_registry_sub_badge', 'Verified Member Information Collection Portal')}
-                      </span>
-                    </div>
-                    <p className="text-slate-600 font-normal text-xs sm:text-sm mt-3 sm:mt-4 leading-relaxed max-w-[280px]">
-                      {t('card_registry_desc', 'This portal is designed to collect and verify financial information from members for planning, coordination, and support purposes.')}
-                    </p>
-                  </div>
-                </div>
-                <Button 
-                  onClick={() => {
-                    setClaimMobile('');
-                    setClaimResult(null);
-                    setStage('claim_check');
-                  }}
-                  className="w-full mt-6 sm:mt-8 h-11 sm:h-12 rounded-xl text-xs font-bold bg-[#c9a227] text-white hover:bg-[#ab851c] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-premium hover:-translate-y-0.5 duration-200"
-                >
-                  {t('card_registry_btn', 'Access Registry Portal')}
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-
-            {/* Micro Access Card - Upgraded to elegant white glass panel */}
-            <div className="flex flex-col items-center max-w-sm mx-auto bg-white/5 border border-white/10 p-8 rounded-2xl shadow-premium relative overflow-hidden group">
-              <span className="text-[10px] text-slate-300 font-extrabold uppercase tracking-widest mb-4">Official Logins</span>
-              <Button 
-                onClick={onLoginClick}
-                className="w-full h-11 rounded-xl font-bold text-white bg-[#1a2b5c] hover:bg-[#233875] shadow-premium transition-all uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 group hover:-translate-y-0.5 duration-200"
-              >
-                Sign In to Portal
-                <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-              </Button>
-            </div>
 
             {/* About HCRS & Our Mission Section - Redesigned to exact specifications */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 max-w-6xl mx-auto pt-12 sm:pt-16 md:pt-20 text-left font-sans">

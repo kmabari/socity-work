@@ -151,6 +151,8 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
   const [selfSelected, setSelfSelected] = useState(true);
   const [selfName, setSelfName] = useState(user?.name || '');
   const [selfHighrichId, setSelfHighrichId] = useState('');
+  const [selfSponsorName, setSelfSponsorName] = useState(user?.sponsorName || '');
+  const [selfSponsorMobile, setSelfSponsorMobile] = useState(user?.sponsorMobile || '');
   const [selfCategories, setSelfCategories] = useState<string[]>([]);
   const [selfOtherCategory, setSelfOtherCategory] = useState('');
   const [selfCategoryDetails, setSelfCategoryDetails] = useState<Record<string, CategoryDetail>>({});
@@ -166,6 +168,8 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
   const [parentRelation, setParentRelation] = useState<'Mother' | 'Father' | ''>('');
   const [parentName, setParentName] = useState('');
   const [parentHighrichId, setParentHighrichId] = useState('');
+  const [parentSponsorName, setParentSponsorName] = useState('');
+  const [parentSponsorMobile, setParentSponsorMobile] = useState('');
   const [parentCategories, setParentCategories] = useState<string[]>([]);
   const [parentOtherCategory, setParentOtherCategory] = useState('');
   const [parentCategoryDetails, setParentCategoryDetails] = useState<Record<string, CategoryDetail>>({});
@@ -181,6 +185,8 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
   const [childRelation, setChildRelation] = useState<'Son' | 'Daughter' | ''>('');
   const [childName, setChildName] = useState('');
   const [childHighrichId, setChildHighrichId] = useState('');
+  const [childSponsorName, setChildSponsorName] = useState('');
+  const [childSponsorMobile, setChildSponsorMobile] = useState('');
   const [childCategories, setChildCategories] = useState<string[]>([]);
   const [childOtherCategory, setChildOtherCategory] = useState('');
   const [childCategoryDetails, setChildCategoryDetails] = useState<Record<string, CategoryDetail>>({});
@@ -196,6 +202,8 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
   const [spouseRelation, setSpouseRelation] = useState<'Wife' | 'Husband' | ''>('');
   const [spouseName, setSpouseName] = useState('');
   const [spouseHighrichId, setSpouseHighrichId] = useState('');
+  const [spouseSponsorName, setSpouseSponsorName] = useState('');
+  const [spouseSponsorMobile, setSpouseSponsorMobile] = useState('');
   const [spouseCategories, setSpouseCategories] = useState<string[]>([]);
   const [spouseOtherCategory, setSpouseOtherCategory] = useState('');
   const [spouseCategoryDetails, setSpouseCategoryDetails] = useState<Record<string, CategoryDetail>>({});
@@ -747,6 +755,8 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           relationLabel: 'Self (സ്വന്തം)',
           userName: selfName || user.name,
           highrichId: selfHighrichId,
+          sponsorName: selfSponsorName.trim(),
+          sponsorMobile: selfSponsorMobile.trim(),
           categories: selfCategories,
           otherCategory: selfOtherCategory,
           categoryDetails: selfCategoryDetails,
@@ -774,6 +784,8 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           relationLabel: parentRelation === 'Mother' ? 'അമ്മ (Mother)' : 'അച്ഛൻ (Father)',
           userName: parentName,
           highrichId: parentHighrichId,
+          sponsorName: parentSponsorName.trim(),
+          sponsorMobile: parentSponsorMobile.trim(),
           categories: parentCategories,
           otherCategory: parentOtherCategory,
           categoryDetails: parentCategoryDetails,
@@ -801,6 +813,8 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           relationLabel: childRelation === 'Son' ? 'മകൻ (Son)' : 'മകൾ (Daughter)',
           userName: childName,
           highrichId: childHighrichId,
+          sponsorName: childSponsorName.trim(),
+          sponsorMobile: childSponsorMobile.trim(),
           categories: childCategories,
           otherCategory: childOtherCategory,
           categoryDetails: childCategoryDetails,
@@ -828,6 +842,8 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           relationLabel: spouseRelation === 'Wife' ? 'ഭാര്യ (Wife)' : 'ഭർത്താവ് (Husband)',
           userName: spouseName,
           highrichId: spouseHighrichId,
+          sponsorName: spouseSponsorName.trim(),
+          sponsorMobile: spouseSponsorMobile.trim(),
           categories: spouseCategories,
           otherCategory: spouseOtherCategory,
           categoryDetails: spouseCategoryDetails,
@@ -866,13 +882,13 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
             </div>
             <div>
               <h3 className="text-xs sm:text-sm font-black uppercase tracking-tight text-white flex items-center gap-2">
-                കൺസൈൻമെന്റ് അഡ്വാൻസ് റീഫണ്ട് ഫോം
+                Member Financial Information Registry
                 <Badge className="bg-amber-400 text-slate-950 text-[9px] font-black uppercase px-2 py-0.5 tracking-wider">
-                  ഔദ്യോഗിക കോർട്ട് റെക്കോർഡ് ({submittedClaims.length} പേജ്)
+                  Official Statement Record ({submittedClaims.length} Page{submittedClaims.length > 1 ? 's' : ''})
                 </Badge>
               </h3>
               <p className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">
-                Court & Admin Submission Document • {user.name}
+                HIGHRICH ONLINE SHOPPE Pvt. Ltd. • {user.name}
               </p>
             </div>
           </div>
@@ -1258,7 +1274,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
             <Users className="w-5 h-5 text-brand-blue" />
           </div>
           <div>
-            <h3 className="text-xs font-black text-brand-blue uppercase tracking-tight">ക്ലെയിം രജിസ്ട്രി ഫോം (Claim Registry)</h3>
+            <h3 className="text-xs font-black text-brand-blue uppercase tracking-tight">Member Financial Information Registry</h3>
             <p className="text-[9px] font-extrabold text-slate-600 uppercase tracking-widest">Register up to 3 direct family members</p>
           </div>
         </div>
@@ -1440,6 +1456,29 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                       value={selfHighrichId} 
                       onChange={(e) => setSelfHighrichId(e.target.value)} 
                       placeholder="Enter HR ID if known"
+                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">സ്പോൺസർ / ലീഡറുടെ പേര് (അറിയാമെങ്കിൽ)</Label>
+                    <Input 
+                      value={selfSponsorName} 
+                      onChange={(e) => setSelfSponsorName(e.target.value)} 
+                      placeholder="Sponsor / Leader Name (Optional)"
+                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">സ്പോൺസർ / ലീഡർ മൊബൈൽ നമ്പർ</Label>
+                    <Input 
+                      value={selfSponsorMobile} 
+                      onChange={(e) => setSelfSponsorMobile(e.target.value)} 
+                      placeholder="Sponsor / Leader Mobile (Optional)"
+                      type="tel"
+                      maxLength={10}
                       className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
                     />
                   </div>
@@ -1629,6 +1668,29 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                   </div>
                 </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">സ്പോൺസർ / ലീഡറുടെ പേര് (അറിയാമെങ്കിൽ)</Label>
+                    <Input 
+                      value={parentSponsorName} 
+                      onChange={(e) => setParentSponsorName(e.target.value)} 
+                      placeholder="Sponsor / Leader Name (Optional)"
+                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">സ്പോൺസർ / ലീഡർ മൊബൈൽ നമ്പർ</Label>
+                    <Input 
+                      value={parentSponsorMobile} 
+                      onChange={(e) => setParentSponsorMobile(e.target.value)} 
+                      placeholder="Sponsor / Leader Mobile (Optional)"
+                      type="tel"
+                      maxLength={10}
+                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
+                    />
+                  </div>
+                </div>
+
                 {/* Sub-breakup Selector */}
                 <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex items-center gap-3">
                    <Checkbox 
@@ -1813,6 +1875,29 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                   </div>
                 </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">സ്പോൺസർ / ലീഡറുടെ പേര് (അറിയാമെങ്കിൽ)</Label>
+                    <Input 
+                      value={childSponsorName} 
+                      onChange={(e) => setChildSponsorName(e.target.value)} 
+                      placeholder="Sponsor / Leader Name (Optional)"
+                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">സ്പോൺസർ / ലീഡർ മൊബൈൽ നമ്പർ</Label>
+                    <Input 
+                      value={childSponsorMobile} 
+                      onChange={(e) => setChildSponsorMobile(e.target.value)} 
+                      placeholder="Sponsor / Leader Mobile (Optional)"
+                      type="tel"
+                      maxLength={10}
+                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
+                    />
+                  </div>
+                </div>
+
                 {/* Sub-breakup Selector */}
                 <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex items-center gap-3">
                    <Checkbox 
@@ -1992,6 +2077,29 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                       value={spouseHighrichId} 
                       onChange={(e) => setSpouseHighrichId(e.target.value)} 
                       placeholder="Enter HR ID if known"
+                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">സ്പോൺസർ / ലീഡറുടെ പേര് (അറിയാമെങ്കിൽ)</Label>
+                    <Input 
+                      value={spouseSponsorName} 
+                      onChange={(e) => setSpouseSponsorName(e.target.value)} 
+                      placeholder="Sponsor / Leader Name (Optional)"
+                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">സ്പോൺസർ / ലീഡർ മൊബൈൽ നമ്പർ</Label>
+                    <Input 
+                      value={spouseSponsorMobile} 
+                      onChange={(e) => setSpouseSponsorMobile(e.target.value)} 
+                      placeholder="Sponsor / Leader Mobile (Optional)"
+                      type="tel"
+                      maxLength={10}
                       className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
                     />
                   </div>

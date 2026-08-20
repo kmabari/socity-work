@@ -371,7 +371,7 @@ const ai = new GoogleGenAI({
   */
 
   // API endpoint for chatbot communication
-  app.post("/api/chat", async (req, res) => {
+  app.post(["/api/chat", "/chat"], async (req, res) => {
     const { message, history, verifiedMember, orgSettings } = req.body;
     try {
       if (!message) {
@@ -697,7 +697,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
   });
 
   // API endpoint to serve local extracted old users backup
-  app.get("/api/local-backup-users", (req, res) => {
+  app.get(["/api/local-backup-users", "/local-backup-users"], (req, res) => {
     try {
       const backupPath = path.join(process.cwd(), 'extracted_old_users.json');
       if (fs.existsSync(backupPath)) {
@@ -713,6 +713,24 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
   });
 
   let sheetsClient: any = null;
+
+  function getGoogleSheetId(): string {
+    let sheetId = (
+      process.env.GOOGLE_SHEET_ID || 
+      process.env.VITE_GOOGLE_SHEET_ID || 
+      process.env.SHEET_ID || 
+      process.env.SPREADSHEET_ID || 
+      ""
+    ).trim();
+
+    if (sheetId) {
+      const urlMatch = sheetId.match(/\/d\/([a-zA-Z0-9-_]+)/);
+      if (urlMatch && urlMatch[1]) {
+        sheetId = urlMatch[1];
+      }
+    }
+    return sheetId;
+  }
 
   function getSheetsClient() {
     if (sheetsClient) return sheetsClient;
@@ -730,36 +748,58 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       } catch (e: any) {
         console.error("[Google Sheets Auth] Failed to parse service account file:", e.message || e);
       }
-    } else if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
-      try {
-        console.log("[Google Sheets Auth] Loading service account from GOOGLE_SERVICE_ACCOUNT_JSON env variable");
-        let raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON.trim();
-        
-        // Handle double-quoted JSON string shells from environment variables
-        if (raw.startsWith('"') && raw.endsWith('"')) {
-          try {
-            const parsedString = JSON.parse(raw);
-            if (typeof parsedString === 'string') {
-              raw = parsedString.trim();
-            }
-          } catch (e: any) {
-            console.error("[Google Sheets Auth] Failed to unescape double-quoted outer shell of GOOGLE_SERVICE_ACCOUNT_JSON:", e.message || e);
+    }
+
+    if (!credentialsJson) {
+      const envCandidate = (
+        process.env.GOOGLE_SERVICE_ACCOUNT_JSON ||
+        process.env.VITE_GOOGLE_SERVICE_ACCOUNT_JSON ||
+        process.env.GCP_SERVICE_ACCOUNT_KEY ||
+        process.env.SERVICE_ACCOUNT_JSON ||
+        ""
+      ).trim();
+
+      if (envCandidate) {
+        try {
+          console.log("[Google Sheets Auth] Loading service account from environment variable");
+          let raw = envCandidate;
+
+          // Try Base64 decoding if not starting with '{' or '"'
+          if (!raw.startsWith('{') && !raw.startsWith('"') && raw.length > 50) {
+            try {
+              const decoded = Buffer.from(raw, 'base64').toString('utf8');
+              if (decoded.includes('"client_email"') || decoded.includes('"private_key"')) {
+                raw = decoded.trim();
+              }
+            } catch (_) {}
           }
-        }
 
-        // Repair truncated opening '{' from the secret definition if missing
-        if (!raw.startsWith('{') && raw.endsWith('}')) {
-          raw = '{' + raw;
-        }
+          // Handle double-quoted JSON string shells from environment variables
+          if (raw.startsWith('"') && raw.endsWith('"')) {
+            try {
+              const parsedString = JSON.parse(raw);
+              if (typeof parsedString === 'string') {
+                raw = parsedString.trim();
+              }
+            } catch (e: any) {
+              console.error("[Google Sheets Auth] Failed to unescape double-quoted outer shell:", e.message || e);
+            }
+          }
 
-        credentialsJson = JSON.parse(raw);
-      } catch (e: any) {
-        console.error("[Google Sheets Auth] Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON env variable:", e.message || e);
+          // Repair truncated opening '{' from secret definition if missing
+          if (!raw.startsWith('{') && raw.endsWith('}')) {
+            raw = '{' + raw;
+          }
+
+          credentialsJson = JSON.parse(raw);
+        } catch (e: any) {
+          console.error("[Google Sheets Auth] Failed to parse service account from env variable:", e.message || e);
+        }
       }
     }
 
     if (!credentialsJson) {
-      throw new Error("Google service account credentials file 'google-service-account.json' not found at project root, and GOOGLE_SERVICE_ACCOUNT_JSON environment variable is not configured or could not be parsed.");
+      throw new Error("Google service account credentials not found. On Vercel, please add 'GOOGLE_SERVICE_ACCOUNT_JSON' and 'GOOGLE_SHEET_ID' in Vercel Project Settings -> Environment Variables.");
     }
 
     console.log("[Google Sheets Auth] Service account email loaded:", credentialsJson.client_email);
@@ -803,16 +843,16 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     return JSON.stringify(err);
   }
 
-  // Operation Janamail Diagnostics Endpoint
-  app.get("/api/janamail/status", async (req, res) => {
+  // Operation Janamail Diagnostics Endpoint (Supports both /api/janamail/status and /janamail/status)
+  app.get(["/api/janamail/status", "/janamail/status"], async (req, res) => {
     const credentialsPath = path.join(process.cwd(), "google-service-account.json");
-    const hasEnvJson = !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+    const hasEnvJson = !!(
+      process.env.GOOGLE_SERVICE_ACCOUNT_JSON || 
+      process.env.VITE_GOOGLE_SERVICE_ACCOUNT_JSON || 
+      process.env.GCP_SERVICE_ACCOUNT_KEY
+    );
     const hasFileJson = fs.existsSync(credentialsPath);
-    let sheetId = process.env.GOOGLE_SHEET_ID ? process.env.GOOGLE_SHEET_ID.trim() : "";
-    if (sheetId) {
-      const urlMatch = sheetId.match(/\/d\/([a-zA-Z0-9-_]+)/);
-      if (urlMatch && urlMatch[1]) sheetId = urlMatch[1];
-    }
+    const sheetId = getGoogleSheetId();
 
     let authOk = false;
     let authError = null;
@@ -825,7 +865,12 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         const c = JSON.parse(fs.readFileSync(credentialsPath, "utf8"));
         serviceAccountEmail = c.client_email;
       } else if (hasEnvJson) {
-        let raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON!.trim();
+        let raw = (
+          process.env.GOOGLE_SERVICE_ACCOUNT_JSON || 
+          process.env.VITE_GOOGLE_SERVICE_ACCOUNT_JSON || 
+          process.env.GCP_SERVICE_ACCOUNT_KEY || 
+          ""
+        ).trim();
         if (raw.startsWith('"') && raw.endsWith('"')) {
           try { raw = JSON.parse(raw); } catch (e) {}
         }
@@ -848,8 +893,8 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     });
   });
 
-  // Operation Janamail Sheets Registration API
-  app.post("/api/janamail/register", async (req, res) => {
+  // Operation Janamail Sheets Registration API (Supports both /api/janamail/register and /janamail/register)
+  app.post(["/api/janamail/register", "/janamail/register"], async (req, res) => {
     console.log("=== [DEBUG 1/8] Incoming request received at /api/janamail/register ===");
     console.log("Headers:", JSON.stringify(req.headers, null, 2));
 
@@ -898,20 +943,14 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         return res.status(400).json({ error: "Full Name and Mobile Number are required." });
       }
 
-      let sheetId = process.env.GOOGLE_SHEET_ID ? process.env.GOOGLE_SHEET_ID.trim() : "";
-      if (sheetId) {
-        const urlMatch = sheetId.match(/\/d\/([a-zA-Z0-9-_]+)/);
-        if (urlMatch && urlMatch[1]) {
-          sheetId = urlMatch[1];
-        }
-      }
+      const sheetId = getGoogleSheetId();
 
       console.log("=== [DEBUG 3/8] Spreadsheet ID used ===", sheetId || "MISSING");
 
       if (!sheetId) {
         console.error("[Google Sheets Flow ERROR] GOOGLE_SHEET_ID environment variable is missing on server.");
         return res.status(500).json({
-          error: "GOOGLE_SHEET_ID environment variable is missing on the server. Please configure GOOGLE_SHEET_ID."
+          error: "GOOGLE_SHEET_ID environment variable is missing on the server. On Vercel, please add GOOGLE_SHEET_ID in Project Settings -> Environment Variables."
         });
       }
 
@@ -1167,7 +1206,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     return { keyId: rawKeyId, keySecret: rawKeySecret };
   }
 
-  app.get("/api/razorpay/config", (_req, res) => {
+  app.get(["/api/razorpay/config", "/razorpay/config"], (_req, res) => {
     const { keyId, keySecret } = getRazorpayCredentials();
     return res.json({
       keyId,
@@ -1175,7 +1214,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     });
   });
 
-  app.post("/api/razorpay/create-order", async (req, res) => {
+  app.post(["/api/razorpay/create-order", "/razorpay/create-order"], async (req, res) => {
     try {
       const { paymentType, amount: clientAmount, memberId, mobile } = req.body;
 
@@ -1262,7 +1301,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
-  app.post("/api/razorpay/verify-payment", async (req, res) => {
+  app.post(["/api/razorpay/verify-payment", "/razorpay/verify-payment"], async (req, res) => {
     try {
       const {
         razorpay_order_id,
@@ -1500,7 +1539,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
   // RAZORPAY WEBHOOK ENDPOINT
   // Receives asynchronous payment updates (payment.captured, order.paid, payment.failed)
   // ============================================================================
-  app.post("/api/razorpay/webhook", async (req, res) => {
+  app.post(["/api/razorpay/webhook", "/razorpay/webhook"], async (req, res) => {
     try {
       const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET || "";
       const signature = req.headers['x-razorpay-signature'] as string;

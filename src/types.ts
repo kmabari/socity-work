@@ -55,6 +55,8 @@ export interface UserProfile {
   constituencyCode?: string;
   username?: string;
   highrichId?: string;
+  sponsorName?: string;
+  sponsorMobile?: string;
   isQuotaCounted?: boolean;
   pinResetRequested?: boolean;
   mustCompleteProfile?: boolean;

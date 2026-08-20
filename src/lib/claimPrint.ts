@@ -464,15 +464,17 @@ export const renderPersonCourtClaimPage = (
         <table class="header-table">
           <tr>
             <td style="vertical-align: top;">
-              <div class="org-title">HIGHRICH ONLINE SHOPPY</div>
-              <div class="sub-title">HIGHRICH COMMUNITY REVIVAL SOCIETY (HCRS)</div>
-              <div class="doc-tag">CONSIGNMENT ADVANCE ACCOUNT STATEMENT & VERIFIED RECORD</div>
+              <div class="org-title">HIGHRICH ONLINE SHOPPE Pvt. Ltd.</div>
+              <div style="font-size: 8.5px; color: #475569; font-weight: 700; margin-top: 1px;">TC41/1030/14, 2nd Floor, Kanimangalam Tower, Valiyalukkal, Thrissur</div>
+              <div class="sub-title" style="margin-top: 3px; font-size: 10px; color: #003366;">Support / Collection: HIGHRICH COMMUNITY REVIVAL SOCIETY (HCRS)</div>
+              <div style="font-size: 8px; color: #64748b; font-weight: 600;">Reg. No: TSR/TC/93/2025 • Room No. 85, Thrissur Dt., Kerala, India • PIN 680312 • PH: 9495465310</div>
+              <div class="doc-tag" style="margin-top: 4px;">MEMBER FINANCIAL INFORMATION REGISTRY</div>
             </td>
-            <td style="vertical-align: top; text-align: right; width: 210px;">
-              <div style="font-size: 9.5px; font-weight: 800; color: #475569; text-transform: uppercase;">STATEMENT REF</div>
-              <div style="font-size: 18px; font-weight: 900; color: #003366; font-family: monospace; line-height: 1.1;">#${tokenDisplay}</div>
-              <div style="font-size: 9.5px; color: #475569; margin-top: 3px; font-weight: 700;">Date: ${dateStr}</div>
-              <div style="margin-top: 4px; display: inline-block; background: #003366; color: #ffffff; font-size: 10px; font-weight: 900; padding: 3px 10px; border-radius: 4px; letter-spacing: 0.5px;">
+            <td style="vertical-align: top; text-align: right; width: 200px;">
+              <div style="font-size: 9px; font-weight: 800; color: #475569; text-transform: uppercase;">STATEMENT REF</div>
+              <div style="font-size: 17px; font-weight: 900; color: #003366; font-family: monospace; line-height: 1.1;">#${tokenDisplay}</div>
+              <div style="font-size: 9px; color: #475569; margin-top: 2px; font-weight: 700;">Date: ${dateStr}</div>
+              <div style="margin-top: 3px; display: inline-block; background: #003366; color: #ffffff; font-size: 9.5px; font-weight: 900; padding: 2.5px 8px; border-radius: 4px; letter-spacing: 0.5px;">
                 PAGE ${pageNum}/${totalPages}
               </div>
             </td>
@@ -498,6 +500,14 @@ export const renderPersonCourtClaimPage = (
             <div>
               <span class="meta-label">Highrich Consumer ID (HR ID)</span>
               <span class="meta-val font-mono" style="color: #003366;">${claim.highrichId || 'N/A'}</span>
+            </div>
+            <div>
+              <span class="meta-label">Sponsor / Leader Name (സ്പോൺസർ / ലീഡർ)</span>
+              <span class="meta-val">${claim.sponsorName || 'N/A'}</span>
+            </div>
+            <div>
+              <span class="meta-label">Sponsor / Leader Mobile (മൊബൈൽ നമ്പർ)</span>
+              <span class="meta-val font-mono">${claim.sponsorMobile || 'N/A'}</span>
             </div>
             <div>
               <span class="meta-label">District & Assembly Constituency</span>
@@ -603,10 +613,10 @@ export const renderPersonCourtClaimPage = (
             DECLARATION & VERIFICATION CONFIRMATION:
           </div>
           <div style="font-size: 11px; line-height: 1.45; color: #0f172a; font-weight: 600;">
-            I hereby confirm and declare that the consignment advance payment and transaction details provided by me above are true and correct to the best of my knowledge and records. I acknowledge that the actual consignment advance amount, receipts, and the final net balance payable are subject to official verification and confirmation by <strong>HIGHRICH ONLINE SHOPPY</strong> from authentic company records.
+            I hereby confirm and declare that the consignment advance payment and transaction details provided by me above are true and correct to the best of my knowledge and records. I acknowledge that the actual consignment advance amount, receipts, and the final net balance payable are subject to official verification and confirmation by <strong>HIGHRICH ONLINE SHOPPE Pvt. Ltd.</strong> from authentic company records.
           </div>
           <div style="font-size: 10.5px; line-height: 1.4; color: #334155; margin-top: 4px; font-weight: 500;">
-            ഞാൻ മുകളിൽ നൽകിയിരിക്കുന്ന കൺസൈൻമെന്റ് അഡ്വാൻസ് പേയ്‌മെന്റ് വിവരങ്ങൾ എൻ്റെ അറിവിൽ ശരിയാണെന്ന് ഇതിനാൽ സാക്ഷ്യപ്പെടുത്തുന്നു. കൺസൈൻമെന്റ് അഡ്വാൻസ് തുകയും ഇതിനകം ലഭിച്ച തുകയും ശേഷിക്കുന്ന അന്തിമ ബാലൻസും കമ്പനി രേഖകളുമായി പരിശോധിച്ച് HIGHRICH ONLINE SHOPPY മാനേജ്‌മെന്റ് സ്ഥിരീകരിക്കേണ്ടതാണ്.
+            ഞാൻ മുകളിൽ നൽകിയിരിക്കുന്ന കൺസൈൻമെന്റ് അഡ്വാൻസ് പേയ്‌മെന്റ് വിവരങ്ങൾ എൻ്റെ അറിവിൽ ശരിയാണെന്ന് ഇതിനാൽ സാക്ഷ്യപ്പെടുത്തുന്നു. കൺസൈൻമെന്റ് അഡ്വാൻസ് തുകയും ഇതിനകം ലഭിച്ച തുകയും ശേഷിക്കുന്ന അന്തിമ ബാലൻസും കമ്പനി രേഖകളുമായി പരിശോധിച്ച് HIGHRICH ONLINE SHOPPE Pvt. Ltd. മാനേജ്‌മെന്റ് സ്ഥിരീകരിക്കേണ്ടതാണ്.
           </div>
         </div>
       </div>
@@ -635,11 +645,11 @@ export const renderPersonCourtClaimPage = (
           </div>
         </div>
 
-        <!-- 2. HIGHRICH ONLINE SHOPPY - MANAGEMENT / OFFICE VERIFICATION -->
+        <!-- 2. HIGHRICH ONLINE SHOPPE Pvt. Ltd. - MANAGEMENT / OFFICE VERIFICATION -->
         <div class="sig-box" style="background: #ffffff; border-color: #64748b;">
           <div>
             <div class="sig-title-main">
-              2. HIGHRICH ONLINE SHOPPY
+              2. HIGHRICH ONLINE SHOPPE Pvt. Ltd.
               <span class="sig-title-sub">MANAGEMENT / OFFICE VERIFICATION</span>
             </div>
             <table class="mgmt-verify-table">
@@ -662,24 +672,27 @@ export const renderPersonCourtClaimPage = (
             </table>
           </div>
           <div>
-            <div class="sig-line">HIGHRICH ONLINE SHOPPY</div>
+            <div class="sig-line">HIGHRICH ONLINE SHOPPE Pvt. Ltd.</div>
             <div class="sig-sub">Authorized Signatory & Seal</div>
           </div>
         </div>
 
-        <!-- 3. HCRS - AUTHORIZED AUTHORITY -->
+        <!-- 3. HCRS - SUPPORT / COLLECTION AUTHORITY -->
         <div class="sig-box">
           <div>
             <div class="sig-title-main">
-              3. HCRS
-              <span class="sig-title-sub">AUTHORIZED AUTHORITY</span>
+              3. HIGHRICH COMMUNITY REVIVAL SOCIETY
+              <span class="sig-title-sub">SUPPORT / COLLECTION AUTHORITY</span>
             </div>
-            <div style="padding: 12px 2px 6px 2px; text-align: center;">
-              <div style="font-size: 9px; color: #475569; font-weight: 800; text-transform: uppercase;">
-                Verification & Registry
+            <div style="padding: 4px 2px 2px 2px; text-align: center;">
+              <div style="font-size: 8px; color: #475569; font-weight: 800;">
+                Reg. No: TSR/TC/93/2025
               </div>
-              <div style="font-size: 9px; color: #64748b; margin-top: 4px; font-family: monospace; font-weight: 700;">
-                Date: ...... / ...... / 202...
+              <div style="font-size: 7.5px; color: #64748b; font-weight: 600; margin-top: 1px;">
+                Room No. 85, Thrissur Dt., PIN 680312
+              </div>
+              <div style="font-size: 7.5px; color: #003366; font-weight: 800; margin-top: 1px;">
+                PH: 9495465310
               </div>
             </div>
           </div>
@@ -734,9 +747,11 @@ export const renderPersonFullAdminClaimPage = (
         <table class="header-table">
           <tr>
             <td style="vertical-align: top;">
-              <div class="org-title">HIGHRICH COMMUNITY REVIVAL SOCIETY (HCRS)</div>
-              <div class="sub-title">ADMIN MASTER REGISTRY • CUSTOMER CLAIM RECORD</div>
-              <div class="doc-tag" style="background: #7e22ce;">FULL RECORD WITH PREFERENCES & HARDSHIPS</div>
+              <div class="org-title">HIGHRICH ONLINE SHOPPE Pvt. Ltd.</div>
+              <div style="font-size: 8.5px; color: #475569; font-weight: 700; margin-top: 1px;">TC41/1030/14, 2nd Floor, Kanimangalam Tower, Valiyalukkal, Thrissur</div>
+              <div class="sub-title" style="margin-top: 3px; font-size: 10px; color: #003366;">Support / Collection: HIGHRICH COMMUNITY REVIVAL SOCIETY (HCRS)</div>
+              <div style="font-size: 8px; color: #64748b; font-weight: 600;">Reg. No: TSR/TC/93/2025 • Room No. 85, Thrissur Dt., Kerala, India • PIN 680312 • PH: 9495465310</div>
+              <div class="doc-tag" style="background: #7e22ce; margin-top: 4px;">MEMBER FINANCIAL INFORMATION REGISTRY • ADMIN MASTER RECORD</div>
             </td>
             <td style="vertical-align: top; text-align: right; width: 180px;">
               <div style="font-size: 7px; font-weight: 700; color: #64748b; text-transform: uppercase;">ADMIN REF</div>
@@ -774,6 +789,10 @@ export const renderPersonFullAdminClaimPage = (
               <span class="meta-val font-mono" style="color: #003366;">${claim.highrichId || 'N/A'}</span>
             </div>
             <div>
+              <span class="meta-label">Sponsor / Leader</span>
+              <span class="meta-val">${claim.sponsorName ? `${claim.sponsorName} ${claim.sponsorMobile ? `(${claim.sponsorMobile})` : ''}` : 'N/A'}</span>
+            </div>
+            <div>
               <span class="meta-label">District & Assembly</span>
               <span class="meta-val">${districtName} (${asslyName})</span>
             </div>
@@ -785,7 +804,7 @@ export const renderPersonFullAdminClaimPage = (
         </div>
 
         <!-- Financial Summary -->
-        <div class="section-heading">2. HIGHRICH ONLINE SHOPPY Consignment Advance Financials</div>
+        <div class="section-heading">2. HIGHRICH ONLINE SHOPPE Pvt. Ltd. Consignment Advance Financials</div>
         <table class="claim-table">
           <thead>
             <tr>
@@ -934,8 +953,8 @@ export const printCourtClaimReport = (claim: any, memberProfile?: any) => {
       <body>
         <div class="no-print screen-toolbar">
           <div class="toolbar-title">
-            <strong>കൺസൈൻമെന്റ് അഡ്വാൻസ് റീഫണ്ട് ഫോം (Consignment Advance Statement)</strong>
-            <span>Official A4 Record • #${tokenDisplay} • ${name}</span>
+            <strong>Member Financial Information Registry</strong>
+            <span>Official Record • #${tokenDisplay} • ${name}</span>
           </div>
           <div class="toolbar-actions">
             <button onclick="window.print()" class="btn-print">🖨️ പ്രിന്റ് / സേവ് PDF (Print / Save as PDF)</button>
@@ -943,12 +962,12 @@ export const printCourtClaimReport = (claim: any, memberProfile?: any) => {
             <button onclick="window.close()" class="btn-close">✕ ക്ലോസ് (Close)</button>
           </div>
         </div>
-        <div class="watermark">CONSIGNMENT ADVANCE STATEMENT</div>
+        <div class="watermark">MEMBER FINANCIAL REGISTRY</div>
         ${renderPersonCourtClaimPage(claim, memberProfile, 1, 1)}
 
         <script>
           function shareViaWeb() {
-            var text = "HIGHRICH ONLINE SHOPPY - Consignment Advance Refund Form\\n" +
+            var text = "HIGHRICH ONLINE SHOPPE Pvt. Ltd. - Member Financial Information Registry\\n" +
                        "Name: ${name}\\n" +
                        "Statement Ref: #${tokenDisplay}\\n" +
                        "Consignment Advance Paid: ₹${(claim.totalPaid || 0).toLocaleString('en-IN')}\\n" +
@@ -1126,8 +1145,8 @@ export const printCourtComboReport = (primaryMember: any, memberClaims: any[]) =
       <body>
         <div class="no-print screen-toolbar">
           <div class="toolbar-title">
-            <strong>കൺസൈൻമെന്റ് അഡ്വാൻസ് റീഫണ്ട് ഫോം (Consignment Advance Statement)</strong>
-            <span>Official A4 Record (${totalCount} Pages) • ${primeName}</span>
+            <strong>Member Financial Information Registry</strong>
+            <span>Official Record (${totalCount} Pages) • ${primeName}</span>
           </div>
           <div class="toolbar-actions">
             <button onclick="window.print()" class="btn-print">🖨️ പ്രിന്റ് / സേവ് PDF (Print / Save as PDF)</button>
@@ -1135,18 +1154,18 @@ export const printCourtComboReport = (primaryMember: any, memberClaims: any[]) =
             <button onclick="window.close()" class="btn-close">✕ ക്ലോസ് (Close)</button>
           </div>
         </div>
-        <div class="watermark">CONSIGNMENT ADVANCE STATEMENT</div>
+        <div class="watermark">MEMBER FINANCIAL REGISTRY</div>
         ${cleanClaims.map((claim, idx) => {
           return renderPersonCourtClaimPage(claim, primaryMember, idx + 1, totalCount);
         }).join('')}
 
         <script>
           function shareViaWeb() {
-            var text = "HIGHRICH ONLINE SHOPPY - Consignment Advance Refund Form (${totalCount} Persons)\\n" +
+            var text = "HIGHRICH ONLINE SHOPPE Pvt. Ltd. - Member Financial Information Registry (${totalCount} Persons)\\n" +
                        "Primary Account Holder: ${primeName}\\n" +
                        "Statement Ref: #${firstToken}\\n" +
                        "Total Statement Pages: ${totalCount}\\n" +
-                       "Verified by HIGHRICH COMMUNITY REVIVAL SOCIETY (HCRS)";
+                       "Support / Collection: HIGHRICH COMMUNITY REVIVAL SOCIETY (HCRS)";
             if (navigator.share) {
               navigator.share({
                 title: "Consignment Advance Statement - ${primeName}",
@@ -1358,14 +1377,14 @@ export const shareCourtComboPdf = async (primaryMember: any, memberClaims: any[]
     const pdfBlob = pdf.output('blob');
     const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
-    const shareText = `*HIGHRICH ONLINE SHOPPY - CONSIGNMENT ADVANCE REFUND STATEMENT*\n` +
-                      `*HCRS Verified Record & Official Form*\n\n` +
+    const shareText = `*HIGHRICH ONLINE SHOPPE Pvt. Ltd. - MEMBER FINANCIAL INFORMATION REGISTRY*\n` +
+                      `*HCRS Support / Collection Record*\n\n` +
                       `👤 *Name:* ${primeName}\n` +
                       `📄 *Statement Ref:* #${firstToken}\n` +
                       `👥 *Total Pages:* ${totalCount} Persons\n` +
                       `💰 *Consignment Advance Paid:* ₹${totalPaid.toLocaleString('en-IN')}\n` +
                       `🔴 *Pending Balance:* ₹${totalPending.toLocaleString('en-IN')}\n\n` +
-                      `Verified by Highrich Community Revival Society (HCRS)`;
+                      `Support / Collection: Highrich Community Revival Society (HCRS)`;
 
     // Attempt Native Web Share with the actual PDF file
     if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {

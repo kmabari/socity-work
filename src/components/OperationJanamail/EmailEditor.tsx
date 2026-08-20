@@ -826,6 +826,18 @@ export default function EmailEditor({ config }: EmailEditorProps) {
     setIsSubmitting(true);
     setApiError(null);
 
+    const currentCampaignId = getCampaignId(config, subject, body, recipients, cc);
+    const lockRecord = {
+      campaignId: currentCampaignId,
+      email: emailId,
+      timestamp: new Date().toISOString(),
+      status: "Completed",
+      fullName: name.trim(),
+      mobileNumber: phone.trim(),
+      selectedSubject: finalSubject
+    };
+    const lockKey = `janamail_lock_${currentCampaignId}_${emailId}`;
+
     // 1. Record participation state in Google Sheets via Server API
     const loadingToast = toast.loading("പങ്കാളിത്തം രേഖപ്പെടുത്തുന്നു...");
     try {
@@ -851,18 +863,6 @@ export default function EmailEditor({ config }: EmailEditorProps) {
           bypassDuplicateCheck: true // Testing mode: allow multiple registrations to create rows in Google Sheets
         })
       });
-
-      const currentCampaignId = getCampaignId(config, subject, body, recipients, cc);
-      const lockRecord = {
-        campaignId: currentCampaignId,
-        email: emailId,
-        timestamp: new Date().toISOString(),
-        status: "Completed",
-        fullName: name.trim(),
-        mobileNumber: phone.trim(),
-        selectedSubject: finalSubject
-      };
-      const lockKey = `janamail_lock_${currentCampaignId}_${emailId}`;
 
       if (!response.ok) {
         let errorMsg = "";
@@ -926,6 +926,19 @@ export default function EmailEditor({ config }: EmailEditorProps) {
       console.error("Error saving participant details to Google Sheets:", err);
       const errMsg = err.message || "വിവരങ്ങൾ ഷീറ്റിൽ രേഖപ്പെടുത്താൻ സാധിച്ചില്ല.";
       
+      // Save local and Firestore fallback so user data is never lost even if Google Sheets fails
+      try {
+        if (!isWhitelisted) {
+          localStorage.setItem(lockKey, JSON.stringify(lockRecord));
+          localStorage.setItem("janamail_participated", "true");
+          setHasParticipated(true);
+          const docId = `janamail_lock_${currentCampaignId}_${emailId.replace(/[^a-zA-Z0-9_]/g, "_")}`;
+          await setDoc(doc(db, "claims", docId), lockRecord, { merge: true });
+        }
+      } catch (fallbackDbErr) {
+        console.warn("Fallback claims save notice:", fallbackDbErr);
+      }
+
       toast.error(`ഷീറ്റിൽ വിവരങ്ങൾ രേഖപ്പെടുത്താൻ സാധിച്ചില്ല: ${errMsg}`, { id: loadingToast, duration: 8000 });
       setApiError(errMsg);
       setIsSubmitting(false);
@@ -943,6 +956,33 @@ export default function EmailEditor({ config }: EmailEditorProps) {
       }
     } else {
       window.location.href = targetUrl;
+    }
+  };
+
+  const openGmailDirectly = () => {
+    const cleanTo = cleanEmailAddresses(recipients);
+    const cleanCc = getDeduplicatedCc(cleanTo, cc || "");
+    const { subject: finalSubject, body: finalBody } = getOptimalEmailParams(
+      subject,
+      body,
+      name,
+      phone,
+      district,
+      place,
+      category,
+      "gmail",
+      recipients,
+      cc
+    );
+    const toParam = cleanTo ? `to=${encodeURIComponent(cleanTo)}` : "";
+    const ccParam = cleanCc ? `&cc=${encodeURIComponent(cleanCc)}` : "";
+    const suParam = `&su=${encodeURIComponent(finalSubject)}`;
+    const fullBodyParam = `&body=${encodeURIComponent(finalBody)}`;
+    const directGmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&${toParam}${ccParam}${suParam}${fullBodyParam}`;
+
+    const win = window.open(directGmailUrl, '_blank');
+    if (!win || win.closed || typeof win.closed === 'undefined') {
+      window.location.href = directGmailUrl;
     }
   };
 
@@ -1741,8 +1781,12 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                       );
                     }
 
+                    const isMissingConfig = apiError.includes("GOOGLE_SHEET_ID") || 
+                                            apiError.includes("GOOGLE_SERVICE_ACCOUNT_JSON") || 
+                                            apiError.includes("credentials not found");
+
                     return (
-                      <div className="w-full max-w-md bg-rose-50 border border-rose-200 p-4.5 rounded-2xl text-left space-y-1.5 animate-in fade-in duration-200">
+                      <div className="w-full max-w-md bg-rose-50 border border-rose-200 p-5 rounded-2xl text-left space-y-3 animate-in fade-in duration-200">
                         <div className="flex items-center gap-2 text-rose-800 font-extrabold text-xs uppercase tracking-wider">
                           <AlertTriangle className="w-4.5 h-4.5 shrink-0 text-rose-600" />
                           <span>രജിസ്ട്രേഷൻ പരാജയപ്പെട്ടു / REGISTRATION FAILED</span>
@@ -1750,6 +1794,20 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                         <p className="text-xs text-rose-700 font-extrabold leading-relaxed break-words font-mono">
                           {apiError}
                         </p>
+                        {isMissingConfig && (
+                          <div className="text-[11px] text-rose-900 bg-rose-100/60 p-3 rounded-xl border border-rose-200 leading-relaxed font-semibold space-y-1">
+                            <p className="font-extrabold">Vercel ക്രമീകരണം (Vercel Configuration):</p>
+                            <p>Vercel Dashboard ➔ Project ➔ Settings ➔ <b>Environment Variables</b>-ൽ <code className="bg-white/80 px-1 py-0.5 rounded text-rose-950 font-bold">GOOGLE_SHEET_ID</code> ഉം <code className="bg-white/80 px-1 py-0.5 rounded text-rose-950 font-bold">GOOGLE_SERVICE_ACCOUNT_JSON</code> ഉം ചേർക്കുക.</p>
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={openGmailDirectly}
+                          className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-black text-white font-black text-xs uppercase tracking-wider py-3 px-4 rounded-xl transition duration-150 shadow-md cursor-pointer mt-2"
+                        >
+                          <Send className="w-4 h-4 text-emerald-400" />
+                          <span>എങ്കിലും Gmail-ലേക്ക് തുടരുക (Proceed to Gmail anyway)</span>
+                        </button>
                       </div>
                     );
                   })()}

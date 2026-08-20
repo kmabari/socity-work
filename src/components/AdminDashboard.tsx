@@ -589,6 +589,8 @@ export default function AdminDashboard({
 
   // States for Editing Claim Dialog
   const [editClaimHighrichId, setEditClaimHighrichId] = useState('');
+  const [editClaimSponsorName, setEditClaimSponsorName] = useState('');
+  const [editClaimSponsorMobile, setEditClaimSponsorMobile] = useState('');
   const [editClaimNoBreakup, setEditClaimNoBreakup] = useState(false);
   const [editClaimTotalPaid, setEditClaimTotalPaid] = useState(0);
   const [editClaimTotalReceived, setEditClaimTotalReceived] = useState(0);
@@ -606,6 +608,8 @@ export default function AdminDashboard({
   useEffect(() => {
     if (editingClaim) {
       setEditClaimHighrichId(editingClaim.highrichId || '');
+      setEditClaimSponsorName(editingClaim.sponsorName || '');
+      setEditClaimSponsorMobile(editingClaim.sponsorMobile || '');
       setEditClaimNoBreakup(!!editingClaim.noBreakup);
       setEditClaimTotalPaid(editingClaim.totalPaid || 0);
       setEditClaimTotalReceived(editingClaim.totalReceived || 0);
@@ -1112,6 +1116,8 @@ export default function AdminDashboard({
 
       const updateData = {
         highrichId: editClaimHighrichId,
+        sponsorName: editClaimSponsorName.trim(),
+        sponsorMobile: editClaimSponsorMobile.trim(),
         noBreakup: editClaimNoBreakup,
         totalPaid,
         totalReceived,
@@ -4829,6 +4835,8 @@ export default function AdminDashboard({
                             'Mobile': c.userMobile,
                             'District': c.userDistrict,
                             'HR ID': c.highrichId,
+                            'Sponsor Name': c.sponsorName || '',
+                            'Sponsor Mobile': c.sponsorMobile || '',
                             'Categories': formatClaimCategories(c.categories),
                             'Total Paid': c.totalPaid,
                             'Total Received': c.totalReceived,
@@ -6548,6 +6556,13 @@ service cloud.firestore {
                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Highrich ID</p>
                        <p className="text-sm font-black text-brand-blue uppercase">{selectedClaim.highrichId || 'NOT PROVIDED'}</p>
                     </div>
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Sponsor / Leader</p>
+                       <p className="text-sm font-black text-slate-800 uppercase">{selectedClaim.sponsorName || 'NOT PROVIDED'}</p>
+                       {selectedClaim.sponsorMobile && (
+                         <p className="text-xs font-mono text-slate-500 font-bold mt-0.5">{selectedClaim.sponsorMobile}</p>
+                       )}
+                    </div>
                  </div>
 
                  <div className="space-y-4">
@@ -6717,15 +6732,38 @@ service cloud.firestore {
             {editingClaim && (
               <div className="space-y-6 py-4">
                 {/* Highrich Id */}
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black text-slate-500 uppercase">Highrich ID (ഹൈറിച്ച് ഐഡി)</Label>
-                  <Input 
-                    type="text" 
-                    value={editClaimHighrichId} 
-                    onChange={(e) => setEditClaimHighrichId(e.target.value)} 
-                    placeholder="E.g., HR12345"
-                    className="h-11 rounded-xl font-medium"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black text-slate-500 uppercase">Highrich ID (ഹൈറിച്ച് ഐഡി)</Label>
+                    <Input 
+                      type="text" 
+                      value={editClaimHighrichId} 
+                      onChange={(e) => setEditClaimHighrichId(e.target.value)} 
+                      placeholder="E.g., HR12345"
+                      className="h-11 rounded-xl font-medium"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black text-slate-500 uppercase">സ്പോൺസർ / ലീഡർ പേര്</Label>
+                    <Input 
+                      type="text" 
+                      value={editClaimSponsorName} 
+                      onChange={(e) => setEditClaimSponsorName(e.target.value)} 
+                      placeholder="Sponsor Name"
+                      className="h-11 rounded-xl font-medium"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black text-slate-500 uppercase">സ്പോൺസർ മൊബൈൽ നമ്പർ</Label>
+                    <Input 
+                      type="tel" 
+                      value={editClaimSponsorMobile} 
+                      onChange={(e) => setEditClaimSponsorMobile(e.target.value)} 
+                      placeholder="Sponsor Mobile"
+                      maxLength={10}
+                      className="h-11 rounded-xl font-medium"
+                    />
+                  </div>
                 </div>
 
                 {/* No Breakup Option */}

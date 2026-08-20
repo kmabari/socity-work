@@ -3014,7 +3014,7 @@ export default function App() {
                             className="w-full h-14 rounded-2xl font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg hover:scale-[1.01] active:scale-95 transition-all text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 border-b-4 border-emerald-800 cursor-pointer"
                           >
                             <FileText className="w-5 h-5 shrink-0" />
-                            <span>ക്ലെയിം വിവര രജിസ്ട്രി ഫോം (Claim Form)</span>
+                            <span>Settlement Form</span>
                           </Button>
                           <div className="text-center lg:text-left space-y-1.5 pt-3 border-t border-emerald-500/30">
                             <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 border border-emerald-400 text-emerald-950 dark:text-emerald-200 text-xs font-black">
@@ -3033,7 +3033,7 @@ export default function App() {
                             className="w-full h-14 rounded-2xl font-black bg-amber-600 hover:bg-amber-700 text-white shadow-lg hover:scale-[1.01] active:scale-95 transition-all text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 border-b-4 border-amber-800 cursor-pointer"
                           >
                             <FileText className="w-5 h-5 shrink-0" />
-                            <span>ക്ലെയിം വിവര രജിസ്ട്രി ഫോം (Claim Form)</span>
+                            <span>Settlement Form</span>
                           </Button>
                           <div className="text-center lg:text-left space-y-1.5 pt-3 border-t border-amber-500/40">
                             <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-900/60 border border-amber-400 text-amber-950 dark:text-amber-200 text-xs font-black">
@@ -3052,7 +3052,7 @@ export default function App() {
                             className="w-full h-14 rounded-2xl font-black bg-brand-magenta hover:bg-brand-magenta/90 text-slate-950 shadow-lg hover:scale-[1.01] active:scale-95 transition-all text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 border-b-4 border-[#9c7203]/70 cursor-pointer"
                           >
                             <FileText className="w-5 h-5 shrink-0" />
-                            <span>ക്ലെയിം വിവര രജിസ്ട്രി ഫോം (Claim Form)</span>
+                            <span>Settlement Form</span>
                           </Button>
                           <div className="text-center lg:text-left space-y-1.5 pt-3 border-t border-rose-500/30">
                             <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-100 dark:bg-rose-900/60 border border-rose-400 text-rose-950 dark:text-rose-200 text-xs font-black animate-pulse">
@@ -3305,7 +3305,7 @@ export default function App() {
                             className="h-11 px-6 rounded-xl font-black bg-[#003366] hover:bg-[#002244] text-white text-xs uppercase tracking-wider inline-flex items-center justify-center gap-2 shadow-md cursor-pointer"
                           >
                             <FileText className="w-4 h-4" />
-                            ക്ലെയിം വിവര രജിസ്ട്രി ഫോം പൂരിപ്പിക്കുക (Fill Info Registry)
+                            Settlement Form
                           </Button>
                         </div>
                       )}

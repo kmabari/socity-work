@@ -477,9 +477,9 @@ export const staticTranslations: TranslationDictionary = {
     hi: "यह पोर्टल योजना, समन्वय और सहायता के लिए सदस्यों से वित्तीय जानकारी एकत्र करने और सत्यापित करने के लिए है।"
   },
   "card_registry_btn": {
-    ml: "രജിസ്ട്രി പോർട്ടൽ സന്ദർശിക്കുക",
-    en: "Access Registry Portal",
-    hi: "रजिस्ट्री पोर्टल खोलें"
+    ml: "Settlement Form",
+    en: "Settlement Form",
+    hi: "Settlement Form"
   },
   "btn_next_update": {
     ml: "അടുത്ത അപ്ഡേഷൻ (NEXT)",
