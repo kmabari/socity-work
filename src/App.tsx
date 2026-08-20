@@ -1170,7 +1170,6 @@ export default function App() {
     setIsLoggingIn(true);
     setLoadingStatus('Authenticating...');
     try {
-      setView('loading');
       let mappedUserData: any = null;
       let targetEmail = '';
 
@@ -1458,7 +1457,6 @@ export default function App() {
         setUser(null);
       } catch (e) {}
       setIsLoggingIn(false);
-      setView(originView); 
       
       const isAdminEmailInput = [...MAIN_ADMINS, ...SECOND_ADMINS].some(email => email.toLowerCase() === originalInput.toLowerCase());
       const isLocalOfflinePass = trimmedPin === '246810';
@@ -1511,7 +1509,13 @@ export default function App() {
       let errorMessage = 'Login failed. Please check your credentials.';
       if (error.message && (error.message.includes('തെറ്റായ പാസ്‌വേഡ്') || error.message.includes('Incorrect Password') || error.message.includes('പുതിയ 6 അക്ക പാസ്‌വേഡ്'))) {
         errorMessage = error.message;
-      } else if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+      } else if (
+        error.code === 'auth/wrong-password' || 
+        error.code === 'auth/invalid-credential' || 
+        error.code === 'auth/invalid-login-credentials' ||
+        error.message?.includes('invalid-credential') ||
+        error.message?.includes('wrong-password')
+      ) {
         errorMessage = 'തെറ്റായ പാസ്‌വേഡ്! ദയവായി താങ്കളുടെ ശരിയായ 6 അക്ക പാസ്‌വേഡ് നൽകുക. (Incorrect Password! Please enter your correct 6-digit password.)';
       } else if (error.code === 'auth/user-not-found') {
         errorMessage = isMobile 
