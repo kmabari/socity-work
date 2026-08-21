@@ -27,7 +27,8 @@ import {
   Share2,
   FileText,
   Plus,
-  ShieldCheck
+  ShieldCheck,
+  MessageCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +42,7 @@ import { db } from '@/lib/firebase';
 import { collection, addDoc, query, where, getDocs, deleteDoc, doc, serverTimestamp, updateDoc, runTransaction } from 'firebase/firestore';
 import { subscribeToOrgSettings, OrgSettings, defaultSettings } from '@/src/lib/cms';
 import { printCourtComboReport, printCourtClaimReport, shareCourtComboPdf, downloadCourtComboPdf, getCourtComboHtml, getSingleCourtClaimHtml } from '../lib/claimPrint';
+import { sendWAClaimMessage } from '../lib/whatsapp';
 
 interface CategoryDetail {
   paid: number;
@@ -860,6 +862,35 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
 
       setNewlyAssignedTokens(assignedTokens);
 
+      // Trigger automated WhatsApp notification to the member if enabled in settings
+      try {
+        if (orgSettings?.whatsappEnabled !== false && orgSettings?.whatsappClaimEnabled !== false && orgSettings?.registrationMode !== 'bulk') {
+          const tokensList = Object.values(assignedTokens);
+          const primaryToken = tokensList[0] || '';
+          const allCats = new Set<string>();
+          if (selfSelected) selfCategories.forEach(c => allCats.add(c));
+          if (parentSelected) parentCategories.forEach(c => allCats.add(c));
+          if (childSelected) childCategories.forEach(c => allCats.add(c));
+          if (spouseSelected) spouseCategories.forEach(c => allCats.add(c));
+
+          setTimeout(() => {
+            sendWAClaimMessage({
+              userName: user.name,
+              userMobile: user.mobile,
+              tokenNo: primaryToken,
+              tokensList,
+              totalPaid: combinedTotalPaid,
+              totalReceived: combinedTotalReceived,
+              totalPending: combinedTotalPending,
+              categories: Array.from(allCats),
+              district: user.district
+            });
+          }, 600);
+        }
+      } catch (waErr) {
+        console.warn("Automated WhatsApp claim notification error:", waErr);
+      }
+
       setCompleted(true);
       toast.success('നിങ്ങളുടെ വിവരങ്ങൾ വിജയകരമായി സമർപ്പിച്ചിട്ടുണ്ട്.');
     } catch (error) {
@@ -1257,6 +1288,34 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
             </Button>
           </div>
 
+          <Button 
+            onClick={() => {
+              const tokensList: string[] = Object.values(newlyAssignedTokens).map(t => String(t));
+              const primaryToken: string = tokensList[0] || '';
+              const allCats = new Set<string>();
+              if (selfSelected) selfCategories.forEach(c => allCats.add(c));
+              if (parentSelected) parentCategories.forEach(c => allCats.add(c));
+              if (childSelected) childCategories.forEach(c => allCats.add(c));
+              if (spouseSelected) spouseCategories.forEach(c => allCats.add(c));
+
+              sendWAClaimMessage({
+                userName: user.name,
+                userMobile: user.mobile,
+                tokenNo: primaryToken,
+                tokensList,
+                totalPaid: combinedTotalPaid,
+                totalReceived: combinedTotalReceived,
+                totalPending: combinedTotalPending,
+                categories: Array.from(allCats),
+                district: user.district
+              });
+            }}
+            className="w-full h-12 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black shadow-md active:scale-95 transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <MessageCircle className="w-4 h-4 text-white shrink-0" />
+            <span>വാട്സാപ്പ് കൺഫർമേഷൻ അയക്കുക (Send WhatsApp Message)</span>
+          </Button>
+
           <Button onClick={onClose} className="w-full h-12 rounded-xl bg-brand-blue hover:bg-brand-blue/90 text-white font-bold shadow-lg active:scale-95 transition-all text-xs uppercase tracking-wider">
             തിരികെ ഡാഷ്‌ബോർഡിലേക്ക് (Back to Dashboard)
           </Button>
@@ -1461,27 +1520,38 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">സ്പോൺസർ / ലീഡറുടെ പേര് (അറിയാമെങ്കിൽ)</Label>
-                    <Input 
-                      value={selfSponsorName} 
-                      onChange={(e) => setSelfSponsorName(e.target.value)} 
-                      placeholder="Sponsor / Leader Name (Optional)"
-                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
-                    />
+                <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <span>👤 ലീഡർ / സ്പോൺസർ വിവരങ്ങൾ (Leader / Sponsor Details)</span>
+                    </Label>
+                    <span className="text-[9px] font-bold text-brand-magenta bg-brand-magenta/10 px-2 py-0.5 rounded-full">പ്രിന്റിംഗ് ഫോമിൽ വരുന്നത്</span>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">സ്പോൺസർ / ലീഡർ മൊബൈൽ നമ്പർ</Label>
-                    <Input 
-                      value={selfSponsorMobile} 
-                      onChange={(e) => setSelfSponsorMobile(e.target.value)} 
-                      placeholder="Sponsor / Leader Mobile (Optional)"
-                      type="tel"
-                      maxLength={10}
-                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">ലീഡർ / സ്പോൺസർ പേര് (Leader Name)</Label>
+                      <Input 
+                        value={selfSponsorName} 
+                        onChange={(e) => setSelfSponsorName(e.target.value)} 
+                        placeholder="Leader / Sponsor Name"
+                        className="h-11 border-slate-200 rounded-xl font-bold bg-white focus:border-brand-blue"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">ലീഡർ / സ്പോൺസർ മൊബൈൽ (Mobile Number)</Label>
+                      <Input 
+                        value={selfSponsorMobile} 
+                        onChange={(e) => setSelfSponsorMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                        placeholder="10-digit Mobile Number"
+                        type="tel"
+                        maxLength={10}
+                        className="h-11 border-slate-200 rounded-xl font-bold bg-white focus:border-brand-blue"
+                      />
+                    </div>
                   </div>
+                  <p className="text-[9px] text-slate-400 font-bold">
+                    💡 ഫോം പൂരിപ്പിക്കുമ്പോൾ നൽകുന്ന ഈ ലീഡർ വിവരങ്ങളാണ് പ്രിന്റിംഗ് അപേക്ഷാ ഫോമിലും കോടതി രേഖകളിലും രേഖപ്പെടുത്തുന്നത്.
+                  </p>
                 </div>
 
                 {/* Sub-breakup Selector */}
@@ -1668,26 +1738,45 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">സ്പോൺസർ / ലീഡറുടെ പേര് (അറിയാമെങ്കിൽ)</Label>
-                    <Input 
-                      value={parentSponsorName} 
-                      onChange={(e) => setParentSponsorName(e.target.value)} 
-                      placeholder="Sponsor / Leader Name (Optional)"
-                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
-                    />
+                <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <span>👤 ലീഡർ / സ്പോൺസർ വിവരങ്ങൾ (Leader / Sponsor Details)</span>
+                    </Label>
+                    {selfSponsorName && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setParentSponsorName(selfSponsorName);
+                          setParentSponsorMobile(selfSponsorMobile);
+                        }}
+                        className="text-[9px] font-bold text-brand-blue bg-brand-blue/10 hover:bg-brand-blue/20 px-2 py-0.5 rounded-full transition-colors"
+                      >
+                        സ്വന്തം ലീഡർ വിവരങ്ങൾ പകർത്തുക (Copy from Self)
+                      </button>
+                    )}
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">സ്പോൺസർ / ലീഡർ മൊബൈൽ നമ്പർ</Label>
-                    <Input 
-                      value={parentSponsorMobile} 
-                      onChange={(e) => setParentSponsorMobile(e.target.value)} 
-                      placeholder="Sponsor / Leader Mobile (Optional)"
-                      type="tel"
-                      maxLength={10}
-                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">ലീഡർ / സ്പോൺസർ പേര് (Leader Name)</Label>
+                      <Input 
+                        value={parentSponsorName} 
+                        onChange={(e) => setParentSponsorName(e.target.value)} 
+                        placeholder="Leader / Sponsor Name"
+                        className="h-11 border-slate-200 rounded-xl font-bold bg-white focus:border-brand-blue"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">ലീഡർ / സ്പോൺസർ മൊബൈൽ (Mobile Number)</Label>
+                      <Input 
+                        value={parentSponsorMobile} 
+                        onChange={(e) => setParentSponsorMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                        placeholder="10-digit Mobile Number"
+                        type="tel"
+                        maxLength={10}
+                        className="h-11 border-slate-200 rounded-xl font-bold bg-white focus:border-brand-blue"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -1875,26 +1964,45 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">സ്പോൺസർ / ലീഡറുടെ പേര് (അറിയാമെങ്കിൽ)</Label>
-                    <Input 
-                      value={childSponsorName} 
-                      onChange={(e) => setChildSponsorName(e.target.value)} 
-                      placeholder="Sponsor / Leader Name (Optional)"
-                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
-                    />
+                <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <span>👤 ലീഡർ / സ്പോൺസർ വിവരങ്ങൾ (Leader / Sponsor Details)</span>
+                    </Label>
+                    {selfSponsorName && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setChildSponsorName(selfSponsorName);
+                          setChildSponsorMobile(selfSponsorMobile);
+                        }}
+                        className="text-[9px] font-bold text-brand-blue bg-brand-blue/10 hover:bg-brand-blue/20 px-2 py-0.5 rounded-full transition-colors"
+                      >
+                        സ്വന്തം ലീഡർ വിവരങ്ങൾ പകർത്തുക (Copy from Self)
+                      </button>
+                    )}
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">സ്പോൺസർ / ലീഡർ മൊബൈൽ നമ്പർ</Label>
-                    <Input 
-                      value={childSponsorMobile} 
-                      onChange={(e) => setChildSponsorMobile(e.target.value)} 
-                      placeholder="Sponsor / Leader Mobile (Optional)"
-                      type="tel"
-                      maxLength={10}
-                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">ലീഡർ / സ്പോൺസർ പേര് (Leader Name)</Label>
+                      <Input 
+                        value={childSponsorName} 
+                        onChange={(e) => setChildSponsorName(e.target.value)} 
+                        placeholder="Leader / Sponsor Name"
+                        className="h-11 border-slate-200 rounded-xl font-bold bg-white focus:border-brand-blue"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">ലീഡർ / സ്പോൺസർ മൊബൈൽ (Mobile Number)</Label>
+                      <Input 
+                        value={childSponsorMobile} 
+                        onChange={(e) => setChildSponsorMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                        placeholder="10-digit Mobile Number"
+                        type="tel"
+                        maxLength={10}
+                        className="h-11 border-slate-200 rounded-xl font-bold bg-white focus:border-brand-blue"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -2082,26 +2190,45 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">സ്പോൺസർ / ലീഡറുടെ പേര് (അറിയാമെങ്കിൽ)</Label>
-                    <Input 
-                      value={spouseSponsorName} 
-                      onChange={(e) => setSpouseSponsorName(e.target.value)} 
-                      placeholder="Sponsor / Leader Name (Optional)"
-                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
-                    />
+                <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <span>👤 ലീഡർ / സ്പോൺസർ വിവരങ്ങൾ (Leader / Sponsor Details)</span>
+                    </Label>
+                    {selfSponsorName && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSpouseSponsorName(selfSponsorName);
+                          setSpouseSponsorMobile(selfSponsorMobile);
+                        }}
+                        className="text-[9px] font-bold text-brand-blue bg-brand-blue/10 hover:bg-brand-blue/20 px-2 py-0.5 rounded-full transition-colors"
+                      >
+                        സ്വന്തം ലീഡർ വിവരങ്ങൾ പകർത്തുക (Copy from Self)
+                      </button>
+                    )}
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">സ്പോൺസർ / ലീഡർ മൊബൈൽ നമ്പർ</Label>
-                    <Input 
-                      value={spouseSponsorMobile} 
-                      onChange={(e) => setSpouseSponsorMobile(e.target.value)} 
-                      placeholder="Sponsor / Leader Mobile (Optional)"
-                      type="tel"
-                      maxLength={10}
-                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">ലീഡർ / സ്പോൺസർ പേര് (Leader Name)</Label>
+                      <Input 
+                        value={spouseSponsorName} 
+                        onChange={(e) => setSpouseSponsorName(e.target.value)} 
+                        placeholder="Leader / Sponsor Name"
+                        className="h-11 border-slate-200 rounded-xl font-bold bg-white focus:border-brand-blue"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">ലീഡർ / സ്പോൺസർ മൊബൈൽ (Mobile Number)</Label>
+                      <Input 
+                        value={spouseSponsorMobile} 
+                        onChange={(e) => setSpouseSponsorMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                        placeholder="10-digit Mobile Number"
+                        type="tel"
+                        maxLength={10}
+                        className="h-11 border-slate-200 rounded-xl font-bold bg-white focus:border-brand-blue"
+                      />
+                    </div>
                   </div>
                 </div>
 

@@ -502,12 +502,12 @@ export const renderPersonCourtClaimPage = (
               <span class="meta-val font-mono" style="color: #003366;">${claim.highrichId || 'N/A'}</span>
             </div>
             <div>
-              <span class="meta-label">Sponsor / Leader Name (സ്പോൺസർ / ലീഡർ)</span>
-              <span class="meta-val">${claim.sponsorName || 'N/A'}</span>
+              <span class="meta-label">Sponsor / Leader Name (സ്പോൺസർ / ലീഡർ പേര്)</span>
+              <span class="meta-val">${claim.sponsorName || userProf?.sponsorName || 'N/A'}</span>
             </div>
             <div>
               <span class="meta-label">Sponsor / Leader Mobile (മൊബൈൽ നമ്പർ)</span>
-              <span class="meta-val font-mono">${claim.sponsorMobile || 'N/A'}</span>
+              <span class="meta-val font-mono">${claim.sponsorMobile || userProf?.sponsorMobile || 'N/A'}</span>
             </div>
             <div>
               <span class="meta-label">District & Assembly Constituency</span>
@@ -789,8 +789,12 @@ export const renderPersonFullAdminClaimPage = (
               <span class="meta-val font-mono" style="color: #003366;">${claim.highrichId || 'N/A'}</span>
             </div>
             <div>
-              <span class="meta-label">Sponsor / Leader</span>
-              <span class="meta-val">${claim.sponsorName ? `${claim.sponsorName} ${claim.sponsorMobile ? `(${claim.sponsorMobile})` : ''}` : 'N/A'}</span>
+              <span class="meta-label">Sponsor / Leader Name</span>
+              <span class="meta-val">${claim.sponsorName || userProf?.sponsorName || 'N/A'}</span>
+            </div>
+            <div>
+              <span class="meta-label">Sponsor / Leader Mobile</span>
+              <span class="meta-val font-mono">${claim.sponsorMobile || userProf?.sponsorMobile || 'N/A'}</span>
             </div>
             <div>
               <span class="meta-label">District & Assembly</span>

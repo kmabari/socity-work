@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useI18n } from '../lib/i18n';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -19,7 +19,13 @@ import {
   ArrowLeft, 
   CreditCard, 
   CheckCircle2, 
-  FileText 
+  FileText,
+  QrCode,
+  Copy,
+  AlertTriangle,
+  Building2,
+  Smartphone,
+  Loader2
 } from 'lucide-react';
 import { DISTRICTS, STATES, CONSTITUENCIES, BLOOD_GROUPS } from '@/src/constants';
 import Logo from '../Logo';
@@ -34,6 +40,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { processRazorpayPayment } from '../lib/razorpay';
+import { subscribeToOrgSettings, OrgSettings, defaultSettings } from '../lib/cms';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Name is required / പൂർണ്ണമായ പേര് നൽകുക'),
@@ -48,6 +55,8 @@ const formSchema = z.object({
   state: z.string().min(1, 'Select state / സ്റ്റേറ്റ് തിരഞ്ഞെടുക്കുക'),
   district: z.string().min(1, 'Select district / ജില്ല തിരഞ്ഞെടുക്കുക'),
   assemblyConstituency: z.string().min(1, 'Assembly constituency is required / മണ്ഡലം തിരഞ്ഞെടുക്കുക'),
+  sponsorName: z.string().min(2, 'Leader / Sponsor Name is required / ലീഡറുടെ പേര് നൽകുക'),
+  sponsorMobile: z.string().regex(/^\d{10}$/, 'Enter valid 10-digit Leader / Sponsor Mobile / 10 അക്ക ലീഡറുടെ മൊബൈൽ നമ്പർ നൽകുക'),
   pin: z.string().min(6, 'Enter at least 6 characters for login password / കുറഞ്ഞത് 6 അക്ക പാസ്‌വേഡ് നൽകുക'),
 });
 
@@ -58,18 +67,58 @@ interface RegistrationFormProps {
   districtQuotas?: Record<string, number>;
   districtQuotasUsed?: Record<string, number>;
   initialMobile?: string;
+  orgSettings?: OrgSettings;
 }
 
 export default function RegistrationForm({ 
   onSubmit, 
   districtQuotas = {}, 
   districtQuotasUsed = {}, 
-  initialMobile 
+  initialMobile,
+  orgSettings: propOrgSettings
 }: RegistrationFormProps) {
   const { t } = useI18n();
   const [step, setStep] = React.useState<'details' | 'payment'>('details');
   const [agreeAdhoc, setAgreeAdhoc] = React.useState(false);
   const [isProcessingRazorpay, setIsProcessingRazorpay] = React.useState(false);
+  const [isSubmittingQr, setIsSubmittingQr] = React.useState(false);
+  
+  // Settings & Payment State
+  const [orgSettings, setOrgSettings] = useState<OrgSettings>(propOrgSettings || defaultSettings);
+  const [activePaymentMethod, setActivePaymentMethod] = useState<'razorpay' | 'qrcode'>('qrcode');
+  const [qrTransactionId, setQrTransactionId] = useState('');
+  const [qrPaymentDate, setQrPaymentDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [qrPaymentTime, setQrPaymentTime] = useState(() => new Date().toTimeString().split(' ')[0].substring(0, 5));
+
+  // Sponsor Auto-Lookup state
+  const [sponsorLookupStatus, setSponsorLookupStatus] = useState<{
+    loading: boolean;
+    verified: boolean;
+    name: string;
+    membershipId?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToOrgSettings((settings) => {
+      setOrgSettings(settings);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const razorpayEnabled = orgSettings?.razorpayEnabled ?? false;
+  const qrCodePaymentEnabled = orgSettings?.qrCodePaymentEnabled ?? true;
+  const regFee = orgSettings?.registrationFee || 200;
+
+  // Auto set active payment method when settings change
+  useEffect(() => {
+    if (razorpayEnabled && !qrCodePaymentEnabled) {
+      setActivePaymentMethod('razorpay');
+    } else if (!razorpayEnabled && qrCodePaymentEnabled) {
+      setActivePaymentMethod('qrcode');
+    } else if (razorpayEnabled && qrCodePaymentEnabled) {
+      setActivePaymentMethod('qrcode'); // Default to reliable QR while Razorpay pending
+    }
+  }, [razorpayEnabled, qrCodePaymentEnabled]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -86,12 +135,54 @@ export default function RegistrationForm({
       state: 'Kerala',
       district: '',
       assemblyConstituency: '',
+      sponsorName: '',
+      sponsorMobile: '',
       pin: '123456',
     },
   });
 
+  // Watch sponsorMobile for auto-verifying existing member leaders
+  const watchedSponsorMobile = form.watch('sponsorMobile');
+  useEffect(() => {
+    const cleanSponsor = (watchedSponsorMobile || '').replace(/\D/g, '').slice(-10);
+    if (cleanSponsor.length === 10) {
+      let isMounted = true;
+      setSponsorLookupStatus({ loading: true, verified: false, name: '' });
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('mobile', '==', cleanSponsor), limit(1));
+      getDocs(q).then((snap) => {
+        if (!isMounted) return;
+        if (!snap.empty) {
+          const sponsorDoc = snap.docs[0].data();
+          const sName = sponsorDoc.name || '';
+          const sId = sponsorDoc.membershipId || '';
+          setSponsorLookupStatus({ loading: false, verified: true, name: sName, membershipId: sId });
+          const currentSponsorName = form.getValues('sponsorName');
+          if (!currentSponsorName || currentSponsorName.trim() === '') {
+            form.setValue('sponsorName', sName, { shouldValidate: true });
+          }
+        } else {
+          setSponsorLookupStatus({ loading: false, verified: false, name: '' });
+        }
+      }).catch((err) => {
+        console.warn('Sponsor lookup check error:', err);
+        if (isMounted) setSponsorLookupStatus(null);
+      });
+      return () => {
+        isMounted = false;
+      };
+    } else {
+      setSponsorLookupStatus(null);
+    }
+  }, [watchedSponsorMobile, form]);
+
   const district = form.watch('district');
   const availableConstituencies = CONSTITUENCIES[district] || [];
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copied to clipboard!`);
+  };
 
   const handleRazorpayRegistration = async () => {
     setIsProcessingRazorpay(true);
@@ -101,7 +192,8 @@ export default function RegistrationForm({
         paymentType: 'registration',
         name: formVals.name,
         mobile: formVals.mobile,
-        email: formVals.email || `${formVals.mobile}@hcrs.society`
+        email: formVals.email || `${formVals.mobile}@hcrs.society`,
+        amount: regFee
       });
 
       const now = new Date();
@@ -114,7 +206,7 @@ export default function RegistrationForm({
         transactionId: paymentDetails.paymentId,
         paymentId: paymentDetails.paymentId,
         orderId: paymentDetails.orderId,
-        paymentAmount: 200,
+        paymentAmount: regFee,
         paymentMethod: 'Razorpay',
         paymentStatus: 'PAYMENT_VERIFIED',
         receiptNumber: paymentDetails.receiptNumber,
@@ -131,6 +223,40 @@ export default function RegistrationForm({
     } finally {
       setIsProcessingRazorpay(false);
     }
+  };
+
+  const handleQrCodeRegistration = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanTxId = qrTransactionId.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!cleanTxId || cleanTxId.length < 6) {
+      toast.error('Please enter a valid 12-digit UPI UTR / Transaction ID (സാധുവായ ട്രാൻസാക്ഷൻ ഐഡി നൽകുക)');
+      return;
+    }
+
+    setIsSubmittingQr(true);
+    const formVals = form.getValues();
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
+
+    const fullValues = {
+      ...formVals,
+      cleanMobile: formVals.mobile.replace(/\D/g, '').slice(-10),
+      transactionId: cleanTxId,
+      paymentId: cleanTxId,
+      orderId: '',
+      paymentAmount: regFee,
+      paymentMethod: 'QR Code',
+      paymentStatus: 'Pending Verification',
+      receiptNumber: `RCP-REG-${Date.now().toString().slice(-6)}`,
+      paymentDate: qrPaymentDate || todayStr,
+      paymentTime: qrPaymentTime || timeStr,
+      paymentTimeISO: new Date().toISOString(),
+    };
+
+    toast.success('Registration Submitted! Verification in Progress / അപേക്ഷ വിജയകരമായി സമർപ്പിച്ചു');
+    onSubmit(fullValues);
+    setIsSubmittingQr(false);
   };
 
   const handleNextStep = async (e: React.FormEvent) => {
@@ -270,6 +396,9 @@ export default function RegistrationForm({
                               />
                             </div>
                           </FormControl>
+                          <p className="text-[11px] font-semibold text-slate-500">
+                            പുതിയ മെമ്പറുടെ സ്വന്തം 10 അക്ക മൊബൈൽ നമ്പർ (ഈ നമ്പറിലാണ് അക്കൗണ്ട് രജിസ്റ്റർ ചെയ്യുന്നത്).
+                          </p>
                           <FormMessage className="text-xs font-bold text-red-600" />
                         </FormItem>
                       )} />
@@ -513,12 +642,90 @@ export default function RegistrationForm({
                     </div>
                   </div>
 
-                  {/* SECTION 3: ACCOUNT SECURITY & PIN */}
+                  {/* SECTION 3: LEADER / SPONSOR DETAILS */}
+                  <div className="space-y-4 pt-2">
+                    <div className="flex flex-col gap-1 pb-2 border-b border-slate-200 text-slate-900">
+                      <div className="flex items-center gap-2">
+                        <User className="w-4 h-4 text-brand-blue" />
+                        <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900">
+                          3. Leader / Sponsor Details (ലീഡർ / സ്പോൺസർ വിവരങ്ങൾ) <span className="text-red-500">*</span>
+                        </h3>
+                      </div>
+                      <p className="text-[11px] font-bold text-amber-850">
+                        * പ്രിന്റിങ് ഫോമിലും ഓഫീസ് രേഖകളിലും ഉൾപ്പെടുത്തുന്നതിനായി ലീഡറുടെ/സ്പോൺസറുടെ പേരും മൊബൈൽ നമ്പറും നൽകുക. (നിലവിലുള്ള മെമ്പറുടെ നമ്പർ സ്പോൺസറായി നൽകാവുന്നതാണ്).
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Leader / Sponsor Name */}
+                      <FormField control={form.control} name="sponsorName" render={({ field, fieldState }) => (
+                        <FormItem className="space-y-1.5">
+                          <FormLabel className="text-slate-900 font-black uppercase text-xs sm:text-sm tracking-wide block">
+                            Leader / Sponsor Name (ലീഡറുടെ പേര്) <span className="text-red-500">*</span>
+                          </FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                              <Input 
+                                {...field} 
+                                placeholder="Enter Leader / Sponsor Name" 
+                                className={`pl-12 h-[48px] sm:h-12 bg-white border-2 border-slate-300 focus:border-brand-blue rounded-xl font-bold text-sm text-slate-950 placeholder:text-slate-400 shadow-xs ${fieldState.error ? 'border-red-500 ring-2 ring-red-200' : ''}`} 
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage className="text-xs font-bold text-red-600" />
+                        </FormItem>
+                      )} />
+
+                      {/* Leader / Sponsor Mobile */}
+                      <FormField control={form.control} name="sponsorMobile" render={({ field, fieldState }) => (
+                        <FormItem className="space-y-1.5">
+                          <FormLabel className="text-slate-900 font-black uppercase text-xs sm:text-sm tracking-wide block">
+                            Leader / Sponsor Mobile (ലീഡറുടെ ഫോൺ നമ്പർ) <span className="text-red-500">*</span>
+                          </FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                              <Input 
+                                {...field} 
+                                type="tel"
+                                maxLength={10}
+                                placeholder="10-digit mobile number" 
+                                onChange={e => field.onChange(e.target.value.replace(/\D/g, ''))}
+                                className={`pl-12 h-[48px] sm:h-12 bg-white border-2 border-slate-300 focus:border-brand-blue rounded-xl font-bold text-sm text-slate-950 placeholder:text-slate-400 shadow-xs ${fieldState.error ? 'border-red-500' : ''}`} 
+                              />
+                              {sponsorLookupStatus?.loading && (
+                                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-brand-blue" />
+                              )}
+                            </div>
+                          </FormControl>
+                          <FormMessage className="text-xs font-bold text-red-600" />
+                        </FormItem>
+                      )} />
+                    </div>
+
+                    {/* Sponsor Verification Feedback Banner */}
+                    {sponsorLookupStatus?.verified && (
+                      <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl flex items-start gap-2.5 animate-in fade-in">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                        <div className="text-xs">
+                          <p className="font-bold text-emerald-950">
+                            അംഗീകൃത HCRS മെമ്പർ / ലീഡർ: <span className="font-black text-emerald-800 underline">{sponsorLookupStatus.name}</span> {sponsorLookupStatus.membershipId ? `(ID: ${sponsorLookupStatus.membershipId})` : ''}
+                          </p>
+                          <p className="text-emerald-700 text-[11px] mt-0.5">
+                            ✓ നിലവിലുള്ള മെമ്പറുടെ നമ്പർ സ്പോൺസറായി വിജയകരമായി സ്വീകരിച്ചു. പുതിയ മെമ്പർഷിപ്പ് നിങ്ങളുടെ സ്വന്തം നമ്പറിലായിരിക്കും രജിസ്റ്റർ ചെയ്യുക.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* SECTION 4: ACCOUNT SECURITY & PIN */}
                   <div className="space-y-4 pt-2">
                     <div className="flex items-center gap-2 pb-2 border-b border-slate-200 text-slate-900">
                       <Lock className="w-4 h-4 text-brand-blue" />
                       <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900">
-                        3. Portal Login Password (ലോഗിൻ പാസ്‌വേഡ്)
+                        4. Portal Login Password (ലോഗിൻ പാസ്‌വേഡ്)
                       </h3>
                     </div>
 
@@ -616,41 +823,207 @@ export default function RegistrationForm({
                   </div>
                 </div>
 
-                {/* Razorpay Online Payment Integration */}
-                <div className="bg-gradient-to-br from-blue-900 via-slate-900 to-indigo-950 text-white rounded-[28px] p-5 sm:p-7 border-2 border-brand-blue shadow-2xl relative overflow-hidden space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-2xl bg-brand-blue/30 flex items-center justify-center text-white border border-brand-blue/50 shrink-0 shadow-inner">
-                        <CreditCard className="w-6 h-6 text-brand-magenta" />
-                      </div>
-                      <div>
-                        <h4 className="font-extrabold text-white text-base sm:text-lg uppercase tracking-wide">
-                          Razorpay Instant Payment
-                        </h4>
-                        <p className="text-xs text-blue-200 font-extrabold uppercase tracking-wider">
-                          UPI • GPay • PhonePe • Cards • NetBanking
-                        </p>
-                      </div>
-                    </div>
-                    <div className="bg-emerald-500/25 text-emerald-300 border border-emerald-400/50 text-xs sm:text-sm font-black px-3.5 py-1.5 rounded-xl uppercase tracking-wider w-fit shrink-0">
-                      Amount: ₹200 (Fixed)
-                    </div>
+                {/* PAYMENT METHOD SELECTION (When both are enabled) */}
+                {razorpayEnabled && qrCodePaymentEnabled && (
+                  <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1.5 rounded-2xl border-2 border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setActivePaymentMethod('qrcode')}
+                      className={`py-3 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                        activePaymentMethod === 'qrcode'
+                          ? 'bg-brand-magenta text-white shadow-md'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <QrCode className="w-4 h-4" />
+                      QR Code / UPI
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActivePaymentMethod('razorpay')}
+                      className={`py-3 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                        activePaymentMethod === 'razorpay'
+                          ? 'bg-brand-blue text-white shadow-md'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <CreditCard className="w-4 h-4" />
+                      Razorpay Online
+                    </button>
                   </div>
+                )}
 
-                  <p className="text-xs text-slate-100 font-bold leading-relaxed bg-black/40 p-3.5 rounded-2xl border border-white/15">
-                    പുതിയ അംഗത്വ രജിസ്ട്രേഷൻ ഫീസ് <span className="text-emerald-400 font-extrabold">₹200</span> ആയി സിസ്റ്റം നേരിട്ട് ക്രമീകരിച്ചിരിക്കുന്നു. താഴെയുള്ള ബട്ടൺ ക്ലിക്ക് ചെയ്ത് Razorpay വഴി നേരിട്ട് തുക അടയ്ക്കാം.
-                  </p>
+                {/* 1. RAZORPAY PAYMENT VIEW */}
+                {((razorpayEnabled && !qrCodePaymentEnabled) || (razorpayEnabled && qrCodePaymentEnabled && activePaymentMethod === 'razorpay')) && (
+                  <div className="bg-gradient-to-br from-blue-900 via-slate-900 to-indigo-950 text-white rounded-[28px] p-5 sm:p-7 border-2 border-brand-blue shadow-2xl relative overflow-hidden space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-11 h-11 rounded-2xl bg-brand-blue/30 flex items-center justify-center text-white border border-brand-blue/50 shrink-0 shadow-inner">
+                          <CreditCard className="w-6 h-6 text-brand-magenta" />
+                        </div>
+                        <div>
+                          <h4 className="font-extrabold text-white text-base sm:text-lg uppercase tracking-wide">
+                            Razorpay Instant Payment
+                          </h4>
+                          <p className="text-xs text-blue-200 font-extrabold uppercase tracking-wider">
+                            UPI • GPay • PhonePe • Cards • NetBanking
+                          </p>
+                        </div>
+                      </div>
+                      <div className="bg-emerald-500/25 text-emerald-300 border border-emerald-400/50 text-xs sm:text-sm font-black px-3.5 py-1.5 rounded-xl uppercase tracking-wider w-fit shrink-0">
+                        Amount: ₹{regFee} (Fixed)
+                      </div>
+                    </div>
 
-                  <Button
-                    type="button"
-                    onClick={handleRazorpayRegistration}
-                    disabled={isProcessingRazorpay}
-                    className="w-full h-14 rounded-2xl font-black bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-xl shadow-emerald-500/20 text-xs sm:text-sm uppercase tracking-widest flex items-center justify-center gap-2.5 transition-all hover:scale-[1.01] active:scale-95 cursor-pointer"
-                  >
-                    <ShieldCheck className="w-5 h-5" />
-                    <span>{isProcessingRazorpay ? 'Processing Payment...' : 'Pay ₹200 via Razorpay (₹200 ഓൺലൈൻ അടയ്ക്കുക)'}</span>
-                  </Button>
-                </div>
+                    <p className="text-xs text-slate-100 font-bold leading-relaxed bg-black/40 p-3.5 rounded-2xl border border-white/15">
+                      പുതിയ അംഗത്വ രജിസ്ട്രേഷൻ ഫീസ് <span className="text-emerald-400 font-extrabold">₹{regFee}</span> ആയി സിസ്റ്റം നേരിട്ട് ക്രമീകരിച്ചിരിക്കുന്നു. താഴെയുള്ള ബട്ടൺ ക്ലിക്ക് ചെയ്ത് Razorpay വഴി നേരിട്ട് തുക അടയ്ക്കാം.
+                    </p>
+
+                    <Button
+                      type="button"
+                      onClick={handleRazorpayRegistration}
+                      disabled={isProcessingRazorpay}
+                      className="w-full h-14 rounded-2xl font-black bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-xl shadow-emerald-500/20 text-xs sm:text-sm uppercase tracking-widest flex items-center justify-center gap-2.5 transition-all hover:scale-[1.01] active:scale-95 cursor-pointer"
+                    >
+                      <ShieldCheck className="w-5 h-5" />
+                      <span>{isProcessingRazorpay ? 'Processing Payment...' : `Pay ₹${regFee} via Razorpay (₹${regFee} ഓൺലൈൻ അടയ്ക്കുക)`}</span>
+                    </Button>
+                  </div>
+                )}
+
+                {/* 2. QR CODE / UPI PAYMENT VIEW */}
+                {((!razorpayEnabled && qrCodePaymentEnabled) || (razorpayEnabled && qrCodePaymentEnabled && activePaymentMethod === 'qrcode')) && (
+                  <form onSubmit={handleQrCodeRegistration} className="bg-slate-900 text-white rounded-[28px] p-5 sm:p-7 border-2 border-brand-magenta shadow-2xl space-y-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-11 h-11 rounded-2xl bg-brand-magenta/30 flex items-center justify-center text-white border border-brand-magenta/50 shrink-0 shadow-inner">
+                          <QrCode className="w-6 h-6 text-brand-magenta" />
+                        </div>
+                        <div>
+                          <h4 className="font-extrabold text-white text-base sm:text-lg uppercase tracking-wide">
+                            Official QR Code / UPI Payment
+                          </h4>
+                          <p className="text-xs text-pink-200 font-bold uppercase tracking-wider">
+                            GPay • PhonePe • Paytm • BHIM • NetBanking
+                          </p>
+                        </div>
+                      </div>
+                      <div className="bg-emerald-500/25 text-emerald-300 border border-emerald-400/50 text-xs sm:text-sm font-black px-3.5 py-1.5 rounded-xl uppercase tracking-wider w-fit shrink-0">
+                        Fee: ₹{regFee} (Fixed)
+                      </div>
+                    </div>
+
+                    {/* QR Code and Account Info Card */}
+                    <div className="flex flex-col sm:flex-row items-center gap-5 bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800">
+                      <div className="bg-white p-3 rounded-2xl shadow-lg shrink-0">
+                        <img
+                          src={orgSettings.qrCodeImageUrl || `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=${encodeURIComponent(orgSettings.upiId || 'hcrs.kerala@okaxis')}%26pn=${encodeURIComponent(orgSettings.upiAccountName || 'HIGHRICH COMMUNITY REVIVAL SOCIETY')}%26cu=INR`}
+                          alt="HCRS Official UPI QR Code"
+                          className="w-32 h-32 sm:w-36 sm:h-36 object-contain"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                      <div className="space-y-2 text-center sm:text-left flex-1 min-w-0">
+                        <div className="flex items-center justify-center sm:justify-start gap-2">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Official Society UPI ID:</span>
+                        </div>
+                        <div className="flex items-center justify-center sm:justify-start gap-2 bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+                          <span className="font-mono font-black text-xs sm:text-sm text-emerald-400 select-all truncate">
+                            {orgSettings.upiId || 'hcrs.kerala@okaxis'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(orgSettings.upiId || 'hcrs.kerala@okaxis', 'UPI ID')}
+                            className="text-[10px] font-black text-brand-blue hover:text-white bg-blue-500/20 px-2 py-1 rounded-lg flex items-center gap-1 cursor-pointer shrink-0"
+                          >
+                            <Copy className="w-3 h-3" /> Copy
+                          </button>
+                        </div>
+                        <p className="text-xs font-extrabold text-slate-200">
+                          {orgSettings.upiAccountName || 'HIGHRICH COMMUNITY REVIVAL SOCIETY'}
+                        </p>
+                        {orgSettings.bankName && (
+                          <div className="text-[10px] text-slate-400 font-medium space-y-0.5 pt-1 border-t border-slate-800/80">
+                            <p><span className="text-slate-300 font-bold">Bank:</span> {orgSettings.bankName}</p>
+                            {orgSettings.accountNumber && (
+                              <p><span className="text-slate-300 font-bold">A/C:</span> {orgSettings.accountNumber} {orgSettings.ifscCode && `(IFSC: ${orgSettings.ifscCode})`}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Step-by-step instruction notice */}
+                    <div className="bg-black/40 p-3.5 rounded-2xl border border-white/10 text-xs text-slate-200 space-y-1">
+                      <p className="font-black text-brand-magenta text-[11px] uppercase tracking-wider">
+                        നിർദ്ദേശങ്ങൾ (Payment Steps):
+                      </p>
+                      <p className="text-[11px] leading-relaxed text-slate-300">
+                        {orgSettings.qrInstructions || 'മുകളിലുള്ള QR Code സ്കാൻ ചെയ്തോ UPI ID വഴിയോ ₹200 അടയ്ക്കുക. പേയ്‌മെന്റ് പൂർത്തിയായ ശേഷം ലഭിക്കുന്ന 12 അക്ക UPI UTR / Transaction ID താഴെ നൽകുക.'}
+                      </p>
+                    </div>
+
+                    {/* UTR / Transaction ID Input Field */}
+                    <div className="space-y-2 text-left bg-slate-950 p-4 rounded-2xl border border-slate-800">
+                      <label className="text-xs font-black uppercase tracking-wider text-slate-200 flex items-center justify-between">
+                        <span>12-Digit UPI UTR / Transaction ID *</span>
+                        <span className="text-[10px] font-bold text-emerald-400">നിർബന്ധം (Mandatory)</span>
+                      </label>
+                      <Input
+                        required
+                        value={qrTransactionId}
+                        onChange={(e) => setQrTransactionId(e.target.value.toUpperCase())}
+                        placeholder="e.g. 412356789012 or UPI Ref No"
+                        className="h-12 rounded-xl bg-slate-900 border-2 border-slate-700 focus:border-brand-magenta font-mono text-sm font-black text-white"
+                      />
+                      <p className="text-[10px] text-slate-400 font-semibold">
+                        GPay / PhonePe / Paytm ഹിസ്റ്ററിയിൽ കാണുന്ന 12 അക്ക UPI റഫറൻസ് നമ്പർ (UTR) ഇവിടെ കൃത്യമായി രേഖപ്പെടുത്തുക.
+                      </p>
+                    </div>
+
+                    {/* Date & Time fields */}
+                    <div className="grid grid-cols-2 gap-3 text-left">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase text-slate-400">Payment Date</label>
+                        <Input
+                          type="date"
+                          value={qrPaymentDate}
+                          onChange={(e) => setQrPaymentDate(e.target.value)}
+                          className="h-10 text-xs font-bold bg-slate-950 border-slate-800 text-white rounded-xl"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase text-slate-400">Payment Time</label>
+                        <Input
+                          type="time"
+                          value={qrPaymentTime}
+                          onChange={(e) => setQrPaymentTime(e.target.value)}
+                          className="h-10 text-xs font-bold bg-slate-950 border-slate-800 text-white rounded-xl"
+                        />
+                      </div>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      disabled={isSubmittingQr || !qrTransactionId.trim()}
+                      className="w-full h-14 rounded-2xl font-black bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-xl shadow-emerald-500/20 text-xs sm:text-sm uppercase tracking-widest flex items-center justify-center gap-2.5 transition-all hover:scale-[1.01] active:scale-95 cursor-pointer disabled:opacity-50"
+                    >
+                      <CheckCircle2 className="w-5 h-5" />
+                      <span>{isSubmittingQr ? 'Submitting...' : 'Submit Registration (അപേക്ഷ സമർപ്പിക്കുക)'}</span>
+                    </Button>
+                  </form>
+                )}
+
+                {/* 3. BOTH DISABLED VIEW */}
+                {!razorpayEnabled && !qrCodePaymentEnabled && (
+                  <div className="bg-amber-50 border-2 border-amber-300 p-6 rounded-3xl text-center space-y-3">
+                    <AlertTriangle className="w-10 h-10 text-amber-600 mx-auto" />
+                    <h4 className="text-base font-black text-amber-900 uppercase">Online Payments Temporarily Paused</h4>
+                    <p className="text-xs text-amber-800 font-medium leading-relaxed max-w-md mx-auto">
+                      ഓൺലൈൻ പേയ്‌മെന്റ് സംവിധാനം താൽക്കാലികമായി അപ്ഡേറ്റ് ചെയ്തുകൊണ്ടിരിക്കുകയാണ്. അഡ്ഹോക്ക് മെമ്പർഷിപ്പിനായി ദയവായി നിങ്ങളുടെ ജില്ലാ കൺവീനറുമായോ കേന്ദ്ര ഓഫീസുമായോ നേരിട്ട് ബന്ധപ്പെടുക.
+                    </p>
+                  </div>
+                )}
 
                 <div className="pt-2">
                   <Button 

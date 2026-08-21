@@ -16,6 +16,10 @@ export interface OrgSettings {
   districtDetails: string;
   updatedAt: any;
   registrationMode?: 'normal' | 'bulk';
+  whatsappEnabled?: boolean;
+  whatsappNewMemberEnabled?: boolean;
+  whatsappRenewalEnabled?: boolean;
+  whatsappClaimEnabled?: boolean;
   announcementActive?: boolean;
   announcementText?: string;
   announcementCaseNo?: string;
@@ -26,6 +30,23 @@ export interface OrgSettings {
   announcementJudgeBench?: string;
   announcementTitle?: string;
   announcementImageUrl?: string;
+  districtWhatsAppLinks?: Record<string, string>;
+  districtWhatsAppActive?: Record<string, boolean>;
+  // Payment Operations Configuration
+  razorpayEnabled?: boolean;
+  qrCodePaymentEnabled?: boolean;
+  upiId?: string;
+  upiAccountName?: string;
+  qrCodeImageUrl?: string;
+  bankName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  branchName?: string;
+  qrInstructions?: string;
+  registrationFee?: number;
+  renewalFee?: number;
+  razorpayKeyId?: string;
+  razorpayStatusNote?: string;
 }
 
 export interface GalleryItem {
@@ -74,6 +95,10 @@ Our society operates across all 14 districts of Kerala, with a strong network of
   districtDetails: "Active in all 14 districts of Kerala with committed grass-root leadership.",
   updatedAt: new Date(),
   registrationMode: 'normal',
+  whatsappEnabled: true,
+  whatsappNewMemberEnabled: true,
+  whatsappRenewalEnabled: true,
+  whatsappClaimEnabled: true,
   announcementActive: false,
   announcementTitle: 'ഇന്നത്തെ അപ്ഡേഷൻ (Today\'s Update)',
   announcementText: '',
@@ -83,7 +108,24 @@ Our society operates across all 14 districts of Kerala, with a strong network of
   announcementCourt: '',
   announcementAdvocate: '',
   announcementJudgeBench: '',
-  announcementImageUrl: ''
+  announcementImageUrl: '',
+  districtWhatsAppLinks: {},
+  districtWhatsAppActive: {},
+  // Default Payment Operations Configuration
+  razorpayEnabled: false, // Default false while verification is pending
+  qrCodePaymentEnabled: true, // Default true to maintain active QR payments
+  upiId: 'hcrs.kerala@okaxis',
+  upiAccountName: 'HIGHRICH COMMUNITY REVIVAL SOCIETY',
+  qrCodeImageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=hcrs.kerala@okaxis%26pn=HIGHRICH%20COMMUNITY%20REVIVAL%20SOCIETY%26cu=INR',
+  bankName: 'State Bank of India (SBI)',
+  accountNumber: '41235678901',
+  ifscCode: 'SBIN0070123',
+  branchName: 'Kasaragod Main Branch',
+  qrInstructions: 'Scan the official HCRS QR Code or pay using UPI ID. After completing payment in your UPI app, copy and enter the 12-digit UPI Reference / UTR Number below to complete registration.',
+  registrationFee: 200,
+  renewalFee: 100,
+  razorpayKeyId: 'rzp_live_HCRSKerala9645',
+  razorpayStatusNote: 'Razorpay KYC / Bank verification is currently under review. Enable toggle once approved.'
 };
 
 export async function getOrgSettings(): Promise<OrgSettings> {

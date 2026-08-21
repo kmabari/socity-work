@@ -12,6 +12,7 @@ import CommitteeManagement from './CommitteeManagement';
 import BackupRestoreManager from './BackupRestoreManager';
 import CampaignTemplateManager from './CampaignTemplateManager';
 import AdminReportsTab from './AdminReportsTab';
+import PaymentOperationsManager from './PaymentOperationsManager';
 import { 
   printCourtClaimReport, 
   printCourtComboReport, 
@@ -63,7 +64,8 @@ import {
   AlertTriangle,
   Layers,
   Printer,
-  FileText
+  FileText,
+  Wallet
 } from 'lucide-react';
 import { DISTRICTS, BLOOD_GROUPS, CONSTITUENCIES, FALLBACK_LOGO_URL, SHARED_URL, getAssemblyCode } from '@/src/constants';
 import { UserProfile } from '@/src/types';
@@ -75,6 +77,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import MembershipCard from './MembershipCard';
 import FastMemberEntry from './FastMemberEntry';
 import LifeMembersPanel from './LifeMembersPanel';
+import DistrictWhatsAppManager from './DistrictWhatsAppManager';
 import Logo from '../Logo';
 import { 
   Table, 
@@ -255,6 +258,25 @@ export default function AdminDashboard({
     const last10_1 = clean1.slice(-10);
     const last10_2 = clean2.slice(-10);
     return last10_1.length === 10 && last10_2.length === 10 && last10_1 === last10_2;
+  };
+
+  const getComboClaimsForClaim = (claim: any, allClaims: any[]): any[] => {
+    if (!claim) return [];
+    return allClaims.filter(c => {
+      if (c.id && claim.id && c.id === claim.id) return true;
+      const sameMob = compareMobiles(c.userMobile, claim.userMobile);
+      const sameMem = c.membershipId && claim.membershipId && c.membershipId !== 'N/A' && c.membershipId !== 'PENDING' && c.membershipId.toLowerCase() === claim.membershipId.toLowerCase();
+      const sameUid = c.uid && claim.uid && c.uid === claim.uid && !c.uid.startsWith('offline_claim_') && c.uid !== 'offline_admin';
+      return sameMob || sameMem || sameUid;
+    });
+  };
+
+  const isComboClaim = (claim: any, allClaims: any[]): boolean => {
+    if (!claim) return false;
+    if (claim.isCombo === true) return true;
+    if (claim.relation && !['Self', 'self', 'സ്വന്തം', 'സ്വന്തം (Self)'].includes(claim.relation.trim())) return true;
+    const matching = getComboClaimsForClaim(claim, allClaims);
+    return matching.length > 1;
   };
 
   const formatClaimDate = (createdAt: any): string => {
@@ -576,6 +598,7 @@ export default function AdminDashboard({
   const [editingClaim, setEditingClaim] = useState<any>(null);
   const [deletingClaimId, setDeletingClaimId] = useState<string | null>(null);
   const [claimsViewMode, setClaimsViewMode] = useState<'individual' | 'combo'>('individual');
+  const [comboSubView, setComboSubView] = useState<'groups' | 'all_persons'>('groups');
 
   // Claims Bulk Import States
   const [isClaimsImportOpen, setIsClaimsImportOpen] = useState(false);
@@ -905,6 +928,8 @@ export default function AdminDashboard({
       district: normalizedDist, 
       assemblyConstituency: CONSTITUENCIES[normalizedDist]?.[0] || '', 
       bloodGroup: BLOOD_GROUPS[0], 
+      sponsorName: '',
+      sponsorMobile: '',
       pin: '123456',
       role: 'member' as 'member' | 'operator' | 'admin',
       quota: 100,
@@ -943,6 +968,7 @@ export default function AdminDashboard({
   const [claimDistrictFilter, setClaimDistrictFilter] = useState('all');
   const [claimPriorityFilter, setClaimPriorityFilter] = useState('all');
   const [claimCategoryFilter, setClaimCategoryFilter] = useState('all');
+  const [claimTypeFilter, setClaimTypeFilter] = useState<'all' | 'combo' | 'single'>('all');
 
   const [supportTickets, setSupportTickets] = useState<any[]>([]);
   const [supportTicketsLoading, setSupportTicketsLoading] = useState(false);
@@ -1304,6 +1330,8 @@ export default function AdminDashboard({
         district: manualFormData.district, 
         assemblyConstituency: (CONSTITUENCIES[manualFormData.district] || [])[0] || '', 
         bloodGroup: BLOOD_GROUPS[0], 
+        sponsorName: '',
+        sponsorMobile: '',
         pin: '123456',
         role: 'member',
         certAdminName: user?.name || '',
@@ -1634,12 +1662,20 @@ export default function AdminDashboard({
                                 ? (c.categories?.includes('consignment') || c.categories?.includes('ott') || c.categories?.includes('grocery'))
                                 : c.categories?.includes(claimCategoryFilter));
 
-      return matchesSearch && matchesDistrict && matchesPriority && matchesCategory;
+      let matchesType = true;
+      if (claimTypeFilter === 'combo') {
+        matchesType = isComboClaim(c, claims);
+      } else if (claimTypeFilter === 'single') {
+        matchesType = !isComboClaim(c, claims);
+      }
+
+      return matchesSearch && matchesDistrict && matchesPriority && matchesCategory && matchesType;
     });
-  }, [claims, claimSearchTerm, claimDistrictFilter, claimPriorityFilter, claimCategoryFilter]);
+  }, [claims, claimSearchTerm, claimDistrictFilter, claimPriorityFilter, claimCategoryFilter, claimTypeFilter]);
 
   const comboGroups = useMemo(() => {
-    const map = new Map<string, {
+    const groups: Array<{
+      key: string;
       mobile: string;
       primaryName: string;
       memberObj?: UserProfile;
@@ -1651,15 +1687,30 @@ export default function AdminDashboard({
       highestPriority: string;
       district: string;
       membershipId: string;
-    }>();
+    }> = [];
 
+    // Group filtered claims
     for (const c of filteredClaims) {
-      const rawMob = (c.userMobile || '').trim().replace(/\D/g, '');
-      const mob = rawMob || `nomob_${c.id}`;
-      if (!map.has(mob)) {
-        const memberObj = members.find(m => compareMobiles(m.mobile, mob));
-        map.set(mob, {
-          mobile: mob.startsWith('nomob_') ? (c.userMobile || '') : mob,
+      // Find matching group by mobile, membershipId, or distinct valid uid
+      let grp = groups.find(g => {
+        const sameMob = compareMobiles(g.mobile, c.userMobile) || 
+                        (g.memberObj?.mobile && compareMobiles(g.memberObj.mobile, c.userMobile)) || 
+                        g.claims.some(existing => compareMobiles(existing.userMobile, c.userMobile));
+        const sameMem = g.membershipId && c.membershipId && g.membershipId !== 'N/A' && g.membershipId !== 'PENDING' && g.membershipId.toLowerCase() === c.membershipId.toLowerCase();
+        const sameUid = c.uid && !c.uid.startsWith('offline_claim_') && c.uid !== 'offline_admin' && 
+                        (g.claims.some(existing => existing.uid === c.uid) || g.memberObj?.uid === c.uid);
+        return sameMob || sameMem || sameUid;
+      });
+
+      if (!grp) {
+        const memberObj = members.find(m => 
+          (c.uid && m.uid === c.uid && !m.uid.startsWith('offline_claim_') && m.uid !== 'offline_admin') || 
+          compareMobiles(m.mobile, c.userMobile) || 
+          (c.membershipId && c.membershipId !== 'N/A' && m.membershipId && m.membershipId.toLowerCase() === c.membershipId.toLowerCase())
+        );
+        grp = {
+          key: c.userMobile || c.membershipId || c.uid || c.id || String(Math.random()),
+          mobile: c.userMobile || memberObj?.mobile || '',
           primaryName: memberObj?.name || c.userName || 'N/A',
           memberObj,
           claims: [],
@@ -1670,9 +1721,23 @@ export default function AdminDashboard({
           highestPriority: 'GREEN',
           district: c.userDistrict || memberObj?.district || 'KSD',
           membershipId: c.membershipId || memberObj?.membershipId || 'N/A'
-        });
+        };
+        groups.push(grp);
       }
-      const grp = map.get(mob)!;
+
+      // If memberObj was not found before but we can match now
+      if (!grp.memberObj) {
+        grp.memberObj = members.find(m => 
+          (c.uid && m.uid === c.uid && !m.uid.startsWith('offline_claim_') && m.uid !== 'offline_admin') || 
+          compareMobiles(m.mobile, c.userMobile) || 
+          compareMobiles(m.mobile, grp!.mobile) ||
+          (grp!.membershipId && grp!.membershipId !== 'N/A' && m.membershipId && m.membershipId.toLowerCase() === grp!.membershipId.toLowerCase())
+        );
+        if (grp.memberObj && (!grp.primaryName || grp.primaryName === 'N/A')) {
+          grp.primaryName = grp.memberObj.name;
+        }
+      }
+
       // Prevent duplicate claims in the same combo group
       if (!grp.claims.some(existing => existing.id === c.id)) {
         grp.claims.push(c);
@@ -1686,11 +1751,25 @@ export default function AdminDashboard({
       }
     }
 
-    // STRICT COMBO RULE: ONLY include groups that have more than 1 claim (COMBO members only). Normal/single members (1 claim) MUST NOT appear in the COMBO section!
-    return Array.from(map.values())
-      .filter(grp => grp.claims.length > 1)
+    // Include groups with more than 1 claim OR any group containing a claim with non-Self relation / isCombo
+    return groups
+      .filter(grp => grp.claims.length > 1 || grp.claims.some(c => isComboClaim(c, claims)))
       .sort((a, b) => b.totalPending - a.totalPending);
-  }, [filteredClaims, members]);
+  }, [filteredClaims, members, claims]);
+
+  const allComboIndividualClaims = useMemo(() => {
+    const list: any[] = [];
+    const seen = new Set<string>();
+    for (const grp of comboGroups) {
+      for (const c of grp.claims) {
+        if (!seen.has(c.id)) {
+          seen.add(c.id);
+          list.push(c);
+        }
+      }
+    }
+    return list;
+  }, [comboGroups]);
 
   const claimStats = useMemo(() => {
     let totalPending = 0;
@@ -1924,6 +2003,24 @@ export default function AdminDashboard({
                   <span>📧 Operation Janamail</span>
                 </div>
               </button>
+
+              <button
+                onClick={() => setActiveTab2('payment_ops')}
+                className={cn(
+                  "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+                  activeTab === 'payment_ops' 
+                    ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20" 
+                    : "text-slate-500 hover:bg-slate-100/65 hover:text-slate-802"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <Wallet className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'payment_ops' ? 'text-white' : 'text-emerald-500')} />
+                  <span className="font-extrabold">💳 Payment Operations</span>
+                </div>
+                <span className="px-1.5 py-0.5 rounded-full text-[8px] font-black bg-emerald-100 text-emerald-800">
+                  Ops
+                </span>
+              </button>
             </div>
           )}
         </nav>
@@ -2044,6 +2141,17 @@ export default function AdminDashboard({
                   >
                     <Mail className="w-4 h-4 text-slate-400" />
                     <span>📧 Operation Janamail</span>
+                  </button>
+
+                  <button 
+                    onClick={() => { setActiveTab2('payment_ops'); setMobileSidebarOpen(false); }} 
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-bold text-xs transition-colors",
+                      activeTab === 'payment_ops' ? 'bg-emerald-600 text-white' : 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
+                    )}
+                  >
+                    <Wallet className="w-4 h-4 text-emerald-500" />
+                    <span className="font-extrabold">💳 Payment Operations</span>
                   </button>
                 </>
               )}
@@ -2622,6 +2730,10 @@ export default function AdminDashboard({
                         <Lock className="w-3.5 h-3.5 text-slate-600" />
                         District URLs
                       </TabsTrigger>
+                      <TabsTrigger value="district_whatsapp" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md font-black text-[11px] uppercase text-emerald-950 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3.5 transition-all cursor-pointer shadow-xs">
+                        <MessageCircle className="w-3.5 h-3.5 text-emerald-600 data-[state=active]:text-white" />
+                        District WhatsApp (14 ജില്ലകൾ)
+                      </TabsTrigger>
                     </>
                   )}
                   <TabsTrigger value="claims" className="data-[state=active]:bg-brand-magenta data-[state=active]:text-white data-[state=active]:shadow-md font-black text-[11px] uppercase text-pink-950 bg-pink-100 hover:bg-pink-200 border border-pink-300 rounded-xl flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3.5 transition-all cursor-pointer shadow-xs">
@@ -2682,6 +2794,12 @@ export default function AdminDashboard({
                     <TabsTrigger value="campaign_templates" className="data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-md font-extrabold text-[11px] uppercase text-slate-700 hover:text-slate-900 rounded-xl flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3 transition-all cursor-pointer">
                       <Mail className="w-3.5 h-3.5 text-slate-600" />
                       📧 Operation Janamail
+                    </TabsTrigger>
+                  )}
+                  {!isSecondary && (
+                    <TabsTrigger value="payment_ops" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md font-black text-[11px] uppercase text-emerald-950 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl flex items-center gap-1.5 flex-1 md:flex-none py-2 px-3.5 transition-all cursor-pointer shadow-xs">
+                      <Wallet className="w-3.5 h-3.5 text-emerald-600 data-[state=active]:text-white" />
+                      💳 Payment Operations
                     </TabsTrigger>
                   )}
                 </TabsList>
@@ -2805,6 +2923,10 @@ export default function AdminDashboard({
 
               <TabsContent value="campaign_templates">
                 <CampaignTemplateManager />
+              </TabsContent>
+
+              <TabsContent value="payment_ops">
+                <PaymentOperationsManager user={user} />
               </TabsContent>
 
               {isSuperAdmin && (
@@ -3940,88 +4062,229 @@ export default function AdminDashboard({
             <div className="space-y-8 pb-20">
               {!isSecondary && (
                 <>
-                  {/* WhatsApp Automation & Registration Mode Setting */}
-                  <Card className="border border-slate-200 bg-white/75 backdrop-blur-md rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.01)] overflow-hidden mb-6">
-                    <CardHeader className="p-6 pb-4">
-                       <div className="flex items-center gap-3">
-                          <div className="bg-brand-blue/10 p-2 rounded-xl text-brand-blue">
-                            <MessageCircle className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <CardTitle className="text-base font-black text-slate-800 uppercase tracking-tight">Registration Mode</CardTitle>
-                            <CardDescription className="text-slate-400 font-bold uppercase tracking-widest text-[8px] mt-0.5">
-                              Toggle automatic WhatsApp credentials delivery to prevent admin number blocks during high-volume entries
-                            </CardDescription>
-                          </div>
+                  {/* WhatsApp Automation & Notification Module Control */}
+                  <Card className="border-2 border-brand-blue/20 bg-white rounded-3xl shadow-sm overflow-hidden mb-6">
+                    <CardHeader className="p-6 pb-4 bg-slate-50/70 border-b border-slate-100">
+                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                         <div className="flex items-center gap-3">
+                            <div className="bg-emerald-500 p-2.5 rounded-2xl text-white shadow-md shadow-emerald-500/20">
+                              <MessageCircle className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <CardTitle className="text-base font-black text-slate-800 uppercase tracking-tight">WhatsApp Notification Controls (വാട്സാപ്പ് മെസ്സേജ് ക്രമീകരണങ്ങൾ)</CardTitle>
+                                <Badge className={orgSettings.whatsappEnabled !== false ? "bg-emerald-600 text-white text-[9px] font-black" : "bg-slate-200 text-slate-600 text-[9px] font-bold"}>
+                                  {orgSettings.whatsappEnabled !== false ? "ACTIVE / ഓൺ" : "DISABLED / ഓഫ്"}
+                                </Badge>
+                              </div>
+                              <CardDescription className="text-slate-500 font-semibold text-xs mt-0.5">
+                                ന്യൂ മെമ്പർഷിപ്പ്, കാർഡ് റിന്യൂവൽ, ക്ലെയിം ഫോം സബ്മിഷൻ എന്നിവയിലെ ഓട്ടോമാറ്റിക് വാട്സാപ്പ് സന്ദേശങ്ങൾ നിയന്ത്രിക്കുക.
+                              </CardDescription>
+                            </div>
+                         </div>
+                         <Button
+                           type="button"
+                           size="sm"
+                           variant={orgSettings.whatsappEnabled !== false ? "default" : "outline"}
+                           onClick={async () => {
+                             const newState = !(orgSettings.whatsappEnabled !== false);
+                             try {
+                               await saveOrgSettings({ ...orgSettings, whatsappEnabled: newState });
+                               toast.success(newState ? 'WhatsApp notifications enabled globally' : 'WhatsApp notifications disabled globally');
+                             } catch (err) {
+                               toast.error('Failed to update WhatsApp settings');
+                             }
+                           }}
+                           className={cn(
+                             "h-10 px-5 rounded-xl font-black text-xs uppercase tracking-wider transition-all",
+                             orgSettings.whatsappEnabled !== false
+                               ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-600/20"
+                               : "border-slate-300 text-slate-700 hover:bg-slate-100"
+                           )}
+                         >
+                           {orgSettings.whatsappEnabled !== false ? "✓ All WhatsApp ON" : "✕ All WhatsApp OFF"}
+                         </Button>
                        </div>
                     </CardHeader>
-                    <CardContent className="px-6 pb-6 pt-0 space-y-4">
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         <div 
-                           onClick={async () => {
-                             try {
-                               await saveOrgSettings({ ...orgSettings, registrationMode: 'normal' });
-                               toast.success('System switched to Normal Auto Mode');
-                             } catch (err) {
-                               toast.error('Failed to update registration mode');
-                             }
-                           }}
-                           className={cn(
-                             "p-4 rounded-xl border flex items-start gap-3.5 cursor-pointer transition-all duration-200 hover:bg-slate-50/50",
-                             orgSettings.registrationMode === 'normal' || !orgSettings.registrationMode
-                               ? "border-brand-blue bg-brand-blue/[0.02] shadow-xs" 
-                               : "border-slate-200 bg-white"
-                           )}
-                         >
-                           <div className={cn(
-                             "h-4 w-4 rounded-full border flex items-center justify-center mt-0.5 shrink-0 transition-colors",
-                             orgSettings.registrationMode === 'normal' || !orgSettings.registrationMode
-                               ? "border-brand-blue text-brand-blue" 
-                               : "border-slate-350"
-                           )}>
-                             {(orgSettings.registrationMode === 'normal' || !orgSettings.registrationMode) && (
-                               <div className="h-2 w-2 rounded-full bg-brand-blue" />
-                             )}
+                    <CardContent className="p-6 space-y-6">
+                       {/* Granular Module Toggles */}
+                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                         {/* 1. New Membership Toggle */}
+                         <div className={cn(
+                           "p-4 rounded-2xl border-2 transition-all space-y-3",
+                           orgSettings.whatsappNewMemberEnabled !== false && orgSettings.whatsappEnabled !== false
+                             ? "border-emerald-200 bg-emerald-50/40"
+                             : "border-slate-200 bg-slate-50/40 opacity-70"
+                         )}>
+                           <div className="flex items-center justify-between">
+                             <span className="text-xs font-black text-slate-800 uppercase tracking-tight">1. New Membership (പുതിയ അംഗം)</span>
+                             <Badge className={orgSettings.whatsappNewMemberEnabled !== false && orgSettings.whatsappEnabled !== false ? "bg-emerald-600 text-white text-[8px]" : "bg-slate-200 text-slate-600 text-[8px]"}>
+                               {orgSettings.whatsappNewMemberEnabled !== false && orgSettings.whatsappEnabled !== false ? "ON" : "OFF"}
+                             </Badge>
                            </div>
-                           <div>
-                             <p className="text-xs font-black text-slate-800 uppercase tracking-tight">Normal Auto Mode</p>
-                             <span className="text-[10px] text-slate-500 leading-relaxed font-semibold mt-0.5 block">
-                               Automatically triggers credentials message via WhatsApp upon entering new members or approving pending registrations.
-                             </span>
-                           </div>
+                           <p className="text-[11px] text-slate-600 font-medium leading-relaxed">
+                             അംഗത്വം അപ്രൂവ് ചെയ്യുമ്പോഴോ പുതിയ രജിസ്ട്രേഷൻ വിജയകരമാകുമ്പോഴോ ലോഗിൻ വിവരങ്ങളും ID യും അയക്കുന്നു.
+                           </p>
+                           <Button
+                             type="button"
+                             size="sm"
+                             variant="outline"
+                             className="w-full h-8 text-[10px] font-black uppercase rounded-lg border-slate-300"
+                             onClick={async () => {
+                               const curr = orgSettings.whatsappNewMemberEnabled !== false;
+                               try {
+                                 await saveOrgSettings({ ...orgSettings, whatsappNewMemberEnabled: !curr });
+                                 toast.success(!curr ? 'New Membership WhatsApp ON' : 'New Membership WhatsApp OFF');
+                               } catch (e) {
+                                 toast.error('Failed to update setting');
+                               }
+                             }}
+                           >
+                             {orgSettings.whatsappNewMemberEnabled !== false ? 'Disable Welcome Msg' : 'Enable Welcome Msg'}
+                           </Button>
                          </div>
 
-                         <div 
-                           onClick={async () => {
-                             try {
-                               await saveOrgSettings({ ...orgSettings, registrationMode: 'bulk' });
-                               toast.success('System switched to Bulk Entry Mode (WhatsApp Auto-Send Paused)');
-                             } catch (err) {
-                               toast.error('Failed to update registration mode');
-                             }
-                           }}
-                           className={cn(
-                             "p-4 rounded-xl border flex items-start gap-3.5 cursor-pointer transition-all duration-200 hover:bg-slate-50/50",
-                             orgSettings.registrationMode === 'bulk'
-                               ? "border-brand-magenta bg-brand-magenta/[0.02] shadow-xs" 
-                               : "border-slate-200 bg-white"
-                           )}
-                         >
-                           <div className={cn(
-                             "h-4 w-4 rounded-full border flex items-center justify-center mt-0.5 shrink-0 transition-colors",
-                             orgSettings.registrationMode === 'bulk'
-                               ? "border-brand-magenta text-brand-magenta" 
-                               : "border-slate-350"
-                           )}>
-                             {orgSettings.registrationMode === 'bulk' && (
-                               <div className="h-2 w-2 rounded-full bg-brand-magenta" />
-                             )}
+                         {/* 2. Renewal Toggle */}
+                         <div className={cn(
+                           "p-4 rounded-2xl border-2 transition-all space-y-3",
+                           orgSettings.whatsappRenewalEnabled !== false && orgSettings.whatsappEnabled !== false
+                             ? "border-emerald-200 bg-emerald-50/40"
+                             : "border-slate-200 bg-slate-50/40 opacity-70"
+                         )}>
+                           <div className="flex items-center justify-between">
+                             <span className="text-xs font-black text-slate-800 uppercase tracking-tight">2. Card Renewal (കാർഡ് പുതുക്കൽ)</span>
+                             <Badge className={orgSettings.whatsappRenewalEnabled !== false && orgSettings.whatsappEnabled !== false ? "bg-emerald-600 text-white text-[8px]" : "bg-slate-200 text-slate-600 text-[8px]"}>
+                               {orgSettings.whatsappRenewalEnabled !== false && orgSettings.whatsappEnabled !== false ? "ON" : "OFF"}
+                             </Badge>
                            </div>
-                           <div>
-                             <p className="text-xs font-black text-slate-800 uppercase tracking-tight">Bulk Entry Mode</p>
-                             <span className="text-[10px] text-slate-500 leading-relaxed font-semibold mt-0.5 block">
-                               Disables ONLY automatic WhatsApp credentials sending. All user logins, membership IDs, and cards are created normally. WhatsApp status is saved as <strong className="text-brand-magenta">Pending</strong>.
-                             </span>
+                           <p className="text-[11px] text-slate-600 font-medium leading-relaxed">
+                             കാർഡ് റിന്യൂവൽ പെയ്‌മെന്റ് പൂർത്തിയാകുമ്പോൾ പുതിയ വാലിഡിറ്റിയും റെസീപ്റ്റും മെസ്സേജായി അയക്കുന്നു.
+                           </p>
+                           <Button
+                             type="button"
+                             size="sm"
+                             variant="outline"
+                             className="w-full h-8 text-[10px] font-black uppercase rounded-lg border-slate-300"
+                             onClick={async () => {
+                               const curr = orgSettings.whatsappRenewalEnabled !== false;
+                               try {
+                                 await saveOrgSettings({ ...orgSettings, whatsappRenewalEnabled: !curr });
+                                 toast.success(!curr ? 'Renewal WhatsApp ON' : 'Renewal WhatsApp OFF');
+                               } catch (e) {
+                                 toast.error('Failed to update setting');
+                               }
+                             }}
+                           >
+                             {orgSettings.whatsappRenewalEnabled !== false ? 'Disable Renewal Msg' : 'Enable Renewal Msg'}
+                           </Button>
+                         </div>
+
+                         {/* 3. Claim Submission Toggle */}
+                         <div className={cn(
+                           "p-4 rounded-2xl border-2 transition-all space-y-3",
+                           orgSettings.whatsappClaimEnabled !== false && orgSettings.whatsappEnabled !== false
+                             ? "border-emerald-200 bg-emerald-50/40"
+                             : "border-slate-200 bg-slate-50/40 opacity-70"
+                         )}>
+                           <div className="flex items-center justify-between">
+                             <span className="text-xs font-black text-slate-800 uppercase tracking-tight">3. Claim Submission (ക്ലെയിം ഫോം)</span>
+                             <Badge className={orgSettings.whatsappClaimEnabled !== false && orgSettings.whatsappEnabled !== false ? "bg-emerald-600 text-white text-[8px]" : "bg-slate-200 text-slate-600 text-[8px]"}>
+                               {orgSettings.whatsappClaimEnabled !== false && orgSettings.whatsappEnabled !== false ? "ON" : "OFF"}
+                             </Badge>
+                           </div>
+                           <p className="text-[11px] text-slate-600 font-medium leading-relaxed">
+                             ക്ലെയിം ഫോം സബ്മിറ്റ് ചെയ്യുമ്പോൾ വ്യക്തിഗത വിവരങ്ങളും ടോട്ടൽ എമൗണ്ടും ഉൾപ്പെടുത്തി മെസ്സേജ് അയക്കുന്നു.
+                           </p>
+                           <Button
+                             type="button"
+                             size="sm"
+                             variant="outline"
+                             className="w-full h-8 text-[10px] font-black uppercase rounded-lg border-slate-300"
+                             onClick={async () => {
+                               const curr = orgSettings.whatsappClaimEnabled !== false;
+                               try {
+                                 await saveOrgSettings({ ...orgSettings, whatsappClaimEnabled: !curr });
+                                 toast.success(!curr ? 'Claim WhatsApp ON' : 'Claim WhatsApp OFF');
+                               } catch (e) {
+                                 toast.error('Failed to update setting');
+                               }
+                             }}
+                           >
+                             {orgSettings.whatsappClaimEnabled !== false ? 'Disable Claim Msg' : 'Enable Claim Msg'}
+                           </Button>
+                         </div>
+                       </div>
+
+                       {/* Registration Mode (Normal vs Bulk) */}
+                       <div className="pt-2 border-t border-slate-100">
+                         <p className="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-3">Bulk Entry Protection Mode</p>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           <div 
+                             onClick={async () => {
+                               try {
+                                 await saveOrgSettings({ ...orgSettings, registrationMode: 'normal' });
+                                 toast.success('System switched to Normal Auto Mode');
+                               } catch (err) {
+                                 toast.error('Failed to update registration mode');
+                               }
+                             }}
+                             className={cn(
+                               "p-4 rounded-xl border flex items-start gap-3.5 cursor-pointer transition-all duration-200 hover:bg-slate-50/50",
+                               orgSettings.registrationMode === 'normal' || !orgSettings.registrationMode
+                                 ? "border-brand-blue bg-brand-blue/[0.02] shadow-xs" 
+                                 : "border-slate-200 bg-white"
+                             )}
+                           >
+                             <div className={cn(
+                               "h-4 w-4 rounded-full border flex items-center justify-center mt-0.5 shrink-0 transition-colors",
+                               orgSettings.registrationMode === 'normal' || !orgSettings.registrationMode
+                                 ? "border-brand-blue text-brand-blue" 
+                                 : "border-slate-350"
+                             )}>
+                               {(orgSettings.registrationMode === 'normal' || !orgSettings.registrationMode) && (
+                                 <div className="h-2 w-2 rounded-full bg-brand-blue" />
+                               )}
+                             </div>
+                             <div>
+                               <p className="text-xs font-black text-slate-800 uppercase tracking-tight">Normal Auto Mode</p>
+                               <span className="text-[10px] text-slate-500 leading-relaxed font-semibold mt-0.5 block">
+                                 Automatically triggers credentials message via WhatsApp upon entering new members or approving pending registrations.
+                               </span>
+                             </div>
+                           </div>
+
+                           <div 
+                             onClick={async () => {
+                               try {
+                                 await saveOrgSettings({ ...orgSettings, registrationMode: 'bulk' });
+                                 toast.success('System switched to Bulk Entry Mode (WhatsApp Auto-Send Paused)');
+                               } catch (err) {
+                                 toast.error('Failed to update registration mode');
+                               }
+                             }}
+                             className={cn(
+                               "p-4 rounded-xl border flex items-start gap-3.5 cursor-pointer transition-all duration-200 hover:bg-slate-50/50",
+                               orgSettings.registrationMode === 'bulk'
+                                 ? "border-brand-magenta bg-brand-magenta/[0.02] shadow-xs" 
+                                 : "border-slate-200 bg-white"
+                             )}
+                           >
+                             <div className={cn(
+                               "h-4 w-4 rounded-full border flex items-center justify-center mt-0.5 shrink-0 transition-colors",
+                               orgSettings.registrationMode === 'bulk'
+                                 ? "border-brand-magenta text-brand-magenta" 
+                                 : "border-slate-350"
+                             )}>
+                               {orgSettings.registrationMode === 'bulk' && (
+                                 <div className="h-2 w-2 rounded-full bg-brand-magenta" />
+                               )}
+                             </div>
+                             <div>
+                               <p className="text-xs font-black text-slate-800 uppercase tracking-tight">Bulk Entry Mode</p>
+                               <span className="text-[10px] text-slate-500 leading-relaxed font-semibold mt-0.5 block">
+                                 Disables ONLY automatic WhatsApp credentials sending. All user logins, membership IDs, and cards are created normally. WhatsApp status is saved as <strong className="text-brand-magenta">Pending</strong>.
+                               </span>
+                             </div>
                            </div>
                          </div>
                        </div>
@@ -4679,6 +4942,10 @@ export default function AdminDashboard({
             </Card>
           </TabsContent>
 
+          <TabsContent value="district_whatsapp">
+            <DistrictWhatsAppManager />
+          </TabsContent>
+
           <TabsContent value="claims">
             <div className="space-y-6">
                {/* View Switcher: Common Claims vs COMBO Section */}
@@ -4718,7 +4985,7 @@ export default function AdminDashboard({
                        "text-[9px] font-black px-2 py-0.5 rounded-full border-none",
                        claimsViewMode === 'combo' ? "bg-white/25 text-white" : "bg-pink-100 text-brand-magenta"
                      )}>
-                       {comboGroups.length} Combos
+                       {comboGroups.length} Families • {allComboIndividualClaims.length} Combos
                      </Badge>
                    </button>
                  </div>
@@ -4726,7 +4993,7 @@ export default function AdminDashboard({
                  <div className="text-xs font-extrabold text-slate-700 px-3 hidden md:block">
                    {claimsViewMode === 'individual' 
                      ? "Displaying each individual person as a distinct claim record" 
-                     : "Displaying persons grouped by Mobile as 1 Combo record (Print will generate 1 A4 page per person)"}
+                     : `Displaying COMBO records (${comboGroups.length} Families / ${allComboIndividualClaims.length} Total Combo Claims)`}
                  </div>
                </div>
 
@@ -4817,6 +5084,17 @@ export default function AdminDashboard({
                           <SelectItem value="RED">Red</SelectItem>
                           <SelectItem value="ORANGE">Orange</SelectItem>
                           <SelectItem value="GREEN">Green</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      <Select value={claimTypeFilter} onValueChange={(val: any) => setClaimTypeFilter(val)}>
+                        <SelectTrigger className="w-[145px] h-11 bg-white border-2 border-slate-300 rounded-xl text-xs font-extrabold text-slate-900 uppercase shadow-xs hover:border-slate-400">
+                          <SelectValue placeholder="Claim Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Types (എല്ലാം)</SelectItem>
+                          <SelectItem value="combo">👥 Only Combos ({allComboIndividualClaims.length})</SelectItem>
+                          <SelectItem value="single">Single Claims Only</SelectItem>
                         </SelectContent>
                       </Select>
 
@@ -4979,7 +5257,7 @@ service cloud.firestore {
                                   <p className="font-black text-slate-800 text-sm">{claim.userName}</p>
                                   <p className="text-xs font-bold text-slate-500">{claim.userMobile}</p>
                                   {(() => {
-                                    const comboCount = claims.filter(c => compareMobiles(c.userMobile, claim.userMobile)).length;
+                                    const comboCount = claims.filter(c => (c.uid && claim.uid && c.uid === claim.uid) || compareMobiles(c.userMobile, claim.userMobile)).length;
                                     if (comboCount > 1) {
                                       return (
                                         <div className="mt-1">
@@ -5021,9 +5299,9 @@ service cloud.firestore {
                               </TableCell>
                               <TableCell>
                                 {(() => {
-                                  const mClaims = claims.filter(c => compareMobiles(c.userMobile, claim.userMobile));
+                                  const mClaims = claims.filter(c => (c.uid && claim.uid && c.uid === claim.uid) || compareMobiles(c.userMobile, claim.userMobile));
                                   const isCombo = mClaims.length > 1;
-                                  const memberObj = members.find(m => m.uid === claim.uid || compareMobiles(m.mobile, claim.userMobile));
+                                  const memberObj = members.find(m => (claim.uid && m.uid === claim.uid) || compareMobiles(m.mobile, claim.userMobile));
                                   return (
                                     <div className="space-y-1.5 min-w-[120px]">
                                       {isCombo ? (
@@ -5167,138 +5445,288 @@ service cloud.firestore {
                  </Card>
                )}
 
-               {/* View 2: COMBO SECTION (Grouped as 1 Combo Record, Prints 1 A4 Page per Person) */}
+               {/* View 2: COMBO SECTION */}
                {claimsViewMode === 'combo' && (
-                 <Card className="border-none shadow-sm overflow-hidden rounded-3xl bg-white">
-                    {claimsLoading ? (
-                      <div className="py-20 text-center space-y-4">
-                         <RefreshCw className="w-8 h-8 animate-spin mx-auto text-brand-magenta" />
-                         <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Loading combo records...</p>
-                      </div>
-                    ) : (
-                      <Table>
-                        <TableHeader className="bg-pink-50/50">
-                          <TableRow>
-                            <TableHead className="text-[10px] font-black uppercase tracking-widest px-6">Combo Primary Contact</TableHead>
-                            <TableHead className="text-[10px] font-black uppercase tracking-widest">Persons in Combo</TableHead>
-                            <TableHead className="text-[10px] font-black uppercase tracking-widest">Financial Summary</TableHead>
-                            <TableHead className="text-[10px] font-black uppercase tracking-widest">Priority</TableHead>
-                            <TableHead className="text-[10px] font-black uppercase tracking-widest text-right px-6">Print & Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {comboGroups.map((grp, idx) => {
-                            const isMulti = grp.claims.length > 1;
-                            return (
-                              <TableRow key={`combo-${grp.mobile || idx}`} className="hover:bg-slate-50/70 transition-colors">
-                                <TableCell className="px-6 py-4">
-                                  <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
-                                      <p className="font-black text-slate-800 text-sm">{grp.primaryName}</p>
-                                      <Badge className="bg-[#FF1493] text-white text-[8px] font-black uppercase rounded-lg px-2 py-0.5 border-none shadow-2xs">
-                                        👥 Combo ({grp.claims.length} People)
-                                      </Badge>
-                                    </div>
-                                    <p className="text-xs font-bold text-slate-500">{grp.mobile || 'No Mobile'}</p>
-                                    <div className="flex items-center gap-2 text-[9px] font-bold text-slate-400">
-                                      <span className="font-black text-brand-blue uppercase">{grp.membershipId}</span>
-                                      <span>•</span>
-                                      <span className="uppercase">{DISTRICTS.find(d => d.code === grp.district)?.name || grp.district}</span>
-                                    </div>
-                                  </div>
-                                </TableCell>
-                                <TableCell className="py-4">
-                                  <div className="space-y-1.5 max-w-[320px]">
-                                    <p className="text-[9px] font-black uppercase tracking-wider text-slate-400">
-                                      {grp.claims.length} Claim Records in this Combo:
-                                    </p>
-                                    <div className="flex flex-wrap gap-1.5">
-                                      {grp.claims.map((c, cIdx) => (
-                                        <div key={c.id || cIdx} className="bg-slate-100/90 border border-slate-200/70 rounded-lg px-2 py-1 text-[9px] flex items-center gap-1.5">
-                                          <span className="font-extrabold text-slate-800">{c.userName || 'Person'}</span>
-                                          {c.relation && (
-                                            <span className="text-[8px] font-bold text-brand-magenta bg-brand-magenta/10 px-1 rounded">
-                                              {c.relation === 'Self' ? 'Self' : c.relation}
-                                            </span>
-                                          )}
-                                          <span className="font-black text-slate-600">₹{(c.totalPending || 0).toLocaleString('en-IN')}</span>
-                                          {c.highrichId && (
-                                            <span className="text-[8px] text-slate-400 font-mono">[{c.highrichId}]</span>
-                                          )}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                </TableCell>
-                                <TableCell className="py-4">
-                                  <div className="space-y-1">
-                                    <div className="flex items-center gap-1.5 font-black text-slate-800 text-sm">
-                                      <span className="text-[10px] opacity-40">₹</span> {grp.totalPending.toLocaleString('en-IN')}
-                                      <Badge variant="outline" className="text-[8px] h-4 py-0 font-bold border-slate-200">Net Pending</Badge>
-                                    </div>
-                                    <p className="text-[9px] font-bold text-slate-400">
-                                      Total Paid: ₹{grp.totalPaid.toLocaleString('en-IN')} • Recv: ₹{grp.totalReceived.toLocaleString('en-IN')}
-                                    </p>
-                                  </div>
-                                </TableCell>
-                                <TableCell className="py-4">
-                                  <div className="flex flex-col gap-1">
-                                    <Badge className={cn(
-                                      "w-fit font-black text-[9px] px-3 py-1 text-white border-0",
-                                      grp.highestPriority === 'EMERGENCY RED' ? 'bg-red-600' :
-                                      grp.highestPriority === 'RED' ? 'bg-red-500' :
-                                      grp.highestPriority === 'ORANGE' ? 'bg-orange-500' : 'bg-green-500'
-                                    )}>
-                                       {grp.highestPriority}
-                                    </Badge>
-                                    {grp.isEmergency && <span className="text-[8px] font-black text-red-500 flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> EMERGENCY</span>}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-right px-6 py-4">
-                                  <div className="flex items-center justify-end gap-2">
-                                    <Button
-                                        size="sm"
-                                        onClick={() => printCourtComboReport(grp.memberObj, grp.claims)}
-                                        className="h-8 px-3 text-[8.5px] font-black uppercase tracking-wider rounded-xl bg-emerald-700 text-white hover:bg-emerald-800 shadow-md shadow-emerald-700/20 flex items-center gap-1.5"
-                                        title={`Print Court Statement (${grp.claims.length} Separate A4 Pages)`}
-                                      >
-                                        <Printer className="w-3.5 h-3.5" />
-                                        <span>Court ({grp.claims.length}p)</span>
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        onClick={() => printFullAdminComboReport(grp.memberObj, grp.claims)}
-                                        className="h-8 px-3 text-[8.5px] font-black uppercase tracking-wider rounded-xl bg-brand-magenta text-white hover:bg-brand-magenta/90 shadow-md shadow-brand-magenta/20 flex items-center gap-1.5"
-                                        title={`Print Full Admin Record (${grp.claims.length} Separate A4 Pages)`}
-                                      >
-                                        <FileSpreadsheet className="w-3.5 h-3.5" />
-                                        <span>Admin ({grp.claims.length}p)</span>
-                                      </Button>
-                                    {grp.memberObj && (
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 p-0 rounded-full text-slate-400 hover:text-brand-blue"
-                                        onClick={() => setViewingMember(grp.memberObj!)}
-                                        title="View Primary Member Details"
-                                      >
-                                        <Eye className="w-4 h-4" />
-                                      </Button>
-                                    )}
-                                  </div>
+                 <div className="space-y-4">
+                   {/* Sub View Toggle Bar */}
+                   <div className="flex flex-wrap items-center justify-between gap-3 bg-pink-50/70 p-3.5 rounded-2xl border border-pink-200">
+                     <div className="flex items-center gap-2">
+                       <button
+                         onClick={() => setComboSubView('groups')}
+                         className={cn(
+                           "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer",
+                           comboSubView === 'groups'
+                             ? "bg-brand-magenta text-white shadow-md shadow-brand-magenta/30"
+                             : "bg-white text-pink-900 border border-pink-300 hover:bg-pink-100/60"
+                         )}
+                       >
+                         👥 ഫാമിലി കോംബോ ഗ്രൂപ്പുകൾ ({comboGroups.length} Families)
+                       </button>
+                       <button
+                         onClick={() => setComboSubView('all_persons')}
+                         className={cn(
+                           "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer",
+                           comboSubView === 'all_persons'
+                             ? "bg-brand-magenta text-white shadow-md shadow-brand-magenta/30"
+                             : "bg-white text-pink-900 border border-pink-300 hover:bg-pink-100/60"
+                         )}
+                       >
+                         📋 എല്ലാ കോംബോ വ്യക്തിഗത ലിസ്റ്റ് ({allComboIndividualClaims.length} Persons)
+                       </button>
+                     </div>
+                     <p className="text-xs font-extrabold text-pink-900">
+                       {comboSubView === 'groups'
+                         ? `മൊത്തം ${comboGroups.length} ഫാമിലി പാക്കേജുകൾ (${allComboIndividualClaims.length} വ്യക്തികൾ ഉൾപ്പെടുന്നു)`
+                         : `എല്ലാ കോംബോ വ്യക്തിഗത ക്ലെയിമുകൾ (${allComboIndividualClaims.length} ക്ലെയിം റെക്കോർഡുകൾ)`}
+                     </p>
+                   </div>
+
+                   <Card className="border-none shadow-sm overflow-hidden rounded-3xl bg-white">
+                      {claimsLoading ? (
+                        <div className="py-20 text-center space-y-4">
+                           <RefreshCw className="w-8 h-8 animate-spin mx-auto text-brand-magenta" />
+                           <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Loading combo records...</p>
+                        </div>
+                      ) : comboSubView === 'groups' ? (
+                        /* Combo Groups Table */
+                        <Table>
+                          <TableHeader className="bg-pink-50/50">
+                            <TableRow>
+                              <TableHead className="text-[10px] font-black uppercase tracking-widest px-6">Combo Primary Contact</TableHead>
+                              <TableHead className="text-[10px] font-black uppercase tracking-widest">Persons in Combo</TableHead>
+                              <TableHead className="text-[10px] font-black uppercase tracking-widest">Financial Summary</TableHead>
+                              <TableHead className="text-[10px] font-black uppercase tracking-widest">Priority</TableHead>
+                              <TableHead className="text-[10px] font-black uppercase tracking-widest text-right px-6">Print & Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {comboGroups.length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={5} className="py-12 text-center text-slate-400 text-xs font-bold uppercase tracking-wider">
+                                  No combo packages found matching current filters
                                 </TableCell>
                               </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    )}
-                    {!claimsLoading && comboGroups.length === 0 && (
-                      <div className="py-20 text-center bg-white">
-                         <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">No combo records found</p>
-                      </div>
-                    )}
-                 </Card>
+                            ) : (
+                              comboGroups.map((grp, idx) => (
+                                <TableRow key={`combo-${grp.mobile || idx}`} className="hover:bg-slate-50/70 transition-colors">
+                                  <TableCell className="px-6 py-4">
+                                    <div className="space-y-1">
+                                      <div className="flex items-center gap-2">
+                                        <p className="font-black text-slate-800 text-sm">{grp.primaryName}</p>
+                                        <Badge className="bg-[#FF1493] text-white text-[8px] font-black uppercase rounded-lg px-2 py-0.5 border-none shadow-2xs">
+                                          👥 Combo ({grp.claims.length} People)
+                                        </Badge>
+                                      </div>
+                                      <p className="text-xs font-bold text-slate-500">{grp.mobile || 'No Mobile'}</p>
+                                      <div className="flex items-center gap-2 text-[9px] font-bold text-slate-400">
+                                        <span className="font-black text-brand-blue uppercase">{grp.membershipId}</span>
+                                        <span>•</span>
+                                        <span className="uppercase">{DISTRICTS.find(d => d.code === grp.district)?.name || grp.district}</span>
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="py-4">
+                                    <div className="space-y-1.5 max-w-[320px]">
+                                      <p className="text-[9px] font-black uppercase tracking-wider text-slate-400">
+                                        {grp.claims.length} Claim Records in this Combo:
+                                      </p>
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {grp.claims.map((c, cIdx) => (
+                                          <div key={c.id || cIdx} className="bg-slate-100/90 border border-slate-200/70 rounded-lg px-2 py-1 text-[9px] flex items-center gap-1.5">
+                                            <span className="font-extrabold text-slate-800">{c.userName || 'Person'}</span>
+                                            {c.relation && (
+                                              <span className="text-[8px] font-bold text-brand-magenta bg-brand-magenta/10 px-1 rounded">
+                                                {c.relation === 'Self' ? 'Self' : c.relation}
+                                              </span>
+                                            )}
+                                            <span className="font-black text-slate-600">₹{(c.totalPending || 0).toLocaleString('en-IN')}</span>
+                                            {c.highrichId && (
+                                              <span className="text-[8px] text-slate-400 font-mono">[{c.highrichId}]</span>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="py-4">
+                                    <div className="space-y-1">
+                                      <div className="flex items-center gap-1.5 font-black text-slate-800 text-sm">
+                                        <span className="text-[10px] opacity-40">₹</span> {grp.totalPending.toLocaleString('en-IN')}
+                                        <Badge variant="outline" className="text-[8px] h-4 py-0 font-bold border-slate-200">Net Pending</Badge>
+                                      </div>
+                                      <p className="text-[9px] font-bold text-slate-400">
+                                        Total Paid: ₹{grp.totalPaid.toLocaleString('en-IN')} • Recv: ₹{grp.totalReceived.toLocaleString('en-IN')}
+                                      </p>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="py-4">
+                                    <div className="flex flex-col gap-1">
+                                      <Badge className={cn(
+                                        "w-fit font-black text-[9px] px-3 py-1 text-white border-0",
+                                        grp.highestPriority === 'EMERGENCY RED' ? 'bg-red-600' :
+                                        grp.highestPriority === 'RED' ? 'bg-red-500' :
+                                        grp.highestPriority === 'ORANGE' ? 'bg-orange-500' : 'bg-green-500'
+                                      )}>
+                                         {grp.highestPriority}
+                                      </Badge>
+                                      {grp.isEmergency && <span className="text-[8px] font-black text-red-500 flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> EMERGENCY</span>}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-right px-6 py-4">
+                                    <div className="flex items-center justify-end gap-2">
+                                      <Button
+                                          size="sm"
+                                          onClick={() => printCourtComboReport(grp.memberObj, grp.claims)}
+                                          className="h-8 px-3 text-[8.5px] font-black uppercase tracking-wider rounded-xl bg-emerald-700 text-white hover:bg-emerald-800 shadow-md shadow-emerald-700/20 flex items-center gap-1.5"
+                                          title={`Print Court Statement (${grp.claims.length} Separate A4 Pages)`}
+                                        >
+                                          <Printer className="w-3.5 h-3.5" />
+                                          <span>Court ({grp.claims.length}p)</span>
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          onClick={() => printFullAdminComboReport(grp.memberObj, grp.claims)}
+                                          className="h-8 px-3 text-[8.5px] font-black uppercase tracking-wider rounded-xl bg-brand-magenta text-white hover:bg-brand-magenta/90 shadow-md shadow-brand-magenta/20 flex items-center gap-1.5"
+                                          title={`Print Full Admin Record (${grp.claims.length} Separate A4 Pages)`}
+                                        >
+                                          <FileSpreadsheet className="w-3.5 h-3.5" />
+                                          <span>Admin ({grp.claims.length}p)</span>
+                                        </Button>
+                                      {grp.memberObj && (
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-8 w-8 p-0 rounded-full text-slate-400 hover:text-brand-blue"
+                                          onClick={() => setViewingMember(grp.memberObj!)}
+                                          title="View Primary Member Details"
+                                        >
+                                          <Eye className="w-4 h-4" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      ) : (
+                        /* All Combo Individual Claims Table */
+                        <Table>
+                          <TableHeader className="bg-pink-50/50">
+                            <TableRow>
+                              <TableHead className="text-[10px] font-black uppercase tracking-widest px-6">Sl / Token</TableHead>
+                              <TableHead className="text-[10px] font-black uppercase tracking-widest">Claimant & Relation</TableHead>
+                              <TableHead className="text-[10px] font-black uppercase tracking-widest">Contact & Member ID</TableHead>
+                              <TableHead className="text-[10px] font-black uppercase tracking-widest">Amount (₹)</TableHead>
+                              <TableHead className="text-[10px] font-black uppercase tracking-widest">Categories</TableHead>
+                              <TableHead className="text-[10px] font-black uppercase tracking-widest">Priority</TableHead>
+                              <TableHead className="text-[10px] font-black uppercase tracking-widest text-right px-6">Print & Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {allComboIndividualClaims.length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={7} className="py-12 text-center text-slate-400 text-xs font-bold uppercase tracking-wider">
+                                  No combo claims found matching current filters
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              allComboIndividualClaims.map((claim) => {
+                                const mClaims = getComboClaimsForClaim(claim, claims);
+                                const memberObj = members.find(m => (claim.uid && m.uid === claim.uid) || compareMobiles(m.mobile, claim.userMobile));
+                                return (
+                                  <TableRow key={`combo-indiv-${claim.id}`} className="hover:bg-pink-50/30 transition-colors">
+                                    <TableCell className="px-6 py-4 font-mono font-black text-xs text-brand-blue">
+                                      {claim.tokenNo ?? claim.serialNo ?? 'N/A'}
+                                    </TableCell>
+                                    <TableCell className="py-4">
+                                      <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                          <p className="font-black text-slate-900 text-sm">{claim.userName}</p>
+                                          {claim.relation && (
+                                            <Badge className="bg-pink-100 text-brand-magenta text-[8px] font-black uppercase px-2 py-0.5 border-none">
+                                              {claim.relation === 'Self' ? 'Self (സ്വന്തം)' :
+                                               claim.relation === 'Mother' ? 'അമ്മ (Mother)' :
+                                               claim.relation === 'Father' ? 'അച്ഛൻ (Father)' :
+                                               claim.relation === 'Son' ? 'മകൻ (Son)' :
+                                               claim.relation === 'Daughter' ? 'മകൾ (Daughter)' :
+                                               claim.relation === 'Wife' ? 'ഭാര്യ (Wife)' :
+                                               claim.relation === 'Husband' ? 'ഭർത്താവ് (Husband)' : claim.relation}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        {claim.highrichId && (
+                                          <p className="text-[10px] font-bold text-slate-500 font-mono">HR ID: {claim.highrichId}</p>
+                                        )}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="py-4">
+                                      <div className="space-y-0.5">
+                                        <p className="text-xs font-bold text-slate-700">{claim.userMobile || 'No Mobile'}</p>
+                                        <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400">
+                                          <span className="font-black text-brand-blue uppercase">{claim.membershipId || memberObj?.membershipId || 'N/A'}</span>
+                                          <span>•</span>
+                                          <span className="uppercase">{DISTRICTS.find(d => d.code === (claim.district || memberObj?.district))?.name || claim.district || 'N/A'}</span>
+                                        </div>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="py-4">
+                                      <div className="space-y-0.5">
+                                        <p className="text-sm font-black text-slate-900">₹{(claim.totalPending || 0).toLocaleString('en-IN')}</p>
+                                        <p className="text-[9px] font-bold text-slate-400">Paid: ₹{(claim.totalPaid || 0).toLocaleString('en-IN')}</p>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="py-4">
+                                      <div className="flex flex-wrap gap-1 max-w-[180px]">
+                                        {(claim.categories || []).map((cat: string) => (
+                                          <span key={cat} className="text-[8px] font-black uppercase bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200">
+                                            {cat}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="py-4">
+                                      <Badge className={cn(
+                                        "w-fit font-black text-[9px] px-2.5 py-0.5 text-white border-0",
+                                        claim.priorityStatus === 'EMERGENCY RED' ? 'bg-red-600' :
+                                        claim.priorityStatus === 'RED' ? 'bg-red-500' :
+                                        claim.priorityStatus === 'ORANGE' ? 'bg-orange-500' : 'bg-green-500'
+                                      )}>
+                                        {claim.priorityStatus || 'GREEN'}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right px-6 py-4">
+                                      <div className="flex items-center justify-end gap-1.5">
+                                        <Button
+                                          size="sm"
+                                          onClick={() => printCourtComboReport(memberObj, mClaims)}
+                                          className="h-7 px-2 text-[8px] font-black uppercase tracking-wider rounded-lg bg-emerald-700 text-white hover:bg-emerald-800 flex items-center gap-1 shadow-2xs"
+                                          title="Print Court Statement (1 A4 Page Per Person)"
+                                        >
+                                          <Printer className="w-3 h-3" />
+                                          <span>Court ({mClaims.length}p)</span>
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          onClick={() => printFullAdminComboReport(memberObj, mClaims)}
+                                          className="h-7 px-2 text-[8px] font-black uppercase tracking-wider rounded-lg bg-brand-magenta text-white hover:bg-brand-magenta/90 flex items-center gap-1 shadow-2xs"
+                                          title="Print Full Admin Record (1 A4 Page Per Person)"
+                                        >
+                                          <FileSpreadsheet className="w-3 h-3" />
+                                          <span>Admin ({mClaims.length}p)</span>
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })
+                            )}
+                          </TableBody>
+                        </Table>
+                      )}
+                   </Card>
+                 </div>
                )}
             </div>
           </TabsContent>
@@ -5987,6 +6415,34 @@ service cloud.firestore {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-2 gap-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <div className="space-y-2">
+                    <Label htmlFor="m-sponsor-name" className="font-black text-slate-700 uppercase mb-2 text-xs">
+                      Leader / Sponsor Name (ലീഡറുടെ പേര്)
+                    </Label>
+                    <Input 
+                      id="m-sponsor-name" 
+                      className="h-12 rounded-xl focus:ring-brand-blue bg-white"
+                      placeholder="Leader Name" 
+                      value={manualFormData.sponsorName || ''} 
+                      onChange={e => setManualFormData({...manualFormData, sponsorName: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="m-sponsor-mobile" className="font-black text-slate-700 uppercase mb-2 text-xs">
+                      Leader Mobile (ലീഡറുടെ ഫോൺ)
+                    </Label>
+                    <Input 
+                      id="m-sponsor-mobile" 
+                      maxLength={10} 
+                      className="h-12 rounded-xl focus:ring-brand-blue bg-white font-mono"
+                      placeholder="10-digit number" 
+                      value={manualFormData.sponsorMobile || ''} 
+                      onChange={e => setManualFormData({...manualFormData, sponsorMobile: e.target.value.replace(/\D/g, '')})}
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="s-role" className="font-black text-slate-700 uppercase mb-2">Account Role</Label>
                   <Select 
@@ -6208,6 +6664,34 @@ service cloud.firestore {
                         {BLOOD_GROUPS.map(bg => <SelectItem key={bg} value={bg}>{bg}</SelectItem>)}
                       </SelectContent>
                     </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-sponsor-name" className="text-xs font-black uppercase text-slate-700">
+                      Leader / Sponsor Name (ലീഡർ പേര്)
+                    </Label>
+                    <Input 
+                      id="edit-sponsor-name" 
+                      value={editingMember.sponsorName || ''} 
+                      onChange={e => setEditingMember({...editingMember, sponsorName: e.target.value})}
+                      placeholder="Leader Name"
+                      className="bg-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-sponsor-mobile" className="text-xs font-black uppercase text-slate-700">
+                      Leader Mobile (മൊബൈൽ)
+                    </Label>
+                    <Input 
+                      id="edit-sponsor-mobile" 
+                      value={editingMember.sponsorMobile || ''} 
+                      onChange={e => setEditingMember({...editingMember, sponsorMobile: e.target.value.replace(/\D/g, '')})}
+                      placeholder="10-digit mobile"
+                      maxLength={10}
+                      className="bg-white font-mono"
+                    />
                   </div>
                 </div>
 

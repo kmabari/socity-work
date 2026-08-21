@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { db, secondaryDb, secondaryAuth, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, runTransaction, serverTimestamp, collection, query, where, getDocs, increment } from 'firebase/firestore';
+import { doc, getDoc, setDoc, runTransaction, serverTimestamp, collection, query, where, getDocs, increment, limit } from 'firebase/firestore';
 import { DISTRICTS, CONSTITUENCIES, getDistrictCode, getAssemblyCode, generateNewMembershipId } from '@/src/constants';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { UserProfile } from '@/src/types';
-import { CheckCircle2, UserPlus, Copy, RefreshCw, Phone, User, Landmark, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, UserPlus, Copy, RefreshCw, Phone, User, Landmark, ShieldCheck, Loader2 } from 'lucide-react';
 
 interface FastMemberEntryProps {
   adminUser: UserProfile | null;
@@ -23,9 +23,51 @@ const DEFAULT_PASSWORD = "123456";
 export default function FastMemberEntry({ adminUser, districtQuotas, districtQuotasUsed, onMemberAdded }: FastMemberEntryProps) {
   const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
+  const [sponsorName, setSponsorName] = useState('');
+  const [sponsorMobile, setSponsorMobile] = useState('');
   const [state, setState] = useState('Kerala');
   const [district, setDistrict] = useState(adminUser?.district || '');
   const [mandalam, setMandalam] = useState('');
+
+  // Sponsor Auto-Lookup state
+  const [sponsorLookupStatus, setSponsorLookupStatus] = useState<{
+    loading: boolean;
+    verified: boolean;
+    name: string;
+    membershipId?: string;
+  } | null>(null);
+
+  React.useEffect(() => {
+    const cleanSponsor = sponsorMobile.replace(/\D/g, '').slice(-10);
+    if (cleanSponsor.length === 10) {
+      let isMounted = true;
+      setSponsorLookupStatus({ loading: true, verified: false, name: '' });
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('mobile', '==', cleanSponsor), limit(1));
+      getDocs(q).then((snap) => {
+        if (!isMounted) return;
+        if (!snap.empty) {
+          const sponsorDoc = snap.docs[0].data();
+          const sName = sponsorDoc.name || '';
+          const sId = sponsorDoc.membershipId || '';
+          setSponsorLookupStatus({ loading: false, verified: true, name: sName, membershipId: sId });
+          if (!sponsorName || sponsorName.trim() === '') {
+            setSponsorName(sName);
+          }
+        } else {
+          setSponsorLookupStatus({ loading: false, verified: false, name: '' });
+        }
+      }).catch((err) => {
+        console.warn('Sponsor lookup check error:', err);
+        if (isMounted) setSponsorLookupStatus(null);
+      });
+      return () => {
+        isMounted = false;
+      };
+    } else {
+      setSponsorLookupStatus(null);
+    }
+  }, [sponsorMobile]);
   
   React.useEffect(() => {
     if (adminUser?.district) {
@@ -58,6 +100,8 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
   const handleReset = () => {
     setName('');
     setMobile('');
+    setSponsorName('');
+    setSponsorMobile('');
     setDistrict(adminUser?.district || '');
     setMandalam('');
     setCreatedMember(null);
@@ -276,6 +320,8 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
           pincode: '',
           postOffice: '',
           bloodGroup: '',
+          sponsorName: sponsorName.trim(),
+          sponsorMobile: sponsorMobile.trim(),
           gender: '',
           dob: '',
           membershipId: finalMembershipId,
@@ -566,6 +612,58 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
             onChange={e => setMobile(e.target.value.replace(/\D/g, ''))}
           />
           <p className="text-[10px] text-blue-700 font-black leading-none uppercase">Mobile number will be used to log in. Must be globally unique.</p>
+        </div>
+
+        {/* Sponsor / Leader Details */}
+        <div className="space-y-2 bg-slate-50 p-4 rounded-2xl border-2 border-slate-200">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-brand-magenta" />
+                Leader / Sponsor Name <span className="text-red-500">*</span>
+              </Label>
+              <Input 
+                type="text"
+                required
+                placeholder="Leader Name"
+                className="h-12 rounded-xl border-2 border-slate-300 px-4 focus-visible:ring-brand-blue text-sm font-bold text-slate-950 bg-white placeholder:text-slate-400 shadow-xs"
+                value={sponsorName}
+                onChange={e => setSponsorName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                <Phone className="w-3.5 h-3.5 text-brand-magenta" />
+                Leader Mobile Number <span className="text-red-500">*</span>
+              </Label>
+              <div className="relative">
+                <Input 
+                  type="tel"
+                  required
+                  maxLength={10}
+                  placeholder="10-digit number"
+                  className="h-12 rounded-xl border-2 border-slate-300 px-4 focus-visible:ring-brand-blue text-sm font-bold font-mono text-slate-950 bg-white placeholder:text-slate-400 shadow-xs"
+                  value={sponsorMobile}
+                  onChange={e => setSponsorMobile(e.target.value.replace(/\D/g, ''))}
+                />
+                {sponsorLookupStatus?.loading && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-brand-blue" />
+                )}
+              </div>
+            </div>
+          </div>
+
+          {sponsorLookupStatus?.verified && (
+            <div className="p-2.5 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center gap-2 text-xs">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span className="font-bold text-emerald-950">
+                Verified Existing Member / Leader: <span className="text-emerald-800 underline font-black">{sponsorLookupStatus.name}</span> {sponsorLookupStatus.membershipId ? `(${sponsorLookupStatus.membershipId})` : ''}
+              </span>
+            </div>
+          )}
+          <p className="text-[10px] text-slate-500 font-medium">
+            * Existing registered members can be entered as Leader / Sponsor. Uniqueness is only enforced on the new member's primary mobile.
+          </p>
         </div>
 
         {/* Location selectors */}

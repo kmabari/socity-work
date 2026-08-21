@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { Download, MapPin, ShieldCheck, Camera, PartyPopper, Share2, LogOut, Calendar, Phone, Mail, Award, Clock, User, Printer, FileText } from 'lucide-react';
+import { Download, MapPin, ShieldCheck, Camera, PartyPopper, Share2, LogOut, Calendar, Phone, Mail, Award, Clock, User, Printer, FileText, MessageCircle, Headphones, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { UserProfile } from '@/src/types';
@@ -127,6 +127,63 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
   const fetchSettings = async () => {
     const data = await getOrgSettings();
     setSettings(data);
+  };
+
+  const getDistrictWhatsAppDetails = () => {
+    const rawDist = member.district || '';
+    const cleanDist = rawDist.trim().toUpperCase();
+    const districtObj = DISTRICTS.find(d => 
+      d.code.toUpperCase() === cleanDist || 
+      d.name.toUpperCase() === cleanDist ||
+      cleanDist.includes(d.code.toUpperCase()) ||
+      cleanDist.includes(d.name.toUpperCase())
+    );
+
+    const distCode = districtObj ? districtObj.code : rawDist;
+    const distName = districtObj ? districtObj.name : (rawDist || 'Kerala');
+
+    const assignedLink = settings.districtWhatsAppLinks?.[distCode] || 
+                         settings.districtWhatsAppLinks?.[rawDist] || 
+                         settings.districtWhatsAppLinks?.[distName];
+
+    const isActive = (settings.districtWhatsAppActive?.[distCode] !== false) &&
+                     (settings.districtWhatsAppActive?.[rawDist] !== false);
+
+    if (assignedLink && isActive) {
+      let finalUrl = assignedLink.trim();
+      if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+        const digits = finalUrl.replace(/\D/g, '');
+        finalUrl = digits.length === 10 ? `https://wa.me/91${digits}` : `https://wa.me/${digits}`;
+      }
+      return {
+        url: finalUrl,
+        districtName: distName,
+        districtCode: distCode,
+        isCustom: true
+      };
+    }
+
+    // Default Central Helpline
+    return {
+      url: 'https://wa.me/919645934571',
+      districtName: distName,
+      districtCode: distCode,
+      isCustom: false
+    };
+  };
+
+  const handleOpenCustomerCareWhatsApp = () => {
+    const { url, districtName } = getDistrictWhatsAppDetails();
+    const greetingText = `*HCRS Customer Care Support Request*%0A%0A*Member Name:* ${encodeURIComponent(member.name || 'Member')}%0A*Membership ID:* ${encodeURIComponent(member.membershipId || 'N/A')}%0A*District:* ${encodeURIComponent(districtName)}%0A*Mobile:* ${encodeURIComponent(member.mobile || '')}%0A%0A_Hello Customer Care, I need assistance regarding my HCRS membership._`;
+    
+    // Check if the URL already has query parameters
+    let targetUrl = url;
+    if (targetUrl.includes('wa.me')) {
+      const separator = targetUrl.includes('?') ? '&' : '?';
+      targetUrl = `${targetUrl}${separator}text=${greetingText}`;
+    }
+    
+    window.open(targetUrl, '_blank');
   };
 
   useEffect(() => {
@@ -993,8 +1050,20 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
               </div>
 
               {/* Secondary Utility Controls */}
-              <div className="grid grid-cols-1 gap-2.5">
-                {/* 3. SCREENSHOT MODE */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {/* 3. DISTRICT CUSTOMER CARE WHATSAPP */}
+                <Button 
+                  onClick={handleOpenCustomerCareWhatsApp}
+                  className="w-full h-11 py-2 px-3 font-black rounded-xl text-xs uppercase tracking-wider shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-95"
+                >
+                  <MessageCircle className="w-4 h-4 text-emerald-200 shrink-0" />
+                  <div className="flex flex-col items-start leading-tight text-left">
+                    <span className="text-[11px] font-black">കസ്റ്റമർ കെയർ ({getDistrictWhatsAppDetails().districtName})</span>
+                    <span className="text-[9px] font-medium text-emerald-100 opacity-90">District Customer Care WhatsApp</span>
+                  </div>
+                </Button>
+
+                {/* 4. SCREENSHOT MODE */}
                 <Button 
                   onClick={() => setIsScreenshotMode(true)}
                   variant="outline"

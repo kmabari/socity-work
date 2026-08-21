@@ -26,6 +26,8 @@ export default function ProfileEditForm({ user, onSave, onCancel, isMandatory = 
   const [dob, setDob] = useState(user.dob || '');
   const [district, setDistrict] = useState(user.district || DISTRICTS[0].code);
   const [assemblyConstituency, setAssemblyConstituency] = useState(user.assemblyConstituency || '');
+  const [sponsorName, setSponsorName] = useState(user.sponsorName || '');
+  const [sponsorMobile, setSponsorMobile] = useState(user.sponsorMobile || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -40,6 +42,13 @@ export default function ProfileEditForm({ user, onSave, onCancel, isMandatory = 
       return;
     }
 
+    const cleanSponsorMobile = sponsorMobile.trim().replace(/\D/g, '');
+    if (cleanSponsorMobile && cleanSponsorMobile.length !== 10) {
+      toast.error('സ്പോൺസറുടെ മൊബൈൽ നമ്പർ 10 അക്കങ്ങൾ ആയിരിക്കണം. (Leader/Sponsor mobile must be 10 digits)');
+      setIsSubmitting(false);
+      return;
+    }
+
     const updatedData: Partial<UserProfile> = {
       address: address.trim(),
       email: cleanEmail,
@@ -50,6 +59,8 @@ export default function ProfileEditForm({ user, onSave, onCancel, isMandatory = 
       dob: dob,
       district: district,
       assemblyConstituency: assemblyConstituency,
+      sponsorName: sponsorName.trim(),
+      sponsorMobile: cleanSponsorMobile,
       mustCompleteProfile: false,
       profileCompleted: true
     };
@@ -291,6 +302,47 @@ export default function ProfileEditForm({ user, onSave, onCancel, isMandatory = 
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Leader / Sponsor Section */}
+          <div className="pt-3 border-t border-slate-100 space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-[11px] font-black text-slate-900 uppercase tracking-wider">
+                Leader / Sponsor Details (ലീഡർ വിവരങ്ങൾ)
+              </Label>
+              <span className="text-[10px] font-bold text-amber-700">പ്രിന്റിങ് ഫോമിൽ വരുന്നത്</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-sponsor-name" className="text-[10px] font-black text-slate-600 uppercase tracking-wider">
+                  Leader / Sponsor Name (ലീഡറുടെ പേര്)
+                </Label>
+                <Input 
+                  id="edit-sponsor-name"
+                  type="text"
+                  placeholder="Leader Name"
+                  className="h-11 rounded-xl border-slate-200 px-3.5 focus-visible:ring-brand-blue text-xs font-semibold"
+                  value={sponsorName}
+                  onChange={e => setSponsorName(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-sponsor-mobile" className="text-[10px] font-black text-slate-600 uppercase tracking-wider">
+                  Leader Mobile (ലീഡറുടെ മൊബൈൽ)
+                </Label>
+                <Input 
+                  id="edit-sponsor-mobile"
+                  type="tel"
+                  maxLength={10}
+                  placeholder="10-digit mobile"
+                  className="h-11 rounded-xl border-slate-200 px-3.5 focus-visible:ring-brand-blue text-xs font-semibold font-mono"
+                  value={sponsorMobile}
+                  onChange={e => setSponsorMobile(e.target.value.replace(/\D/g, ''))}
+                />
+              </div>
+            </div>
           </div>
         </div>
 

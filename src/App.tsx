@@ -22,12 +22,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { auth, db, storage, handleFirestoreError, OperationType, secondaryAuth } from './lib/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, signInWithPopup, updatePassword } from 'firebase/auth';
-import { Clock, LogOut, Camera, ShieldCheck, RefreshCw, Users, ShieldAlert, ArrowRight, Eye, EyeOff, Pencil, Trash2, MoreVertical, Receipt, Mail, Smartphone, Search, MapPin, Plus, CheckCircle2, AlertTriangle, Info, Printer, Download, Share2, FileText } from 'lucide-react';
+import { Clock, LogOut, Camera, ShieldCheck, RefreshCw, Users, ShieldAlert, ArrowRight, Eye, EyeOff, Pencil, Trash2, MoreVertical, Receipt, Mail, Smartphone, Search, MapPin, Plus, CheckCircle2, AlertTriangle, Info, Printer, Download, Share2, FileText, MessageCircle } from 'lucide-react';
 import { setDoc, doc, updateDoc, deleteDoc, collection, onSnapshot, query, getDoc, getDocs, runTransaction, serverTimestamp, where, increment, limit, addDoc, writeBatch } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from './lib/imageUtils';
 import { googleProvider } from './lib/firebase';
 import { printCourtComboReport, printCourtClaimReport, shareCourtComboPdf, downloadCourtComboPdf, getCourtComboHtml, getSingleCourtClaimHtml } from './lib/claimPrint';
+import { sendWAMessage } from './lib/whatsapp';
 import OperationJanamail from "./components/OperationJanamail";
 const MAIN_ADMINS = [
   'kmabarikiyafoods@gmail.com',
@@ -530,6 +531,42 @@ export default function App() {
     });
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    const unsub = subscribeToOrgSettings((settings) => {
+      setOrgSettings(settings);
+    });
+    return () => unsub();
+  }, []);
+
+  const getMemberDistrictWhatsApp = (member: UserProfile | null) => {
+    if (!member) return { url: 'https://wa.me/919645934571', name: 'Kerala' };
+    const rawDist = member.district || '';
+    const cleanDist = rawDist.trim().toUpperCase();
+    const districtObj = DISTRICTS.find(d => 
+      d.code.toUpperCase() === cleanDist || 
+      d.name.toUpperCase() === cleanDist ||
+      cleanDist.includes(d.code.toUpperCase()) ||
+      cleanDist.includes(d.name.toUpperCase())
+    );
+    const distCode = districtObj ? districtObj.code : rawDist;
+    const distName = districtObj ? districtObj.name : (rawDist || 'Kerala');
+    const assignedLink = orgSettings.districtWhatsAppLinks?.[distCode] || 
+                         orgSettings.districtWhatsAppLinks?.[rawDist] || 
+                         orgSettings.districtWhatsAppLinks?.[distName];
+    const isActive = (orgSettings.districtWhatsAppActive?.[distCode] !== false) &&
+                     (orgSettings.districtWhatsAppActive?.[rawDist] !== false);
+
+    if (assignedLink && isActive) {
+      let finalUrl = assignedLink.trim();
+      if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+        const digits = finalUrl.replace(/\D/g, '');
+        finalUrl = digits.length === 10 ? `https://wa.me/91${digits}` : `https://wa.me/${digits}`;
+      }
+      return { url: finalUrl, name: distName };
+    }
+    return { url: 'https://wa.me/919645934571', name: distName };
+  };
 
   useEffect(() => {
     if (view === 'card' && showCelebration) {
@@ -1810,6 +1847,24 @@ export default function App() {
         registrationDate: member.registrationDate ? (member.registrationDate.toDate ? member.registrationDate.toDate() : new Date(member.registrationDate)) : now
       } : m));
 
+      // Trigger WhatsApp Welcome Message if enabled
+      try {
+        if (orgSettings?.whatsappEnabled !== false && orgSettings?.whatsappNewMemberEnabled !== false && !isBulk) {
+          setTimeout(() => {
+            sendWAMessage({
+              name: member.name,
+              mobile: member.mobile,
+              uid: member.uid,
+              pin: member.pin,
+              membershipId: finalId,
+              district: member.district
+            });
+          }, 400);
+        }
+      } catch (waErr) {
+        console.warn("WhatsApp approval trigger error:", waErr);
+      }
+
       toast.success('Member approved successfully', { id: loadingToast });
     } catch (error) {
       toast.error('Approval failed', { id: loadingToast });
@@ -3071,6 +3126,28 @@ export default function App() {
 
                 {/* Account Controls Buttons Group */}
                 <div className="flex flex-col gap-2.5 w-full mt-6">
+                  {/* District Customer Care WhatsApp */}
+                  {(() => {
+                    const distInfo = getMemberDistrictWhatsApp(user);
+                    return (
+                      <Button 
+                        onClick={() => {
+                          const greeting = `*HCRS Customer Care Support Request*%0A%0A*Member Name:* ${encodeURIComponent(user.name || '')}%0A*Membership ID:* ${encodeURIComponent(user.membershipId || '')}%0A*District:* ${encodeURIComponent(distInfo.name)}%0A*Mobile:* ${encodeURIComponent(user.mobile || '')}%0A%0A_Hello Customer Care, I need assistance with my HCRS profile._`;
+                          let targetUrl = distInfo.url;
+                          if (targetUrl.includes('wa.me')) {
+                            const sep = targetUrl.includes('?') ? '&' : '?';
+                            targetUrl = `${targetUrl}${sep}text=${greeting}`;
+                          }
+                          window.open(targetUrl, '_blank');
+                        }}
+                        className="w-full h-12 rounded-xl font-black bg-emerald-600 hover:bg-emerald-700 text-white uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-95 transition-all shadow-md cursor-pointer border border-emerald-400/30"
+                      >
+                        <MessageCircle className="w-4 h-4 shrink-0 text-emerald-200" />
+                        <span>കസ്റ്റമർ കെയർ ({distInfo.name})</span>
+                      </Button>
+                    );
+                  })()}
+
                   <Button 
                     onClick={() => setIsEditingProfile(true)}
                     className="w-full h-12 rounded-xl font-black bg-[#1a2b5c] dark:bg-[#1a2b5c] border-2 border-amber-400 text-amber-400 hover:bg-amber-400 hover:text-slate-950 uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-95 transition-all shadow-md"
