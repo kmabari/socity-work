@@ -1836,11 +1836,10 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
               </Button>
               <Button
                 onClick={() => downloadCourtComboPdf(combinedUserForPrint, submittedClaims)}
-                variant="outline"
-                className="flex-1 sm:flex-none h-11 px-5 rounded-xl border-2 border-slate-300 text-slate-800 hover:bg-slate-100 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm cursor-pointer bg-white"
+                className="flex-1 sm:flex-none h-11 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer border border-emerald-500"
               >
-                <Download className="w-4 h-4 text-emerald-600" />
-                ഡൗൺലോഡ് (PDF)
+                <Download className="w-4 h-4 text-white" />
+                <span className="text-white font-black">ഡൗൺലോഡ് (PDF)</span>
               </Button>
               <Button
                 onClick={onClose}

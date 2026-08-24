@@ -1080,16 +1080,16 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
               {/* 1. TOP PRIORITY: SCREENSHOT MODE BUTTON */}
               <Button 
                 onClick={() => setIsScreenshotMode(true)}
-                className="w-full h-14 py-2.5 px-4 font-black rounded-2xl shadow-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 hover:from-amber-500 hover:to-yellow-600 text-slate-950 flex items-center justify-center gap-3 transition-transform active:scale-95 border-2 border-amber-300 cursor-pointer"
+                className="w-full min-h-[56px] h-auto py-2.5 px-3 sm:px-4 font-black rounded-2xl shadow-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 hover:from-amber-500 hover:to-yellow-600 text-slate-950 flex items-center justify-center gap-2.5 sm:gap-3 transition-transform active:scale-95 border-2 border-amber-300 cursor-pointer overflow-hidden text-left"
               >
                 <div className="p-2 rounded-xl bg-slate-950 text-amber-400 shrink-0 shadow-sm flex items-center justify-center">
                   <Camera className="w-5 h-5" />
                 </div>
-                <div className="flex flex-col items-start leading-tight text-left">
-                  <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-950">
+                <div className="flex flex-col items-start leading-snug flex-1 min-w-0">
+                  <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-950 leading-tight">
                     സ്ക്രീൻഷോട്ട് മോഡ് (Screenshot Mode)
                   </span>
-                  <span className="text-[10px] sm:text-[11px] font-bold text-slate-900 font-sans opacity-90">
+                  <span className="text-[10px] sm:text-[11.5px] font-bold text-slate-900 font-sans opacity-95 leading-tight mt-0.5 break-words">
                     നേരിട്ട് ക്ലിയർ സ്ക്രീൻഷോട്ട് എടുക്കാൻ ഇവിടെ അമർത്തുക
                   </span>
                 </div>
@@ -1100,37 +1100,37 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
                 {/* 1. DOWNLOAD CARD IMAGE */}
                 <Button 
                   onClick={downloadPNG}
-                  className="h-10 px-2 font-black rounded-xl text-[11px] sm:text-xs shadow-sm bg-gradient-to-r from-blue-700 to-indigo-800 hover:from-blue-800 hover:to-indigo-900 text-white flex items-center justify-center gap-1.5 transition-transform active:scale-95 border border-blue-400/30 cursor-pointer whitespace-nowrap"
+                  className="min-h-[40px] h-auto py-2 px-2 font-black rounded-xl text-[11px] sm:text-xs shadow-sm bg-gradient-to-r from-blue-700 to-indigo-800 hover:from-blue-800 hover:to-indigo-900 text-white flex items-center justify-center gap-1.5 transition-transform active:scale-95 border border-blue-400/30 cursor-pointer text-center"
                 >
                   <Download className="w-3.5 h-3.5 text-blue-200 shrink-0" />
-                  <span className="truncate">ഡൗൺലോഡ് (PNG)</span>
+                  <span className="leading-tight">ഡൗൺലോഡ് (PNG)</span>
                 </Button>
 
                 {/* 2. SHARE VIA WHATSAPP */}
                 <Button 
                   onClick={shareCardImage}
-                  className="h-10 px-2 font-black rounded-xl text-[11px] sm:text-xs shadow-sm bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 flex items-center justify-center gap-1.5 transition-transform active:scale-95 border border-green-400/30 cursor-pointer whitespace-nowrap"
+                  className="min-h-[40px] h-auto py-2 px-2 font-black rounded-xl text-[11px] sm:text-xs shadow-sm bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 flex items-center justify-center gap-1.5 transition-transform active:scale-95 border border-green-400/30 cursor-pointer text-center"
                 >
                   <Share2 className="w-3.5 h-3.5 text-slate-950 shrink-0" />
-                  <span className="truncate">ഷെയർ (Share)</span>
+                  <span className="leading-tight">ഷെയർ (Share)</span>
                 </Button>
 
                 {/* 3. DISTRICT CUSTOMER CARE */}
                 <Button 
                   onClick={handleOpenCustomerCareWhatsApp}
-                  className="h-10 px-2 font-black rounded-xl text-[11px] sm:text-xs shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-1.5 transition-transform active:scale-95 border border-emerald-400/30 cursor-pointer whitespace-nowrap"
+                  className="min-h-[40px] h-auto py-2 px-2 font-black rounded-xl text-[11px] sm:text-xs shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-1.5 transition-transform active:scale-95 border border-emerald-400/30 cursor-pointer text-center"
                 >
                   <MessageCircle className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
-                  <span className="truncate">കസ്റ്റമർ കെയർ</span>
+                  <span className="leading-tight">കസ്റ്റമർ കെയർ</span>
                 </Button>
 
                 {/* 4. A4 PRINT PDF */}
                 <Button 
                   onClick={downloadA4PDF}
-                  className="h-10 px-2 font-black rounded-xl text-[11px] sm:text-xs shadow-sm bg-slate-800 hover:bg-slate-700 text-slate-100 flex items-center justify-center gap-1.5 transition-transform active:scale-95 border border-slate-600 cursor-pointer whitespace-nowrap"
+                  className="min-h-[40px] h-auto py-2 px-2 font-black rounded-xl text-[11px] sm:text-xs shadow-sm bg-slate-800 hover:bg-slate-700 text-slate-100 flex items-center justify-center gap-1.5 transition-transform active:scale-95 border border-slate-600 cursor-pointer text-center"
                 >
                   <Printer className="w-3.5 h-3.5 text-slate-300 shrink-0" />
-                  <span className="truncate">A4 PDF പ്രിന്റ്</span>
+                  <span className="leading-tight">A4 PDF പ്രിന്റ്</span>
                 </Button>
               </div>
 

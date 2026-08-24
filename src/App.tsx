@@ -3369,11 +3369,11 @@ export default function App() {
                             <Button
                               size="sm"
                               onClick={() => downloadCourtComboPdf(user, userSubmittedClaims)}
-                              className="h-9 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer border border-emerald-400/40"
+                              className="h-9 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer border border-emerald-400"
                               title="Download PDF"
                             >
-                              <Download className="w-3.5 h-3.5" />
-                              <span>PDF</span>
+                              <Download className="w-3.5 h-3.5 text-white" />
+                              <span className="text-white font-black">ഡൗൺലോഡ്</span>
                             </Button>
                             <Button
                               size="sm"
@@ -3409,21 +3409,21 @@ export default function App() {
                             <Button
                               type="button"
                               onClick={() => setShowInlineClaimPreview(!showInlineClaimPreview)}
-                              className={`h-9 px-4 rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                              className={`w-full sm:w-auto min-h-[42px] h-auto py-2 px-4 rounded-xl font-black text-xs uppercase tracking-normal sm:tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm text-center leading-snug ${
                                 showInlineClaimPreview 
                                   ? 'bg-slate-800 text-white hover:bg-slate-700' 
-                                  : 'bg-[#003366] text-white hover:bg-[#002244] shadow-md'
+                                  : 'bg-[#003366] text-white hover:bg-[#002244]'
                               }`}
                             >
                               {showInlineClaimPreview ? (
                                 <>
-                                  <EyeOff className="w-3.5 h-3.5 text-amber-300" />
-                                  <span>ഫോം പ്രിവ്യൂ മറയ്ക്കുക (Hide Preview)</span>
+                                  <EyeOff className="w-4 h-4 text-amber-300 shrink-0" />
+                                  <span className="text-white font-black">ഫോം പ്രിവ്യൂ മറയ്ക്കുക (Hide Preview)</span>
                                 </>
                               ) : (
                                 <>
-                                  <Eye className="w-3.5 h-3.5 text-amber-300" />
-                                  <span>പൂരിപ്പിച്ച ഫോം ഇവിടെ കാണുക (View Form)</span>
+                                  <Eye className="w-4 h-4 text-amber-300 shrink-0" />
+                                  <span className="text-white font-black">പൂരിപ്പിച്ച ഫോം ഇവിടെ കാണുക (View Form)</span>
                                 </>
                               )}
                             </Button>
@@ -3496,19 +3496,18 @@ export default function App() {
                               <Button
                                 size="sm"
                                 onClick={() => printCourtComboReport(user, userSubmittedClaims)}
-                                className="flex-1 sm:flex-none h-9 px-4 bg-[#003366] hover:bg-[#002244] text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                                className="flex-1 sm:flex-none h-10 px-4 bg-[#003366] hover:bg-[#002244] text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
                               >
-                                <Printer className="w-3.5 h-3.5" />
-                                <span>പ്രിന്റ് (Print A4)</span>
+                                <Printer className="w-4 h-4 text-white" />
+                                <span className="text-white font-black">പ്രിന്റ് (Print A4)</span>
                               </Button>
                               <Button
                                 size="sm"
                                 onClick={() => downloadCourtComboPdf(user, userSubmittedClaims)}
-                                variant="outline"
-                                className="flex-1 sm:flex-none h-9 px-4 border-slate-300 text-slate-800 hover:bg-slate-100 text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 cursor-pointer bg-white shadow-sm"
+                                className="flex-1 sm:flex-none h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-md border border-emerald-500"
                               >
-                                <Download className="w-3.5 h-3.5 text-emerald-600" />
-                                <span>ഡൗൺലോഡ് (PDF)</span>
+                                <Download className="w-4 h-4 text-white" />
+                                <span className="text-white font-black">ഡൗൺലോഡ് (PDF)</span>
                               </Button>
                             </div>
                           </div>
@@ -3571,11 +3570,10 @@ export default function App() {
                     <Button
                       size="sm"
                       onClick={() => downloadCourtComboPdf(user, userSubmittedClaims)}
-                      variant="outline"
-                      className="h-9 px-3.5 border-slate-700 text-slate-200 hover:bg-slate-800 hover:text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 cursor-pointer"
+                      className="h-9 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm border border-emerald-500"
                     >
-                      <Download className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">ഡൗൺലോഡ്</span>
+                      <Download className="w-3.5 h-3.5 text-white" />
+                      <span className="text-white font-black">ഡൗൺലോഡ് (PDF)</span>
                     </Button>
                     <Button
                       size="sm"
