@@ -163,25 +163,25 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
     if (razorpayEnabled && qrCodePaymentEnabled) {
       return {
         label: 'Dual Payment Mode (രണ്ടും ലഭ്യമാണ്)',
-        description: 'Members can choose freely between Razorpay Instant and QR Code UPI.',
+        description: 'Razorpay പേയ്‌മെന്റുകൾ ഓട്ടോമാറ്റിക് അപ്രൂവൽ ആകും (Instant ID Card); QR Code പേയ്‌മെന്റുകൾ അഡ്മിൻ വെരിഫിക്കേഷനായി പെൻഡിങ്ങിൽ വരും.',
         color: 'bg-emerald-500 text-white',
         border: 'border-emerald-500/30'
       };
     }
     if (!razorpayEnabled && qrCodePaymentEnabled) {
       return {
-        label: 'QR Code Payment Mode (ക്യുആർ കോഡ് മാത്രം)',
-        description: 'Active & Reliable: All registrations & renewals pay via official QR Code with UTR verification (Recommended while Razorpay verification is pending).',
-        color: 'bg-blue-600 text-white',
-        border: 'border-blue-500/30'
+        label: 'QR Code Mode (ക്യുആർ കോഡ് മാത്രം - അഡ്മിൻ വെരിഫിക്കേഷൻ)',
+        description: 'അപേക്ഷകർ QR കോഡ് വഴി തുക അടച്ച് UTR നമ്പർ നൽകുന്നു. അഡ്മിൻ പാനലിൽ നിന്ന് വെരിഫൈ ചെയ്ത് അപ്രൂവൽ നൽകിയാൽ മാത്രമേ കാർഡ് ആക്ടീവ് ആകൂ.',
+        color: 'bg-brand-magenta text-white',
+        border: 'border-brand-magenta/30'
       };
     }
     if (razorpayEnabled && !qrCodePaymentEnabled) {
       return {
-        label: 'Razorpay Gateway Only (ഓൺലൈൻ ഗേറ്റ്‌വേ മാത്രം)',
-        description: 'Direct automated Razorpay checkout for cards, UPI, and NetBanking.',
-        color: 'bg-indigo-600 text-white',
-        border: 'border-indigo-500/30'
+        label: 'Razorpay Gateway Only (ഓൺലൈൻ ഗേറ്റ്‌വേ മാത്രം - ഓട്ടോ അപ്രൂവൽ)',
+        description: 'Razorpay വഴി പെയ്മെന്റ് പൂർത്തിയാകുമ്പോൾ തന്നെ അഡ്മിൻ ഇടപെടലില്ലാതെ ഓട്ടോമാറ്റിക് ആയി അപ്പ്രൂവ് ആയി ഡിജിറ്റൽ ഐഡി കാർഡ് ലഭ്യമാകും.',
+        color: 'bg-brand-blue text-white',
+        border: 'border-blue-500/30'
       };
     }
     return {
@@ -193,6 +193,22 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
   };
 
   const mode = getOperationalMode();
+
+  const handleApplyPreset = (type: 'razorpay' | 'qr' | 'both') => {
+    if (type === 'razorpay') {
+      setRazorpayEnabled(true);
+      setQrCodePaymentEnabled(false);
+      toast.info('Selected Razorpay Only Mode (ഓട്ടോമാറ്റിക് അപ്രൂവൽ മോഡ്). Click "Save Settings" to apply.');
+    } else if (type === 'qr') {
+      setRazorpayEnabled(false);
+      setQrCodePaymentEnabled(true);
+      toast.info('Selected QR Code Only Mode (മാനുവൽ അഡ്മിൻ വെരിഫിക്കേഷൻ മോഡ്). Click "Save Settings" to apply.');
+    } else if (type === 'both') {
+      setRazorpayEnabled(true);
+      setQrCodePaymentEnabled(true);
+      toast.info('Selected Dual Payment Mode. Click "Save Settings" to apply.');
+    }
+  };
 
   if (loading) {
     return (
@@ -262,7 +278,7 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Razorpay Gateway</p>
                 <p className="text-xs font-extrabold text-white mt-0.5">
-                  {razorpayEnabled ? 'Online Gateway Active' : 'Currently Disabled (Off)'}
+                  {razorpayEnabled ? 'Auto-Approval Active' : 'Currently Disabled (Off)'}
                 </p>
               </div>
             </div>
@@ -279,7 +295,7 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">QR Code UPI</p>
                 <p className="text-xs font-extrabold text-white mt-0.5">
-                  {qrCodePaymentEnabled ? 'QR Payments Active' : 'Currently Disabled (Off)'}
+                  {qrCodePaymentEnabled ? 'Manual Verify Active' : 'Currently Disabled (Off)'}
                 </p>
               </div>
             </div>
@@ -302,6 +318,86 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
             </div>
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
           </div>
+        </div>
+
+        {/* Quick Mode Preset Buttons */}
+        <div className="mt-5 pt-5 border-t border-white/10">
+          <p className="text-[11px] font-black uppercase tracking-wider text-slate-300 mb-2.5 flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            Quick Presets (വേഗത്തിൽ മോഡ് മാറ്റാൻ):
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <button
+              type="button"
+              onClick={() => handleApplyPreset('razorpay')}
+              className={`p-2.5 rounded-xl border text-xs font-black text-left flex items-center justify-between transition-all cursor-pointer ${
+                razorpayEnabled && !qrCodePaymentEnabled
+                  ? 'bg-blue-600 border-blue-400 text-white shadow-md'
+                  : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
+              }`}
+            >
+              <div>
+                <div className="font-extrabold">1. Razorpay മാത്രം (Auto)</div>
+                <div className="text-[10px] opacity-80 font-normal">തനിയെ അപ്രൂവ് ആകും • ID കാർഡ് വരും</div>
+              </div>
+              {razorpayEnabled && !qrCodePaymentEnabled && <CheckCircle2 className="w-4 h-4 text-emerald-300 shrink-0" />}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleApplyPreset('qr')}
+              className={`p-2.5 rounded-xl border text-xs font-black text-left flex items-center justify-between transition-all cursor-pointer ${
+                !razorpayEnabled && qrCodePaymentEnabled
+                  ? 'bg-brand-magenta border-pink-400 text-white shadow-md'
+                  : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
+              }`}
+            >
+              <div>
+                <div className="font-extrabold">2. QR Code മാത്രം (Manual)</div>
+                <div className="text-[10px] opacity-80 font-normal">അഡ്മിൻ വെരിഫൈ ചെയ്തു അപ്രൂവ് ചെയ്യണം</div>
+              </div>
+              {!razorpayEnabled && qrCodePaymentEnabled && <CheckCircle2 className="w-4 h-4 text-emerald-300 shrink-0" />}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleApplyPreset('both')}
+              className={`p-2.5 rounded-xl border text-xs font-black text-left flex items-center justify-between transition-all cursor-pointer ${
+                razorpayEnabled && qrCodePaymentEnabled
+                  ? 'bg-emerald-700 border-emerald-400 text-white shadow-md'
+                  : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
+              }`}
+            >
+              <div>
+                <div className="font-extrabold">3. രണ്ടും ലഭ്യമാക്കുക (Dual)</div>
+                <div className="text-[10px] opacity-80 font-normal">Razorpay: ഓട്ടോ • QR: അഡ്മിൻ വെരിഫിക്കേഷൻ</div>
+              </div>
+              {razorpayEnabled && qrCodePaymentEnabled && <CheckCircle2 className="w-4 h-4 text-emerald-300 shrink-0" />}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Clear Rules Explanation Banner */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-blue-50/90 border-2 border-blue-200 p-4 sm:p-5 rounded-3xl space-y-2">
+          <div className="flex items-center gap-2 text-brand-blue font-black text-xs uppercase tracking-wide">
+            <CreditCard className="w-4 h-4" />
+            <span>റൂൾ 1: Razorpay Gateway വഴി (₹200 / ₹100)</span>
+          </div>
+          <p className="text-xs text-blue-950 font-bold leading-relaxed">
+            ⚡ <span className="underline">ഓട്ടോമാറ്റിക് ഇൻസ്റ്റന്റ് അപ്രൂവൽ:</span> Razorpay വഴി പണം വിജയകരമായി അടച്ചു കഴിഞ്ഞാൽ അഡ്മിന് യാതൊരു ജോലിയും ചെയ്യാതെ തന്നെ അക്കൗണ്ട് ഓട്ടോമാറ്റിക് ആയി ആക്ടീവ് ആവുകയും തത്സമയം ഡിജിറ്റൽ ഐഡി കാർഡ് ലഭ്യമാവുകയും ചെയ്യും.
+          </p>
+        </div>
+
+        <div className="bg-pink-50/90 border-2 border-pink-200 p-4 sm:p-5 rounded-3xl space-y-2">
+          <div className="flex items-center gap-2 text-brand-magenta font-black text-xs uppercase tracking-wide">
+            <QrCode className="w-4 h-4" />
+            <span>റൂൾ 2: QR Code സിസ്റ്റം വഴി (₹200 / ₹100)</span>
+          </div>
+          <p className="text-xs text-pink-950 font-bold leading-relaxed">
+            📋 <span className="underline">അഡ്മിൻ വെരിഫിക്കേഷൻ നിർബന്ധം:</span> QR കോഡ് വഴി സ്കാൻ ചെയ്ത് UTR നമ്പർ നൽകി സബ്മിറ്റ് ചെയ്യുന്ന അപേക്ഷകൾ പെൻഡിങ്ങിൽ കിടക്കും. അക്കൗണ്ടിൽ പൈസ വന്നു എന്ന് അഡ്മിൻ വെരിഫൈ ചെയ്ത് 'Approve' ബട്ടൺ അടിച്ചാൽ മാത്രമേ ആക്ടീവ് ആകുകയും കാർഡ് ലഭിക്കുകയും ചെയ്യുകയുള്ളൂ.
+          </p>
         </div>
       </div>
 

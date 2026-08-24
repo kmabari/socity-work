@@ -1795,11 +1795,12 @@ export default function App() {
           const expiry = new Date();
           expiry.setFullYear(now.getFullYear() + 1);
           
-          // Members require Admin Approval! Even after successful Razorpay payment, status remains 'pending' and isApproved remains false.
-          // Only Admin account creations bypass pending status.
-          const memberStatus = isAdminEmail ? 'active' : 'pending';
-          const memberApproved = isAdminEmail;
-          isFullyVerifiedActive = isAdminEmail;
+          // 1. RAZORPAY GATEWAY PAYMENTS: Instant auto-approval! Digital ID card active immediately (Zero Admin workload).
+          // 2. QR CODE / MANUAL UPI PAYMENTS: Pending verification. Awaiting Admin verification in Admin Panel.
+          const isInstantAutoApproved = isRazorpayPaid || isAdminEmail;
+          const memberStatus = isInstantAutoApproved ? 'active' : 'pending';
+          const memberApproved = isInstantAutoApproved;
+          isFullyVerifiedActive = isInstantAutoApproved;
 
           const newMemberData = {
             uid,
@@ -1826,7 +1827,7 @@ export default function App() {
             orderId: values.orderId || '',
             transactionId: values.transactionId || values.paymentId || '',
             paymentTime: values.paymentTimeISO || new Date().toISOString(),
-            paymentMethod: values.paymentMethod || 'Razorpay',
+            paymentMethod: values.paymentMethod || (isRazorpayPaid ? 'Razorpay' : 'QR Code'),
             paymentStatus: isRazorpayPaid ? 'PAYMENT_VERIFIED' : 'Pending Verification',
             receiptNumber: values.receiptNumber || `RCP-REG-${nextSerial}`
           };
@@ -1845,7 +1846,7 @@ export default function App() {
             orderId: values.orderId || '',
             transactionId: values.transactionId || values.paymentId || '',
             paymentTime: values.paymentTimeISO || new Date().toISOString(),
-            paymentMethod: values.paymentMethod || 'Razorpay',
+            paymentMethod: values.paymentMethod || (isRazorpayPaid ? 'Razorpay' : 'QR Code'),
             paymentStatus: isRazorpayPaid ? 'PAYMENT_VERIFIED' : 'Pending Verification',
             status: isRazorpayPaid ? 'Paid' : 'Pending Verification',
             paymentDate: values.paymentDate || new Date().toISOString().split('T')[0],
@@ -1859,13 +1860,13 @@ export default function App() {
         localStorage.removeItem('hcrs_registration_cache');
         localStorage.removeItem('hcrs_registration_step');
 
-        if (isAdminEmail) {
+        if (isFullyVerifiedActive) {
           setShowCelebration(true);
-          toast.success('Registration & Payment Verified! Active Membership Card Issued.', { id: loadingToast, duration: 6000 });
+          toast.success('രജിസ്ട്രേഷനും പേയ്‌മെന്റും വിജയകരം! ഡിജിറ്റൽ മെമ്പർഷിപ്പ് കാർഡ് ലൈവായി ലഭ്യമായിരിക്കുന്നു. (Registration & Razorpay Payment Verified! Digital Membership Card Issued.)', { id: loadingToast, duration: 6000 });
           setView('card');
         } else {
           setShowCelebration(false);
-          toast.success('അപേക്ഷ സമർപ്പിച്ചു & പെയ്മെന്റ് വെരിഫൈ ചെയ്തു! അഡ്മിൻ അപ്രൂവലിനായി കാത്തിരിക്കുന്നു (Payment verified. Pending Admin Approval).', { id: loadingToast, duration: 8000 });
+          toast.success('അപേക്ഷ വിജയകരമായി സമർപ്പിച്ചു (UTR നമ്പർ രേഖപ്പെടുത്തി)! അഡ്മിൻ പൈസ വെരിഫൈ ചെയ്ത് അപ്രൂവൽ നൽകുന്നതോടെ ഡിജിറ്റൽ ഐഡി കാർഡ് ലഭ്യമാകും. (Application submitted. Pending Admin Verification & Approval.)', { id: loadingToast, duration: 8000 });
           setView('login');
         }
       } catch (txError: any) {
