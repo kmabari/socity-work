@@ -44,49 +44,49 @@ export default function AdminReceiptsModal({ member, onClose }: AdminReceiptsMod
       return;
     }
     setLoading(true);
+
+    // Generate virtual registration receipt
+    const regDateStr = getFormattedDate(member.registrationDate) || new Date().toISOString().split('T')[0];
+    const registrationReceipt: PaymentReceipt = {
+      id: `reg-${member.uid}`,
+      receiptNo: `HCRS-REG-${String(member.serialNo || 1000).padStart(4, '0')}`,
+      receiptType: isLifeMember ? 'Life Membership' : 'Membership Fee',
+      receiptLabel: isLifeMember ? 'Life Membership Receipt' : 'Membership Registration Receipt',
+      amount: isLifeMember ? 300 : 200,
+      status: 'Paid',
+      paymentDate: regDateStr,
+      createdAt: member.registrationDate
+    };
+
+    let dbReceipts: PaymentReceipt[] = [];
     try {
       console.log(`AdminReceiptsModal: Fetching receipts for member UID: ${member.uid}`);
       const querySnapshot = await getDocs(collection(db, 'users', member.uid, 'receipts'));
-      const dbReceipts = querySnapshot.docs.map(doc => ({
+      dbReceipts = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as PaymentReceipt[];
       console.log(`AdminReceiptsModal: Successfully fetched ${dbReceipts.length} receipts from database.`);
-
-      // Generate virtual registration receipt
-      const regDateStr = getFormattedDate(member.registrationDate) || new Date().toISOString().split('T')[0];
-      
-      const registrationReceipt: PaymentReceipt = {
-        id: `reg-${member.uid}`,
-        receiptNo: `HCRS-REG-${String(member.serialNo || 1000).padStart(4, '0')}`,
-        receiptType: isLifeMember ? 'Life Membership' : 'Membership Fee',
-        receiptLabel: isLifeMember ? 'Life Membership Receipt' : 'Membership Registration Receipt',
-        amount: isLifeMember ? 300 : 200,
-        status: 'Paid',
-        paymentDate: regDateStr,
-        createdAt: member.registrationDate
-      };
-
-      let combined = [registrationReceipt];
-
-      if (!isLifeMember) {
-        combined = [...combined, ...dbReceipts];
-      }
-
-      // Sort chronologically, newest first
-      combined.sort((a, b) => {
-        const dateA = new Date(a.paymentDate).getTime();
-        const dateB = new Date(b.paymentDate).getTime();
-        return dateB - dateA;
-      });
-
-      setReceipts(combined);
     } catch (error) {
-      console.error('Error fetching receipts:', error);
-      toast.error('Failed to load receipts');
-    } finally {
-      setLoading(false);
+      console.warn('AdminReceiptsModal: Notice while fetching subcollection receipts:', error);
     }
+
+    let combined = [registrationReceipt];
+
+    if (!isLifeMember && dbReceipts.length > 0) {
+      const filteredDbReceipts = dbReceipts.filter(r => r.id !== `reg-${member.uid}` && r.receiptNo !== registrationReceipt.receiptNo);
+      combined = [...combined, ...filteredDbReceipts];
+    }
+
+    // Sort chronologically, newest first
+    combined.sort((a, b) => {
+      const dateA = new Date(a.paymentDate || 0).getTime();
+      const dateB = new Date(b.paymentDate || 0).getTime();
+      return dateB - dateA;
+    });
+
+    setReceipts(combined);
+    setLoading(false);
   };
 
   useEffect(() => {

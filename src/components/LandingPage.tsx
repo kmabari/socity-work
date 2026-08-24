@@ -62,6 +62,8 @@ import { cn } from '@/lib/utils';
 import Logo from '../Logo';
 import { useI18n } from '../lib/i18n';
 import LanguageSwitcher from './LanguageSwitcher';
+import { InfinityBorderCard } from './InfinityBorderCard';
+import { InfinityBorderButton } from './InfinityBorderButton';
 
 export function extractDirectImageUrl(url: string | undefined): string {
   if (!url) return '';
@@ -393,14 +395,77 @@ export default function LandingPage({
               </span>
             </motion.div>
  
-            {/* Increased Responsive Logo Container (+30% size on mobile) */}
+            {/* Glassmorphic Logo Card with Multi-Color Infinity Border Light Beam & Gentle Breathing Animation */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
-              className="p-4 sm:p-5 md:p-6 bg-white shadow-premium rounded-2xl sm:rounded-3xl border border-slate-100 mb-5 sm:mb-8 flex items-center justify-center mx-auto"
+              initial={{ opacity: 0, scale: 0.85, y: 20 }}
+              animate={{ 
+                opacity: 1, 
+                scale: 1, 
+                y: [0, -3.5, 0] 
+              }}
+              transition={{ 
+                opacity: { duration: 1, ease: [0.16, 1, 0.3, 1] },
+                scale: { duration: 1, ease: [0.16, 1, 0.3, 1] },
+                y: {
+                  duration: 10,
+                  repeat: Infinity,
+                  repeatType: "mirror",
+                  ease: "easeInOut",
+                  delay: 0.8
+                }
+              }}
+              className="relative group p-[2.5px] rounded-3xl sm:rounded-[38px] mb-5 sm:mb-8 flex items-center justify-center mx-auto overflow-hidden shadow-[0_20px_50px_-10px_rgba(26,43,92,0.14),0_6px_20px_-3px_rgba(201,162,39,0.12)]"
             >
-              <Logo className="w-32 h-32 sm:w-36 sm:h-36 md:w-40 md:h-40 lg:w-44 lg:h-44 flex items-center justify-center mx-auto" size="md" />
+              {/* Slow Continuous Multi-Color Infinite Light Spectrum Tracing around the Card Perimeter */}
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{
+                  duration: 20,
+                  repeat: Infinity,
+                  ease: "linear"
+                }}
+                className="absolute -inset-[160%] pointer-events-none -z-10 bg-[conic-gradient(from_0deg,#ff007a_0deg,#7928ca_45deg,#0070f3_90deg,#00dfd8_135deg,#10b981_180deg,#c9a227_225deg,#f59e0b_270deg,#ff4b4b_315deg,#ff007a_360deg)] opacity-95 blur-[1px]"
+              />
+
+              {/* Ambient Soft Multi-Color Glow underneath Card */}
+              <motion.div 
+                animate={{
+                  opacity: [0.65, 0.9, 0.65],
+                  scale: [1, 1.04, 1]
+                }}
+                transition={{
+                  duration: 9,
+                  repeat: Infinity,
+                  repeatType: "mirror",
+                  ease: "easeInOut"
+                }}
+                className="absolute -inset-3 -z-20 rounded-[44px] bg-gradient-to-tr from-[#0070f3]/15 via-[#c9a227]/20 to-[#ff007a]/15 blur-2xl pointer-events-none" 
+              />
+
+              {/* Inner Frosted Glass Surface */}
+              <div className="relative w-full h-full p-5 sm:p-7 md:p-8 bg-white/90 backdrop-blur-2xl backdrop-saturate-150 rounded-[21px] sm:rounded-[35px] flex items-center justify-center border border-white/90 shadow-[inset_0_1px_3px_rgba(255,255,255,1)]">
+                {/* Slow Gentle Breathing Logo Animation */}
+                <motion.div
+                  initial={{ scale: 0.9 }}
+                  animate={{ 
+                    scale: [1, 1.02, 1],
+                  }}
+                  transition={{
+                    duration: 9,
+                    repeat: Infinity,
+                    repeatType: "mirror",
+                    ease: "easeInOut",
+                    delay: 0.8
+                  }}
+                  className="flex items-center justify-center"
+                >
+                  <Logo 
+                    className="w-40 h-40 sm:w-48 sm:h-48 md:w-56 md:h-56 lg:w-60 lg:h-60 flex items-center justify-center mx-auto" 
+                    size="lg" 
+                    showGlow={true}
+                  />
+                </motion.div>
+              </div>
             </motion.div>
 
             {/* Main Title & Subtitle optimized for clean mobile wrapping */}
@@ -511,11 +576,14 @@ export default function LandingPage({
                 </p>
               </div>
 
-              {/* Primary Action Bento Grid - Standardized to exact symmetric specifications */}
+              {/* Primary Action Bento Grid with Continuous Multi-Color Glass Border Line */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
                 {/* Enrollment Card */}
-                <div
-                  className="group relative bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 shadow-premium hover:border-[#c9a227]/30 hover:shadow-projected transition-all duration-300 text-center flex flex-col items-center justify-between min-h-[380px] sm:min-h-[420px] hover:-translate-y-1.5"
+                <InfinityBorderCard
+                  roundedClassName="rounded-2xl sm:rounded-3xl"
+                  innerClassName="p-6 sm:p-8 md:p-10 min-h-[380px] sm:min-h-[420px] text-center"
+                  className="hover:-translate-y-1.5 transition-transform duration-300"
+                  speed={9}
                 >
                   <div className="flex flex-col items-center gap-4 sm:gap-6 w-full">
                     <div className="bg-[#c9a227]/10 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-[#c9a227] group-hover:scale-105 transition-transform shadow-sm border border-[#c9a227]/20 shrink-0">
@@ -540,11 +608,14 @@ export default function LandingPage({
                     <span>{t('card_new_membership_btn', 'Register Now')}</span>
                     <ChevronRight className="w-4 h-4" />
                   </Button>
-                </div>
+                </InfinityBorderCard>
 
                 {/* Renewal Card */}
-                <div
-                  className="group relative bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 shadow-premium hover:border-[#1a2b5c]/30 hover:shadow-projected transition-all duration-300 text-center flex flex-col items-center justify-between min-h-[380px] sm:min-h-[420px] hover:-translate-y-1.5"
+                <InfinityBorderCard
+                  roundedClassName="rounded-2xl sm:rounded-3xl"
+                  innerClassName="p-6 sm:p-8 md:p-10 min-h-[380px] sm:min-h-[420px] text-center"
+                  className="hover:-translate-y-1.5 transition-transform duration-300"
+                  speed={8}
                 >
                   <div className="flex flex-col items-center gap-4 sm:gap-6 w-full">
                     <div className="bg-[#1a2b5c]/8 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-[#1a2b5c] group-hover:scale-105 transition-transform shadow-sm border border-[#1a2b5c]/15 shrink-0">
@@ -569,11 +640,14 @@ export default function LandingPage({
                     <span>{t('card_renew_membership_btn', 'Renew Card Now')}</span>
                     <ChevronRight className="w-4 h-4" />
                   </Button>
-                </div>
+                </InfinityBorderCard>
 
                 {/* Information Registry / Settlement Form Card */}
-                <div
-                  className="group relative bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 shadow-premium hover:border-[#c9a227]/30 hover:shadow-projected transition-all duration-300 text-center flex flex-col items-center justify-between min-h-[380px] sm:min-h-[420px] hover:-translate-y-1.5"
+                <InfinityBorderCard
+                  roundedClassName="rounded-2xl sm:rounded-3xl"
+                  innerClassName="p-6 sm:p-8 md:p-10 min-h-[380px] sm:min-h-[420px] text-center"
+                  className="hover:-translate-y-1.5 transition-transform duration-300"
+                  speed={8.5}
                 >
                   <div className="flex flex-col items-center gap-4 sm:gap-6 w-full">
                     <div className="bg-[#c9a227]/10 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-[#c9a227] group-hover:scale-105 transition-transform shadow-sm border border-[#c9a227]/20 shrink-0">
@@ -602,19 +676,25 @@ export default function LandingPage({
                     <span>{t('card_registry_btn', 'Settlement Form')}</span>
                     <ChevronRight className="w-4 h-4" />
                   </Button>
-                </div>
+                </InfinityBorderCard>
               </div>
 
-              {/* Micro Access Card - Standardized button & height */}
-              <div className="flex flex-col items-center max-w-sm mx-auto bg-white/5 border border-white/10 p-6 sm:p-8 rounded-2xl shadow-premium relative overflow-hidden group mt-4">
-                <span className="text-[10px] text-slate-300 font-extrabold uppercase tracking-widest mb-3.5">Official Logins</span>
-                <Button 
-                  onClick={onLoginClick}
-                  className="w-full h-12 rounded-xl font-bold text-white bg-[#1a2b5c] hover:bg-[#233875] shadow-premium transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-2 group hover:-translate-y-0.5 duration-200 cursor-pointer"
+              {/* Micro Access Card - Sign In / Profile with Glass Line */}
+              <div className="max-w-sm mx-auto mt-4">
+                <InfinityBorderCard
+                  roundedClassName="rounded-2xl"
+                  innerClassName="p-6 sm:p-7 text-center"
+                  speed={7.5}
                 >
-                  <span>Sign In to Portal</span>
-                  <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                </Button>
+                  <span className="text-[10px] text-slate-500 font-extrabold uppercase tracking-widest mb-3">Official Logins & Profile</span>
+                  <Button 
+                    onClick={onLoginClick}
+                    className="w-full h-12 rounded-xl font-bold text-white bg-[#1a2b5c] hover:bg-[#233875] shadow-premium transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-2 group hover:-translate-y-0.5 duration-200 cursor-pointer"
+                  >
+                    <span>Sign In to Portal</span>
+                    <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                  </Button>
+                </InfinityBorderCard>
               </div>
             </section>
 
@@ -634,10 +714,13 @@ export default function LandingPage({
                   </p>
                 </div>
 
-                {/* Full Display Premium Campaign Card */}
-                <div 
+                {/* Full Display Premium Campaign Card with Glass Line Effect */}
+                <InfinityBorderCard 
                   onClick={onJanamailClick}
-                  className="max-w-3xl mx-auto bg-white border-2 border-slate-200/90 rounded-[32px] p-5 sm:p-7 shadow-premium hover:border-blue-400 hover:shadow-projected transition-all duration-300 cursor-pointer group/card space-y-6"
+                  roundedClassName="rounded-[32px] max-w-3xl mx-auto"
+                  innerClassName="p-5 sm:p-7 space-y-6 cursor-pointer"
+                  className="hover:-translate-y-1 transition-transform duration-300 group/card"
+                  speed={10}
                 >
                   {/* Full Image Display Container */}
                   <div className="w-full overflow-hidden rounded-2xl bg-slate-900/5 border border-slate-200 relative flex items-center justify-center p-2 sm:p-3">
@@ -675,7 +758,7 @@ export default function LandingPage({
                   </div>
 
                   {/* Campaign Details Section */}
-                  <div className="space-y-4 text-left font-sans px-1">
+                  <div className="space-y-4 text-left font-sans px-1 w-full">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
                       <div>
                         <h3 className="text-xl sm:text-2xl md:text-3xl font-black text-[#1a2b5c] tracking-tight uppercase font-heading group-hover/card:text-blue-600 transition-colors leading-snug">
@@ -711,7 +794,7 @@ export default function LandingPage({
                       </Button>
                     </div>
                   </div>
-                </div>
+                </InfinityBorderCard>
 
                 {/* Directly BELOW the campaign card, Public Sharing section with high-contrast theme */}
                 <div className="max-w-3xl mx-auto bg-[#1a2b5c] border border-[#233875] rounded-[28px] p-6 shadow-premium flex flex-col md:flex-row items-center gap-6">

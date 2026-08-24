@@ -8,7 +8,7 @@ import { UserProfile } from '@/src/types';
 import { DISTRICTS, getAssemblyCode } from '@/src/constants';
 import confetti from 'canvas-confetti';
 import { motion } from 'motion/react';
-import { compressImage, html2canvasOklchOnClone } from '@/src/lib/imageUtils';
+import { compressImage, html2canvasOklchOnClone, imageUrlToDataUrl, triggerFileDownload } from '@/src/lib/imageUtils';
 import { getOrgSettings, OrgSettings, defaultSettings } from '@/src/lib/cms';
 import Logo from '../Logo';
 
@@ -238,15 +238,64 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
     }, 1500);
   };
 
+  const renderCardToCanvas = async (exportScale = 2.5): Promise<HTMLCanvasElement | null> => {
+    if (!cardRef.current) return null;
+
+    // 1. Pre-inline all <img> elements to base64 Data URLs so CORS/tainting never blocks canvas export
+    const imgElements = cardRef.current.getElementsByTagName('img');
+    const originalSrcs: { el: HTMLImageElement; src: string }[] = [];
+
+    for (let i = 0; i < imgElements.length; i++) {
+      const img = imgElements.item(i) as HTMLImageElement;
+      if (img && img.src && !img.src.startsWith('data:')) {
+        originalSrcs.push({ el: img, src: img.src });
+        try {
+          const dataUrl = await imageUrlToDataUrl(img.src);
+          if (dataUrl && dataUrl.startsWith('data:')) {
+            img.src = dataUrl;
+          }
+        } catch (e) {
+          console.warn("Could not pre-inline image for card export:", e);
+        }
+      }
+    }
+
+    try {
+      const canvas = await html2canvas(cardRef.current, { 
+        scale: exportScale, 
+        useCORS: true, 
+        allowTaint: true,
+        backgroundColor: null,
+        scrollX: 0,
+        scrollY: 0,
+        logging: false,
+        imageTimeout: 8000,
+        onclone: (clonedDoc) => {
+          html2canvasOklchOnClone(clonedDoc);
+          // Remove transform: scale(...) on cloned ancestors
+          const allNodes = clonedDoc.querySelectorAll('*');
+          allNodes.forEach((node) => {
+            const htmlEl = node as HTMLElement;
+            if (htmlEl.style && htmlEl.style.transform && htmlEl.style.transform.includes('scale')) {
+              htmlEl.style.transform = 'none';
+            }
+          });
+        }
+      });
+      return canvas;
+    } finally {
+      // Restore original URLs
+      for (const item of originalSrcs) {
+        item.el.src = item.src;
+      }
+    }
+  };
+
   const generateCardPdfBlob = async (): Promise<Blob | null> => {
     if (!cardRef.current) return null;
     try {
-      const canvas = await html2canvas(cardRef.current, { 
-        scale: 3.5, 
-        useCORS: true, 
-        backgroundColor: '#FFFFFF', 
-        onclone: html2canvasOklchOnClone 
-      });
+      const canvas = await renderCardToCanvas(2.5);
+      if (!canvas) return null;
       const imgData = canvas.toDataURL('image/jpeg', 0.98);
       
       // Standard A4 dimensions in mm: 210 x 297
@@ -335,12 +384,15 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
     if (!cardRef.current) return;
     const loadingToast = toast.loading('കാർഡ് ചിത്രം തയ്യാറാക്കുന്നു (Preparing Image)...');
     try {
-      const canvas = await html2canvas(cardRef.current, { 
-        scale: 3.5, 
-        useCORS: true, 
-        backgroundColor: null, 
-        onclone: html2canvasOklchOnClone 
-      });
+      const canvas = await renderCardToCanvas(2.5);
+      if (!canvas) {
+        toast.error('ചിത്രം തയ്യാറാക്കാൻ സാധിച്ചില്ല.', { id: loadingToast });
+        return;
+      }
+
+      const imgData = canvas.toDataURL('image/png');
+      setGeneratedImage(imgData);
+
       canvas.toBlob(async (blob) => {
         if (!blob) {
           toast.error('ചിത്രം തയ്യാറാക്കാൻ സാധിച്ചില്ല.', { id: loadingToast });
@@ -376,22 +428,29 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
     if (!cardRef.current) return;
     const loadingToast = toast.loading('കാർഡ് ചിത്രം (Image) ഡൗൺലോഡ് ചെയ്യുന്നു...');
     try {
-      const canvas = await html2canvas(cardRef.current, { 
-        scale: 3.5, 
-        useCORS: true, 
-        backgroundColor: null, 
-        onclone: html2canvasOklchOnClone 
-      });
+      const canvas = await renderCardToCanvas(2.5);
+      if (!canvas) {
+        toast.error('ചിത്രം ഡൗൺലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല. സ്ക്രീൻഷോട്ട് മോഡ് ഉപയോഗിക്കുക.', { id: loadingToast });
+        return;
+      }
+      
+      const imgData = canvas.toDataURL('image/png');
+      setGeneratedImage(imgData);
+      const cleanName = member.name.trim().replace(/\s+/g, '_');
+      const filename = `HCRS_CARD_${cleanName}.png`;
+
       canvas.toBlob((blob) => {
         if (blob) {
-          const cleanName = member.name.trim().replace(/\s+/g, '_');
-          triggerBlobDownload(blob, `HCRS_CARD_${cleanName}.png`);
-          toast.success('മെമ്പർഷിപ്പ് കാർഡ് ഇമേജ് വിജയകരമായി ഡൗൺലോഡ് ചെയ്‌തിട്ടുണ്ട്!', { id: loadingToast });
+          triggerBlobDownload(blob, filename);
+          toast.success('മെമ്പർഷിപ്പ് കാർഡ് ഇമേജ് ഡൗൺലോഡ് ചെയ്‌തു! താഴെ പ്രിവ്യൂവും ലഭ്യമാണ്.', { id: loadingToast });
+        } else {
+          triggerFileDownload(imgData, filename);
+          toast.success('മെമ്പർഷിപ്പ് കാർഡ് ഇമേജ് വിജയകരമായി തയാറായി!', { id: loadingToast });
         }
       }, 'image/png');
     } catch (err) {
       console.error('PNG error:', err);
-      toast.error('ചിത്രം ഡൗൺലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.', { id: loadingToast });
+      toast.error('ഡൗൺലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല. സ്ക്രീൻഷോട്ട് മോഡ് ഉപയോഗിക്കുക.', { id: loadingToast });
     }
   };
 
@@ -834,7 +893,7 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
                 <div className={`p-1 rounded-full shadow-[inset_0_1.5px_2px_rgba(255,255,255,1),0_3px_6px_rgba(0,0,0,0.5)] w-[58px] h-[58px] flex items-center justify-center border shrink-0 ${logoRingClass}`}>
                   <div className="bg-white rounded-full p-0.5 w-full h-full flex items-center justify-center overflow-hidden">
                     <img 
-                      src={settings.logoUrl || "https://i.ibb.co/My4KQNbH/1000072034-removebg-preview-1.png"} 
+                      src={settings.logoUrl || "https://i.ibb.co/d42zfDwq/782447521-1074313911653476-2779143939229298450-n.gif"} 
                       alt="HCRS Official Logo" 
                       className="w-[46px] h-[46px] object-contain" 
                       crossOrigin="anonymous" 
@@ -1018,61 +1077,96 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
         <div className="flex flex-col gap-4 w-full px-2 pb-24 shrink-0 transition-all font-sans">
           {(member.status === 'active' || member.isApproved || isAdmin) && (
             <div className="flex flex-col gap-3">
-              {/* Primary Actions Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {/* 1. DOWNLOAD CARD IMAGE BUTTON */}
+              {/* 1. TOP PRIORITY: SCREENSHOT MODE BUTTON */}
+              <Button 
+                onClick={() => setIsScreenshotMode(true)}
+                className="w-full h-14 py-2.5 px-4 font-black rounded-2xl shadow-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 hover:from-amber-500 hover:to-yellow-600 text-slate-950 flex items-center justify-center gap-3 transition-transform active:scale-95 border-2 border-amber-300 cursor-pointer"
+              >
+                <div className="p-2 rounded-xl bg-slate-950 text-amber-400 shrink-0 shadow-sm flex items-center justify-center">
+                  <Camera className="w-5 h-5" />
+                </div>
+                <div className="flex flex-col items-start leading-tight text-left">
+                  <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-950">
+                    സ്ക്രീൻഷോട്ട് മോഡ് (Screenshot Mode)
+                  </span>
+                  <span className="text-[10px] sm:text-[11px] font-bold text-slate-900 font-sans opacity-90">
+                    നേരിട്ട് ക്ലിയർ സ്ക്രീൻഷോട്ട് എടുക്കാൻ ഇവിടെ അമർത്തുക
+                  </span>
+                </div>
+              </Button>
+
+              {/* 2. COMPACT SECONDARY ACTION BUTTONS (Neatly Aligned) */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">
+                {/* 1. DOWNLOAD CARD IMAGE */}
                 <Button 
                   onClick={downloadPNG}
-                  className="w-full h-auto min-h-13 py-3 px-4 font-black rounded-2xl text-xs sm:text-sm uppercase tracking-wider shadow-md bg-gradient-to-r from-blue-700 to-indigo-800 hover:from-blue-800 hover:to-indigo-900 text-white flex flex-col items-center justify-center gap-0.5 transition-transform active:scale-95 border border-blue-400/30 cursor-pointer"
+                  className="h-10 px-2 font-black rounded-xl text-[11px] sm:text-xs shadow-sm bg-gradient-to-r from-blue-700 to-indigo-800 hover:from-blue-800 hover:to-indigo-900 text-white flex items-center justify-center gap-1.5 transition-transform active:scale-95 border border-blue-400/30 cursor-pointer whitespace-nowrap"
                 >
-                  <div className="flex items-center gap-2 justify-center">
-                    <Download className="w-4 h-4 text-white shrink-0" />
-                    <span>ഐഡി കാർഡ് ഡൗൺലോഡ്</span>
-                  </div>
-                  <span className="text-[11px] font-bold tracking-normal block text-blue-100 font-sans">
-                    (Download Card Image / PNG)
-                  </span>
+                  <Download className="w-3.5 h-3.5 text-blue-200 shrink-0" />
+                  <span className="truncate">ഡൗൺലോഡ് (PNG)</span>
                 </Button>
 
-                {/* 2. SHARE IMAGE VIA WHATSAPP BUTTON */}
+                {/* 2. SHARE VIA WHATSAPP */}
                 <Button 
                   onClick={shareCardImage}
-                  className="w-full h-auto min-h-13 py-3 px-4 font-black rounded-2xl text-xs sm:text-sm uppercase tracking-wider shadow-md bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 flex flex-col items-center justify-center gap-0.5 transition-transform active:scale-95 border border-green-400/30 cursor-pointer"
+                  className="h-10 px-2 font-black rounded-xl text-[11px] sm:text-xs shadow-sm bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 flex items-center justify-center gap-1.5 transition-transform active:scale-95 border border-green-400/30 cursor-pointer whitespace-nowrap"
                 >
-                  <div className="flex items-center gap-2 justify-center">
-                    <Share2 className="w-4 h-4 text-slate-950 shrink-0" />
-                    <span>വാട്സാപ്പിൽ അയക്കുക</span>
-                  </div>
-                  <span className="text-[11px] font-bold tracking-normal block text-slate-900 font-sans">
-                    (Share Card directly to WhatsApp)
-                  </span>
+                  <Share2 className="w-3.5 h-3.5 text-slate-950 shrink-0" />
+                  <span className="truncate">ഷെയർ (Share)</span>
                 </Button>
-              </div>
 
-              {/* Secondary Utility Controls */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {/* 3. DISTRICT CUSTOMER CARE WHATSAPP */}
+                {/* 3. DISTRICT CUSTOMER CARE */}
                 <Button 
                   onClick={handleOpenCustomerCareWhatsApp}
-                  className="w-full h-11 py-2 px-3 font-black rounded-xl text-xs uppercase tracking-wider shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-95"
+                  className="h-10 px-2 font-black rounded-xl text-[11px] sm:text-xs shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-1.5 transition-transform active:scale-95 border border-emerald-400/30 cursor-pointer whitespace-nowrap"
                 >
-                  <MessageCircle className="w-4 h-4 text-emerald-200 shrink-0" />
-                  <div className="flex flex-col items-start leading-tight text-left">
-                    <span className="text-[11px] font-black">കസ്റ്റമർ കെയർ ({getDistrictWhatsAppDetails().districtName})</span>
-                    <span className="text-[9px] font-medium text-emerald-100 opacity-90">District Customer Care WhatsApp</span>
-                  </div>
+                  <MessageCircle className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
+                  <span className="truncate">കസ്റ്റമർ കെയർ</span>
                 </Button>
 
-                {/* 4. SCREENSHOT MODE */}
+                {/* 4. A4 PRINT PDF */}
                 <Button 
-                  onClick={() => setIsScreenshotMode(true)}
-                  variant="outline"
-                  className="w-full h-11 py-2 px-3 font-black rounded-xl text-xs uppercase tracking-wider shadow-xs border-slate-300 text-slate-800 bg-white hover:bg-slate-50 flex items-center justify-center gap-1.5 cursor-pointer"
+                  onClick={downloadA4PDF}
+                  className="h-10 px-2 font-black rounded-xl text-[11px] sm:text-xs shadow-sm bg-slate-800 hover:bg-slate-700 text-slate-100 flex items-center justify-center gap-1.5 transition-transform active:scale-95 border border-slate-600 cursor-pointer whitespace-nowrap"
                 >
-                  <Camera className="w-4 h-4 text-brand-magenta shrink-0" />
-                  <span>സ്ക്രീൻഷോട്ട് മോഡ് (Screenshot Mode)</span>
+                  <Printer className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                  <span className="truncate">A4 PDF പ്രിന്റ്</span>
                 </Button>
               </div>
+
+              {/* 3. DOWNLOADED / GENERATED IMAGE PREVIEW (Mobile friendly long-press save) */}
+              {generatedImage && (
+                <div className="w-full bg-slate-900 border-2 border-emerald-500/80 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-center gap-3 text-white shadow-xl animate-in fade-in">
+                  <img 
+                    src={generatedImage} 
+                    alt="ID Card" 
+                    className="w-20 sm:w-24 h-auto rounded-lg shadow-md border border-white/20 shrink-0"
+                  />
+                  <div className="flex-1 text-center sm:text-left space-y-1">
+                    <p className="text-xs font-black text-emerald-400 flex items-center justify-center sm:justify-start gap-1">
+                      <ShieldCheck className="w-3.5 h-3.5" /> കാർഡ് ഇമേജ് തയാറാണ്
+                    </p>
+                    <p className="text-[11px] text-slate-300 font-medium">
+                      മൊബൈലിൽ ഗാലറിയിലേക്ക് സേവ് ചെയ്യാൻ ചിത്രത്തിൽ അമർത്തിപ്പിടിക്കുക (Long Press to Save Image).
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+                    <Button
+                      onClick={() => triggerFileDownload(generatedImage, `HCRS_CARD_${member.name.trim().replace(/\s+/g, '_')}.png`)}
+                      className="flex-1 sm:flex-initial h-9 px-3 text-xs font-black bg-emerald-500 hover:bg-emerald-600 text-slate-950 rounded-xl cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5 mr-1" /> Save
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => setGeneratedImage(null)}
+                      className="h-9 px-2 text-xs font-bold text-slate-400 hover:text-white cursor-pointer"
+                    >
+                      ✕
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           {onLogout && (

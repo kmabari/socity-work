@@ -8,8 +8,8 @@ export default function LanguageSwitcher() {
   const [isOpen, setIsOpen] = useState(false);
 
   const languages: { code: Language; label: string; nativeLabel: string; flag: string }[] = [
-    { code: 'ml', label: 'Malayalam', nativeLabel: 'മലയാളം', flag: '🇮🇳' },
     { code: 'en', label: 'English', nativeLabel: 'English', flag: '🇬🇧' },
+    { code: 'ml', label: 'Malayalam', nativeLabel: 'മലയാളം', flag: '🇮🇳' },
     { code: 'hi', label: 'Hindi', nativeLabel: 'हिन्दी', flag: '🇮🇳' }
   ];
 

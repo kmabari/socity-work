@@ -272,6 +272,40 @@ button, .btn {
   to { transform: translateY(0); opacity: 1; }
 }
 
+/* Website Logo Floating/Pulse and Hover Animation */
+@keyframes logo-floating-pulse {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+    filter: drop-shadow(0px 0px 6px rgba(0, 102, 204, 0.3));
+  }
+  50% {
+    transform: translateY(-3px) scale(1.03);
+    filter: drop-shadow(0px 0px 10px rgba(0, 102, 204, 0.5));
+  }
+}
+
+.website-logo {
+  transition: transform 0.3s ease, filter 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.website-logo:hover {
+  transform: scale(1.05);
+  filter: drop-shadow(0px 0px 8px rgba(0, 102, 204, 0.4));
+}
+
+.website-logo-animated {
+  animation: logo-floating-pulse 3s ease-in-out infinite;
+}
+
+.website-logo-animated:hover {
+  animation-play-state: paused;
+  transform: scale(1.05);
+  filter: drop-shadow(0px 0px 8px rgba(0, 102, 204, 0.4));
+}
+
 /* Specific Style 2 adjustments for clean government portals */
 nav.fixed {
   background-color: rgba(255, 255, 255, 0.95);

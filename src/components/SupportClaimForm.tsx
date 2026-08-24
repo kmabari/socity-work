@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   ShieldAlert,
   ArrowRight,
+  ArrowLeft,
   RefreshCw,
   Info,
   Users,
@@ -28,7 +29,8 @@ import {
   FileText,
   Plus,
   ShieldCheck,
-  MessageCircle
+  MessageCircle,
+  Edit3
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,18 +53,31 @@ interface CategoryDetail {
   serialNo?: string;
 }
 
-function ClaimSerialGuide() {
+export type FormLanguage = 'english' | 'malayalam' | 'bilingual';
+
+function ClaimSerialGuide({ formLang = 'bilingual' }: { formLang?: FormLanguage }) {
+  const isEn = formLang === 'english';
+  const isMl = formLang === 'malayalam';
+
   return (
     <div className="bg-slate-900 text-slate-100 rounded-3xl p-5 border border-slate-800 shadow-md space-y-3 relative overflow-hidden my-4 max-w-sm mx-auto">
       <div className="absolute top-0 right-0 w-16 h-16 bg-[#FF1493]/10 rounded-full blur-xl pointer-events-none" />
       <div className="flex items-center gap-2">
         <Info className="w-4.5 h-4.5 text-[#FF1493] animate-pulse shrink-0" />
         <h5 className="text-[11px] font-black uppercase tracking-wider text-slate-200">
-          സീരിയൽ നമ്പർ എവിടെ കാണാം? (Where is the Serial Number?)
+          {isEn
+            ? 'Where is the Serial Number?'
+            : isMl
+            ? 'സീരിയൽ നമ്പർ എവിടെ കാണാം?'
+            : 'സീരിയൽ നമ്പർ എവിടെ കാണാം? (Where is the Serial Number?)'}
         </h5>
       </div>
       <p className="text-[11px] font-extrabold text-slate-200 leading-relaxed text-left">
-        നിങ്ങൾ സമർപ്പിക്കുന്ന ഔദ്യോഗിക ക്ലെയിം ഫോമിലെ മുകളിൽ വലതു വശത്തുള്ള സീരിയൽ നമ്പർ താഴെ നൽകുക. (Please enter the serial number from the top-right of your official claim form).
+        {isEn
+          ? 'Please enter the serial number from the top-right of your official physical claim form.'
+          : isMl
+          ? 'നിങ്ങൾ സമർപ്പിക്കുന്ന ഔദ്യോഗിക ക്ലെയിം ഫോമിലെ മുകളിൽ വലതു വശത്തുള്ള സീരിയൽ നമ്പർ താഴെ നൽകുക.'
+          : 'നിങ്ങൾ സമർപ്പിക്കുന്ന ഔദ്യോഗിക ക്ലെയിം ഫോമിലെ മുകളിൽ വലതു വശത്തുള്ള സീരിയൽ നമ്പർ താഴെ നൽകുക. (Please enter the serial number from the top-right of your official claim form).'}
       </p>
       
       {/* Visual Mockup representation of the physical paper form */}
@@ -79,7 +94,7 @@ function ClaimSerialGuide() {
             <span className="text-xs font-black text-rose-600 block leading-tight font-mono">12345</span>
             {/* Soft pointer arrow */}
             <div className="absolute -left-12 top-1/2 -translate-y-1/2 bg-rose-500 text-white text-[7px] px-1 py-0.5 rounded flex items-center shadow-md">
-              ഇതാണ്! <span className="ml-1 text-[8px]">➜</span>
+              {isEn ? 'Here!' : 'ഇതാണ്!'} <span className="ml-1 text-[8px]">➜</span>
             </div>
           </div>
         </div>
@@ -102,44 +117,89 @@ interface SupportClaimFormProps {
   onSubmitSuccess?: () => void;
 }
 
-const CATEGORIES = [
+const CATEGORIES_DEF = [
   { 
     id: 'digital', 
-    label: 'Digital Redeem Coupon (ഡിജിറ്റൽ റെഡീം കൂപ്പൺ)',
-    heading: 'Digital (ഡിജിറ്റൽ)', 
-    sub: 'Redeem Coupon (റെഡീം കൂപ്പൺ)',
+    en: 'Digital Redeem Coupon',
+    ml: 'ഡിജിറ്റൽ റെഡീം കൂപ്പൺ',
+    enHeading: 'Digital Redeem Coupon',
+    mlHeading: 'ഡിജിറ്റൽ (Digital)', 
+    subEn: 'Redeem Coupon',
+    subMl: 'റെഡീം കൂപ്പൺ',
     headerColor: 'text-rose-600 font-extrabold'
   },
   { 
     id: 'ott', 
-    label: 'OTT Consignment Advance (OTT കോൺസൈമെന്റ് അഡ്വാൻസ്)',
-    heading: 'OTT (ഓ ടി ടി)', 
-    sub: 'Consignment Advance (കോൺസൈമെന്റ് അഡ്വാൻസ്)',
+    en: 'OTT Consignment Advance',
+    ml: 'OTT കോൺസൈമെന്റ് അഡ്വാൻസ്',
+    enHeading: 'OTT Consignment Advance',
+    mlHeading: 'ഓ ടി ടി (OTT)', 
+    subEn: 'Consignment Advance',
+    subMl: 'കോൺസൈമെന്റ് അഡ്വാൻസ്',
     headerColor: 'text-violet-600 font-extrabold'
   },
   { 
     id: 'other', 
-    label: 'Other Consignment Advance (മറ്റു കോൺസൈമെന്റ് അഡ്വാൻസ്)',
-    heading: 'Other (മറ്റുള്ളവ)', 
-    sub: 'Consignment Advance (മറ്റു കോൺസൈമെന്റ് അഡ്വാൻസ്)',
+    en: 'Other Consignment Advance',
+    ml: 'മറ്റു കോൺസൈമെന്റ് അഡ്വാൻസ്',
+    enHeading: 'Other Consignment Advance',
+    mlHeading: 'മറ്റുള്ളവ (Other)', 
+    subEn: 'Consignment Advance',
+    subMl: 'മറ്റു കോൺസൈമെന്റ് അഡ്വാൻസ്',
     headerColor: 'text-slate-600 font-extrabold'
   }
 ];
 
-const PREFERENCES = [
-  { id: 'settlement', label: 'ബാക്കി തുക ലഭിച്ച ശേഷം സെറ്റിൽമെന്റും അക്കൗണ്ട് ക്ലോസ് ചെയ്യാനും ഞാൻ താല്പര്യപ്പെടുന്നു (I prefer settlement and closure after receiving balance)' },
-  { id: 'wait', label: 'കമ്പനി തുടർന്നു പോകുകയാണെങ്കിൽ എനിക്ക് കാത്തിരിക്കാൻ സാധിക്കും (I can wait if company continues and grows)' },
-  { id: 'continue', label: 'ഭാവി പ്ലാനുകൾ അനുസരിച്ച് കമ്പനിയുമായി തുടർന്നു പോകാൻ ഞാൻ തയ്യാറാണ് (I am ready to continue with company based on future plans)' }
+const PREFERENCES_DEF = [
+  { 
+    id: 'settlement', 
+    en: 'I prefer full settlement and account closure after receiving remaining balance',
+    ml: 'ബാക്കി തുക ലഭിച്ച ശേഷം സെറ്റിൽമെന്റും അക്കൗണ്ട് ക്ലോസ് ചെയ്യാനും ഞാൻ താല്പര്യപ്പെടുന്നു',
+    bilingual: 'ബാക്കി തുക ലഭിച്ച ശേഷം സെറ്റിൽമെന്റും അക്കൗണ്ട് ക്ലോസ് ചെയ്യാനും ഞാൻ താല്പര്യപ്പെടുന്നു (I prefer settlement and closure after receiving balance)' 
+  },
+  { 
+    id: 'wait', 
+    en: 'I can wait if the company continues and grows operations',
+    ml: 'കമ്പനി തുടർന്നു പോകുകയാണെങ്കിൽ എനിക്ക് കാത്തിരിക്കാൻ സാധിക്കും',
+    bilingual: 'കമ്പനി തുടർന്നു പോകുകയാണെങ്കിൽ എനിക്ക് കാത്തിരിക്കാൻ സാധിക്കും (I can wait if company continues and grows)' 
+  },
+  { 
+    id: 'continue', 
+    en: 'I am ready to continue with the company based on future business plans',
+    ml: 'ഭാവി പ്ലാനുകൾ അനുസരിച്ച് കമ്പനിയുമായി തുടർന്നു പോകാൻ ഞാൻ തയ്യാറാണ്',
+    bilingual: 'ഭാവി പ്ലാനുകൾ അനുസരിച്ച് കമ്പനിയുമായി തുടർന്നു പോകാൻ ഞാൻ തയ്യാറാണ് (I am ready to continue with company based on future plans)' 
+  }
 ];
 
-const HARDSHIPS = [
-  { id: 'bank', label: 'ബാങ്ക് ജപ്തി ഭീഷണി നേരിടുന്നു (Under bank seizure pressure)' },
-  { id: 'crisis', label: 'ഗുരുതരമായ സാമ്പത്തിക പ്രതിസന്ധി (Serious financial crisis)' },
-  { id: 'medical', label: 'ചികിത്സാ ആവശ്യങ്ങൾ / അത്യാഹിതങ്ങൾ (Medical emergency)' },
-  { id: 'none', label: 'അടിയന്തിര പ്രാധാന്യമില്ല (No emergency)' }
+const HARDSHIPS_DEF = [
+  { 
+    id: 'bank', 
+    en: 'Under bank loan seizure / revenue recovery pressure',
+    ml: 'ബാങ്ക് ജപ്തി ഭീഷണി നേരിടുന്നു',
+    bilingual: 'ബാങ്ക് ജപ്തി ഭീഷണി നേരിടുന്നു (Under bank seizure pressure)' 
+  },
+  { 
+    id: 'crisis', 
+    en: 'Serious financial crisis and distress',
+    ml: 'ഗുരുതരമായ സാമ്പത്തിക പ്രതിസന്ധി',
+    bilingual: 'ഗുരുതരമായ സാമ്പത്തിക പ്രതിസന്ധി (Serious financial crisis)' 
+  },
+  { 
+    id: 'medical', 
+    en: 'Medical emergency / ongoing critical treatment expenses',
+    ml: 'ചികിത്സാ ആവശ്യങ്ങൾ / അത്യാഹിതങ്ങൾ',
+    bilingual: 'ചികിത്സാ ആവശ്യങ്ങൾ / അത്യാഹിതങ്ങൾ (Medical emergency)' 
+  },
+  { 
+    id: 'none', 
+    en: 'No urgent emergency situation',
+    ml: 'അടിയന്തിര പ്രാധാന്യമില്ല',
+    bilingual: 'അടിയന്തിര പ്രാധാന്യമില്ല (No emergency)' 
+  }
 ];
 
 export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProps) {
+  const [formLang, setFormLang] = useState<FormLanguage>('bilingual');
   const [loading, setLoading] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [orgSettings, setOrgSettings] = useState<OrgSettings>(defaultSettings);
@@ -148,6 +208,12 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
   const [formMode, setFormMode] = useState<'statement' | 'fill'>('fill');
   const [selectedStatementIdx, setSelectedStatementIdx] = useState<number>(-1);
   const [newlyAssignedTokens, setNewlyAssignedTokens] = useState<Record<string, string>>({});
+  
+  // Edit mode toggles for individual claimants (when true, reveals the form for editing)
+  const [editingSelf, setEditingSelf] = useState(false);
+  const [editingSpouse, setEditingSpouse] = useState(false);
+  const [editingParent, setEditingParent] = useState(false);
+  const [editingChild, setEditingChild] = useState(false);
 
   // 1. Claimant State - Self
   const [selfSelected, setSelfSelected] = useState(true);
@@ -169,6 +235,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
   const [parentSelected, setParentSelected] = useState(false);
   const [parentRelation, setParentRelation] = useState<'Mother' | 'Father' | ''>('');
   const [parentName, setParentName] = useState('');
+  const [parentMobile, setParentMobile] = useState('');
   const [parentHighrichId, setParentHighrichId] = useState('');
   const [parentSponsorName, setParentSponsorName] = useState('');
   const [parentSponsorMobile, setParentSponsorMobile] = useState('');
@@ -181,11 +248,24 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
   const [parentTotalPending, setParentTotalPending] = useState(0);
   const [parentNotes, setParentNotes] = useState('');
   const [parentSerialNo, setParentSerialNo] = useState('');
+  // Parent Bank & PAN details
+  const [parentPan, setParentPan] = useState('');
+  const [parentSettlementAccountHolder, setParentSettlementAccountHolder] = useState('');
+  const [parentSettlementBankName, setParentSettlementBankName] = useState('');
+  const [parentSettlementBranch, setParentSettlementBranch] = useState('');
+  const [parentSettlementAccountNumber, setParentSettlementAccountNumber] = useState('');
+  const [parentSettlementIfsc, setParentSettlementIfsc] = useState('');
+  const [parentPaidFromAccount, setParentPaidFromAccount] = useState('');
+  const [parentPaidFromBank, setParentPaidFromBank] = useState('');
+  const [parentPaidFromBranch, setParentPaidFromBranch] = useState('');
+  const [parentPaidFromIfsc, setParentPaidFromIfsc] = useState('');
+  const [parentPaymentDate, setParentPaymentDate] = useState('');
 
   // 3. Claimant State - Child (Son or Daughter)
   const [childSelected, setChildSelected] = useState(false);
   const [childRelation, setChildRelation] = useState<'Son' | 'Daughter' | ''>('');
   const [childName, setChildName] = useState('');
+  const [childMobile, setChildMobile] = useState('');
   const [childHighrichId, setChildHighrichId] = useState('');
   const [childSponsorName, setChildSponsorName] = useState('');
   const [childSponsorMobile, setChildSponsorMobile] = useState('');
@@ -198,11 +278,24 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
   const [childTotalPending, setChildTotalPending] = useState(0);
   const [childNotes, setChildNotes] = useState('');
   const [childSerialNo, setChildSerialNo] = useState('');
+  // Child Bank & PAN details
+  const [childPan, setChildPan] = useState('');
+  const [childSettlementAccountHolder, setChildSettlementAccountHolder] = useState('');
+  const [childSettlementBankName, setChildSettlementBankName] = useState('');
+  const [childSettlementBranch, setChildSettlementBranch] = useState('');
+  const [childSettlementAccountNumber, setChildSettlementAccountNumber] = useState('');
+  const [childSettlementIfsc, setChildSettlementIfsc] = useState('');
+  const [childPaidFromAccount, setChildPaidFromAccount] = useState('');
+  const [childPaidFromBank, setChildPaidFromBank] = useState('');
+  const [childPaidFromBranch, setChildPaidFromBranch] = useState('');
+  const [childPaidFromIfsc, setChildPaidFromIfsc] = useState('');
+  const [childPaymentDate, setChildPaymentDate] = useState('');
 
   // 4. Claimant State - Spouse (Wife or Husband)
   const [spouseSelected, setSpouseSelected] = useState(false);
   const [spouseRelation, setSpouseRelation] = useState<'Wife' | 'Husband' | ''>('');
   const [spouseName, setSpouseName] = useState('');
+  const [spouseMobile, setSpouseMobile] = useState('');
   const [spouseHighrichId, setSpouseHighrichId] = useState('');
   const [spouseSponsorName, setSpouseSponsorName] = useState('');
   const [spouseSponsorMobile, setSpouseSponsorMobile] = useState('');
@@ -215,17 +308,301 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
   const [spouseTotalPending, setSpouseTotalPending] = useState(0);
   const [spouseNotes, setSpouseNotes] = useState('');
   const [spouseSerialNo, setSpouseSerialNo] = useState('');
+  // Spouse Bank & PAN details
+  const [spousePan, setSpousePan] = useState('');
+  const [spouseSettlementAccountHolder, setSpouseSettlementAccountHolder] = useState('');
+  const [spouseSettlementBankName, setSpouseSettlementBankName] = useState('');
+  const [spouseSettlementBranch, setSpouseSettlementBranch] = useState('');
+  const [spouseSettlementAccountNumber, setSpouseSettlementAccountNumber] = useState('');
+  const [spouseSettlementIfsc, setSpouseSettlementIfsc] = useState('');
+  const [spousePaidFromAccount, setSpousePaidFromAccount] = useState('');
+  const [spousePaidFromBank, setSpousePaidFromBank] = useState('');
+  const [spousePaidFromBranch, setSpousePaidFromBranch] = useState('');
+  const [spousePaidFromIfsc, setSpousePaidFromIfsc] = useState('');
+  const [spousePaymentDate, setSpousePaymentDate] = useState('');
 
   // General Questions
   const [futurePreference, setFuturePreference] = useState('');
   const [hardshipStatus, setHardshipStatus] = useState<string[]>([]);
   const [consentLegal, setConsentLegal] = useState(false);
 
+  // Customer / Declarant Profile Inputs for Customer Settlement Form
+  const [customerName, setCustomerName] = useState(user?.name || '');
+  const [customerMobile, setCustomerMobile] = useState(user?.mobile || '');
+  const [customerAddress, setCustomerAddress] = useState(user?.address || '');
+  const [customerDistrict, setCustomerDistrict] = useState(user?.district || '');
+  const [customerConstituency, setCustomerConstituency] = useState(user?.assemblyConstituency || user?.constituency || '');
+  const [customerPostOffice, setCustomerPostOffice] = useState(user?.postOffice || '');
+  const [customerPincode, setCustomerPincode] = useState(user?.pincode || '');
+  const [customerPan, setCustomerPan] = useState(user?.panNumber || user?.pan || '');
+
+  // Payment Particulars (തുക നൽകിയ വിവരങ്ങൾ)
+  const [paymentDate, setPaymentDate] = useState(user?.paymentDate || '');
+  const [transactionRef, setTransactionRef] = useState(user?.transactionId || user?.transactionRef || '');
+  const [paidFromBank, setPaidFromBank] = useState(user?.paidFromBank || user?.bankName || '');
+  const [paidFromBranch, setPaidFromBranch] = useState(user?.paidFromBranch || user?.branch || '');
+  const [paidFromAccount, setPaidFromAccount] = useState(user?.paidFromAccount || user?.accountNumber || '');
+  const [paidFromIfsc, setPaidFromIfsc] = useState(user?.paidFromIfsc || user?.ifscCode || '');
+
+  // Balance Disbursement Bank Details (തുക ലഭിക്കേണ്ട ബാങ്ക് വിവരങ്ങൾ)
+  const [settlementAccountHolder, setSettlementAccountHolder] = useState(user?.settlementAccountHolder || user?.name || '');
+  const [settlementBankName, setSettlementBankName] = useState(user?.settlementBankName || user?.bankName || '');
+  const [settlementBranch, setSettlementBranch] = useState(user?.settlementBranch || user?.branch || '');
+  const [settlementAccountNumber, setSettlementAccountNumber] = useState(user?.settlementAccountNumber || user?.accountNumber || '');
+  const [settlementIfsc, setSettlementIfsc] = useState(user?.settlementIfsc || user?.ifscCode || '');
+
+  // Dynamic Translation helpers based on user-selected form language ('english' | 'malayalam' | 'bilingual')
+  const t = (en: string, ml: string): string => {
+    if (formLang === 'english') return en;
+    if (formLang === 'malayalam') return ml;
+    return `${ml} (${en})`;
+  };
+
+  const tLabel = (en: string, ml: string): string => {
+    if (formLang === 'english') return en;
+    if (formLang === 'malayalam') return ml;
+    return `${ml} (${en})`;
+  };
+
+  const tPlaceholder = (en: string, ml: string): string => {
+    if (formLang === 'english') return en;
+    if (formLang === 'malayalam') return ml;
+    return `${ml} / ${en}`;
+  };
+
+  const CATEGORIES = useMemo(() => {
+    return CATEGORIES_DEF.map(cat => ({
+      id: cat.id,
+      label: formLang === 'english' ? cat.en : formLang === 'malayalam' ? cat.ml : `${cat.ml} (${cat.en})`,
+      heading: formLang === 'english' ? cat.enHeading : formLang === 'malayalam' ? cat.mlHeading : `${cat.mlHeading} (${cat.enHeading})`,
+      sub: formLang === 'english' ? cat.subEn : formLang === 'malayalam' ? cat.subMl : `${cat.subMl} (${cat.subEn})`,
+      headerColor: cat.headerColor
+    }));
+  }, [formLang]);
+
+  const PREFERENCES = useMemo(() => {
+    return PREFERENCES_DEF.map(pref => ({
+      id: pref.id,
+      label: formLang === 'english' ? pref.en : formLang === 'malayalam' ? pref.ml : pref.bilingual
+    }));
+  }, [formLang]);
+
+  const HARDSHIPS = useMemo(() => {
+    return HARDSHIPS_DEF.map(hard => ({
+      id: hard.id,
+      label: formLang === 'english' ? hard.en : formLang === 'malayalam' ? hard.ml : hard.bilingual
+    }));
+  }, [formLang]);
+
+  // Sync with user prop if values change
+  useEffect(() => {
+    if (user) {
+      if (user.name && !customerName) setCustomerName(user.name);
+      if (user.mobile && !customerMobile) setCustomerMobile(user.mobile);
+      if (user.address && !customerAddress) setCustomerAddress(user.address);
+      if (user.district && !customerDistrict) setCustomerDistrict(user.district);
+      if ((user.assemblyConstituency || user.constituency) && !customerConstituency) {
+        setCustomerConstituency(user.assemblyConstituency || user.constituency);
+      }
+      if (user.postOffice && !customerPostOffice) setCustomerPostOffice(user.postOffice);
+      if (user.pincode && !customerPincode) setCustomerPincode(user.pincode);
+      if ((user.panNumber || user.pan) && !customerPan) setCustomerPan(user.panNumber || user.pan);
+      if (user.paymentDate && !paymentDate) setPaymentDate(user.paymentDate);
+      if ((user.transactionId || user.transactionRef) && !transactionRef) {
+        setTransactionRef(user.transactionId || user.transactionRef);
+      }
+      if ((user.paidFromBank || user.bankName) && !paidFromBank) {
+        setPaidFromBank(user.paidFromBank || user.bankName);
+      }
+      if ((user.paidFromBranch || user.branch) && !paidFromBranch) {
+        setPaidFromBranch(user.paidFromBranch || user.branch);
+      }
+      if ((user.paidFromAccount || user.accountNumber) && !paidFromAccount) {
+        setPaidFromAccount(user.paidFromAccount || user.accountNumber);
+      }
+      if ((user.paidFromIfsc || user.ifscCode) && !paidFromIfsc) {
+        setPaidFromIfsc(user.paidFromIfsc || user.ifscCode);
+      }
+      if ((user.settlementAccountHolder || user.name) && !settlementAccountHolder) {
+        setSettlementAccountHolder(user.settlementAccountHolder || user.name);
+      }
+      if ((user.settlementBankName || user.bankName) && !settlementBankName) {
+        setSettlementBankName(user.settlementBankName || user.bankName);
+      }
+      if ((user.settlementBranch || user.branch) && !settlementBranch) {
+        setSettlementBranch(user.settlementBranch || user.branch);
+      }
+      if ((user.settlementAccountNumber || user.accountNumber) && !settlementAccountNumber) {
+        setSettlementAccountNumber(user.settlementAccountNumber || user.accountNumber);
+      }
+      if ((user.settlementIfsc || user.ifscCode) && !settlementIfsc) {
+        setSettlementIfsc(user.settlementIfsc || user.ifscCode);
+      }
+    }
+  }, [user]);
+
+  // Combined User object for live preview and A4 print rendering
+  const combinedUserForPrint = useMemo(() => ({
+    ...user,
+    name: customerName || user?.name || '',
+    mobile: customerMobile || user?.mobile || '',
+    address: customerAddress || user?.address || '',
+    district: customerDistrict || user?.district || '',
+    assemblyConstituency: customerConstituency || user?.assemblyConstituency || user?.constituency || '',
+    constituency: customerConstituency || user?.constituency || '',
+    postOffice: customerPostOffice || user?.postOffice || '',
+    pincode: customerPincode || user?.pincode || '',
+    panNumber: customerPan || user?.panNumber || user?.pan || '',
+    pan: customerPan || user?.panNumber || user?.pan || '',
+    paymentDate: paymentDate || user?.paymentDate || '',
+    transactionId: transactionRef || user?.transactionId || '',
+    transactionRef: transactionRef || user?.transactionRef || '',
+    paidFromBank: paidFromBank || user?.paidFromBank || user?.bankName || '',
+    paidFromBranch: paidFromBranch || user?.paidFromBranch || user?.branch || '',
+    paidFromAccount: paidFromAccount || user?.paidFromAccount || user?.accountNumber || '',
+    paidFromIfsc: paidFromIfsc || user?.paidFromIfsc || user?.ifscCode || '',
+    bankName: settlementBankName || user?.bankName || '',
+    branch: settlementBranch || user?.branch || '',
+    accountNumber: settlementAccountNumber || user?.accountNumber || '',
+    ifscCode: settlementIfsc || user?.ifscCode || '',
+    settlementBankName: settlementBankName || user?.settlementBankName || user?.bankName || '',
+    settlementBranch: settlementBranch || user?.settlementBranch || user?.branch || '',
+    settlementAccountNumber: settlementAccountNumber || user?.settlementAccountNumber || user?.accountNumber || '',
+    settlementIfsc: settlementIfsc || user?.settlementIfsc || user?.ifscCode || '',
+    settlementAccountHolder: settlementAccountHolder || customerName || user?.name || ''
+  }), [
+    user, customerName, customerMobile, customerAddress, customerDistrict, customerConstituency,
+    customerPostOffice, customerPincode, customerPan, paymentDate, transactionRef, paidFromBank,
+    paidFromBranch, paidFromAccount, paidFromIfsc, settlementAccountHolder,
+    settlementBankName, settlementBranch, settlementAccountNumber, settlementIfsc
+  ]);
+
   // Computed booleans for already submitted slots
   const hasSelf = useMemo(() => submittedClaims.some(c => c.relation === 'Self'), [submittedClaims]);
   const hasParent = useMemo(() => submittedClaims.some(c => ['Mother', 'Father'].includes(c.relation)), [submittedClaims]);
   const hasChild = useMemo(() => submittedClaims.some(c => ['Son', 'Daughter'].includes(c.relation)), [submittedClaims]);
   const hasSpouse = useMemo(() => submittedClaims.some(c => ['Wife', 'Husband'].includes(c.relation)), [submittedClaims]);
+
+  // Exact claim document lookups
+  const selfClaim = useMemo(() => submittedClaims.find(c => c.relation === 'Self'), [submittedClaims]);
+  const spouseClaim = useMemo(() => submittedClaims.find(c => ['Wife', 'Husband'].includes(c.relation)), [submittedClaims]);
+  const parentClaim = useMemo(() => submittedClaims.find(c => ['Mother', 'Father'].includes(c.relation)), [submittedClaims]);
+  const childClaim = useMemo(() => submittedClaims.find(c => ['Son', 'Daughter'].includes(c.relation)), [submittedClaims]);
+
+  // Helper functions to populate form fields from existing claim records when editing
+  const populateSelfFromClaim = (claim: any) => {
+    if (!claim) return;
+    if (claim.userName) setSelfName(claim.userName);
+    if (claim.highrichId) setSelfHighrichId(claim.highrichId);
+    if (claim.sponsorName) setSelfSponsorName(claim.sponsorName);
+    if (claim.sponsorMobile) setSelfSponsorMobile(claim.sponsorMobile);
+    if (Array.isArray(claim.categories)) setSelfCategories(claim.categories);
+    if (claim.otherCategory) setSelfOtherCategory(claim.otherCategory);
+    if (claim.categoryDetails) setSelfCategoryDetails(claim.categoryDetails);
+    if (claim.noBreakup !== undefined) setSelfNoBreakup(claim.noBreakup);
+    if (claim.totalPaid !== undefined) setSelfTotalPaid(claim.totalPaid);
+    if (claim.totalReceived !== undefined) setSelfTotalReceived(claim.totalReceived);
+    if (claim.totalPending !== undefined) setSelfTotalPending(claim.totalPending);
+    if (claim.notes) setSelfNotes(claim.notes);
+    if (claim.panNumber) setCustomerPan(claim.panNumber);
+    if (claim.settlementAccountNumber) setSettlementAccountNumber(claim.settlementAccountNumber);
+    if (claim.settlementBankName) setSettlementBankName(claim.settlementBankName);
+    if (claim.settlementBranch) setSettlementBranch(claim.settlementBranch);
+    if (claim.settlementIfsc) setSettlementIfsc(claim.settlementIfsc);
+    if (claim.settlementAccountHolder) setSettlementAccountHolder(claim.settlementAccountHolder);
+    if (claim.paidFromAccount) setPaidFromAccount(claim.paidFromAccount);
+    if (claim.paidFromBank) setPaidFromBank(claim.paidFromBank);
+    if (claim.paidFromBranch) setPaidFromBranch(claim.paidFromBranch);
+    if (claim.paidFromIfsc) setPaidFromIfsc(claim.paidFromIfsc);
+    if (claim.paymentDate) setPaymentDate(claim.paymentDate);
+  };
+
+  const populateSpouseFromClaim = (claim: any) => {
+    if (!claim) return;
+    if (claim.relation === 'Wife' || claim.relation === 'Husband') setSpouseRelation(claim.relation);
+    if (claim.userName) setSpouseName(claim.userName);
+    if (claim.userMobile || claim.memberMobile) setSpouseMobile(claim.userMobile || claim.memberMobile);
+    if (claim.highrichId) setSpouseHighrichId(claim.highrichId);
+    if (claim.sponsorName) setSpouseSponsorName(claim.sponsorName);
+    if (claim.sponsorMobile) setSpouseSponsorMobile(claim.sponsorMobile);
+    if (Array.isArray(claim.categories)) setSpouseCategories(claim.categories);
+    if (claim.otherCategory) setSpouseOtherCategory(claim.otherCategory);
+    if (claim.categoryDetails) setSpouseCategoryDetails(claim.categoryDetails);
+    if (claim.noBreakup !== undefined) setSpouseNoBreakup(claim.noBreakup);
+    if (claim.totalPaid !== undefined) setSpouseTotalPaid(claim.totalPaid);
+    if (claim.totalReceived !== undefined) setSpouseTotalReceived(claim.totalReceived);
+    if (claim.totalPending !== undefined) setSpouseTotalPending(claim.totalPending);
+    if (claim.notes) setSpouseNotes(claim.notes);
+    if (claim.panNumber) setSpousePan(claim.panNumber);
+    if (claim.settlementAccountNumber) setSpouseSettlementAccountNumber(claim.settlementAccountNumber);
+    if (claim.settlementBankName) setSpouseSettlementBankName(claim.settlementBankName);
+    if (claim.settlementBranch) setSpouseSettlementBranch(claim.settlementBranch);
+    if (claim.settlementIfsc) setSpouseSettlementIfsc(claim.settlementIfsc);
+    if (claim.settlementAccountHolder) setSpouseSettlementAccountHolder(claim.settlementAccountHolder);
+    if (claim.paidFromAccount) setSpousePaidFromAccount(claim.paidFromAccount);
+    if (claim.paidFromBank) setSpousePaidFromBank(claim.paidFromBank);
+    if (claim.paidFromBranch) setSpousePaidFromBranch(claim.paidFromBranch);
+    if (claim.paidFromIfsc) setSpousePaidFromIfsc(claim.paidFromIfsc);
+    if (claim.paymentDate) setSpousePaymentDate(claim.paymentDate);
+  };
+
+  const populateParentFromClaim = (claim: any) => {
+    if (!claim) return;
+    if (claim.relation === 'Mother' || claim.relation === 'Father') setParentRelation(claim.relation);
+    if (claim.userName) setParentName(claim.userName);
+    if (claim.userMobile || claim.memberMobile) setParentMobile(claim.userMobile || claim.memberMobile);
+    if (claim.highrichId) setParentHighrichId(claim.highrichId);
+    if (claim.sponsorName) setParentSponsorName(claim.sponsorName);
+    if (claim.sponsorMobile) setParentSponsorMobile(claim.sponsorMobile);
+    if (Array.isArray(claim.categories)) setParentCategories(claim.categories);
+    if (claim.otherCategory) setParentOtherCategory(claim.otherCategory);
+    if (claim.categoryDetails) setParentCategoryDetails(claim.categoryDetails);
+    if (claim.noBreakup !== undefined) setParentNoBreakup(claim.noBreakup);
+    if (claim.totalPaid !== undefined) setParentTotalPaid(claim.totalPaid);
+    if (claim.totalReceived !== undefined) setParentTotalReceived(claim.totalReceived);
+    if (claim.totalPending !== undefined) setParentTotalPending(claim.totalPending);
+    if (claim.notes) setParentNotes(claim.notes);
+    if (claim.panNumber) setParentPan(claim.panNumber);
+    if (claim.settlementAccountNumber) setParentSettlementAccountNumber(claim.settlementAccountNumber);
+    if (claim.settlementBankName) setParentSettlementBankName(claim.settlementBankName);
+    if (claim.settlementBranch) setParentSettlementBranch(claim.settlementBranch);
+    if (claim.settlementIfsc) setParentSettlementIfsc(claim.settlementIfsc);
+    if (claim.settlementAccountHolder) setParentSettlementAccountHolder(claim.settlementAccountHolder);
+    if (claim.paidFromAccount) setParentPaidFromAccount(claim.paidFromAccount);
+    if (claim.paidFromBank) setParentPaidFromBank(claim.paidFromBank);
+    if (claim.paidFromBranch) setParentPaidFromBranch(claim.paidFromBranch);
+    if (claim.paidFromIfsc) setParentPaidFromIfsc(claim.paidFromIfsc);
+    if (claim.paymentDate) setParentPaymentDate(claim.paymentDate);
+  };
+
+  const populateChildFromClaim = (claim: any) => {
+    if (!claim) return;
+    if (claim.relation === 'Son' || claim.relation === 'Daughter') setChildRelation(claim.relation);
+    if (claim.userName) setChildName(claim.userName);
+    if (claim.userMobile || claim.memberMobile) setChildMobile(claim.userMobile || claim.memberMobile);
+    if (claim.highrichId) setChildHighrichId(claim.highrichId);
+    if (claim.sponsorName) setChildSponsorName(claim.sponsorName);
+    if (claim.sponsorMobile) setChildSponsorMobile(claim.sponsorMobile);
+    if (Array.isArray(claim.categories)) setChildCategories(claim.categories);
+    if (claim.otherCategory) setChildOtherCategory(claim.otherCategory);
+    if (claim.categoryDetails) setChildCategoryDetails(claim.categoryDetails);
+    if (claim.noBreakup !== undefined) setChildNoBreakup(claim.noBreakup);
+    if (claim.totalPaid !== undefined) setChildTotalPaid(claim.totalPaid);
+    if (claim.totalReceived !== undefined) setChildTotalReceived(claim.totalReceived);
+    if (claim.totalPending !== undefined) setChildTotalPending(claim.totalPending);
+    if (claim.notes) setChildNotes(claim.notes);
+    if (claim.panNumber) setChildPan(claim.panNumber);
+    if (claim.settlementAccountNumber) setChildSettlementAccountNumber(claim.settlementAccountNumber);
+    if (claim.settlementBankName) setChildSettlementBankName(claim.settlementBankName);
+    if (claim.settlementBranch) setChildSettlementBranch(claim.settlementBranch);
+    if (claim.settlementIfsc) setChildSettlementIfsc(claim.settlementIfsc);
+    if (claim.settlementAccountHolder) setChildSettlementAccountHolder(claim.settlementAccountHolder);
+    if (claim.paidFromAccount) setChildPaidFromAccount(claim.paidFromAccount);
+    if (claim.paidFromBank) setChildPaidFromBank(claim.paidFromBank);
+    if (claim.paidFromBranch) setChildPaidFromBranch(claim.paidFromBranch);
+    if (claim.paidFromIfsc) setChildPaidFromIfsc(claim.paidFromIfsc);
+    if (claim.paymentDate) setChildPaymentDate(claim.paymentDate);
+  };
 
   useEffect(() => {
     const unsub = subscribeToOrgSettings((settings) => {
@@ -235,145 +612,146 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
   }, []);
 
   // Fetch existing claims for this user to check submission status
-  useEffect(() => {
-    async function checkExistingClaims() {
-      if (!user) return;
-      try {
-        setLoading(true);
-        
-        const rawMobile = String(user.mobile || '').replace(/\D/g, '');
-        const cleanMobile = rawMobile.length >= 10 ? rawMobile.slice(-10) : rawMobile;
-        const offlineUid = cleanMobile ? `offline_${cleanMobile}` : '';
-        const activeUid = user.uid || '';
+  const checkExistingClaims = async () => {
+    if (!user) return;
+    try {
+      setLoading(true);
+      
+      const rawMobile = String(user.mobile || '').replace(/\D/g, '');
+      const cleanMobile = rawMobile.length >= 10 ? rawMobile.slice(-10) : rawMobile;
+      const offlineUid = cleanMobile ? `offline_${cleanMobile}` : '';
+      const activeUid = user.uid || '';
 
-        // Prepare our parallel query promises
-        const queryPromises = [];
-        const claimsMap = new Map<string, any>();
+      // Prepare our parallel query promises
+      const queryPromises = [];
+      const claimsMap = new Map<string, any>();
 
-        // 1. Query by active UID
-        if (activeUid) {
-          queryPromises.push(
-            getDocs(query(collection(db, 'claims'), where('uid', '==', activeUid)))
-              .catch(err => {
-                console.warn("checkExistingClaims activeUid query notice:", err);
-                return null;
-              })
-          );
+      // 1. Query by active UID
+      if (activeUid) {
+        queryPromises.push(
+          getDocs(query(collection(db, 'claims'), where('uid', '==', activeUid)))
+            .catch(err => {
+              console.warn("checkExistingClaims activeUid query notice:", err);
+              return null;
+            })
+        );
+      }
+
+      // 2. Query by offline UID
+      if (offlineUid) {
+        queryPromises.push(
+          getDocs(query(collection(db, 'claims'), where('uid', '==', offlineUid)))
+            .catch(err => {
+              console.warn("checkExistingClaims offlineUid query notice:", err);
+              return null;
+            })
+        );
+      }
+
+      // 3. Query by userMobile (string)
+      if (cleanMobile) {
+        queryPromises.push(
+          getDocs(query(collection(db, 'claims'), where('userMobile', '==', cleanMobile)))
+            .catch(err => {
+              console.warn("checkExistingClaims cleanMobile query notice:", err);
+              return null;
+            })
+        );
+      }
+
+      // 4. Query by userMobile (numeric)
+      const numericMobile = Number(cleanMobile);
+      if (cleanMobile && !isNaN(numericMobile)) {
+        queryPromises.push(
+          getDocs(query(collection(db, 'claims'), where('userMobile', '==', numericMobile)))
+            .catch(err => {
+              console.warn("checkExistingClaims numericMobile query notice:", err);
+              return null;
+            })
+        );
+      }
+
+      // Execute all queries in parallel for high speed and robustness
+      const snaps = await Promise.all(queryPromises);
+      
+      // Collate and deduplicate docs
+      for (const snap of snaps) {
+        if (snap && !snap.empty) {
+          snap.docs.forEach(docSnap => {
+            claimsMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
+          });
         }
+      }
 
-        // 2. Query by offline UID
-        if (offlineUid) {
-          queryPromises.push(
-            getDocs(query(collection(db, 'claims'), where('uid', '==', offlineUid)))
-              .catch(err => {
-                console.warn("checkExistingClaims offlineUid query notice:", err);
-                return null;
-              })
-          );
-        }
+      let docsList = Array.from(claimsMap.values());
 
-        // 3. Query by userMobile (string)
-        if (cleanMobile) {
-          queryPromises.push(
-            getDocs(query(collection(db, 'claims'), where('userMobile', '==', cleanMobile)))
-              .catch(err => {
-                console.warn("checkExistingClaims cleanMobile query notice:", err);
-                return null;
-              })
-          );
-        }
-
-        // 4. Query by userMobile (numeric)
-        const numericMobile = Number(cleanMobile);
-        if (cleanMobile && !isNaN(numericMobile)) {
-          queryPromises.push(
-            getDocs(query(collection(db, 'claims'), where('userMobile', '==', numericMobile)))
-              .catch(err => {
-                console.warn("checkExistingClaims numericMobile query notice:", err);
-                return null;
-              })
-          );
-        }
-
-        // Execute all queries in parallel for high speed and robustness
-        const snaps = await Promise.all(queryPromises);
-        
-        // Collate and deduplicate docs
-        for (const snap of snaps) {
-          if (snap && !snap.empty) {
-            snap.docs.forEach(docSnap => {
-              claimsMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
-            });
-          }
-        }
-
-        let docsList = Array.from(claimsMap.values());
-
-        // --- DYNAMIC CLAIM UID AUTO-HEALING ---
-        // If they logged in and are active, heal claims registered with 'offline_' prefix
-        if (activeUid && !activeUid.startsWith('offline_') && docsList.length > 0) {
-          for (const claim of docsList) {
-            if (claim.uid !== activeUid) {
-              console.log(`Auto-healing offline claim ID "${claim.id}" UID: ${claim.uid} -> ${activeUid}`);
-              try {
-                await updateDoc(doc(db, 'claims', claim.id), {
-                  uid: activeUid,
-                  userMobile: cleanMobile || claim.userMobile || ''
-                });
-                // Update local memory reference
-                claim.uid = activeUid;
-                if (cleanMobile) claim.userMobile = cleanMobile;
-              } catch (err) {
-                console.warn("Failed to background auto-heal claim UID:", err);
-              }
+      // --- DYNAMIC CLAIM UID AUTO-HEALING ---
+      // If they logged in and are active, heal claims registered with 'offline_' prefix
+      if (activeUid && !activeUid.startsWith('offline_') && docsList.length > 0) {
+        for (const claim of docsList) {
+          if (claim.uid !== activeUid) {
+            console.log(`Auto-healing offline claim ID "${claim.id}" UID: ${claim.uid} -> ${activeUid}`);
+            try {
+              await updateDoc(doc(db, 'claims', claim.id), {
+                uid: activeUid,
+                userMobile: cleanMobile || claim.userMobile || ''
+              });
+              // Update local memory reference
+              claim.uid = activeUid;
+              if (cleanMobile) claim.userMobile = cleanMobile;
+            } catch (err) {
+              console.warn("Failed to background auto-heal claim UID:", err);
             }
           }
         }
+      }
 
-        if (docsList.length > 0) {
-          setSubmittedClaims(docsList);
-          
-          const hasSelfDb = docsList.some(c => c.relation === 'Self');
-          const hasParentDb = docsList.some(c => ['Mother', 'Father'].includes(c.relation));
-          const hasChildDb = docsList.some(c => ['Son', 'Daughter'].includes(c.relation));
-          const hasSpouseDb = docsList.some(c => ['Wife', 'Husband'].includes(c.relation));
-          
-          if (hasSelfDb && hasParentDb && hasChildDb && hasSpouseDb) {
-            setAlreadySubmitted(true);
-          } else {
-            setAlreadySubmitted(false);
-            
-            // Uncheck submitted categories to prevent duplicate actions
-            setSelfSelected(false);
-            setParentSelected(false);
-            setChildSelected(false);
-            setSpouseSelected(false);
-            
-            // Select the first non-submitted category in list
-            if (!hasSelfDb) {
-              setSelfSelected(true);
-            } else if (!hasParentDb) {
-              setParentSelected(true);
-            } else if (!hasChildDb) {
-              setChildSelected(true);
-            } else if (!hasSpouseDb) {
-              setSpouseSelected(true);
-            }
-          }
+      if (docsList.length > 0) {
+        setSubmittedClaims(docsList);
+        
+        const hasSelfDb = docsList.some(c => c.relation === 'Self');
+        const hasParentDb = docsList.some(c => ['Mother', 'Father'].includes(c.relation));
+        const hasChildDb = docsList.some(c => ['Son', 'Daughter'].includes(c.relation));
+        const hasSpouseDb = docsList.some(c => ['Wife', 'Husband'].includes(c.relation));
+        
+        if (hasSelfDb && hasParentDb && hasChildDb && hasSpouseDb) {
+          setAlreadySubmitted(true);
         } else {
-          setSubmittedClaims([]);
           setAlreadySubmitted(false);
-          setSelfSelected(true);
+          
+          // Uncheck submitted categories to prevent duplicate actions
+          setSelfSelected(false);
           setParentSelected(false);
           setChildSelected(false);
           setSpouseSelected(false);
+          
+          // Select the first non-submitted category in list (Self -> Spouse -> Parent -> Child)
+          if (!hasSelfDb) {
+            setSelfSelected(true);
+          } else if (!hasSpouseDb) {
+            setSpouseSelected(true);
+          } else if (!hasParentDb) {
+            setParentSelected(true);
+          } else if (!hasChildDb) {
+            setChildSelected(true);
+          }
         }
-      } catch (err: any) {
-        console.warn("Status check notice: Database query error", err);
-      } finally {
-        setLoading(false);
+      } else {
+        setSubmittedClaims([]);
+        setAlreadySubmitted(false);
+        setSelfSelected(true);
+        setParentSelected(false);
+        setChildSelected(false);
+        setSpouseSelected(false);
       }
+    } catch (err: any) {
+      console.warn("Status check notice: Database query error", err);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
     checkExistingClaims();
   }, [user]);
 
@@ -632,8 +1010,46 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
   };
 
   const handleSubmit = async () => {
-    if (!formIsValid) {
-      toast.error('ദയവായി എല്ലാ ആവശ്യ വിവരങ്ങളും പൂരിപ്പിക്കുക.');
+    // Auto-fulfill consent & preference defaults if user hits direct submit
+    let curConsent = consentLegal;
+    if (!curConsent) {
+      setConsentLegal(true);
+      curConsent = true;
+    }
+    let curPref = futurePreference;
+    if (!curPref) {
+      setFuturePreference('settlement');
+      curPref = 'settlement';
+    }
+    let curHardships = hardshipStatus;
+    if (curHardships.length === 0) {
+      setHardshipStatus(['none']);
+      curHardships = ['none'];
+    }
+
+    if (!hasAtLeastOneClaimant) {
+      toast.error('ദയവായി കുറഞ്ഞത് ഒരു ക്ലെയിം ഫോം എങ്കിലും തിരഞ്ഞെടുക്കുക.');
+      return;
+    }
+
+    if (selfSelected && (!customerName.trim() && !selfName.trim())) {
+      toast.error('ദയവായി അപേക്ഷകന്റെ പേര് നൽകുക.');
+      return;
+    }
+    if (selfSelected && !selfNoBreakup && selfCategories.length === 0) {
+      toast.error('ദയവായി സ്വന്തം ക്ലെയിം വിഭാഗം (Category) തിരഞ്ഞെടുക്കുക.');
+      return;
+    }
+    if (spouseSelected && (!spouseName.trim() || !spouseRelation)) {
+      toast.error('ദയവായി ഭാര്യ / ഭർത്താവിന്റെ പേരും ബന്ധവും രേഖപ്പെടുത്തുക.');
+      return;
+    }
+    if (parentSelected && (!parentName.trim() || !parentRelation)) {
+      toast.error('ദയവായി മാതാവ് / പിതാവിന്റെ പേരും ബന്ധവും രേഖപ്പെടുത്തുക.');
+      return;
+    }
+    if (childSelected && (!childName.trim() || !childRelation)) {
+      toast.error('ദയവായി മകൻ / മകളുടെ പേരും ബന്ധവും രേഖപ്പെടുത്തുക.');
       return;
     }
 
@@ -669,23 +1085,27 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
       const commonData = {
         uid: user.uid,
         membershipId: user.membershipId || 'PENDING',
-        userMobile: user.mobile,
-        userDistrict: user.district || '',
-        userAddress: user.address || '',
-        userConstituency: user.constituency || '',
+        userName: customerName || user.name || '',
+        userMobile: customerMobile || user.mobile || '',
+        userDistrict: customerDistrict || user.district || '',
+        userAddress: customerAddress || user.address || '',
+        userConstituency: customerConstituency || user.assemblyConstituency || user.constituency || '',
+        postOffice: customerPostOffice || user.postOffice || '',
+        pincode: customerPincode || user.pincode || '',
+        panNumber: customerPan || user.panNumber || user.pan || '',
         userEmail: user.email || '',
         userBloodGroup: user.bloodGroup || '',
-        paidFromBank: user.bankName || user.paidFromBank || '',
-        paidFromBranch: user.branch || user.paidFromBranch || '',
-        paidFromAccount: user.accountNumber || user.paidFromAccount || '',
-        paidFromIfsc: user.ifscCode || user.paidFromIfsc || '',
-        paymentDate: user.paymentDate || '',
-        transactionRef: user.transactionId || user.transactionRef || '',
-        settlementBankName: user.bankName || '',
-        settlementBranch: user.branch || '',
-        settlementAccountNumber: user.accountNumber || '',
-        settlementIfsc: user.ifscCode || '',
-        settlementAccountHolder: user.name || '',
+        paidFromBank: paidFromBank || user.paidFromBank || user.bankName || '',
+        paidFromBranch: paidFromBranch || user.paidFromBranch || user.branch || '',
+        paidFromAccount: paidFromAccount || user.paidFromAccount || user.accountNumber || '',
+        paidFromIfsc: paidFromIfsc || user.paidFromIfsc || user.ifscCode || '',
+        paymentDate: paymentDate || user.paymentDate || '',
+        transactionRef: transactionRef || user.transactionId || user.transactionRef || '',
+        settlementBankName: settlementBankName || user.settlementBankName || user.bankName || '',
+        settlementBranch: settlementBranch || user.settlementBranch || user.branch || '',
+        settlementAccountNumber: settlementAccountNumber || user.settlementAccountNumber || user.accountNumber || '',
+        settlementIfsc: settlementIfsc || user.settlementIfsc || user.ifscCode || '',
+        settlementAccountHolder: settlementAccountHolder || customerName || user.name || '',
         futurePreference,
         hardshipStatus,
         isEmergency,
@@ -695,7 +1115,37 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
         updatedAt: serverTimestamp()
       };
 
-      // Calculate how many claims are being submitted in this batch
+      // Background update user document with latest customer settlement details
+      try {
+        if (user.uid) {
+          await updateDoc(doc(db, 'users', user.uid), {
+            name: customerName || user.name || '',
+            mobile: customerMobile || user.mobile || '',
+            address: customerAddress || user.address || '',
+            district: customerDistrict || user.district || '',
+            assemblyConstituency: customerConstituency || user.assemblyConstituency || '',
+            postOffice: customerPostOffice || user.postOffice || '',
+            pincode: customerPincode || user.pincode || '',
+            panNumber: customerPan || '',
+            paymentDate: paymentDate || user.paymentDate || '',
+            transactionId: transactionRef || user.transactionId || '',
+            transactionRef: transactionRef || user.transactionRef || '',
+            paidFromBank: paidFromBank || '',
+            paidFromBranch: paidFromBranch || '',
+            paidFromAccount: paidFromAccount || '',
+            paidFromIfsc: paidFromIfsc || '',
+            settlementBankName: settlementBankName || '',
+            settlementBranch: settlementBranch || '',
+            settlementAccountNumber: settlementAccountNumber || '',
+            settlementIfsc: settlementIfsc || '',
+            settlementAccountHolder: settlementAccountHolder || ''
+          });
+        }
+      } catch (userUpErr) {
+        console.warn("Background user doc update notice:", userUpErr);
+      }
+
+      // Calculate how many NEW claims are being submitted in this batch
       let claimsToSubmitCount = 0;
       if (selfSelected && !hasSelf) claimsToSubmitCount++;
       if (parentSelected && !hasParent) claimsToSubmitCount++;
@@ -745,17 +1195,33 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
 
       let currentTokenOffset = 0;
 
-      // 1. Submit Self Claim
-      if (selfSelected && !hasSelf) {
-        currentTokenOffset++;
-        const tokenVal = `${prefix}-${1000 + baseTokenNo + currentTokenOffset}`;
+      // 1. Submit or Update Self Claim
+      if (selfSelected && (!hasSelf || editingSelf)) {
+        let tokenVal = selfClaim?.tokenNo || selfClaim?.serialNo;
+        if (!tokenVal) {
+          currentTokenOffset++;
+          tokenVal = `${prefix}-${1000 + baseTokenNo + currentTokenOffset}`;
+        }
         assignedTokens['Self'] = tokenVal;
         await deleteExistingForCategory(['Self']);
-        const selfClaim = {
+        const newSelfClaim = {
           ...commonData,
           relation: 'Self',
           relationLabel: 'Self (സ്വന്തം)',
-          userName: selfName || user.name,
+          userName: selfName || customerName || user.name,
+          userMobile: customerMobile || user.mobile || '',
+          memberMobile: customerMobile || user.mobile || '',
+          panNumber: customerPan || user.panNumber || user.pan || '',
+          settlementAccountNumber: settlementAccountNumber || user.settlementAccountNumber || user.accountNumber || '',
+          settlementBankName: settlementBankName || user.settlementBankName || user.bankName || '',
+          settlementBranch: settlementBranch || user.settlementBranch || user.branch || '',
+          settlementIfsc: settlementIfsc || user.settlementIfsc || user.ifscCode || '',
+          settlementAccountHolder: settlementAccountHolder || selfName || customerName || user.name || '',
+          paidFromAccount: paidFromAccount || user.paidFromAccount || '',
+          paidFromBank: paidFromBank || user.paidFromBank || user.bankName || '',
+          paidFromBranch: paidFromBranch || user.paidFromBranch || user.branch || '',
+          paidFromIfsc: paidFromIfsc || user.paidFromIfsc || '',
+          paymentDate: paymentDate || user.paymentDate || '',
           highrichId: selfHighrichId,
           sponsorName: selfSponsorName.trim(),
           sponsorMobile: selfSponsorMobile.trim(),
@@ -770,79 +1236,37 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           tokenNo: tokenVal,
           serialNo: tokenVal,
         };
-        await addDoc(collection(db, 'claims'), selfClaim);
+        await addDoc(collection(db, 'claims'), newSelfClaim);
       }
 
-      // 2. Submit Parent Claim
-      if (parentSelected && !hasParent) {
-        currentTokenOffset++;
-        const tokenVal = `${prefix}-${1000 + baseTokenNo + currentTokenOffset}`;
-        const relType = parentRelation || 'Parent';
-        assignedTokens[relType] = tokenVal;
-        await deleteExistingForCategory(['Mother', 'Father']);
-        const parentClaim = {
-          ...commonData,
-          relation: parentRelation,
-          relationLabel: parentRelation === 'Mother' ? 'അമ്മ (Mother)' : 'അച്ഛൻ (Father)',
-          userName: parentName,
-          highrichId: parentHighrichId,
-          sponsorName: parentSponsorName.trim(),
-          sponsorMobile: parentSponsorMobile.trim(),
-          categories: parentCategories,
-          otherCategory: parentOtherCategory,
-          categoryDetails: parentCategoryDetails,
-          noBreakup: parentNoBreakup,
-          totalPaid: parentTotalPaid,
-          totalReceived: parentTotalReceived,
-          totalPending: parentTotalPending,
-          notes: parentNotes,
-          tokenNo: tokenVal,
-          serialNo: tokenVal,
-        };
-        await addDoc(collection(db, 'claims'), parentClaim);
-      }
-
-      // 3. Submit Child Claim
-      if (childSelected && !hasChild) {
-        currentTokenOffset++;
-        const tokenVal = `${prefix}-${1000 + baseTokenNo + currentTokenOffset}`;
-        const relType = childRelation || 'Child';
-        assignedTokens[relType] = tokenVal;
-        await deleteExistingForCategory(['Son', 'Daughter']);
-        const childClaim = {
-          ...commonData,
-          relation: childRelation,
-          relationLabel: childRelation === 'Son' ? 'മകൻ (Son)' : 'മകൾ (Daughter)',
-          userName: childName,
-          highrichId: childHighrichId,
-          sponsorName: childSponsorName.trim(),
-          sponsorMobile: childSponsorMobile.trim(),
-          categories: childCategories,
-          otherCategory: childOtherCategory,
-          categoryDetails: childCategoryDetails,
-          noBreakup: childNoBreakup,
-          totalPaid: childTotalPaid,
-          totalReceived: childTotalReceived,
-          totalPending: childTotalPending,
-          notes: childNotes,
-          tokenNo: tokenVal,
-          serialNo: tokenVal,
-        };
-        await addDoc(collection(db, 'claims'), childClaim);
-      }
-
-      // 4. Submit Spouse Claim
-      if (spouseSelected && !hasSpouse) {
-        currentTokenOffset++;
-        const tokenVal = `${prefix}-${1000 + baseTokenNo + currentTokenOffset}`;
+      // 2. Submit or Update Spouse Claim (ഭാര്യ / ഭർത്താവ്)
+      if (spouseSelected && (!hasSpouse || editingSpouse)) {
+        let tokenVal = spouseClaim?.tokenNo || spouseClaim?.serialNo;
+        if (!tokenVal) {
+          currentTokenOffset++;
+          tokenVal = `${prefix}-${1000 + baseTokenNo + currentTokenOffset}`;
+        }
         const relType = spouseRelation || 'Spouse';
         assignedTokens[relType] = tokenVal;
         await deleteExistingForCategory(['Wife', 'Husband']);
-        const spouseClaim = {
+        const newSpouseClaim = {
           ...commonData,
+          userMobile: spouseMobile || customerMobile || user.mobile || '',
+          memberMobile: spouseMobile || customerMobile || user.mobile || '',
           relation: spouseRelation,
           relationLabel: spouseRelation === 'Wife' ? 'ഭാര്യ (Wife)' : 'ഭർത്താവ് (Husband)',
           userName: spouseName,
+          panNumber: spousePan || customerPan || user.panNumber || user.pan || '',
+          settlementAccountNumber: spouseSettlementAccountNumber || settlementAccountNumber || user.settlementAccountNumber || user.accountNumber || '',
+          settlementBankName: spouseSettlementBankName || settlementBankName || user.settlementBankName || user.bankName || '',
+          settlementBranch: spouseSettlementBranch || settlementBranch || user.settlementBranch || user.branch || '',
+          settlementIfsc: spouseSettlementIfsc || settlementIfsc || user.settlementIfsc || user.ifscCode || '',
+          settlementAccountHolder: spouseSettlementAccountHolder || spouseName || '',
+          paidFromAccount: spousePaidFromAccount || paidFromAccount || '',
+          paidFromBank: spousePaidFromBank || paidFromBank || '',
+          paidFromBranch: spousePaidFromBranch || paidFromBranch || '',
+          paidFromIfsc: spousePaidFromIfsc || paidFromIfsc || '',
+          paymentDate: spousePaymentDate || paymentDate || user.paymentDate || '',
           highrichId: spouseHighrichId,
           sponsorName: spouseSponsorName.trim(),
           sponsorMobile: spouseSponsorMobile.trim(),
@@ -857,8 +1281,104 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           tokenNo: tokenVal,
           serialNo: tokenVal,
         };
-        await addDoc(collection(db, 'claims'), spouseClaim);
+        await addDoc(collection(db, 'claims'), newSpouseClaim);
       }
+
+      // 3. Submit or Update Parent Claim (അമ്മ / അച്ഛൻ)
+      if (parentSelected && (!hasParent || editingParent)) {
+        let tokenVal = parentClaim?.tokenNo || parentClaim?.serialNo;
+        if (!tokenVal) {
+          currentTokenOffset++;
+          tokenVal = `${prefix}-${1000 + baseTokenNo + currentTokenOffset}`;
+        }
+        const relType = parentRelation || 'Parent';
+        assignedTokens[relType] = tokenVal;
+        await deleteExistingForCategory(['Mother', 'Father']);
+        const newParentClaim = {
+          ...commonData,
+          userMobile: parentMobile || customerMobile || user.mobile || '',
+          memberMobile: parentMobile || customerMobile || user.mobile || '',
+          relation: parentRelation,
+          relationLabel: parentRelation === 'Mother' ? 'അമ്മ (Mother)' : 'അച്ഛൻ (Father)',
+          userName: parentName,
+          panNumber: parentPan || customerPan || user.panNumber || user.pan || '',
+          settlementAccountNumber: parentSettlementAccountNumber || settlementAccountNumber || user.settlementAccountNumber || user.accountNumber || '',
+          settlementBankName: parentSettlementBankName || settlementBankName || user.settlementBankName || user.bankName || '',
+          settlementBranch: parentSettlementBranch || settlementBranch || user.settlementBranch || user.branch || '',
+          settlementIfsc: parentSettlementIfsc || settlementIfsc || user.settlementIfsc || user.ifscCode || '',
+          settlementAccountHolder: parentSettlementAccountHolder || parentName || '',
+          paidFromAccount: parentPaidFromAccount || paidFromAccount || '',
+          paidFromBank: parentPaidFromBank || paidFromBank || '',
+          paidFromBranch: parentPaidFromBranch || paidFromBranch || '',
+          paidFromIfsc: parentPaidFromIfsc || paidFromIfsc || '',
+          paymentDate: parentPaymentDate || paymentDate || user.paymentDate || '',
+          highrichId: parentHighrichId,
+          sponsorName: parentSponsorName.trim(),
+          sponsorMobile: parentSponsorMobile.trim(),
+          categories: parentCategories,
+          otherCategory: parentOtherCategory,
+          categoryDetails: parentCategoryDetails,
+          noBreakup: parentNoBreakup,
+          totalPaid: parentTotalPaid,
+          totalReceived: parentTotalReceived,
+          totalPending: parentTotalPending,
+          notes: parentNotes,
+          tokenNo: tokenVal,
+          serialNo: tokenVal,
+        };
+        await addDoc(collection(db, 'claims'), newParentClaim);
+      }
+
+      // 4. Submit or Update Child Claim (മകൻ / മകൾ)
+      if (childSelected && (!hasChild || editingChild)) {
+        let tokenVal = childClaim?.tokenNo || childClaim?.serialNo;
+        if (!tokenVal) {
+          currentTokenOffset++;
+          tokenVal = `${prefix}-${1000 + baseTokenNo + currentTokenOffset}`;
+        }
+        const relType = childRelation || 'Child';
+        assignedTokens[relType] = tokenVal;
+        await deleteExistingForCategory(['Son', 'Daughter']);
+        const newChildClaim = {
+          ...commonData,
+          userMobile: childMobile || customerMobile || user.mobile || '',
+          memberMobile: childMobile || customerMobile || user.mobile || '',
+          relation: childRelation,
+          relationLabel: childRelation === 'Son' ? 'മകൻ (Son)' : 'മകൾ (Daughter)',
+          userName: childName,
+          panNumber: childPan || customerPan || user.panNumber || user.pan || '',
+          settlementAccountNumber: childSettlementAccountNumber || settlementAccountNumber || user.settlementAccountNumber || user.accountNumber || '',
+          settlementBankName: childSettlementBankName || settlementBankName || user.settlementBankName || user.bankName || '',
+          settlementBranch: childSettlementBranch || settlementBranch || user.settlementBranch || user.branch || '',
+          settlementIfsc: childSettlementIfsc || settlementIfsc || user.settlementIfsc || user.ifscCode || '',
+          settlementAccountHolder: childSettlementAccountHolder || childName || '',
+          paidFromAccount: childPaidFromAccount || paidFromAccount || '',
+          paidFromBank: childPaidFromBank || paidFromBank || '',
+          paidFromBranch: childPaidFromBranch || paidFromBranch || '',
+          paidFromIfsc: childPaidFromIfsc || paidFromIfsc || '',
+          paymentDate: childPaymentDate || paymentDate || user.paymentDate || '',
+          highrichId: childHighrichId,
+          sponsorName: childSponsorName.trim(),
+          sponsorMobile: childSponsorMobile.trim(),
+          categories: childCategories,
+          otherCategory: childOtherCategory,
+          categoryDetails: childCategoryDetails,
+          noBreakup: childNoBreakup,
+          totalPaid: childTotalPaid,
+          totalReceived: childTotalReceived,
+          totalPending: childTotalPending,
+          notes: childNotes,
+          tokenNo: tokenVal,
+          serialNo: tokenVal,
+        };
+        await addDoc(collection(db, 'claims'), newChildClaim);
+      }
+
+      setEditingSelf(false);
+      setEditingSpouse(false);
+      setEditingParent(false);
+      setEditingChild(false);
+      await checkExistingClaims();
 
       setNewlyAssignedTokens(assignedTokens);
 
@@ -901,6 +1421,254 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
     }
   };
 
+  // Reusable Form Column Box with vibrant colored button/pill header and clearly demarcated column borders
+  const FormFieldBox = ({
+    label,
+    badge,
+    badgeType,
+    required,
+    optional,
+    icon,
+    theme = 'blue',
+    className = '',
+    children,
+    hint,
+  }: {
+    label: string;
+    badge?: string;
+    badgeType?: string;
+    required?: boolean;
+    optional?: boolean;
+    icon?: React.ReactNode;
+    theme?: 'blue' | 'navy' | 'indigo' | 'emerald' | 'teal' | 'amber' | 'magenta' | 'purple' | 'slate' | 'rose';
+    className?: string;
+    children: React.ReactNode;
+    hint?: string;
+  }) => {
+    const themeStyles: Record<string, string> = {
+      blue: 'bg-[#003366] text-white shadow-blue-900/20',
+      navy: 'bg-slate-900 text-white shadow-slate-900/20',
+      indigo: 'bg-indigo-700 text-white shadow-indigo-900/20',
+      emerald: 'bg-emerald-700 text-white shadow-emerald-900/20',
+      teal: 'bg-teal-700 text-white shadow-teal-900/20',
+      amber: 'bg-amber-600 text-white shadow-amber-900/20',
+      magenta: 'bg-brand-magenta text-white shadow-pink-900/20',
+      purple: 'bg-purple-700 text-white shadow-purple-900/20',
+      slate: 'bg-slate-700 text-white shadow-slate-900/20',
+      rose: 'bg-rose-700 text-white shadow-rose-900/20',
+    };
+
+    return (
+      <div className={`group space-y-2 bg-slate-50/90 hover:bg-white border-2 border-slate-300 hover:border-indigo-400 focus-within:border-brand-blue focus-within:bg-white focus-within:ring-4 focus-within:ring-brand-blue/10 transition-all rounded-2xl p-3 sm:p-3.5 shadow-xs flex flex-col justify-between ${className}`}>
+        <div className="space-y-1">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            {/* Colored Button/Pill Label */}
+            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-black tracking-wide shadow-2xs ${themeStyles[theme] || themeStyles.blue}`}>
+              {icon && <span className="text-xs shrink-0">{icon}</span>}
+              <span className="leading-tight">{label}</span>
+            </div>
+            {required && (
+              <span className="text-[9px] font-black text-rose-700 bg-rose-100 border border-rose-200 px-2 py-0.5 rounded-md shrink-0 uppercase tracking-wider">
+                {formLang === 'english' ? 'Required *' : 'നിർബന്ധം *'}
+              </span>
+            )}
+            {optional && (
+              <span className="text-[9px] font-black text-slate-500 bg-slate-200/80 px-2 py-0.5 rounded-md shrink-0">
+                {formLang === 'english' ? 'Optional' : 'ഓപ്ഷണൽ'}
+              </span>
+            )}
+            {badge && !required && !optional && (
+              <span className="text-[9px] font-bold text-slate-600 bg-slate-200/80 px-2 py-0.5 rounded-md shrink-0">
+                {badge}
+              </span>
+            )}
+          </div>
+          {hint && (
+            <p className="text-[10px] text-slate-500 font-semibold px-0.5 leading-tight">{hint}</p>
+          )}
+        </div>
+        <div className="pt-0.5">{children}</div>
+      </div>
+    );
+  };
+
+  const renderFutureAndConditionsBlock = (formIdSuffix: string = 'self') => (
+    <div className="space-y-4 pt-4 border-t-2 border-amber-300/80">
+      {/* 1. FUTURE PREFERENCE (ഭാവിയിലെ താല്പര്യം) */}
+      <Card className={`border-2 rounded-2xl shadow-xs overflow-hidden bg-white transition-all duration-300 ${
+        !futurePreference 
+          ? 'border-rose-400 bg-rose-50/10 shadow-[0_0_15px_rgba(239,68,68,0.1)]' 
+          : 'border-emerald-200 bg-white'
+      }`}>
+        <CardContent className="p-4 sm:p-5 space-y-3">
+          <div className="flex items-center justify-between border-b pb-2.5 border-slate-100 flex-wrap gap-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-brand-magenta text-white text-xs font-black uppercase tracking-wider shadow-2xs">
+              <Heart className="w-3.5 h-3.5 animate-pulse" />
+              <span>{t('Future Preference', 'ഭാവിയിലെ താല്പര്യം')}</span>
+            </div>
+            {!futurePreference ? (
+              <Badge className="bg-rose-500 hover:bg-rose-600 text-white font-black text-[9px] uppercase px-2 py-0.5 rounded animate-bounce">
+                ⚠️ {t('Selection Required', 'തിരഞ്ഞെടുക്കൽ നിർബന്ധം')}
+              </Badge>
+            ) : (
+              <Badge className="bg-emerald-500 text-white font-black text-[9px] uppercase px-2 py-0.5 rounded flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" /> {t('Selected', 'പൂർത്തിയായി')}
+              </Badge>
+            )}
+          </div>
+          
+          <div className="space-y-2.5">
+            <p className="text-xs font-bold text-slate-700 leading-relaxed">
+              {t(
+                'If the company resumes operations, what is your family preference? (Select family preference) *',
+                'കമ്പനി പ്രവർത്തനം പുനരാരംഭിക്കുകയാണെങ്കിൽ താങ്കളുടെ കുടുംബത്തിന്റെ താൽപര്യം? (Select family preference) *'
+              )}
+            </p>
+            <RadioGroup value={futurePreference} onValueChange={setFuturePreference} className="space-y-2">
+              {PREFERENCES.map(pref => {
+                const isSelected = futurePreference === pref.id;
+                return (
+                  <div 
+                    key={pref.id}
+                    className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer ${
+                      isSelected 
+                        ? 'border-brand-magenta bg-brand-magenta/5 shadow-xs scale-[1.005]' 
+                        : 'border-slate-200 hover:border-slate-300 bg-slate-50/60'
+                    }`}
+                    onClick={() => setFuturePreference(pref.id)}
+                  >
+                    <RadioGroupItem value={pref.id} id={`${pref.id}-${formIdSuffix}`} className="text-brand-magenta w-4 h-4" />
+                    <Label htmlFor={`${pref.id}-${formIdSuffix}`} className={`text-xs font-extrabold cursor-pointer flex-1 leading-normal ${
+                      isSelected ? 'text-brand-magenta' : 'text-slate-800'
+                    }`}>
+                      {pref.label}
+                    </Label>
+                  </div>
+                );
+              })}
+            </RadioGroup>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 2. HARDSHIP STATUS (നിലവിലെ ബുദ്ധിമുട്ടുകൾ) */}
+      <Card className={`border-2 rounded-2xl shadow-xs overflow-hidden bg-white transition-all duration-300 ${
+        hardshipStatus.length === 0 
+          ? 'border-rose-400 bg-rose-50/10 shadow-[0_0_15px_rgba(239,68,68,0.1)]' 
+          : 'border-emerald-200 bg-white'
+      }`}>
+        <CardContent className="p-4 sm:p-5 space-y-3">
+          <div className="flex items-center justify-between border-b pb-2.5 border-slate-100 flex-wrap gap-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-red-600 text-white text-xs font-black uppercase tracking-wider shadow-2xs">
+              <ShieldAlert className="w-3.5 h-3.5 animate-pulse" />
+              <span>{t('Current Hardship Status (Emergency Status)', 'നിലവിലെ ബുദ്ധിമുട്ടുകൾ')}</span>
+            </div>
+            {hardshipStatus.length === 0 ? (
+              <Badge className="bg-rose-500 hover:bg-rose-600 text-white font-black text-[9px] uppercase px-2 py-0.5 rounded animate-bounce">
+                ⚠️ {t('Selection Required', 'തിരഞ്ഞെടുക്കൽ നിർബന്ധം')}
+              </Badge>
+            ) : (
+              <Badge className="bg-emerald-500 text-white font-black text-[9px] uppercase px-2 py-0.5 rounded flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" /> {t('Selected', 'പൂർത്തിയായി')}
+              </Badge>
+            )}
+          </div>
+
+          <div className="space-y-2.5">
+            <p className="text-xs font-bold text-slate-700 leading-relaxed">
+              {t(
+                'Select hardship/crisis faced currently by you or family (Select economic hardship) *',
+                'നിലവിൽ താങ്കളോ കുടുംബമോ നേരിടുന്ന ബുദ്ധിമുട്ടുകൾ തിരഞ്ഞെടുക്കുക (Select economic hardship) *'
+              )}
+            </p>
+            <div className="grid grid-cols-1 gap-2">
+              {HARDSHIPS.map(hard => {
+                const isSelected = hardshipStatus.includes(hard.id);
+                return (
+                  <div 
+                    key={hard.id}
+                    onClick={() => {
+                      if (isSelected) {
+                        setHardshipStatus(prev => prev.filter(i => i !== hard.id));
+                      } else {
+                        if (hard.id === 'none') {
+                          setHardshipStatus(['none']);
+                        } else {
+                          setHardshipStatus(prev => [...prev.filter(i => i !== 'none'), hard.id]);
+                        }
+                      }
+                    }}
+                    className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer ${
+                      isSelected
+                        ? 'border-red-500 bg-red-50/40 shadow-xs'
+                        : 'border-slate-200 hover:border-slate-300 bg-slate-50/60'
+                    }`}
+                  >
+                    <Checkbox 
+                      checked={isSelected} 
+                      className={`pointer-events-none w-4 h-4 ${
+                        isSelected ? "border-red-600 bg-red-600 text-white" : "border-slate-300"
+                      }`} 
+                    />
+                    <Label className={`text-xs font-extrabold cursor-pointer flex-1 leading-relaxed ${
+                      isSelected ? 'text-red-700 font-bold' : 'text-slate-800'
+                    }`}>{hard.label}</Label>
+                    {['bank', 'crisis', 'medical'].includes(hard.id) && (
+                      <ShieldAlert className={`w-3.5 h-3.5 ${isSelected ? 'text-red-600 animate-bounce' : 'text-slate-400'}`} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 3. SHARING CONSENT & CONDITIONS / SAKSHYAPATHRAM (സാക്ഷ്യപത്രവും നിബന്ധനകളും) */}
+      <div 
+        onClick={() => setConsentLegal(!consentLegal)}
+        className={`p-4 sm:p-5 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3.5 ${
+          consentLegal 
+            ? 'border-emerald-500 bg-emerald-50/40 shadow-xs' 
+            : 'border-rose-400 bg-rose-50/10 shadow-[0_0_15px_rgba(239,68,68,0.1)] hover:border-rose-300'
+        }`}
+      >
+        <Checkbox 
+          checked={consentLegal} 
+          onCheckedChange={(val) => setConsentLegal(!!val)} 
+          className={`w-4.5 h-4.5 mt-0.5 pointer-events-none ${
+            consentLegal 
+              ? 'border-emerald-600 bg-emerald-600 text-white' 
+              : 'border-rose-400 bg-white'
+          }`} 
+        />
+        <div className="flex-1 min-w-0 space-y-2">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-700 text-white text-xs font-black uppercase tracking-wider shadow-2xs">
+              📜 <span>{t('Declaration & Conditions *', 'സാക്ഷ്യപത്രവും നിബന്ധനകളും *')}</span>
+            </div>
+            {!consentLegal ? (
+              <Badge className="bg-rose-500 hover:bg-rose-600 text-white font-black text-[9px] px-2 py-0.5 rounded animate-bounce">
+                ⚠️ {t('Tick required', 'സാക്ഷ്യപ്പെടുത്തൽ ആവശ്യമാണ്')}
+              </Badge>
+            ) : (
+              <Badge className="bg-emerald-500 text-white font-black text-[9px] px-2 py-0.5 rounded flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" /> {t('Declared', 'സാക്ഷ്യപ്പെടുത്തി')}
+              </Badge>
+            )}
+          </div>
+          <p className={`text-xs font-bold leading-relaxed ${consentLegal ? 'text-slate-700' : 'text-rose-950 font-extrabold'}`}>
+            {formLang === 'english' ? (
+              '“I hereby declare that the amounts entered in this claim application are approximate and true to the best of my knowledge. The Consignment Advance amount, amount received so far, and remaining final balance are to be verified by HIGHRICH ONLINE SHOPPE Pvt. Ltd. from relevant records and submitted in writing to the Hon’ble Court. In the event the court case continues indefinitely, this application is submitted for receiving the due balance amount verified by the company and sanctioned by the Hon’ble Court from the surplus interest amount reported by the company to the court. I also affirm that this form is submitted out of my own interest and with my full consent.”'
+            ) : (
+              '“ഈ അപേക്ഷയിൽ ഞാൻ രേഖപ്പെടുത്തിയിട്ടുള്ള തുക എന്റെ അറിവിന്റെ അടിസ്ഥാനത്തിൽ ഏകദേശം ശരിയാണെന്ന് സാക്ഷ്യപ്പെടുത്തുന്നു. Consignment Advance തുക, ഇതിനകം ലഭിച്ച തുക, ശേഷിക്കുന്നതായി കണക്കാക്കുന്ന അന്തിമ ബാലൻസ് എന്നിവ HIGHRICH ONLINE SHOPPE Pvt. Ltd. ബന്ധപ്പെട്ട രേഖകൾ പരിശോധിച്ച് സ്ഥിരീകരിച്ച് കോടതിയിൽ രേഖാമൂലം സമർപ്പിക്കേണ്ടതാണ്. കമ്പനിയുടെ കേസ് അനന്തമായി നീണ്ടുപോകുന്ന സാഹചര്യത്തിൽ, കമ്പനി കോടതിയെ രേഖാമൂലം അറിയിച്ചിട്ടുള്ള അധികമായി ലഭിച്ച പലിശത്തുകയിൽ നിന്ന്, കമ്പനി സ്ഥിരീകരിച്ച് കോടതി അനുവദിക്കുന്ന പക്ഷം എനിക്ക് ലഭിക്കേണ്ട തുക ലഭ്യമാക്കുന്നതിനായാണ് ഈ അപേക്ഷ സമർപ്പിക്കുന്നത്. ഈ ഫോം സമർപ്പിക്കുന്നത് എന്റെ സ്വന്തം താല്പര്യ പ്രകാരം എന്റെ പൂർണ സമ്മതത്തോടെയും ആണ് എന്ന് ബോധിപ്പിക്കുന്നു.”'
+            )}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+
   // Render Official Court Statement View
   if (formMode === 'statement' && submittedClaims.length > 0 && !completed) {
     return (
@@ -937,7 +1705,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
             )}
             <Button
               size="sm"
-              onClick={() => printCourtComboReport(user, submittedClaims)}
+              onClick={() => printCourtComboReport(combinedUserForPrint, submittedClaims)}
               className="h-9 px-3.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-sm cursor-pointer border border-blue-300/40"
             >
               <Printer className="w-3.5 h-3.5" />
@@ -945,7 +1713,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
             </Button>
             <Button
               size="sm"
-              onClick={() => downloadCourtComboPdf(user, submittedClaims)}
+              onClick={() => downloadCourtComboPdf(combinedUserForPrint, submittedClaims)}
               className="h-9 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-sm cursor-pointer border border-emerald-400/40"
             >
               <Download className="w-3.5 h-3.5" />
@@ -1017,8 +1785,8 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
             <iframe
               srcDoc={
                 selectedStatementIdx === -1
-                  ? getCourtComboHtml(user, submittedClaims)
-                  : getSingleCourtClaimHtml(user, submittedClaims[selectedStatementIdx], selectedStatementIdx + 1, submittedClaims.length)
+                  ? getCourtComboHtml(combinedUserForPrint, submittedClaims)
+                  : getSingleCourtClaimHtml(combinedUserForPrint, submittedClaims[selectedStatementIdx], selectedStatementIdx + 1, submittedClaims.length)
               }
               title="Consignment Advance Court Statement"
               className="w-full h-full min-h-[700px] border-0 bg-white"
@@ -1028,18 +1796,18 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           {/* Bottom Footer with Back to Dashboard */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 pb-8">
             <p className="text-xs text-slate-600 font-bold">
-              ✓ ഈ രേഖയാണ് കോടതിയിലേക്കും സംഘടന അഡ്മിൻ പാനലിലേക്കും സമർപ്പിക്കപ്പെട്ടിട്ടുള്ള ഔദ്യോഗിക ഫോം.
+              ✓ ഈ രേഖയാണ് കമ്പനിയിലേക്ക് / കോടതിയിലേക്ക് സമർപ്പിക്കപ്പെടേണ്ട ഉപഭോക്താവിന്റെ ഔദ്യോഗിക ക്ലെയിം സെറ്റിൽമെന്റ് ഫോം.
             </p>
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <Button
-                onClick={() => printCourtComboReport(user, submittedClaims)}
+                onClick={() => printCourtComboReport(combinedUserForPrint, submittedClaims)}
                 className="flex-1 sm:flex-none h-11 px-5 rounded-xl bg-[#003366] hover:bg-[#002244] text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer"
               >
                 <Printer className="w-4 h-4" />
                 പ്രിന്റ് (Print A4)
               </Button>
               <Button
-                onClick={() => downloadCourtComboPdf(user, submittedClaims)}
+                onClick={() => downloadCourtComboPdf(combinedUserForPrint, submittedClaims)}
                 variant="outline"
                 className="flex-1 sm:flex-none h-11 px-5 rounded-xl border-2 border-slate-300 text-slate-800 hover:bg-slate-100 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm cursor-pointer bg-white"
               >
@@ -1167,10 +1935,6 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                       <div className="flex justify-between py-1 border-b border-white/5">
                         <span className="text-slate-400 font-extrabold text-[8px] uppercase tracking-wider">ബന്ധം (Relation)</span>
                         <span className="text-brand-magenta font-black">{relationLabel}</span>
-                      </div>
-                      <div className="flex justify-between py-1 border-b border-white/5">
-                        <span className="text-slate-400 font-extrabold text-[8px] uppercase tracking-wider">മെമ്പർ ID (Membership ID)</span>
-                        <span className="text-slate-200 font-black font-mono">{user.membershipId || 'KL/HCRS/PENDING'}</span>
                       </div>
                       <div className="flex justify-between py-1">
                         <span className="text-slate-400 font-extrabold text-[8px] uppercase tracking-wider">സെക്യൂർ ചെയ്ത ദിവസം (Date)</span>
@@ -1354,254 +2118,461 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
 
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-8 max-w-2xl mx-auto w-full">
         
-        {/* User Info Read-only */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 grid grid-cols-2 gap-4 shadow-sm">
-            <div className="space-y-1">
-              <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Active Account Member</p>
-              <p className="text-xs font-black text-slate-900 truncate">{user.name}</p>
+        {/* Form Language Selector Bar */}
+        <div className="bg-white rounded-2xl p-3 border-2 border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-brand-blue/10 flex items-center justify-center text-brand-blue font-bold text-sm">
+              🌐
             </div>
-            <div className="space-y-1">
-              <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Mobile Number</p>
-              <p className="text-xs font-black text-slate-900">{user.mobile}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Membership ID</p>
-              <p className="text-xs font-black text-brand-blue truncate">{user.membershipId || 'Wait for approval'}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">District</p>
-              <p className="text-xs font-black text-slate-700 truncate">{user.district || 'N/A'}</p>
-            </div>
-        </div>
-
-        {/* Information Notice */}
-        <div className="bg-amber-50 border border-amber-200 rounded-3xl p-5 shadow-sm space-y-2">
-            <div className="flex items-start gap-2.5">
-              <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                <h4 className="text-[11px] font-black text-amber-800 uppercase tracking-wide">പ്രധാന നിർദ്ദേശം (Warning & Limit Rules)</h4>
-                <p className="text-slate-700 font-bold text-[11px] leading-relaxed">
-                  ഈ ഫോം വഴി <strong>3 വ്യക്തികളുടെ വരെ (അതോടൊപ്പം അച്ഛൻ/അമ്മ അല്ലെങ്കിൽ മകൻ/മകൾ)</strong> വിഹിതങ്ങൾ പരമാവധി ക്ലെയിം ചെയ്യാവുന്നതാണ്. ഓരോ വ്യക്തിയെയും അഡ്മിൻ പാനലിൽ വ്യത്യസ്ത വ്യക്തികളായി കണക്കാക്കി പരിഗണിക്കുന്നതാണ്.
-                </p>
-              </div>
-            </div>
-        </div>
-
-        {/* Previously Submitted Claims and remaining count notice */}
-        {submittedClaims.length > 0 && (
-          <div className="space-y-4">
-            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 sm:p-6 pb-6 sm:pb-7 shadow-sm space-y-2">
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <h4 className="text-[11px] font-black text-emerald-900 uppercase tracking-wide">രജിസ്ട്രേഷൻ പുരോഗതി (Registry Status)</h4>
-                    <p className="text-slate-800 font-extrabold text-xs sm:text-sm leading-relaxed">
-                      താങ്കളുടെ <strong>{submittedClaims.length} ക്ലെയിം ഫോം(കൾ)</strong> ഇതിനകം സമർപ്പിച്ചിട്ടുള്ളതാണ്.
-                      {submittedClaims.length < 4 ? (
-                        <> കുടുംബത്തിലെ ബാക്കി <strong>{4 - submittedClaims.length} വ്യക്തികൾക്കുള്ള ഫോം കൂടി</strong> താഴെ പൂരിപ്പിച്ചു സബ്മിറ്റ് ചെയ്യാവുന്നതാണ്.</>
-                      ) : (
-                        <> എല്ലാ അവസരങ്ങളും പരമാവധി ഉപയോഗിച്ചു കഴിഞ്ഞു.</>
-                      )}
-                    </p>
-                  </div>
-                </div>
-            </div>
-
-            <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm space-y-3">
-              <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center gap-1.5 leading-none">
-                <Users className="w-3.5 h-3.5 text-blue-600" />
-                റജിസ്റ്റർ ചെയ്ത കുടുംബാംഗങ്ങൾ (Registered Claims)
+            <div>
+              <h4 className="text-xs font-black text-slate-800 uppercase tracking-tight">
+                {formLang === 'english' ? 'Form Display Language' : formLang === 'malayalam' ? 'ഫോം ഭാഷ' : 'ഫോം ഭാഷ (Form Language)'}
               </h4>
-              <div className="grid grid-cols-1 gap-2.5">
-                {submittedClaims.map((claim, idx) => (
-                  <div key={claim.id || idx} className="bg-slate-50 border border-slate-100 rounded-2xl p-3 flex justify-between items-center text-xs font-bold text-slate-700 shadow-xs">
-                    <div>
-                      <p className="font-extrabold text-slate-800 text-[11.5px] leading-tight">{claim.userName}</p>
-                      <p className="text-[9px] font-bold text-slate-405 mt-0.5 uppercase tracking-wider">
-                        {claim.relation === 'Self' ? 'സ്വന്തം (Self)' :
-                         claim.relation === 'Mother' ? 'അമ്മ (Mother)' :
-                         claim.relation === 'Father' ? 'അച്ഛൻ (Father)' :
-                         claim.relation === 'Son' ? 'മകൻ (Son)' :
-                         claim.relation === 'Daughter' ? 'മകൾ (Daughter)' :
-                         claim.relation === 'Wife' ? 'ഭാര്യ (Wife)' :
-                         claim.relation === 'Husband' ? 'ഭർത്താവ് (Husband)' : claim.relationLabel || claim.relation}
-                      </p>
-                    </div>
-                    <div className="text-right flex flex-col items-end gap-1">
-                      <span className="text-[9px] font-black text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100 font-mono">
-                        സീരിയൽ #{claim.tokenNo || 'N/A'}
-                      </span>
-                      <div>
-                        <p className="text-[8px] text-slate-400 uppercase tracking-wider leading-none mb-0.5">Pending Amount</p>
-                        <p className="text-xs font-black text-brand-magenta">₹{claim.totalPending?.toLocaleString('en-IN')}</p>
-                      </div>
-                    </div>
+              <p className="text-[10px] font-bold text-slate-500">
+                {formLang === 'english'
+                  ? 'Print section always outputs pure English only'
+                  : formLang === 'malayalam'
+                  ? 'പ്രിന്റ് സെക്ഷനിൽ ഇംഗ്ലീഷ് മാത്രമായിരിക്കും വരുന്നത്'
+                  : 'പ്രിന്റ് സെക്ഷനിൽ ഇംഗ്ലീഷ് മാത്രമായിരിക്കും വരുന്നത് (Print is always in English)'}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/80">
+            <button
+              type="button"
+              onClick={() => setFormLang('english')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                formLang === 'english'
+                  ? 'bg-brand-blue text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+              }`}
+            >
+              English
+            </button>
+            <button
+              type="button"
+              onClick={() => setFormLang('malayalam')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                formLang === 'malayalam'
+                  ? 'bg-brand-blue text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+              }`}
+            >
+              മലയാളം
+            </button>
+            <button
+              type="button"
+              onClick={() => setFormLang('bilingual')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                formLang === 'bilingual'
+                  ? 'bg-brand-blue text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+              }`}
+            >
+              Eng + മല
+            </button>
+          </div>
+        </div>
+
+        {/* SUBMITTED CARD OR FULL FORM: 1. APPLICANT CLAIM FORM (SELF / PRIMARY) */}
+        {hasSelf && !editingSelf && (
+          <div className="border-2 border-emerald-400/80 bg-gradient-to-br from-emerald-50/90 via-white to-amber-50/40 rounded-3xl shadow-lg p-5 sm:p-6 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-200/80 pb-3.5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-emerald-300">
+                  ✓ 1
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight">
+                      {selfClaim?.userName || customerName || user.name}
+                    </h3>
+                    <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black">
+                      {t('1. Self (സമർപ്പിച്ചു)', '1. സ്വന്തം (സമർപ്പിച്ചു)')}
+                    </Badge>
                   </div>
-                ))}
+                  <p className="text-[11px] font-bold text-emerald-800 flex items-center gap-1.5 mt-0.5">
+                    <span>{t('Token / Serial No:', 'ഔദ്യോഗിക ടോക്കൺ നമ്പർ:')}</span>
+                    <span className="font-mono bg-emerald-600 text-white px-2 py-0.5 rounded-lg text-xs font-black shadow-2xs">
+                      {selfClaim?.tokenNo || selfClaim?.serialNo || 'SUBMITTED'}
+                    </span>
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                onClick={() => {
+                  if (selfClaim) populateSelfFromClaim(selfClaim);
+                  setEditingSelf(true);
+                  setSelfSelected(true);
+                }}
+                className="h-10 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md cursor-pointer"
+              >
+                <Edit3 className="w-4 h-4 text-slate-950" />
+                <span>{t('Edit Form 1', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5">
+                <span className="text-[10px] text-slate-500 font-bold block">{t('Highrich ID', 'ഹൈറിച്ച് ഐഡി')}</span>
+                <span className="font-mono font-bold text-slate-800">{selfClaim?.highrichId || '—'}</span>
+              </div>
+              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5">
+                <span className="text-[10px] text-slate-500 font-bold block">{t('Mobile Number', 'മൊബൈൽ നമ്പർ')}</span>
+                <span className="font-mono font-bold text-slate-800">{selfClaim?.userMobile || customerMobile || user.mobile || '—'}</span>
+              </div>
+              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5 col-span-2 sm:col-span-1">
+                <span className="text-[10px] text-slate-500 font-bold block">{t('Total Pending', 'ആകെ മിച്ച തുക')}</span>
+                <span className="font-black text-emerald-700">₹{(selfClaim?.totalPending || selfTotalPending || 0).toLocaleString('en-IN')}</span>
               </div>
             </div>
           </div>
         )}
 
-        {/* ALL 4 SLOTS SUBMITTED BANNER */}
-        {submittedClaims.length >= 4 && (
-          <Card className="border-2 border-emerald-400/80 rounded-3xl shadow-md overflow-hidden bg-gradient-to-br from-emerald-50 via-teal-50/40 to-white p-6 text-center space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-600 text-white mx-auto flex items-center justify-center shadow-lg shadow-emerald-600/20">
-              <CheckCircle2 className="w-7 h-7" />
-            </div>
-            <div className="space-y-1.5">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 text-xs font-black">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
-                <span>എല്ലാ 4 ഫോമുകളും പൂർത്തിയായി (4/4 Complete) ✅</span>
+        {/* GOLD WRAPPER: 1. APPLICANT CLAIM FORM (SELF / PRIMARY) */}
+        {(!hasSelf || editingSelf) && (
+        <div className="border-2 border-amber-400 dark:border-amber-500 bg-white/95 backdrop-blur-xl rounded-3xl shadow-xl ring-2 ring-amber-400/20 overflow-hidden p-4 sm:p-6 space-y-6">
+          {editingSelf && (
+            <div className="bg-amber-100 border-2 border-amber-400 rounded-2xl p-3 flex items-center justify-between gap-3 text-amber-950">
+              <div className="flex items-center gap-2">
+                <Edit3 className="w-4 h-4 text-amber-700" />
+                <span className="text-xs font-black uppercase tracking-wide">
+                  {t('Editing Form 1 (Self) Information', 'ഫോം 1 (സ്വന്തം വിവരങ്ങൾ) എഡിറ്റ് ചെയ്യുന്നു')}
+                </span>
               </div>
-              <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight">കുടുംബത്തിലെ എല്ലാവരുടെയും വിവരങ്ങൾ സമർപ്പിച്ചു കഴിഞ്ഞു</h3>
-              <p className="text-xs font-bold text-slate-600 max-w-md mx-auto leading-relaxed">
-                ഔദ്യോഗിക കോർട്ട് റെക്കോർഡ് (Court Statement Record) കാണുന്നതിനും A4 പ്രിന്റ് / ഡൗൺലോഡ് ചെയ്യുന്നതിനും താഴെയുള്ള ബട്ടൺ ഉപയോഗിക്കുക.
-              </p>
-            </div>
-            <div className="flex flex-wrap justify-center gap-3 pt-2">
               <Button
-                onClick={() => setFormMode('statement')}
-                className="bg-brand-blue hover:bg-brand-blue/90 text-white font-black text-xs uppercase px-5 h-11 rounded-xl shadow-md flex items-center gap-2 cursor-pointer"
-              >
-                <FileText className="w-4 h-4" />
-                <span>ഔദ്യോഗിക കോർട്ട് സ്റ്റേറ്റ്‌മെന്റ് കാണുക</span>
-              </Button>
-              <Button
+                type="button"
+                size="sm"
                 variant="outline"
-                onClick={onBack || onClose}
-                className="border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs uppercase px-4 h-11 rounded-xl cursor-pointer"
+                onClick={() => setEditingSelf(false)}
+                className="h-8 px-3 text-[11px] font-bold border-amber-400 text-amber-900 bg-white hover:bg-amber-50"
               >
-                തിരികെ ഡാഷ്‌ബോർഡിലേക്ക്
+                {t('Cancel Edit', 'റദ്ദാക്കുക')}
               </Button>
             </div>
-          </Card>
-        )}
+          )}
+
+          <div className="flex flex-wrap items-center justify-between pb-4 border-b-2 border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 p-4 sm:p-5 rounded-t-3xl gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-amber-300">
+                👑 1
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                  {t('1. APPLICANT CLAIM FORM (PRIMARY / SELF)', '1. അപേക്ഷകന്റെ സ്വന്തം ക്ലെയിം ഫോം')}
+                </h3>
+                <p className="text-[10px] sm:text-xs font-bold text-amber-900 uppercase tracking-wider">
+                  {t('Primary Claimant Profile & Settlement Form', 'പ്രധാന അപേക്ഷകന്റെ വ്യക്തിഗത & സെറ്റിൽമെന്റ് ഫോം')}
+                </p>
+              </div>
+            </div>
+            <Badge className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black rounded-xl px-3 py-1 shadow-xs">
+              {t('Form 1 (Self)', 'ഫോം 1 (സ്വന്തം)')}
+            </Badge>
+          </div>
+
+        {/* 1. Customer & Declarant Information Input Card */}
+        <Card className="border-2 border-slate-300 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden bg-white/95 backdrop-blur-xl">
+          <CardContent className="p-5 md:p-6 space-y-4">
+            <div className="flex items-center justify-between border-b pb-3.5 border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#003366] to-slate-800 text-white flex items-center justify-center text-xs font-black shadow-sm ring-2 ring-slate-100">
+                  👤
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide">
+                    {t('1. Applicant Personal Profile (Customer & Declarant Profile)', '1. അപേക്ഷകന്റെ വ്യക്തിഗത വിവരങ്ങൾ')}
+                  </h4>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase">
+                    {t('Customer Settlement Form Information', 'കസ്റ്റമർ സെറ്റിൽമെന്റ് ഫോം വിവരങ്ങൾ')}
+                  </p>
+                </div>
+              </div>
+              <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold rounded-lg px-2 py-0.5">
+                {t('Auto-fills A4 Print Form', 'A4 പ്രിന്റ് ഫോമിലേക്ക് ചേർക്കുന്നു')}
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Applicant Name Column */}
+              <FormFieldBox 
+                label={tLabel('Applicant Name (Customer Name) *', 'അപേക്ഷകന്റെ പേര് *')}
+                icon="👤"
+                theme="blue"
+                required
+              >
+                <Input 
+                  value={customerName} 
+                  onChange={(e) => setCustomerName(e.target.value)} 
+                  placeholder={tPlaceholder('Full Name as per records', 'രേഖകളിലുള്ള മുഴുവൻ പേര്')}
+                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-brand-blue text-xs sm:text-sm text-slate-900 shadow-2xs"
+                />
+              </FormFieldBox>
+
+              {/* Registered Mobile Number Column */}
+              <FormFieldBox 
+                label={tLabel('Registered Mobile Number *', 'രജിസ്റ്റേർഡ് മൊബൈൽ നമ്പർ *')}
+                icon="📱"
+                theme="blue"
+                required
+              >
+                <Input 
+                  value={customerMobile} 
+                  onChange={(e) => setCustomerMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                  placeholder={tPlaceholder('10-digit Mobile Number', '10 അക്ക മൊബൈൽ നമ്പർ')}
+                  type="tel"
+                  maxLength={10}
+                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-brand-blue text-xs sm:text-sm text-slate-900 font-mono shadow-2xs"
+                />
+              </FormFieldBox>
+
+              {/* Full Address Column */}
+              <FormFieldBox 
+                label={tLabel('Full Residential Address', 'മേൽവിലാസം')}
+                icon="🏠"
+                theme="indigo"
+                className="md:col-span-2"
+              >
+                <Input 
+                  value={customerAddress} 
+                  onChange={(e) => setCustomerAddress(e.target.value)} 
+                  placeholder={tPlaceholder('House Name, Street, Locality', 'വീട്ടുപേര്, സ്ഥലം, ലൊക്കാലിറ്റി')}
+                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
+                />
+              </FormFieldBox>
+
+              {/* District Column */}
+              <FormFieldBox 
+                label={tLabel('District', 'ജില്ല')}
+                icon="📍"
+                theme="indigo"
+              >
+                <Input 
+                  value={customerDistrict} 
+                  onChange={(e) => setCustomerDistrict(e.target.value)} 
+                  placeholder={tPlaceholder('District', 'ജില്ല')}
+                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
+                />
+              </FormFieldBox>
+
+              {/* Assembly Constituency Column */}
+              <FormFieldBox 
+                label={tLabel('Assembly Constituency', 'നിയമസഭാ മണ്ഡലം')}
+                icon="🏛️"
+                theme="indigo"
+              >
+                <Input 
+                  value={customerConstituency} 
+                  onChange={(e) => setCustomerConstituency(e.target.value)} 
+                  placeholder={tPlaceholder('Assembly Constituency', 'നിയമസഭാ മണ്ഡലം')}
+                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
+                />
+              </FormFieldBox>
+
+              {/* Post Office Column */}
+              <FormFieldBox 
+                label={tLabel('Post Office', 'പോസ്റ്റ് ഓഫീസ്')}
+                icon="📬"
+                theme="slate"
+              >
+                <Input 
+                  value={customerPostOffice} 
+                  onChange={(e) => setCustomerPostOffice(e.target.value)} 
+                  placeholder={tPlaceholder('Post Office', 'പോസ്റ്റ് ഓഫീസ്')}
+                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-slate-700 text-xs sm:text-sm text-slate-900 shadow-2xs"
+                />
+              </FormFieldBox>
+
+              {/* PIN Code Column */}
+              <FormFieldBox 
+                label={tLabel('PIN Code', 'പിൻകോഡ്')}
+                icon="📮"
+                theme="slate"
+              >
+                <Input 
+                  value={customerPincode} 
+                  onChange={(e) => setCustomerPincode(e.target.value.replace(/\D/g, '').slice(0, 6))} 
+                  placeholder={tPlaceholder('6-digit PIN', '6 അക്ക പിൻകോഡ്')}
+                  maxLength={6}
+                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-slate-700 text-xs sm:text-sm text-slate-900 font-mono shadow-2xs"
+                />
+              </FormFieldBox>
+
+              {/* PAN Card Column */}
+              <FormFieldBox 
+                label={tLabel('PAN Card Number', 'പാൻ കാർഡ് നമ്പർ')}
+                icon="💳"
+                theme="purple"
+                optional
+                className="md:col-span-2"
+              >
+                <Input 
+                  value={customerPan} 
+                  onChange={(e) => setCustomerPan(e.target.value.toUpperCase())} 
+                  placeholder={tPlaceholder('e.g. ABCDE1234F (Optional)', 'പാൻ നമ്പർ (ഉദാ: ABCDE1234F)')}
+                  maxLength={10}
+                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-purple-600 text-xs sm:text-sm text-slate-900 font-mono uppercase shadow-2xs"
+                />
+              </FormFieldBox>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* SLOT 1: SELF CLAIM (ആ വ്യക്തി) */}
         {!hasSelf && (
-        <Card className="border-2 border-slate-150 rounded-3xl shadow-sm overflow-hidden bg-white">
-          <CardContent className="p-5 md:p-6 space-y-6">
-            <div className="flex items-center justify-between border-b pb-4">
+        <Card className="border border-slate-200/90 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden bg-white/95 backdrop-blur-xl">
+          <CardContent className="p-5 md:p-6 space-y-5">
+            <div className="flex items-center justify-between border-b pb-3.5 border-slate-100">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-brand-blue text-white flex items-center justify-center text-xs font-black">1</div>
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-blue to-indigo-700 text-white flex items-center justify-center text-xs font-black shadow-sm ring-2 ring-blue-50">1</div>
                 <div>
-                  <h4 className="text-xs font-black text-slate-800 uppercase">സ്വന്തം ക്ലെയിം (Self Claimant)</h4>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase">Primary member details</p>
+                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide">
+                    {t('1. Self Claim (Self Claimant)', '1. സ്വന്തം ക്ലെയിം')}
+                  </h4>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase">
+                    {t('Primary member details', 'പ്രധാന വ്യക്തിയുടെ വിവരങ്ങൾ')}
+                  </p>
                 </div>
               </div>
               <Checkbox 
                 checked={selfSelected} 
                 onCheckedChange={(val) => setSelfSelected(!!val)} 
-                className="w-5 h-5 border-slate-300" 
+                className="w-5 h-5 border-slate-300 rounded-md data-[state=checked]:bg-brand-blue cursor-pointer" 
               />
             </div>
 
             {selfSelected && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">പേര് (Claimant name)</Label>
+                  {/* Claimant Name Column */}
+                  <FormFieldBox 
+                    label={tLabel('Claimant Name *', 'പേര് *')}
+                    icon="👤"
+                    theme="blue"
+                    required
+                  >
                     <Input 
                       value={selfName} 
                       onChange={(e) => setSelfName(e.target.value)} 
-                      placeholder="പേര് നൽകുക"
-                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
+                      placeholder={tPlaceholder('Enter Full Name', 'മുഴുവൻ പേര് നൽകുക')}
+                      className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-brand-blue text-xs sm:text-sm text-slate-900 shadow-2xs"
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Highrich Company ID (Optional)</Label>
+                  </FormFieldBox>
+
+                  {/* Customer ID Column */}
+                  <FormFieldBox 
+                    label={tLabel('Customer ID (Optional)', 'കസ്റ്റമർ ഐഡി (ഓപ്ഷണൽ)')}
+                    icon="🆔"
+                    theme="purple"
+                    optional
+                  >
                     <Input 
                       value={selfHighrichId} 
                       onChange={(e) => setSelfHighrichId(e.target.value)} 
-                      placeholder="Enter HR ID if known"
-                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
+                      placeholder={tPlaceholder('Enter Customer ID if known', 'കസ്റ്റമർ ഐഡി അറിയാമെങ്കിൽ നൽകുക')}
+                      className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-purple-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
                     />
-                  </div>
+                  </FormFieldBox>
                 </div>
 
-                <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+                {/* Leader / Sponsor Glass Container */}
+                <div className="bg-slate-50/90 p-4 rounded-3xl border-2 border-slate-300/80 space-y-3 shadow-xs">
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                      <span>👤 ലീഡർ / സ്പോൺസർ വിവരങ്ങൾ (Leader / Sponsor Details)</span>
-                    </Label>
-                    <span className="text-[9px] font-bold text-brand-magenta bg-brand-magenta/10 px-2 py-0.5 rounded-full">പ്രിന്റിംഗ് ഫോമിൽ വരുന്നത്</span>
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-700 text-white text-xs font-black uppercase tracking-wider shadow-2xs">
+                      👤 <span>{t('Leader / Sponsor Details', 'ലീഡർ / സ്പോൺസർ വിവരങ്ങൾ')}</span>
+                    </div>
+                    <span className="text-[9px] font-bold text-brand-magenta bg-brand-magenta/10 px-2 py-0.5 rounded-full">
+                      {t('Printed on form', 'പ്രിന്റിംഗ് ഫോമിൽ വരുന്നത്')}
+                    </span>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">ലീഡർ / സ്പോൺസർ പേര് (Leader Name)</Label>
+                    <FormFieldBox 
+                      label={tLabel('Leader / Sponsor Name', 'ലീഡർ / സ്പോൺസർ പേര്')}
+                      icon="👤"
+                      theme="indigo"
+                    >
                       <Input 
                         value={selfSponsorName} 
                         onChange={(e) => setSelfSponsorName(e.target.value)} 
-                        placeholder="Leader / Sponsor Name"
-                        className="h-11 border-slate-200 rounded-xl font-bold bg-white focus:border-brand-blue"
+                        placeholder={tPlaceholder('Leader / Sponsor Name', 'ലീഡർ / സ്പോൺസർ പേര്')}
+                        className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
                       />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">ലീഡർ / സ്പോൺസർ മൊബൈൽ (Mobile Number)</Label>
+                    </FormFieldBox>
+                    <FormFieldBox 
+                      label={tLabel('Leader / Sponsor Mobile', 'ലീഡർ / സ്പോൺസർ മൊബൈൽ')}
+                      icon="📱"
+                      theme="indigo"
+                    >
                       <Input 
                         value={selfSponsorMobile} 
                         onChange={(e) => setSelfSponsorMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
-                        placeholder="10-digit Mobile Number"
+                        placeholder={tPlaceholder('10-digit Mobile Number', '10 അക്ക മൊബൈൽ നമ്പർ')}
                         type="tel"
                         maxLength={10}
-                        className="h-11 border-slate-200 rounded-xl font-bold bg-white focus:border-brand-blue"
+                        className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 font-mono shadow-2xs"
                       />
-                    </div>
+                    </FormFieldBox>
                   </div>
-                  <p className="text-[9px] text-slate-400 font-bold">
-                    💡 ഫോം പൂരിപ്പിക്കുമ്പോൾ നൽകുന്ന ഈ ലീഡർ വിവരങ്ങളാണ് പ്രിന്റിംഗ് അപേക്ഷാ ഫോമിലും കോടതി രേഖകളിലും രേഖപ്പെടുത്തുന്നത്.
-                  </p>
                 </div>
 
                 {/* Sub-breakup Selector */}
-                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex items-center gap-3">
+                <div className="bg-slate-50/90 p-3.5 rounded-2xl border-2 border-slate-300/80 flex items-center gap-3 shadow-xs">
                    <Checkbox 
                      id="self-no-breakup"
                      checked={selfNoBreakup}
                      onCheckedChange={(val) => setSelfNoBreakup(!!val)}
-                     className="w-4 h-4"
+                     className="w-4 h-4 rounded-md cursor-pointer"
                    />
-                   <Label htmlFor="self-no-breakup" className="text-11px font-bold text-slate-600 leading-tight cursor-pointer">
-                     കാറ്റഗറി തിരിച്ചുള്ള വിവരം നൽകാൻ സാധിക്കില്ല (Single manual total)
+                   <Label htmlFor="self-no-breakup" className="text-[11px] font-bold text-slate-700 leading-tight cursor-pointer">
+                     {t('Provide single manual total without category breakup', 'കാറ്റഗറി തിരിച്ചുള്ള വിവരം നൽകാൻ സാധിക്കില്ല (Single manual total)')}
                    </Label>
                 </div>
 
                 {/* Breakup Details OR Total manual entries */}
                 {selfNoBreakup ? (
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3.5 bg-slate-50/50 p-4 border border-dashed rounded-2xl">
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black text-slate-500 uppercase">Paid Amount (തുക നൽകിയത്)</Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50/80 p-4 border-2 border-slate-300 rounded-3xl shadow-xs">
+                      <FormFieldBox 
+                        label={tLabel('Paid Amount', 'തുക നൽകിയത്')}
+                        icon="💰"
+                        theme="amber"
+                      >
                         <div className="relative">
                           <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                           <Input 
                             type="number"
-                            placeholder="Paid"
+                            placeholder={tPlaceholder('Paid Amount', 'നൽകിയ തുക')}
                             value={selfTotalPaid || ''}
                             onChange={(e) => handleTotalChange('self', 'paid', e.target.value)}
-                            className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
+                            className="pl-8 h-10 bg-white border border-slate-300 focus:border-amber-600 rounded-xl font-black text-sm text-slate-900 shadow-2xs"
                           />
                         </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black text-slate-500 uppercase">Received (ലഭിച്ച തുക)</Label>
+                      </FormFieldBox>
+                      <FormFieldBox 
+                        label={tLabel('Received Amount', 'ലഭിച്ച തുക')}
+                        icon="💵"
+                        theme="emerald"
+                      >
                         <div className="relative">
                           <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                           <Input 
                             type="number"
-                            placeholder="Received"
+                            placeholder={tPlaceholder('Received', 'ലഭിച്ച തുക')}
                             value={selfTotalReceived || ''}
                             onChange={(e) => handleTotalChange('self', 'received', e.target.value)}
-                            className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
+                            className="pl-8 h-10 bg-white border border-slate-300 focus:border-emerald-600 rounded-xl font-black text-sm text-slate-900 shadow-2xs"
                           />
                         </div>
-                      </div>
+                      </FormFieldBox>
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <Label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">ലഭ്യമായ കാറ്റഗറികൾ തിരഞ്ഞെടുക്കുക (Select Categories)</Label>
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-800 text-white text-xs font-black uppercase tracking-wider shadow-2xs">
+                      📂 <span>{tLabel('Select Applicable Categories', 'ലഭ്യമായ കാറ്റഗറികൾ തിരഞ്ഞെടുക്കുക')}</span>
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {CATEGORIES.map(cat => {
                         const isSel = selfCategories.includes(cat.id);
@@ -1611,9 +2582,9 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                             onClick={() => {
                               setSelfCategories(prev => prev.includes(cat.id) ? prev.filter(c => c !== cat.id) : [...prev, cat.id]);
                             }}
-                            className={`px-3 py-2 border rounded-xl cursor-pointer text-xs font-black flex items-center gap-2 transition-all ${isSel ? 'border-brand-magenta bg-brand-magenta/[0.04] text-brand-magenta' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                            className={`px-3.5 py-2 border-2 rounded-xl cursor-pointer text-xs font-black flex items-center gap-2 transition-all shadow-2xs ${isSel ? 'border-brand-magenta bg-brand-magenta/[0.08] text-brand-magenta scale-[1.01]' : 'border-slate-300 bg-white hover:border-slate-400 text-slate-700'}`}
                           >
-                            <Checkbox checked={isSel} className="w-4 h-4 border-slate-300 pointer-events-none" />
+                            <Checkbox checked={isSel} className="w-4 h-4 border-slate-300 pointer-events-none rounded" />
                             {cat.heading}
                           </div>
                         );
@@ -1625,23 +2596,33 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                       {selfCategories.map(catId => {
                         const cat = CATEGORIES.find(c => c.id === catId);
                         return (
-                          <div key={catId} className="flex flex-col p-3 border border-slate-150 rounded-xl bg-slate-50/40 gap-3">
-                            <div className="flex items-center justify-between gap-4">
-                              <span className="text-[11px] font-black text-slate-600 block shrink-0 w-28 truncate">{cat?.heading || catId}</span>
-                              <div className="flex gap-2 flex-1">
+                          <div key={catId} className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 border-2 border-slate-300 rounded-2xl bg-white gap-3 shadow-xs">
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#003366] text-white text-xs font-black tracking-wide shadow-2xs shrink-0">
+                              📂 <span>{cat?.heading || catId}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 sm:w-80">
+                              <div className="space-y-1">
+                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-600 text-white text-[10px] font-black uppercase">
+                                  💰 <span>{t('Paid', 'നൽകിയത്')}</span>
+                                </div>
                                 <Input 
                                   type="number" 
-                                  placeholder="Paid" 
+                                  placeholder={tPlaceholder('Paid', 'നൽകിയത്')} 
                                   value={selfCategoryDetails[catId]?.paid || ''}
                                   onChange={(e) => handleCategoryDetailChange('self', catId, 'paid', e.target.value)}
-                                  className="h-9 border-slate-200 text-xs text-slate-700 bg-white placeholder:text-[10px]"
+                                  className="h-10 border border-slate-300 text-xs font-bold text-slate-800 bg-white placeholder:text-[10px] rounded-xl shadow-2xs"
                                 />
+                              </div>
+                              <div className="space-y-1">
+                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-700 text-white text-[10px] font-black uppercase">
+                                  💵 <span>{t('Received', 'ലഭിച്ചത്')}</span>
+                                </div>
                                 <Input 
                                   type="number" 
-                                  placeholder="Recd." 
+                                  placeholder={tPlaceholder('Received', 'ലഭിച്ചത്')} 
                                   value={selfCategoryDetails[catId]?.received || ''}
                                   onChange={(e) => handleCategoryDetailChange('self', catId, 'received', e.target.value)}
-                                  className="h-9 border-slate-200 text-xs text-slate-700 bg-white placeholder:text-[10px]"
+                                  className="h-10 border border-slate-300 text-xs font-bold text-slate-800 bg-white placeholder:text-[10px] rounded-xl shadow-2xs"
                                 />
                               </div>
                             </div>
@@ -1653,20 +2634,26 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                 )}
 
                 {/* Notes Input */}
-                <div className="space-y-1.5 pt-2">
-                  <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">നോട്ട് / കൂടുതൽ വിവരങ്ങൾ (Notes / Remarks regarding payment)</Label>
+                <FormFieldBox 
+                  label={tLabel('Notes / Remarks regarding payment', 'നോട്ട് / കൂടുതൽ വിവരങ്ങൾ')}
+                  icon="📝"
+                  theme="slate"
+                >
                   <textarea 
                     value={selfNotes} 
                     onChange={(e) => setSelfNotes(e.target.value)} 
-                    placeholder="ഏത് അക്കൗണ്ടിൽ നിന്നാണ് പണം നൽകിയത് അല്ലെങ്കിൽ ട്രാൻസാക്ഷൻ സംബന്ധമായ കൂടുതൽ വിവരങ്ങൾ ഇവിടെ രേഖപ്പെടുത്താം..."
-                    className="w-full text-xs font-semibold p-3 border border-slate-200 rounded-xl focus:border-brand-magenta/85 focus:ring-0 focus:outline-none min-h-20 bg-slate-50/20"
+                    placeholder={tPlaceholder(
+                      'Enter any details regarding bank account paid from or transaction references...',
+                      'ഏത് അക്കൗണ്ടിൽ നിന്നാണ് പണം നൽകിയത് അല്ലെങ്കിൽ ട്രാൻസാക്ഷൻ സംബന്ധമായ കൂടുതൽ വിവരങ്ങൾ ഇവിടെ രേഖപ്പെടുത്താം...'
+                    )}
+                    className="w-full text-xs font-bold p-3 border border-slate-300 rounded-xl focus:border-brand-blue focus:bg-white focus:ring-0 focus:outline-none min-h-20 bg-white text-slate-900 shadow-2xs"
                   />
-                </div>
+                </FormFieldBox>
 
                 {/* Amount mini-badge */}
-                <div className="bg-slate-50 rounded-2xl p-3 flex justify-between items-center text-xs text-slate-500 font-bold">
-                  <span>ആകെ മിച്ച തുക:</span>
-                  <span className="text-sm font-black text-brand-magenta">₹{selfTotalPending.toLocaleString('en-IN')}</span>
+                <div className="bg-slate-900 text-white rounded-2xl p-3.5 flex justify-between items-center text-xs font-bold shadow-sm">
+                  <span className="text-slate-300">{t('Total Pending Amount:', 'ആകെ മിച്ച തുക:')}</span>
+                  <span className="text-base font-black text-emerald-400">₹{selfTotalPending.toLocaleString('en-IN')}</span>
                 </div>
               </motion.div>
             )}
@@ -1674,527 +2661,528 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
         </Card>
         )}
 
-        {/* SLOT 2: PARENT CLAIM (മാതാവ് അല്ലെങ്കിൽ പിതാവ്) */}
-        {!hasParent && (
-        <Card className="border-2 border-slate-150 rounded-3xl shadow-sm overflow-hidden bg-white">
-          <CardContent className="p-5 md:p-6 space-y-6">
-            <div className="flex items-center justify-between border-b pb-4">
+        {/* ACCOUNT & PAN CARD DETAILS PROVIDED TO COMPANY (കമ്പനിക്ക് നൽകിയിട്ടുള്ള അക്കൗണ്ട് & PAN കാർഡ് വിവരങ്ങൾ) */}
+        <Card className="border-2 border-emerald-300 rounded-3xl shadow-[0_8px_30px_rgba(16,185,129,0.08)] overflow-hidden bg-white/95 backdrop-blur-xl">
+          <CardContent className="p-5 md:p-6 space-y-4">
+            <div className="flex flex-wrap items-center justify-between border-b pb-3.5 border-emerald-100 gap-2">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-brand-blue text-white flex items-center justify-center text-xs font-black">2</div>
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center text-xs font-black shadow-sm ring-2 ring-emerald-50">
+                  🏦
+                </div>
                 <div>
-                  <h4 className="text-xs font-black text-slate-800 uppercase">മാതാവ് / പിതാവ് ക്ലെയിം (Parent Claimant)</h4>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase">Add Mother or Father (Only one parent limit)</p>
+                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide">
+                    {t('ACCOUNT & PAN CARD DETAILS PROVIDED TO COMPANY', 'കമ്പനിക്ക് നൽകിയിട്ടുള്ള അക്കൗണ്ട് & PAN കാർഡ് വിവരങ്ങൾ')}
+                  </h4>
+                  <p className="text-[9px] font-bold text-slate-500 uppercase">
+                    {t('Account & PAN details registered with the company', 'കമ്പനിയിൽ നൽകിയിട്ടുള്ള ബാങ്ക് അക്കൗണ്ട് & പാൻ വിവരങ്ങൾ')}
+                  </p>
                 </div>
               </div>
-              <Checkbox 
-                checked={parentSelected} 
-                onCheckedChange={(val) => {
-                  setParentSelected(!!val);
-                  if (!!val && !parentRelation) setParentRelation('Mother'); // default relationship
-                }} 
-                className="w-5 h-5 border-slate-300" 
-              />
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  if (paidFromBank) setSettlementBankName(paidFromBank);
+                  if (paidFromBranch) setSettlementBranch(paidFromBranch);
+                  if (paidFromAccount) setSettlementAccountNumber(paidFromAccount);
+                  if (paidFromIfsc) setSettlementIfsc(paidFromIfsc);
+                  if (customerName) setSettlementAccountHolder(customerName);
+                  toast.success(t('Bank details copied!', 'ബാങ്ക് വിവരങ്ങൾ പകർത്തി!'));
+                }}
+                className="h-7 px-2.5 text-[10px] font-bold border-emerald-300 text-emerald-800 hover:bg-emerald-50 rounded-xl cursor-pointer shadow-2xs"
+              >
+                {t('Copy Bank Details', 'ബാങ്ക് വിവരങ്ങൾ പകർത്തുക')}
+              </Button>
             </div>
 
-            {parentSelected && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-                {/* Relationship selector - MANDATORY & Restricted to Parent */}
-                <div className="space-y-2.5 bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200/60">
-                   <Label className="text-[10px] font-black text-slate-600 uppercase tracking-widest block mb-1">ആ വ്യക്തിയുമായുള്ള ബന്ധം തിരയുക * (Relation - Required)</Label>
-                   <RadioGroup 
-                     value={parentRelation} 
-                     onValueChange={(val) => setParentRelation(val as 'Mother' | 'Father')} 
-                     className="flex gap-4"
-                   >
-                     <div className="flex items-center gap-2 cursor-pointer">
-                       <RadioGroupItem value="Mother" id="parent-mother" className="text-brand-magenta" />
-                       <Label htmlFor="parent-mother" className="text-xs font-bold text-slate-700 cursor-pointer">അമ്മ (Mother)</Label>
-                     </div>
-                     <div className="flex items-center gap-2 cursor-pointer">
-                       <RadioGroupItem value="Father" id="parent-father" className="text-brand-magenta" />
-                       <Label htmlFor="parent-father" className="text-xs font-bold text-slate-700 cursor-pointer">അച്ഛൻ (Father)</Label>
-                     </div>
-                   </RadioGroup>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">മാതാവ് / പിതാവിന്റെ പേര് * (Full Name - Required)</Label>
-                    <Input 
-                      value={parentName} 
-                      onChange={(e) => setParentName(e.target.value)} 
-                      placeholder="പേര് നൽകുക (Enter Full Name)"
-                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Highrich Company ID (Optional)</Label>
-                    <Input 
-                      value={parentHighrichId} 
-                      onChange={(e) => setParentHighrichId(e.target.value)} 
-                      placeholder="Enter HR ID if known"
-                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
-                    />
-                  </div>
-                </div>
-
-                <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                      <span>👤 ലീഡർ / സ്പോൺസർ വിവരങ്ങൾ (Leader / Sponsor Details)</span>
-                    </Label>
-                    {selfSponsorName && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setParentSponsorName(selfSponsorName);
-                          setParentSponsorMobile(selfSponsorMobile);
-                        }}
-                        className="text-[9px] font-bold text-brand-blue bg-brand-blue/10 hover:bg-brand-blue/20 px-2 py-0.5 rounded-full transition-colors"
-                      >
-                        സ്വന്തം ലീഡർ വിവരങ്ങൾ പകർത്തുക (Copy from Self)
-                      </button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">ലീഡർ / സ്പോൺസർ പേര് (Leader Name)</Label>
-                      <Input 
-                        value={parentSponsorName} 
-                        onChange={(e) => setParentSponsorName(e.target.value)} 
-                        placeholder="Leader / Sponsor Name"
-                        className="h-11 border-slate-200 rounded-xl font-bold bg-white focus:border-brand-blue"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">ലീഡർ / സ്പോൺസർ മൊബൈൽ (Mobile Number)</Label>
-                      <Input 
-                        value={parentSponsorMobile} 
-                        onChange={(e) => setParentSponsorMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
-                        placeholder="10-digit Mobile Number"
-                        type="tel"
-                        maxLength={10}
-                        className="h-11 border-slate-200 rounded-xl font-bold bg-white focus:border-brand-blue"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Sub-breakup Selector */}
-                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex items-center gap-3">
-                   <Checkbox 
-                     id="parent-no-breakup"
-                     checked={parentNoBreakup}
-                     onCheckedChange={(val) => setParentNoBreakup(!!val)}
-                     className="w-4 h-4"
-                   />
-                   <Label htmlFor="parent-no-breakup" className="text-11px font-bold text-slate-600 leading-tight cursor-pointer">
-                     കാറ്റഗറി തിരിച്ചുള്ള വിവരം നൽകാൻ സാധിക്കില്ല (Single manual total)
-                   </Label>
-                </div>
-
-                {/* Breakup Details OR Total manual entries */}
-                {parentNoBreakup ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3.5 bg-slate-50/50 p-4 border border-dashed rounded-2xl">
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black text-slate-500 uppercase">Paid Amount (തുക നൽകിയത്)</Label>
-                        <div className="relative">
-                          <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                          <Input 
-                            type="number"
-                            placeholder="Paid"
-                            value={parentTotalPaid || ''}
-                            onChange={(e) => handleTotalChange('parent', 'paid', e.target.value)}
-                            className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black text-slate-500 uppercase">Received (ലഭിച്ച തുക)</Label>
-                        <div className="relative">
-                          <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                          <Input 
-                            type="number"
-                            placeholder="Received"
-                            value={parentTotalReceived || ''}
-                            onChange={(e) => handleTotalChange('parent', 'received', e.target.value)}
-                            className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <Label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">ലഭ്യമായ കാറ്റഗറികൾ തിരഞ്ഞെടുക്കുക (Select Categories)</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {CATEGORIES.map(cat => {
-                        const isSel = parentCategories.includes(cat.id);
-                        return (
-                          <div 
-                            key={cat.id} 
-                            onClick={() => {
-                              setParentCategories(prev => prev.includes(cat.id) ? prev.filter(c => c !== cat.id) : [...prev, cat.id]);
-                            }}
-                            className={`px-3 py-2 border rounded-xl cursor-pointer text-xs font-black flex items-center gap-2 transition-all ${isSel ? 'border-brand-magenta bg-brand-magenta/[0.04] text-brand-magenta' : 'border-slate-200 bg-white hover:border-slate-300'}`}
-                          >
-                            <Checkbox checked={isSel} className="w-4 h-4 border-slate-300 pointer-events-none" />
-                            {cat.heading}
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Detailed Inputs */}
-                    <div className="space-y-3">
-                      {parentCategories.map(catId => {
-                        const cat = CATEGORIES.find(c => c.id === catId);
-                        return (
-                          <div key={catId} className="flex flex-col p-3 border border-slate-150 rounded-xl bg-slate-50/40 gap-3">
-                            <div className="flex items-center justify-between gap-4">
-                              <span className="text-[11px] font-black text-slate-600 block shrink-0 w-28 truncate">{cat?.heading || catId}</span>
-                              <div className="flex gap-2 flex-1">
-                                <Input 
-                                  type="number" 
-                                  placeholder="Paid" 
-                                  value={parentCategoryDetails[catId]?.paid || ''}
-                                  onChange={(e) => handleCategoryDetailChange('parent', catId, 'paid', e.target.value)}
-                                  className="h-9 border-slate-200 text-xs text-slate-700 bg-white placeholder:text-[10px]"
-                                />
-                                <Input 
-                                  type="number" 
-                                  placeholder="Recd." 
-                                  value={parentCategoryDetails[catId]?.received || ''}
-                                  onChange={(e) => handleCategoryDetailChange('parent', catId, 'received', e.target.value)}
-                                  className="h-9 border-slate-200 text-xs text-slate-700 bg-white placeholder:text-[10px]"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+            {/* Clear instruction */}
+            <div className="bg-emerald-50/90 border border-emerald-200/90 rounded-2xl p-3 sm:p-3.5 flex items-start gap-2.5 text-slate-700">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              <p className="text-xs leading-relaxed font-semibold text-emerald-950">
+                <strong>{t('Account & PAN Details:', 'അക്കൗണ്ട് & പാൻ വിവരങ്ങൾ:')}</strong>{' '}
+                {t(
+                  'Please accurately enter the bank account number and PAN card number provided to Highrich.',
+                  'നിങ്ങൾ ഹൈറിച്ച് കമ്പനിയിൽ നൽകിയിട്ടുള്ള നിങ്ങളുടെ ബാങ്ക് അക്കൗണ്ട് നമ്പറും പാൻ കാർഡ് നമ്പറും ഇവിടെ കൃത്യമായി രേഖപ്പെടുത്തുക.'
                 )}
-
-                {/* Notes Input */}
-                <div className="space-y-1.5 pt-2">
-                  <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">നോട്ട് / കൂടുതൽ വിവരങ്ങൾ (Notes / Remarks regarding payment)</Label>
-                  <textarea 
-                    value={parentNotes} 
-                    onChange={(e) => setParentNotes(e.target.value)} 
-                    placeholder="ഏത് അക്കൗണ്ടിൽ നിന്നാണ് പണം നൽകിയത് അല്ലെങ്കിൽ ട്രാൻസാക്ഷൻ സംബന്ധമായ കൂടുതൽ വിവരങ്ങൾ ഇവിടെ രേഖപ്പെടുത്താം..."
-                    className="w-full text-xs font-semibold p-3 border border-slate-200 rounded-xl focus:border-brand-magenta/85 focus:ring-0 focus:outline-none min-h-20 bg-slate-50/20"
-                  />
-                </div>
-
-                {/* Amount mini-badge */}
-                <div className="bg-slate-50 rounded-2xl p-3 flex justify-between items-center text-xs text-slate-500 font-bold">
-                  <span>ആകെ മിച്ച തുക:</span>
-                  <span className="text-sm font-black text-brand-magenta">₹{parentTotalPending.toLocaleString('en-IN')}</span>
-                </div>
-              </motion.div>
-            )}
-          </CardContent>
-        </Card>
-        )}
-
-        {/* SLOT 3: CHILD CLAIM (മകൻ അല്ലെങ്കിൽ മകൾ) */}
-        {!hasChild && (
-        <Card className="border-2 border-slate-150 rounded-3xl shadow-sm overflow-hidden bg-white">
-          <CardContent className="p-5 md:p-6 space-y-6">
-            <div className="flex items-center justify-between border-b pb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-brand-blue text-white flex items-center justify-center text-xs font-black">3</div>
-                <div>
-                  <h4 className="text-xs font-black text-slate-800 uppercase">മകൻ / മകൾ ക്ലെയിം (Child Claimant)</h4>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase">Add Daughter or Son (Only one child limit)</p>
-                </div>
-              </div>
-              <Checkbox 
-                checked={childSelected} 
-                onCheckedChange={(val) => {
-                  setChildSelected(!!val);
-                  if (!!val && !childRelation) setChildRelation('Son'); // default relationship
-                }} 
-                className="w-5 h-5 border-slate-300" 
-              />
+              </p>
             </div>
 
-            {childSelected && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-                {/* Relationship selector - MANDATORY & Restricted to Child */}
-                <div className="space-y-2.5 bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200/60 font-medium">
-                   <Label className="text-[10px] font-black text-slate-600 uppercase tracking-widest block mb-1">ആ വ്യക്തിയുമായുള്ള ബന്ധം തിരയുക * (Relation - Required)</Label>
-                   <RadioGroup 
-                     value={childRelation} 
-                     onValueChange={(val) => setChildRelation(val as 'Son' | 'Daughter')} 
-                     className="flex gap-4"
-                   >
-                     <div className="flex items-center gap-2 cursor-pointer">
-                       <RadioGroupItem value="Son" id="child-son" className="text-brand-magenta" />
-                       <Label htmlFor="child-son" className="text-xs font-bold text-slate-700 cursor-pointer">മകൻ (Son)</Label>
-                     </div>
-                     <div className="flex items-center gap-2 cursor-pointer">
-                       <RadioGroupItem value="Daughter" id="child-daughter" className="text-brand-magenta" />
-                       <Label htmlFor="child-daughter" className="text-xs font-bold text-slate-700 cursor-pointer">മകൾ (Daughter)</Label>
-                     </div>
-                   </RadioGroup>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Account Number in Company Column */}
+              <FormFieldBox 
+                label={tLabel('Bank Account Number registered with Company *', 'നിങ്ങൾ കമ്പനിയിൽ നൽകിയ ബാങ്ക് അക്കൗണ്ട് നമ്പർ *')}
+                icon="🏦"
+                theme="emerald"
+                required
+                className="md:col-span-2"
+                hint={t('Enter your account number registered with the company.', 'കമ്പനിയിൽ രേഖപ്പെടുത്തിയിട്ടുള്ള നിങ്ങളുടെ അക്കൗണ്ട് നമ്പർ നൽകുക.')}
+              >
+                <Input 
+                  value={settlementAccountNumber} 
+                  onChange={(e) => setSettlementAccountNumber(e.target.value)} 
+                  placeholder={tPlaceholder('Bank account number registered with company', 'കമ്പനിയിൽ നൽകിയിട്ടുള്ള ബാങ്ക് അക്കൗണ്ട് നമ്പർ')}
+                  className="h-10 border border-emerald-300 rounded-xl font-bold bg-white focus:bg-white focus:border-emerald-600 text-xs sm:text-sm text-slate-900 font-mono shadow-2xs"
+                />
+              </FormFieldBox>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">മകൻ / മകളുടെ പേര് * (Full Name - Required)</Label>
-                    <Input 
-                      value={childName} 
-                      onChange={(e) => setChildName(e.target.value)} 
-                      placeholder="പേര് നൽകുക (Enter Full Name)"
-                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Highrich Company ID (Optional)</Label>
-                    <Input 
-                      value={childHighrichId} 
-                      onChange={(e) => setChildHighrichId(e.target.value)} 
-                      placeholder="Enter HR ID if known"
-                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
-                    />
-                  </div>
-                </div>
+              {/* PAN Card Number Column */}
+              <FormFieldBox 
+                label={tLabel('Your PAN Card Number', 'നിങ്ങളുടെ പാൻ കാർഡ് നമ്പർ')}
+                icon="💳"
+                theme="purple"
+                className="md:col-span-2"
+                hint={t('Enter your PAN number for cross-verifying with tax and company records.', 'ആദായനികുതി / കമ്പനി രേഖകളുമായി ഒത്തുനോക്കുന്നതിനായി നിങ്ങളുടെ പാൻ നമ്പർ നൽകുക.')}
+              >
+                <Input 
+                  value={customerPan} 
+                  onChange={(e) => setCustomerPan(e.target.value.toUpperCase())} 
+                  placeholder={tPlaceholder('e.g. ABCDE1234F (Enter your PAN card number)', 'e.g. ABCDE1234F (നിങ്ങളുടെ പാൻ കാർഡ് നമ്പർ നൽകുക)')}
+                  maxLength={10}
+                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-purple-600 text-xs sm:text-sm text-slate-900 font-mono uppercase shadow-2xs"
+                />
+              </FormFieldBox>
 
-                <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                      <span>👤 ലീഡർ / സ്പോൺസർ വിവരങ്ങൾ (Leader / Sponsor Details)</span>
-                    </Label>
-                    {selfSponsorName && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setChildSponsorName(selfSponsorName);
-                          setChildSponsorMobile(selfSponsorMobile);
-                        }}
-                        className="text-[9px] font-bold text-brand-blue bg-brand-blue/10 hover:bg-brand-blue/20 px-2 py-0.5 rounded-full transition-colors"
-                      >
-                        സ്വന്തം ലീഡർ വിവരങ്ങൾ പകർത്തുക (Copy from Self)
-                      </button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">ലീഡർ / സ്പോൺസർ പേര് (Leader Name)</Label>
-                      <Input 
-                        value={childSponsorName} 
-                        onChange={(e) => setChildSponsorName(e.target.value)} 
-                        placeholder="Leader / Sponsor Name"
-                        className="h-11 border-slate-200 rounded-xl font-bold bg-white focus:border-brand-blue"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">ലീഡർ / സ്പോൺസർ മൊബൈൽ (Mobile Number)</Label>
-                      <Input 
-                        value={childSponsorMobile} 
-                        onChange={(e) => setChildSponsorMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
-                        placeholder="10-digit Mobile Number"
-                        type="tel"
-                        maxLength={10}
-                        className="h-11 border-slate-200 rounded-xl font-bold bg-white focus:border-brand-blue"
-                      />
-                    </div>
-                  </div>
-                </div>
+              {/* Bank Name Column */}
+              <FormFieldBox 
+                label={tLabel('Bank Name', 'ബാങ്ക് പേര്')}
+                icon="🏦"
+                theme="teal"
+              >
+                <Input 
+                  value={settlementBankName} 
+                  onChange={(e) => setSettlementBankName(e.target.value)} 
+                  placeholder="e.g. State Bank of India / Federal Bank"
+                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-teal-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
+                />
+              </FormFieldBox>
 
-                {/* Sub-breakup Selector */}
-                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex items-center gap-3">
-                   <Checkbox 
-                     id="child-no-breakup"
-                     checked={childNoBreakup}
-                     onCheckedChange={(val) => setChildNoBreakup(!!val)}
-                     className="w-4 h-4"
-                   />
-                   <Label htmlFor="child-no-breakup" className="text-11px font-bold text-slate-600 leading-tight cursor-pointer">
-                     കാറ്റഗറി തിരിച്ചുള്ള വിവരം നൽകാൻ സാധിക്കില്ല (Single manual total)
-                   </Label>
-                </div>
+              {/* Branch Name Column */}
+              <FormFieldBox 
+                label={tLabel('Branch Name', 'ബ്രാഞ്ച്')}
+                icon="📍"
+                theme="teal"
+              >
+                <Input 
+                  value={settlementBranch} 
+                  onChange={(e) => setSettlementBranch(e.target.value)} 
+                  placeholder={tPlaceholder('Branch Name', 'ബ്രാഞ്ച് പേര്')}
+                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-teal-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
+                />
+              </FormFieldBox>
 
-                {/* Breakup Details OR Total manual entries */}
-                {childNoBreakup ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3.5 bg-slate-50/50 p-4 border border-dashed rounded-2xl">
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black text-slate-500 uppercase">Paid Amount (തുക നൽകിയത്)</Label>
-                        <div className="relative">
-                          <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                          <Input 
-                            type="number"
-                            placeholder="Paid"
-                            value={childTotalPaid || ''}
-                            onChange={(e) => handleTotalChange('child', 'paid', e.target.value)}
-                            className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black text-slate-500 uppercase">Received (ലഭിച്ച തുക)</Label>
-                        <div className="relative">
-                          <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                          <Input 
-                            type="number"
-                            placeholder="Received"
-                            value={childTotalReceived || ''}
-                            onChange={(e) => handleTotalChange('child', 'received', e.target.value)}
-                            className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <Label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">ലഭ്യമായ കാറ്റഗറികൾ തിരഞ്ഞെടുക്കുക (Select Categories)</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {CATEGORIES.map(cat => {
-                        const isSel = childCategories.includes(cat.id);
-                        return (
-                          <div 
-                            key={cat.id} 
-                            onClick={() => {
-                              setChildCategories(prev => prev.includes(cat.id) ? prev.filter(c => c !== cat.id) : [...prev, cat.id]);
-                            }}
-                            className={`px-3 py-2 border rounded-xl cursor-pointer text-xs font-black flex items-center gap-2 transition-all ${isSel ? 'border-brand-magenta bg-brand-magenta/[0.04] text-brand-magenta' : 'border-slate-200 bg-white hover:border-slate-300'}`}
-                          >
-                            <Checkbox checked={isSel} className="w-4 h-4 border-slate-300 pointer-events-none" />
-                            {cat.heading}
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                     {/* Detailed Inputs */}
-                    <div className="space-y-3">
-                      {childCategories.map(catId => {
-                        const cat = CATEGORIES.find(c => c.id === catId);
-                        return (
-                          <div key={catId} className="flex flex-col p-3 border border-slate-150 rounded-xl bg-slate-50/40 gap-3">
-                            <div className="flex items-center justify-between gap-4">
-                              <span className="text-[11px] font-black text-slate-600 block shrink-0 w-28 truncate">{cat?.heading || catId}</span>
-                              <div className="flex gap-2 flex-1">
-                                <Input 
-                                  type="number" 
-                                  placeholder="Paid" 
-                                  value={childCategoryDetails[catId]?.paid || ''}
-                                  onChange={(e) => handleCategoryDetailChange('child', catId, 'paid', e.target.value)}
-                                  className="h-9 border-slate-200 text-xs text-slate-700 bg-white placeholder:text-[10px]"
-                                />
-                                <Input 
-                                  type="number" 
-                                  placeholder="Recd." 
-                                  value={childCategoryDetails[catId]?.received || ''}
-                                  onChange={(e) => handleCategoryDetailChange('child', catId, 'received', e.target.value)}
-                                  className="h-9 border-slate-200 text-xs text-slate-700 bg-white placeholder:text-[10px]"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Notes Input */}
-                <div className="space-y-1.5 pt-2">
-                  <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">നോട്ട് / കൂടുതൽ വിവരങ്ങൾ (Notes / Remarks regarding payment)</Label>
-                  <textarea 
-                    value={childNotes} 
-                    onChange={(e) => setChildNotes(e.target.value)} 
-                    placeholder="ഏത് അക്കൗണ്ടിൽ നിന്നാണ് പണം നൽകിയത് അല്ലെങ്കിൽ ട്രാൻസാക്ഷൻ സംബന്ധമായ കൂടുതൽ വിവരങ്ങൾ ഇവിടെ രേഖപ്പെടുത്താം..."
-                    className="w-full text-xs font-semibold p-3 border border-slate-200 rounded-xl focus:border-brand-magenta/85 focus:ring-0 focus:outline-none min-h-20 bg-slate-50/20"
-                  />
-                </div>
-
-                {/* Amount mini-badge */}
-                <div className="bg-slate-50 rounded-2xl p-3 flex justify-between items-center text-xs text-slate-500 font-bold">
-                  <span>ആകെ മിച്ച തുക:</span>
-                  <span className="text-sm font-black text-brand-magenta">₹{childTotalPending.toLocaleString('en-IN')}</span>
-                </div>
-              </motion.div>
-            )}
+              {/* IFSC Code Column */}
+              <FormFieldBox 
+                label={tLabel('IFSC Code', 'IFSC കോഡ്')}
+                icon="🏛️"
+                theme="teal"
+                optional
+                className="md:col-span-2"
+              >
+                <Input 
+                  value={settlementIfsc} 
+                  onChange={(e) => setSettlementIfsc(e.target.value.toUpperCase())} 
+                  placeholder="e.g. SBIN0001234"
+                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-teal-600 text-xs sm:text-sm text-slate-900 font-mono uppercase shadow-2xs"
+                />
+              </FormFieldBox>
+            </div>
           </CardContent>
         </Card>
-        )}
 
-        {/* SLOT 4: SPOUSE CLAIM (ഭാര്യ അല്ലെങ്കിൽ ഭർത്താവ് - Spouse Claimant) */}
-        {!hasSpouse && (
-        <Card className="border-2 border-slate-150 rounded-3xl shadow-sm overflow-hidden bg-white">
-          <CardContent className="p-5 md:p-6 space-y-6">
-            <div className="flex items-center justify-between border-b pb-4">
+        {/* Company Payment Bank Details (Optional - കമ്പനിയിലേക്ക് പണം അടച്ച ബാങ്ക് വിവരങ്ങൾ) */}
+        <Card className="border border-slate-300 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden bg-white/95 backdrop-blur-xl">
+          <CardContent className="p-5 md:p-6 space-y-4">
+            <div className="flex items-center justify-between border-b pb-3.5 border-slate-100">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-brand-blue text-white flex items-center justify-center text-xs font-black">4</div>
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-600 to-slate-800 text-white flex items-center justify-center text-xs font-black shadow-sm ring-2 ring-indigo-50">
+                  💳
+                </div>
                 <div>
-                  <h4 className="text-xs font-black text-slate-800 uppercase">ഭാര്യ / ഭർത്താവ് ക്ലെയിം (Spouse Claimant)</h4>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase">Add Wife or Husband</p>
+                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide">
+                    {t('Company Payment Bank Details (Optional - Fill only if known)', 'കമ്പനിയിലേക്ക് പണം അടച്ച ബാങ്ക് വിവരങ്ങൾ (അറിയാമെങ്കിൽ മാത്രം നൽകുക - Optional)')}
+                  </h4>
+                  <p className="text-[9px] font-bold text-slate-500 uppercase">
+                    {t('Payment Details to Company (Fill only if you know / remember - Not Mandatory)', 'കമ്പനിയിലേക്ക് പണം അടച്ച വിവരങ്ങൾ (ഓർമ്മയുണ്ടെങ്കിൽ മാത്രം)')}
+                  </p>
                 </div>
               </div>
+              <Badge className="bg-slate-100 text-slate-600 border border-slate-200 text-[9px] font-bold rounded-lg px-2 py-0.5">
+                {t('Optional', 'ഓപ്ഷണൽ')}
+              </Badge>
+            </div>
+
+            {/* Explanatory Notice */}
+            <div className="bg-amber-50/90 border border-amber-200/90 rounded-2xl p-3 sm:p-3.5 flex items-start gap-2.5 text-slate-700">
+              <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-xs leading-relaxed font-semibold text-amber-950">
+                <strong>{t('Note:', 'ശ്രദ്ധിക്കുക:')}</strong>{' '}
+                {t(
+                  'Fill this only if you remember or have the company bank account number or payment receipt/UTR number. If not known, you can leave this blank.',
+                  'കമ്പനിയിലേക്ക് പണം അടച്ച ബാങ്ക് അക്കൗണ്ട് നമ്പറോ രസീപ്റ്റ്/UTR നമ്പറോ ഓർമ്മയുണ്ടെങ്കിലോ കയ്യിലുണ്ടെങ്കിലോ മാത്രം ഇവിടെ രേഖപ്പെടുത്തിയാൽ മതി. അറിയില്ലെങ്കിൽ ഇത് പൂരിപ്പിക്കേണ്ടതില്ല.'
+                )}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Bank Account Paid to Company Column */}
+              <FormFieldBox 
+                label={tLabel('Bank Account Number paid to Company / Receipt / UTR Number (If Known)', 'കമ്പനിയിലേക്ക് പണം അടച്ച ബാങ്ക് അക്കൗണ്ട് നമ്പർ / രസീപ്റ്റ് / UTR നമ്പർ')}
+                icon="💳"
+                theme="slate"
+                optional
+                className="md:col-span-2"
+                hint={t('You can enter company bank account number or receipt/UTR reference if available.', 'കമ്പനിയുടെ ബാങ്ക് അക്കൗണ്ട് നമ്പറോ അല്ലെങ്കിൽ നിങ്ങൾ പണം അടച്ച ബാങ്ക് രസീപ്റ്റ് നമ്പറോ / യുപിഐ UTR നമ്പറോ അറിയാമെങ്കിൽ നൽകാം.')}
+              >
+                <Input 
+                  value={paidFromAccount} 
+                  onChange={(e) => setPaidFromAccount(e.target.value)} 
+                  placeholder={tPlaceholder('Company Account Number or Receipt / UTR (If Known)', 'കമ്പനി അക്കൗണ്ട് നമ്പർ അല്ലെങ്കിൽ ബാങ്ക് രസീപ്റ്റ് / UTR നമ്പർ (അറിയാമെങ്കിൽ മാത്രം)')}
+                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-slate-700 text-xs sm:text-sm text-slate-900 font-mono shadow-2xs"
+                />
+              </FormFieldBox>
+
+              {/* Paid Bank Name Column */}
+              <FormFieldBox 
+                label={tLabel('Paid Bank Name (If Known)', 'പണം കൈമാറിയ ബാങ്ക്')}
+                icon="🏦"
+                theme="slate"
+                optional
+              >
+                <Input 
+                  value={paidFromBank} 
+                  onChange={(e) => setPaidFromBank(e.target.value)} 
+                  placeholder="e.g. State Bank of India / HDFC Bank / Federal Bank"
+                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-slate-700 text-xs sm:text-sm text-slate-900 shadow-2xs"
+                />
+              </FormFieldBox>
+
+              {/* Branch Column */}
+              <FormFieldBox 
+                label={tLabel('Branch (Optional)', 'ബ്രാഞ്ച്')}
+                icon="📍"
+                theme="slate"
+                optional
+              >
+                <Input 
+                  value={paidFromBranch} 
+                  onChange={(e) => setPaidFromBranch(e.target.value)} 
+                  placeholder={tPlaceholder('Branch Name (Optional)', 'ബ്രാഞ്ച് പേര്')}
+                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-slate-700 text-xs sm:text-sm text-slate-900 shadow-2xs"
+                />
+              </FormFieldBox>
+
+              {/* IFSC Code Column */}
+              <FormFieldBox 
+                label={tLabel('IFSC Code (Optional)', 'IFSC കോഡ്')}
+                icon="🏛️"
+                theme="slate"
+                optional
+              >
+                <Input 
+                  value={paidFromIfsc} 
+                  onChange={(e) => setPaidFromIfsc(e.target.value.toUpperCase())} 
+                  placeholder="e.g. SBIN0001234"
+                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-slate-700 text-xs sm:text-sm text-slate-900 font-mono uppercase shadow-2xs"
+                />
+              </FormFieldBox>
+
+              {/* Payment Date Column */}
+              <FormFieldBox 
+                label={tLabel('Payment Date (Optional)', 'തുക നൽകിയ തീയതി')}
+                icon="📅"
+                theme="slate"
+                optional
+              >
+                <Input 
+                  type="date"
+                  value={paymentDate} 
+                  onChange={(e) => setPaymentDate(e.target.value)} 
+                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-slate-700 text-xs sm:text-sm text-slate-900 shadow-2xs"
+                />
+              </FormFieldBox>
+            </div>
+          </CardContent>
+        </Card>
+
+          {/* FUTURE PREFERENCE, HARDSHIPS & CONDITIONS/DECLARATION (INSIDE GOLD BOX) */}
+          {renderFutureAndConditionsBlock('self')}
+
+          {/* INLINE SUBMIT BUTTON FOR FORM 1 */}
+          <div className="pt-4 border-t-2 border-amber-300/80 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 p-4 sm:p-5 rounded-b-3xl">
+            <div className="text-xs font-bold text-slate-800 space-y-0.5">
+              <div className="font-black text-amber-950 flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                {t('Applicant Form Completed', 'അപേക്ഷകന്റെ ഫോം പൂർത്തിയായി')}
+              </div>
+              <p className="text-[11px] text-slate-600">
+                {t('Click below to submit this claim form immediately and get official token.', 'ഈ ക്ലെയിം ഫോം സമർപ്പിക്കാനും ഔദ്യോഗിക ടോക്കൺ നമ്പർ നേടാനും താഴെയുള്ള ബട്ടൺ അമർത്തുക.')}
+              </p>
+            </div>
+            <Button
+              type="button"
+              disabled={loading}
+              onClick={handleSubmit}
+              className="w-full sm:w-auto h-12 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 hover:shadow-xl transition-all cursor-pointer shrink-0"
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 animate-spin" /> {t('Saving Details...', 'വിവരങ്ങൾ സേവ് ചെയ്യുന്നു...')}
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-amber-200" />
+                  {editingSelf ? t('Update Form 1 Details', 'ഫോം 1 അപ്ഡേറ്റ് ചെയ്യുക') : t('Submit Claim Form', 'ഫോം സബ്മിറ്റ് ചെയ്യുക')}
+                  <ArrowRight className="w-4 h-4" />
+                </span>
+              )}
+            </Button>
+          </div>
+        </div>
+        )}
+
+        {/* SECTION DIVIDER: FAMILY MEMBERS CLAIMS (OPTIONAL - MAX 4 PERSONS IN TOTAL) */}
+        <div className="bg-gradient-to-r from-pink-50 via-slate-50 to-indigo-50 border border-slate-200 rounded-3xl p-5 sm:p-6 space-y-2.5">
+          <div className="flex items-start gap-3">
+            <Users className="w-5 h-5 text-brand-magenta shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide">
+                {t('Family Members Claim (Optional - Fill only if applicable)', 'കുടുംബാംഗങ്ങളുടെ ക്ലെയിം (ആവശ്യമെങ്കിൽ മാത്രം പൂരിപ്പിക്കുക - ഓപ്ഷണൽ)')}
+              </h4>
+              <p className="text-slate-700 font-bold text-xs leading-relaxed">
+                {t(
+                  'If you also wish to include claim details for your family members, please select and fill the respective sections below in order: 2. Spouse (Wife/Husband), 3. Parent (Mother/Father), 4. Child (Son/Daughter). Each member will receive an individual official court serial register token.',
+                  'താങ്കളുടെ കുടുംബാംഗങ്ങളുടെ തുകകൾ കൂടി രേഖപ്പെടുത്താൻ ആഗ്രഹിക്കുന്നുവെങ്കിൽ താഴെ നൽകിയിട്ടുള്ള ക്രമത്തിൽ (2. ഭാര്യ / ഭർത്താവ്, 3. അമ്മ / അച്ഛൻ, 4. മകൻ / മകൾ) ആവശ്യമുള്ള ബോക്സ് ടിക്ക് ചെയ്ത് വിവരങ്ങൾ പൂരിപ്പിക്കുക. ഓരോ വ്യക്തിക്കും വ്യക്തിഗതമായ ഔദ്യോഗിക കോർട്ട് സീരിയൽ നമ്പർ ലഭിക്കുന്നതാണ്.'
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* SUBMITTED CARD OR FULL FORM: 2. SPOUSE CLAIM FORM */}
+        {hasSpouse && !editingSpouse && (
+          <div className="border-2 border-emerald-400/80 bg-gradient-to-br from-emerald-50/90 via-white to-amber-50/40 rounded-3xl shadow-lg p-5 sm:p-6 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-200/80 pb-3.5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-emerald-300">
+                  ✓ 2
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight">
+                      {spouseClaim?.userName || spouseName}
+                    </h3>
+                    <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black">
+                      {spouseClaim?.relation === 'Wife' ? t('2. Wife (ഭാര്യ - സമർപ്പിച്ചു)', '2. ഭാര്യ (സമർപ്പിച്ചു)') : t('2. Husband (ഭർത്താവ് - സമർപ്പിച്ചു)', '2. ഭർത്താവ് (സമർപ്പിച്ചു)')}
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] font-bold text-emerald-800 flex items-center gap-1.5 mt-0.5">
+                    <span>{t('Token / Serial No:', 'ഔദ്യോഗിക ടോക്കൺ നമ്പർ:')}</span>
+                    <span className="font-mono bg-emerald-600 text-white px-2 py-0.5 rounded-lg text-xs font-black shadow-2xs">
+                      {spouseClaim?.tokenNo || spouseClaim?.serialNo || 'SUBMITTED'}
+                    </span>
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                onClick={() => {
+                  if (spouseClaim) populateSpouseFromClaim(spouseClaim);
+                  setEditingSpouse(true);
+                  setSpouseSelected(true);
+                }}
+                className="h-10 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md cursor-pointer"
+              >
+                <Edit3 className="w-4 h-4 text-slate-950" />
+                <span>{t('Edit Form 2', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5">
+                <span className="text-[10px] text-slate-500 font-bold block">{t('Highrich ID', 'ഹൈറിച്ച് ഐഡി')}</span>
+                <span className="font-mono font-bold text-slate-800">{spouseClaim?.highrichId || '—'}</span>
+              </div>
+              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5">
+                <span className="text-[10px] text-slate-500 font-bold block">{t('Mobile Number', 'മൊബൈൽ നമ്പർ')}</span>
+                <span className="font-mono font-bold text-slate-800">{spouseClaim?.userMobile || spouseMobile || '—'}</span>
+              </div>
+              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5 col-span-2 sm:col-span-1">
+                <span className="text-[10px] text-slate-500 font-bold block">{t('Total Pending', 'ആകെ മിച്ച തുക')}</span>
+                <span className="font-black text-emerald-700">₹{(spouseClaim?.totalPending || spouseTotalPending || 0).toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* GOLD WRAPPER: 2. SPOUSE CLAIM FORM */}
+        {(!hasSpouse || editingSpouse) && (
+        <div className="border-2 border-amber-400 dark:border-amber-500 bg-white/95 backdrop-blur-xl rounded-3xl shadow-xl ring-2 ring-amber-400/20 overflow-hidden p-4 sm:p-6 space-y-6">
+          {editingSpouse && (
+            <div className="bg-amber-100 border-2 border-amber-400 rounded-2xl p-3 flex items-center justify-between gap-3 text-amber-950">
+              <div className="flex items-center gap-2">
+                <Edit3 className="w-4 h-4 text-amber-700" />
+                <span className="text-xs font-black uppercase tracking-wide">
+                  {t('Editing Form 2 (Spouse) Information', 'ഫോം 2 (ഭാര്യ / ഭർത്താവ് വിവരങ്ങൾ) എഡിറ്റ് ചെയ്യുന്നു')}
+                </span>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setEditingSpouse(false)}
+                className="h-8 px-3 text-[11px] font-bold border-amber-400 text-amber-900 bg-white hover:bg-amber-50"
+              >
+                {t('Cancel Edit', 'റദ്ദാക്കുക')}
+              </Button>
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center justify-between pb-4 border-b-2 border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 p-4 sm:p-5 rounded-t-3xl gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-amber-300">
+                👑 2
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                  {t('2. SPOUSE CLAIM FORM (WIFE / HUSBAND)', '2. ഭാര്യ / ഭർത്താവ് ക്ലെയിം ഫോം')}
+                </h3>
+                <p className="text-[10px] sm:text-xs font-bold text-amber-900 uppercase tracking-wider">
+                  {t('Spouse Settlement Claim Form', 'ഭാര്യ അല്ലെങ്കിൽ ഭർത്താവിന്റെ സെറ്റിൽമെന്റ് ഫോം')}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Badge className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black rounded-xl px-3 py-1 shadow-xs">
+                {t('Form 2 (Spouse)', 'ഫോം 2 (സ്പൗസ്)')}
+              </Badge>
               <Checkbox 
                 checked={spouseSelected} 
                 onCheckedChange={(val) => {
                   setSpouseSelected(!!val);
-                  if (!!val && !spouseRelation) setSpouseRelation('Wife'); // default relationship
+                  if (!!val && !spouseRelation) setSpouseRelation('Wife');
                 }} 
-                className="w-5 h-5 border-slate-300" 
+                className="w-5 h-5 border-amber-400 rounded-md data-[state=checked]:bg-amber-600 cursor-pointer" 
               />
             </div>
+          </div>
+
+          {!spouseSelected && (
+            <div 
+              onClick={() => {
+                setSpouseSelected(true);
+                if (!spouseRelation) setSpouseRelation('Wife');
+              }}
+              className="p-4 bg-amber-50/50 hover:bg-amber-50/80 border-2 border-dashed border-amber-300 rounded-2xl flex items-center justify-between cursor-pointer transition-all"
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="text-lg">💍</span>
+                <div>
+                  <p className="text-xs font-black text-slate-800">
+                    {t('Click here to fill Spouse (Wife / Husband) Form', 'ഭാര്യ അല്ലെങ്കിൽ ഭർത്താവിന്റെ വിവരങ്ങൾ പൂരിപ്പിക്കാൻ ഇവിടെ ക്ലിക്ക് ചെയ്യുക')}
+                  </p>
+                  <p className="text-[10px] text-slate-500 font-bold">
+                    {t('Adds an individual court serial registry number for spouse', 'ഭാര്യ/ഭർത്താവിന് പ്രത്യേക ഔദ്യോഗിക കോർട്ട് നമ്പർ ലഭിക്കുന്നു')}
+                  </p>
+                </div>
+              </div>
+              <Button size="sm" variant="outline" className="text-xs font-bold border-amber-400 text-amber-800 bg-white">
+                {t('+ Open Form', '+ ഫോം തുറക്കുക')}
+              </Button>
+            </div>
+          )}
+
+          {spouseSelected && (
+            <CardContent className="p-0 space-y-6">
 
             {spouseSelected && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5">
                 {/* Relationship selector - Wife or Husband */}
-                <div className="space-y-2.5 bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200/60 font-medium">
-                   <Label className="text-[10px] font-black text-slate-600 uppercase tracking-widest block mb-1">ആ വ്യക്തിയുമായുള്ള ബന്ധം തിരഞ്ഞെടുക്കുക * (Relation - Required)</Label>
-                   <RadioGroup 
-                     value={spouseRelation} 
-                     onValueChange={(val) => setSpouseRelation(val as 'Wife' | 'Husband')} 
-                     className="flex gap-4"
-                   >
-                     <div className="flex items-center gap-2 cursor-pointer">
-                       <RadioGroupItem value="Wife" id="spouse-wife" className="text-brand-magenta" />
-                       <Label htmlFor="spouse-wife" className="text-xs font-bold text-slate-700 cursor-pointer">ഭാര്യ (Wife)</Label>
-                     </div>
-                     <div className="flex items-center gap-2 cursor-pointer">
-                       <RadioGroupItem value="Husband" id="spouse-husband" className="text-brand-magenta" />
-                       <Label htmlFor="spouse-husband" className="text-xs font-bold text-slate-700 cursor-pointer">ഭർത്താവ് (Husband)</Label>
-                     </div>
-                   </RadioGroup>
-                </div>
+                <FormFieldBox
+                  label={tLabel('Relationship with Applicant (Wife / Husband)', 'അപേക്ഷകനുമായുള്ള ബന്ധം (ഭാര്യ / ഭർത്താവ്)')}
+                  icon="💍"
+                  badge={t('Required', 'നിർബന്ധം')}
+                  badgeType="required"
+                  theme="rose"
+                >
+                  <RadioGroup 
+                    value={spouseRelation} 
+                    onValueChange={(val) => setSpouseRelation(val as 'Wife' | 'Husband')} 
+                    className="flex flex-wrap gap-4 pt-1"
+                  >
+                    <div className="flex items-center gap-2 cursor-pointer bg-white px-4 py-2.5 rounded-xl border border-rose-200 shadow-2xs">
+                      <RadioGroupItem value="Wife" id="spouse-wife" className="text-brand-magenta" />
+                      <Label htmlFor="spouse-wife" className="text-xs font-black text-slate-800 cursor-pointer">
+                        👰 {t('Wife', 'ഭാര്യ')}
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-2 cursor-pointer bg-white px-4 py-2.5 rounded-xl border border-rose-200 shadow-2xs">
+                      <RadioGroupItem value="Husband" id="spouse-husband" className="text-brand-magenta" />
+                      <Label htmlFor="spouse-husband" className="text-xs font-black text-slate-800 cursor-pointer">
+                        🤵 {t('Husband', 'ഭർത്താവ്')}
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </FormFieldBox>
 
+                {/* Spouse Personal Details Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">ഭാര്യ / ഭർത്താവിന്റെ പേര് * (Full Name - Required)</Label>
+                  <FormFieldBox
+                    label={tLabel('Spouse Full Name', 'ഭാര്യ / ഭർത്താവിന്റെ മുഴുവൻ പേര്')}
+                    icon="👤"
+                    badge={t('Required', 'നിർബന്ധം')}
+                    badgeType="required"
+                    theme="rose"
+                  >
                     <Input 
                       value={spouseName} 
                       onChange={(e) => setSpouseName(e.target.value)} 
-                      placeholder="പേര് നൽകുക (Enter Full Name)"
-                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
+                      placeholder={tPlaceholder('Enter Full Name', 'മുഴുവൻ പേര് നൽകുക')}
+                      className="h-11 border-2 border-rose-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 shadow-xs focus:border-rose-500"
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Highrich Company ID (Optional)</Label>
+                  </FormFieldBox>
+
+                  <FormFieldBox
+                    label={tLabel('Spouse Mobile Number', 'ഭാര്യ / ഭർത്താവിന്റെ മൊബൈൽ നമ്പർ')}
+                    icon="📱"
+                    badge={spouseMobile && spouseMobile !== (customerMobile || user?.mobile) ? t('Custom', 'സ്വന്തം നമ്പർ') : t('Auto', 'അപേക്ഷകന്റെ നമ്പർ')}
+                    badgeType="info"
+                    theme="rose"
+                  >
+                    <Input 
+                      value={spouseMobile !== '' ? spouseMobile : (customerMobile || user?.mobile || '')} 
+                      onChange={(e) => setSpouseMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                      placeholder={tPlaceholder('10-digit Mobile', '10 അക്ക മൊബൈൽ നമ്പർ')}
+                      type="tel"
+                      maxLength={10}
+                      className="h-11 border-2 border-rose-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono shadow-xs focus:border-rose-500"
+                    />
+                  </FormFieldBox>
+
+                  <FormFieldBox
+                    label={tLabel('Spouse Customer ID', 'ഭാര്യ / ഭർത്താവിന്റെ കസ്റ്റമർ ഐഡി')}
+                    icon="🆔"
+                    badge={t('Optional', 'ഓപ്ഷണൽ')}
+                    badgeType="optional"
+                    theme="slate"
+                    className="md:col-span-2"
+                  >
                     <Input 
                       value={spouseHighrichId} 
                       onChange={(e) => setSpouseHighrichId(e.target.value)} 
-                      placeholder="Enter HR ID if known"
-                      className="h-11 border-slate-200 rounded-xl font-bold bg-slate-50 focus:bg-white"
+                      placeholder={tPlaceholder('Enter Customer ID if known', 'കസ്റ്റമർ ഐഡി അറിയാമെങ്കിൽ നൽകുക')}
+                      className="h-11 border-2 border-slate-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 shadow-xs focus:border-slate-400"
                     />
-                  </div>
+                  </FormFieldBox>
                 </div>
 
-                <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                      <span>👤 ലീഡർ / സ്പോൺസർ വിവരങ്ങൾ (Leader / Sponsor Details)</span>
-                    </Label>
+                {/* Leader / Sponsor Section */}
+                <div className="border-2 border-blue-200 bg-blue-50/40 rounded-2xl p-4 space-y-3 shadow-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-600 text-white font-black text-xs uppercase tracking-wider shadow-xs">
+                      <span>👤</span>
+                      <span>{t('Leader / Sponsor Details', 'ലീഡർ / സ്പോൺസർ വിവരങ്ങൾ')}</span>
+                    </div>
                     {selfSponsorName && (
                       <button
                         type="button"
@@ -2202,84 +3190,108 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                           setSpouseSponsorName(selfSponsorName);
                           setSpouseSponsorMobile(selfSponsorMobile);
                         }}
-                        className="text-[9px] font-bold text-brand-blue bg-brand-blue/10 hover:bg-brand-blue/20 px-2 py-0.5 rounded-full transition-colors"
+                        className="text-[10px] font-black text-blue-700 bg-white border border-blue-300 hover:bg-blue-100 px-3 py-1 rounded-xl transition-all cursor-pointer shadow-2xs"
                       >
-                        സ്വന്തം ലീഡർ വിവരങ്ങൾ പകർത്തുക (Copy from Self)
+                        📋 {t('Copy Leader Details from Self', 'സ്വന്തം ലീഡർ വിവരങ്ങൾ പകർത്തുക')}
                       </button>
                     )}
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">ലീഡർ / സ്പോൺസർ പേര് (Leader Name)</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <FormFieldBox
+                      label={tLabel('Leader / Sponsor Name', 'ലീഡർ / സ്പോൺസർ പേര്')}
+                      icon="👤"
+                      badge={t('Optional', 'ഓപ്ഷണൽ')}
+                      badgeType="optional"
+                      theme="blue"
+                    >
                       <Input 
                         value={spouseSponsorName} 
                         onChange={(e) => setSpouseSponsorName(e.target.value)} 
-                        placeholder="Leader / Sponsor Name"
-                        className="h-11 border-slate-200 rounded-xl font-bold bg-white focus:border-brand-blue"
+                        placeholder={tPlaceholder('Leader / Sponsor Name', 'ലീഡർ / സ്പോൺസർ പേര്')}
+                        className="h-10 border border-blue-200 rounded-lg font-bold bg-white text-xs sm:text-sm text-slate-900"
                       />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">ലീഡർ / സ്പോൺസർ മൊബൈൽ (Mobile Number)</Label>
+                    </FormFieldBox>
+                    <FormFieldBox
+                      label={tLabel('Leader / Sponsor Mobile', 'ലീഡർ / സ്പോൺസർ മൊബൈൽ')}
+                      icon="📞"
+                      badge={t('Optional', 'ഓപ്ഷണൽ')}
+                      badgeType="optional"
+                      theme="blue"
+                    >
                       <Input 
                         value={spouseSponsorMobile} 
                         onChange={(e) => setSpouseSponsorMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
-                        placeholder="10-digit Mobile Number"
+                        placeholder={tPlaceholder('10-digit Mobile Number', '10 അക്ക മൊബൈൽ നമ്പർ')}
                         type="tel"
                         maxLength={10}
-                        className="h-11 border-slate-200 rounded-xl font-bold bg-white focus:border-brand-blue"
+                        className="h-10 border border-blue-200 rounded-lg font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono"
                       />
-                    </div>
+                    </FormFieldBox>
                   </div>
                 </div>
 
                 {/* Sub-breakup Selector */}
-                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex items-center gap-3">
+                <div className="bg-amber-50/70 p-3.5 rounded-2xl border-2 border-amber-200 flex items-center gap-3 shadow-xs">
                    <Checkbox 
                      id="spouse-no-breakup"
                      checked={spouseNoBreakup}
                      onCheckedChange={(val) => setSpouseNoBreakup(!!val)}
-                     className="w-4 h-4"
+                     className="w-5 h-5 rounded border-amber-400 data-[state=checked]:bg-amber-600 cursor-pointer"
                    />
-                   <Label htmlFor="spouse-no-breakup" className="text-11px font-bold text-slate-600 leading-tight cursor-pointer">
-                     കാറ്റഗറി തിരിച്ചുള്ള വിവരം നൽകാൻ സാധിക്കില്ല (Single manual total)
+                   <Label htmlFor="spouse-no-breakup" className="text-xs font-black text-amber-950 leading-tight cursor-pointer">
+                     {t('Provide single manual total without category breakup', 'കാറ്റഗറി തിരിച്ചുള്ള വിവരം നൽകാൻ സാധിക്കില്ല (Single manual total)')}
                    </Label>
                 </div>
 
                 {/* Breakup Details OR Total manual entries */}
                 {spouseNoBreakup ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3.5 bg-slate-50/50 p-4 border border-dashed rounded-2xl">
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black text-slate-500 uppercase">Paid Amount (തുക നൽകിയത്)</Label>
-                        <div className="relative">
-                          <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                          <Input 
-                            type="number"
-                            placeholder="Paid"
-                            value={spouseTotalPaid || ''}
-                            onChange={(e) => handleTotalChange('spouse', 'paid', e.target.value)}
-                            className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
-                          />
-                        </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormFieldBox
+                      label={tLabel('Total Paid Amount', 'ആകെ നൽകിയ തുക')}
+                      icon="💵"
+                      badge={t('Required', 'നിർബന്ധം')}
+                      badgeType="required"
+                      theme="rose"
+                    >
+                      <div className="relative">
+                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input 
+                          type="number"
+                          placeholder={tPlaceholder('Paid Amount', 'നൽകിയ തുക')}
+                          value={spouseTotalPaid || ''}
+                          onChange={(e) => handleTotalChange('spouse', 'paid', e.target.value)}
+                          className="pl-9 h-11 bg-white border-2 border-rose-200 rounded-xl font-black text-sm text-slate-900 shadow-xs focus:border-rose-500"
+                        />
                       </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black text-slate-500 uppercase">Received (ലഭിച്ച തുക)</Label>
-                        <div className="relative">
-                          <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                          <Input 
-                            type="number"
-                            placeholder="Received"
-                            value={spouseTotalReceived || ''}
-                            onChange={(e) => handleTotalChange('spouse', 'received', e.target.value)}
-                            className="pl-8 h-10 bg-white border-slate-200 rounded-lg font-black text-sm"
-                          />
-                        </div>
+                    </FormFieldBox>
+
+                    <FormFieldBox
+                      label={tLabel('Total Received Amount', 'ആകെ ലഭിച്ച തുക')}
+                      icon="💰"
+                      badge={t('Received', 'ലഭിച്ചത്')}
+                      badgeType="info"
+                      theme="emerald"
+                    >
+                      <div className="relative">
+                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input 
+                          type="number"
+                          placeholder={tPlaceholder('Received', 'ലഭിച്ച തുക')}
+                          value={spouseTotalReceived || ''}
+                          onChange={(e) => handleTotalChange('spouse', 'received', e.target.value)}
+                          className="pl-9 h-11 bg-white border-2 border-emerald-200 rounded-xl font-black text-sm text-slate-900 shadow-xs focus:border-emerald-500"
+                        />
                       </div>
-                    </div>
+                    </FormFieldBox>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <Label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">ലഭ്യമായ കാറ്റഗറികൾ തിരഞ്ഞെടുക്കുക (Select Categories)</Label>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <span className="px-2 py-0.5 rounded-lg bg-pink-100 text-pink-700 text-[11px] font-black">1</span>
+                        <span>{tLabel('Select Applicable Categories', 'ലഭ്യമായ കാറ്റഗറികൾ തിരഞ്ഞെടുക്കുക')}</span>
+                      </Label>
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {CATEGORIES.map(cat => {
                         const isSel = spouseCategories.includes(cat.id);
@@ -2289,9 +3301,9 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                             onClick={() => {
                               setSpouseCategories(prev => prev.includes(cat.id) ? prev.filter(c => c !== cat.id) : [...prev, cat.id]);
                             }}
-                            className={`px-3 py-2 border rounded-xl cursor-pointer text-xs font-black flex items-center gap-2 transition-all ${isSel ? 'border-brand-magenta bg-brand-magenta/[0.04] text-brand-magenta' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                            className={`px-3.5 py-2.5 border-2 rounded-2xl cursor-pointer text-xs font-black flex items-center gap-2.5 transition-all ${isSel ? 'border-pink-500 bg-pink-50 text-pink-900 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'}`}
                           >
-                            <Checkbox checked={isSel} className="w-4 h-4 border-slate-300 pointer-events-none" />
+                            <Checkbox checked={isSel} className="w-4 h-4 border-slate-300 pointer-events-none rounded" />
                             {cat.heading}
                           </div>
                         );
@@ -2303,25 +3315,23 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                       {spouseCategories.map(catId => {
                         const cat = CATEGORIES.find(c => c.id === catId);
                         return (
-                          <div key={catId} className="flex flex-col p-3 border border-slate-150 rounded-xl bg-slate-50/40 gap-3">
-                            <div className="flex items-center justify-between gap-4">
-                              <span className="text-[11px] font-black text-slate-600 block shrink-0 w-28 truncate">{cat?.heading || catId}</span>
-                              <div className="flex gap-2 flex-1">
-                                <Input 
-                                  type="number" 
-                                  placeholder="Paid" 
-                                  value={spouseCategoryDetails[catId]?.paid || ''}
-                                  onChange={(e) => handleCategoryDetailChange('spouse', catId, 'paid', e.target.value)}
-                                  className="h-9 border-slate-200 text-xs text-slate-700 bg-white placeholder:text-[10px]"
-                                />
-                                <Input 
-                                  type="number" 
-                                  placeholder="Recd." 
-                                  value={spouseCategoryDetails[catId]?.received || ''}
-                                  onChange={(e) => handleCategoryDetailChange('spouse', catId, 'received', e.target.value)}
-                                  className="h-9 border-slate-200 text-xs text-slate-700 bg-white placeholder:text-[10px]"
-                                />
-                              </div>
+                          <div key={catId} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border-2 border-rose-100 rounded-2xl bg-rose-50/20 gap-3 shadow-xs">
+                            <span className="text-xs font-black text-slate-800 shrink-0 w-36 truncate">{cat?.heading || catId}</span>
+                            <div className="flex gap-2.5 flex-1">
+                              <Input 
+                                type="number" 
+                                placeholder={tPlaceholder('Paid Amount', 'നൽകിയ തുക')} 
+                                value={spouseCategoryDetails[catId]?.paid || ''}
+                                onChange={(e) => handleCategoryDetailChange('spouse', catId, 'paid', e.target.value)}
+                                className="h-10 border-2 border-rose-200 text-xs text-slate-800 bg-white rounded-xl font-bold"
+                              />
+                              <Input 
+                                type="number" 
+                                placeholder={tPlaceholder('Received Amount', 'ലഭിച്ച തുക')} 
+                                value={spouseCategoryDetails[catId]?.received || ''}
+                                onChange={(e) => handleCategoryDetailChange('spouse', catId, 'received', e.target.value)}
+                                className="h-10 border-2 border-emerald-200 text-xs text-slate-800 bg-white rounded-xl font-bold"
+                              />
                             </div>
                           </div>
                         );
@@ -2331,44 +3341,1320 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                 )}
 
                 {/* Notes Input */}
-                <div className="space-y-1.5 pt-2">
-                  <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">നോട്ട് / കൂടുതൽ വിവരങ്ങൾ (Notes / Remarks regarding payment)</Label>
+                <FormFieldBox
+                  label={tLabel('Notes / Remarks Regarding Payment', 'നോട്ട് / പേയ്മെന്റ് കൂടുതൽ വിവരങ്ങൾ')}
+                  icon="📝"
+                  badge={t('Optional', 'ഓപ്ഷണൽ')}
+                  badgeType="optional"
+                  theme="slate"
+                >
                   <textarea 
                     value={spouseNotes} 
                     onChange={(e) => setSpouseNotes(e.target.value)} 
-                    placeholder="ഏത് അക്കൗണ്ടിൽ നിന്നാണ് പണം നൽകിയത് അല്ലെങ്കിൽ ട്രാൻസാക്ഷൻ സംബന്ധമായ കൂടുതൽ വിവരങ്ങൾ ഇവിടെ രേഖപ്പെടുത്താം..."
-                    className="w-full text-xs font-semibold p-3 border border-slate-200 rounded-xl focus:border-brand-magenta/85 focus:ring-0 focus:outline-none min-h-20 bg-slate-50/20"
+                    placeholder={tPlaceholder(
+                      'Enter any details regarding bank account paid from or transaction references...',
+                      'ഏത് അക്കൗണ്ടിൽ നിന്നാണ് പണം നൽകിയത് അല്ലെങ്കിൽ ട്രാൻസാക്ഷൻ സംബന്ധമായ കൂടുതൽ വിവരങ്ങൾ ഇവിടെ രേഖപ്പെടുത്താം...'
+                    )}
+                    className="w-full text-xs font-semibold p-3 border-2 border-slate-200 rounded-xl focus:border-pink-500 focus:ring-0 focus:outline-none min-h-20 bg-white text-slate-900 shadow-2xs"
                   />
+                </FormFieldBox>
+
+                {/* Spouse Bank & PAN details */}
+                <div className="space-y-4 pt-4 border-t-2 border-slate-200">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-emerald-700 text-white font-black text-xs uppercase tracking-wider shadow-xs">
+                      <span>🏦</span>
+                      <span>{t('Spouse Bank Account & PAN Details', 'ഭാര്യ / ഭർത്താവിന്റെ ബാങ്ക് അക്കൗണ്ട് & പാൻ വിവരങ്ങൾ')}</span>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        if (settlementAccountNumber) setSpouseSettlementAccountNumber(settlementAccountNumber);
+                        if (customerPan) setSpousePan(customerPan);
+                        if (settlementBankName) setSpouseSettlementBankName(settlementBankName);
+                        if (settlementBranch) setSpouseSettlementBranch(settlementBranch);
+                        if (settlementIfsc) setSpouseSettlementIfsc(settlementIfsc);
+                        toast.success(t('Applicant bank details copied to Spouse!', 'അപേക്ഷകന്റെ ബാങ്ക് വിവരങ്ങൾ പകർത്തി!'));
+                      }}
+                      className="h-8 px-3 text-[11px] font-black border-2 border-emerald-300 text-emerald-900 hover:bg-emerald-50 bg-white rounded-xl cursor-pointer shadow-xs"
+                    >
+                      📋 {t('Copy from Applicant', 'അപേക്ഷകന്റെ വിവരങ്ങൾ പകർത്തുക')}
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Bank Account Number Column */}
+                    <FormFieldBox
+                      label={tLabel('Bank Account Number Registered with Company', 'കമ്പനിയിൽ നൽകിയ ബാങ്ക് അക്കൗണ്ട് നമ്പർ')}
+                      icon="💳"
+                      badge={t('Required', 'നിർബന്ധം')}
+                      badgeType="required"
+                      theme="emerald"
+                      className="md:col-span-2"
+                    >
+                      <Input
+                        value={spouseSettlementAccountNumber}
+                        onChange={(e) => setSpouseSettlementAccountNumber(e.target.value)}
+                        placeholder={tPlaceholder('Bank account number registered with company', 'കമ്പനിയിൽ നൽകിയിട്ടുള്ള ബാങ്ക് അക്കൗണ്ട് നമ്പർ')}
+                        className="h-11 border-2 border-emerald-300 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono shadow-xs focus:border-emerald-600"
+                      />
+                    </FormFieldBox>
+
+                    {/* PAN Card Number Column */}
+                    <FormFieldBox
+                      label={tLabel('PAN Card Number', 'പാൻ കാർഡ് നമ്പർ')}
+                      icon="🪪"
+                      badge={t('Optional', 'ഓപ്ഷണൽ')}
+                      badgeType="optional"
+                      theme="indigo"
+                      className="md:col-span-2"
+                    >
+                      <Input
+                        value={spousePan}
+                        onChange={(e) => setSpousePan(e.target.value.toUpperCase())}
+                        placeholder={tPlaceholder('e.g. ABCDE1234F', 'e.g. ABCDE1234F (പാൻ കാർഡ് നമ്പർ)')}
+                        maxLength={10}
+                        className="h-11 border-2 border-indigo-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono uppercase shadow-xs focus:border-indigo-500"
+                      />
+                    </FormFieldBox>
+
+                    {/* Bank Name Column */}
+                    <FormFieldBox
+                      label={tLabel('Bank Name', 'ബാങ്കിന്റെ പേര്')}
+                      icon="🏛️"
+                      badge={t('Optional', 'ഓപ്ഷണൽ')}
+                      badgeType="optional"
+                      theme="indigo"
+                    >
+                      <Input
+                        value={spouseSettlementBankName}
+                        onChange={(e) => setSpouseSettlementBankName(e.target.value)}
+                        placeholder="e.g. State Bank of India / Federal Bank"
+                        className="h-11 border-2 border-indigo-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 shadow-xs focus:border-indigo-500"
+                      />
+                    </FormFieldBox>
+
+                    {/* Branch Name Column */}
+                    <FormFieldBox
+                      label={tLabel('Branch Name', 'ബാങ്ക് ബ്രാഞ്ച്')}
+                      icon="📍"
+                      badge={t('Optional', 'ഓപ്ഷണൽ')}
+                      badgeType="optional"
+                      theme="indigo"
+                    >
+                      <Input
+                        value={spouseSettlementBranch}
+                        onChange={(e) => setSpouseSettlementBranch(e.target.value)}
+                        placeholder={tPlaceholder('Branch Name', 'ബ്രാഞ്ച് പേര്')}
+                        className="h-11 border-2 border-indigo-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 shadow-xs focus:border-indigo-500"
+                      />
+                    </FormFieldBox>
+
+                    {/* IFSC Code Column */}
+                    <FormFieldBox
+                      label={tLabel('IFSC Code', 'IFSC കോഡ്')}
+                      icon="🔢"
+                      badge={t('Optional', 'ഓപ്ഷണൽ')}
+                      badgeType="optional"
+                      theme="indigo"
+                      className="md:col-span-2"
+                    >
+                      <Input
+                        value={spouseSettlementIfsc}
+                        onChange={(e) => setSpouseSettlementIfsc(e.target.value.toUpperCase())}
+                        placeholder="e.g. SBIN0001234"
+                        className="h-11 border-2 border-indigo-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono uppercase shadow-xs focus:border-indigo-500"
+                      />
+                    </FormFieldBox>
+                  </div>
                 </div>
 
                 {/* Amount mini-badge */}
-                <div className="bg-slate-50 rounded-2xl p-3 flex justify-between items-center text-xs text-slate-500 font-bold">
-                  <span>ആകെ മിച്ച തുക:</span>
-                  <span className="text-sm font-black text-brand-magenta">₹{spouseTotalPending.toLocaleString('en-IN')}</span>
+                <div className="bg-slate-900 text-white rounded-2xl p-4 flex justify-between items-center text-xs font-bold shadow-md">
+                  <span className="text-slate-300 font-black uppercase tracking-wide">{t('Spouse Total Pending Amount:', 'ഭാര്യ / ഭർത്താവിന്റെ ആകെ മിച്ച തുക:')}</span>
+                  <span className="text-base font-black text-emerald-400 font-mono">₹{spouseTotalPending.toLocaleString('en-IN')}</span>
+                </div>
+
+                {/* FUTURE PREFERENCE, HARDSHIPS & CONDITIONS/DECLARATION (INSIDE GOLD BOX) */}
+                {(hasSelf && !editingSelf) && renderFutureAndConditionsBlock('spouse')}
+
+                {/* INLINE SUBMIT BUTTON FOR SPOUSE FORM */}
+                <div className="pt-4 border-t-2 border-amber-300/80 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 p-4 sm:p-5 rounded-b-3xl">
+                  <div className="text-xs font-bold text-slate-800 space-y-0.5">
+                    <div className="font-black text-amber-950 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      {t('Spouse Form Completed', 'ഭാര്യ / ഭർത്താവിന്റെ ഫോം പൂർത്തിയായി')}
+                    </div>
+                    <p className="text-[11px] text-slate-600">
+                      {t('Click below to submit claim form with spouse details.', 'ഭാര്യ / ഭർത്താവിന്റെ വിവരങ്ങളോടെ ക്ലെയിം ഫോം സമർപ്പിക്കാൻ താഴെയുള്ള ബട്ടൺ അമർത്തുക.')}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    disabled={loading}
+                    onClick={handleSubmit}
+                    className="w-full sm:w-auto h-12 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 hover:shadow-xl transition-all cursor-pointer shrink-0"
+                  >
+                    {loading ? (
+                      <span className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 animate-spin" /> {t('Saving Details...', 'വിവരങ്ങൾ സേവ് ചെയ്യുന്നു...')}
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <CheckCircle2 className="w-5 h-5 text-amber-200" />
+                        {editingSpouse ? t('Update Form 2 Details', 'ഫോം 2 അപ്ഡേറ്റ് ചെയ്യുക') : t('Submit Spouse Form', 'ഭാര്യ / ഭർത്താവിന്റെ ഫോം സബ്മിറ്റ് ചെയ്യുക')}
+                        <ArrowRight className="w-4 h-4" />
+                      </span>
+                    )}
+                  </Button>
                 </div>
               </motion.div>
             )}
           </CardContent>
-        </Card>
+          )}
+        </div>
         )}
 
+        {/* SUBMITTED CARD OR FULL FORM: 3. PARENT CLAIM FORM */}
+        {hasParent && !editingParent && (
+          <div className="border-2 border-emerald-400/80 bg-gradient-to-br from-emerald-50/90 via-white to-amber-50/40 rounded-3xl shadow-lg p-5 sm:p-6 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-200/80 pb-3.5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-emerald-300">
+                  ✓ 3
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight">
+                      {parentClaim?.userName || parentName}
+                    </h3>
+                    <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black">
+                      {parentClaim?.relation === 'Mother' ? t('3. Mother (അമ്മ - സമർപ്പിച്ചു)', '3. അമ്മ (സമർപ്പിച്ചു)') : t('3. Father (അച്ഛൻ - സമർപ്പിച്ചു)', '3. അച്ഛൻ (സമർപ്പിച്ചു)')}
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] font-bold text-emerald-800 flex items-center gap-1.5 mt-0.5">
+                    <span>{t('Token / Serial No:', 'ഔദ്യോഗിക ടോക്കൺ നമ്പർ:')}</span>
+                    <span className="font-mono bg-emerald-600 text-white px-2 py-0.5 rounded-lg text-xs font-black shadow-2xs">
+                      {parentClaim?.tokenNo || parentClaim?.serialNo || 'SUBMITTED'}
+                    </span>
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                onClick={() => {
+                  if (parentClaim) populateParentFromClaim(parentClaim);
+                  setEditingParent(true);
+                  setParentSelected(true);
+                }}
+                className="h-10 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md cursor-pointer"
+              >
+                <Edit3 className="w-4 h-4 text-slate-950" />
+                <span>{t('Edit Form 3', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5">
+                <span className="text-[10px] text-slate-500 font-bold block">{t('Highrich ID', 'ഹൈറിച്ച് ഐഡി')}</span>
+                <span className="font-mono font-bold text-slate-800">{parentClaim?.highrichId || '—'}</span>
+              </div>
+              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5">
+                <span className="text-[10px] text-slate-500 font-bold block">{t('Mobile Number', 'മൊബൈൽ നമ്പർ')}</span>
+                <span className="font-mono font-bold text-slate-800">{parentClaim?.userMobile || parentMobile || '—'}</span>
+              </div>
+              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5 col-span-2 sm:col-span-1">
+                <span className="text-[10px] text-slate-500 font-bold block">{t('Total Pending', 'ആകെ മിച്ച തുക')}</span>
+                <span className="font-black text-emerald-700">₹{(parentClaim?.totalPending || parentTotalPending || 0).toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* GOLD WRAPPER: 3. PARENT CLAIM FORM */}
+        {(!hasParent || editingParent) && (
+        <div className="border-2 border-amber-400 dark:border-amber-500 bg-white/95 backdrop-blur-xl rounded-3xl shadow-xl ring-2 ring-amber-400/20 overflow-hidden p-4 sm:p-6 space-y-6">
+          {editingParent && (
+            <div className="bg-amber-100 border-2 border-amber-400 rounded-2xl p-3 flex items-center justify-between gap-3 text-amber-950">
+              <div className="flex items-center gap-2">
+                <Edit3 className="w-4 h-4 text-amber-700" />
+                <span className="text-xs font-black uppercase tracking-wide">
+                  {t('Editing Form 3 (Parent) Information', 'ഫോം 3 (മാതാവ് / പിതാവ് വിവരങ്ങൾ) എഡിറ്റ് ചെയ്യുന്നു')}
+                </span>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setEditingParent(false)}
+                className="h-8 px-3 text-[11px] font-bold border-amber-400 text-amber-900 bg-white hover:bg-amber-50"
+              >
+                {t('Cancel Edit', 'റദ്ദാക്കുക')}
+              </Button>
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center justify-between pb-4 border-b-2 border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 p-4 sm:p-5 rounded-t-3xl gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-amber-300">
+                👑 3
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                  {t('3. PARENT CLAIM FORM (MOTHER / FATHER)', '3. മാതാവ് / പിതാവ് ക്ലെയിം ഫോം')}
+                </h3>
+                <p className="text-[10px] sm:text-xs font-bold text-amber-900 uppercase tracking-wider">
+                  {t('Parent Settlement Claim Form', 'മാതാവ് അല്ലെങ്കിൽ പിതാവിന്റെ സെറ്റിൽമെന്റ് ഫോം')}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Badge className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black rounded-xl px-3 py-1 shadow-xs">
+                {t('Form 3 (Parent)', 'ഫോം 3 (മാതാവ്/പിതാവ്)')}
+              </Badge>
+              <Checkbox 
+                checked={parentSelected} 
+                onCheckedChange={(val) => {
+                  setParentSelected(!!val);
+                  if (!!val && !parentRelation) setParentRelation('Mother');
+                }} 
+                className="w-5 h-5 border-amber-400 rounded-md data-[state=checked]:bg-amber-600 cursor-pointer" 
+              />
+            </div>
+          </div>
+
+          {!parentSelected && (
+            <div 
+              onClick={() => {
+                setParentSelected(true);
+                if (!parentRelation) setParentRelation('Mother');
+              }}
+              className="p-4 bg-amber-50/50 hover:bg-amber-50/80 border-2 border-dashed border-amber-300 rounded-2xl flex items-center justify-between cursor-pointer transition-all"
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="text-lg">👵</span>
+                <div>
+                  <p className="text-xs font-black text-slate-800">
+                    {t('Click here to fill Parent (Mother / Father) Form', 'മാതാവ് അല്ലെങ്കിൽ പിതാവിന്റെ വിവരങ്ങൾ പൂരിപ്പിക്കാൻ ഇവിടെ ക്ലിക്ക് ചെയ്യുക')}
+                  </p>
+                  <p className="text-[10px] text-slate-500 font-bold">
+                    {t('Adds an individual court serial registry number for parent', 'മാതാവ്/പിതാവിന് പ്രത്യേക ഔദ്യോഗിക കോർട്ട് നമ്പർ ലഭിക്കുന്നു')}
+                  </p>
+                </div>
+              </div>
+              <Button size="sm" variant="outline" className="text-xs font-bold border-amber-400 text-amber-800 bg-white">
+                {t('+ Open Form', '+ ഫോം തുറക്കുക')}
+              </Button>
+            </div>
+          )}
+
+          {parentSelected && (
+            <CardContent className="p-0 space-y-6">
+
+            {parentSelected && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5">
+                {/* Relationship selector - MANDATORY & Restricted to Parent */}
+                <FormFieldBox
+                  label={tLabel('Relationship with Applicant (Mother / Father)', 'അപേക്ഷകനുമായുള്ള ബന്ധം (മാതാവ് / പിതാവ്)')}
+                  icon="👵"
+                  badge={t('Required', 'നിർബന്ധം')}
+                  badgeType="required"
+                  theme="amber"
+                >
+                  <RadioGroup 
+                    value={parentRelation} 
+                    onValueChange={(val) => setParentRelation(val as 'Mother' | 'Father')} 
+                    className="flex flex-wrap gap-4 pt-1"
+                  >
+                    <div className="flex items-center gap-2 cursor-pointer bg-white px-4 py-2.5 rounded-xl border border-amber-200 shadow-2xs">
+                      <RadioGroupItem value="Mother" id="parent-mother" className="text-amber-600" />
+                      <Label htmlFor="parent-mother" className="text-xs font-black text-slate-800 cursor-pointer">
+                        👵 {t('Mother', 'അമ്മ')}
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-2 cursor-pointer bg-white px-4 py-2.5 rounded-xl border border-amber-200 shadow-2xs">
+                      <RadioGroupItem value="Father" id="parent-father" className="text-amber-600" />
+                      <Label htmlFor="parent-father" className="text-xs font-black text-slate-800 cursor-pointer">
+                        👴 {t('Father', 'അച്ഛൻ')}
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </FormFieldBox>
+
+                {/* Parent Personal Details Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormFieldBox
+                    label={tLabel('Parent Full Name', 'മാതാവ് / പിതാവിന്റെ മുഴുവൻ പേര്')}
+                    icon="👤"
+                    badge={t('Required', 'നിർബന്ധം')}
+                    badgeType="required"
+                    theme="amber"
+                  >
+                    <Input 
+                      value={parentName} 
+                      onChange={(e) => setParentName(e.target.value)} 
+                      placeholder={tPlaceholder('Enter Full Name', 'മുഴുവൻ പേര് നൽകുക')}
+                      className="h-11 border-2 border-amber-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 shadow-xs focus:border-amber-500"
+                    />
+                  </FormFieldBox>
+
+                  <FormFieldBox
+                    label={tLabel('Parent Mobile Number', 'മാതാവ് / പിതാവിന്റെ മൊബൈൽ നമ്പർ')}
+                    icon="📱"
+                    badge={parentMobile && parentMobile !== (customerMobile || user?.mobile) ? t('Custom', 'സ്വന്തം നമ്പർ') : t('Auto', 'അപേക്ഷകന്റെ നമ്പർ')}
+                    badgeType="info"
+                    theme="amber"
+                  >
+                    <Input 
+                      value={parentMobile !== '' ? parentMobile : (customerMobile || user?.mobile || '')} 
+                      onChange={(e) => setParentMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                      placeholder={tPlaceholder('10-digit Mobile', '10 അക്ക മൊബൈൽ നമ്പർ')}
+                      type="tel"
+                      maxLength={10}
+                      className="h-11 border-2 border-amber-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono shadow-xs focus:border-amber-500"
+                    />
+                  </FormFieldBox>
+
+                  <FormFieldBox
+                    label={tLabel('Parent Customer ID', 'മാതാവ് / പിതാവിന്റെ കസ്റ്റമർ ഐഡി')}
+                    icon="🆔"
+                    badge={t('Optional', 'ഓപ്ഷണൽ')}
+                    badgeType="optional"
+                    theme="slate"
+                    className="md:col-span-2"
+                  >
+                    <Input 
+                      value={parentHighrichId} 
+                      onChange={(e) => setParentHighrichId(e.target.value)} 
+                      placeholder={tPlaceholder('Enter Customer ID if known', 'കസ്റ്റമർ ഐഡി അറിയാമെങ്കിൽ നൽകുക')}
+                      className="h-11 border-2 border-slate-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 shadow-xs focus:border-slate-400"
+                    />
+                  </FormFieldBox>
+                </div>
+
+                {/* Leader / Sponsor Section */}
+                <div className="border-2 border-blue-200 bg-blue-50/40 rounded-2xl p-4 space-y-3 shadow-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-600 text-white font-black text-xs uppercase tracking-wider shadow-xs">
+                      <span>👤</span>
+                      <span>{t('Leader / Sponsor Details', 'ലീഡർ / സ്പോൺസർ വിവരങ്ങൾ')}</span>
+                    </div>
+                    {selfSponsorName && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setParentSponsorName(selfSponsorName);
+                          setParentSponsorMobile(selfSponsorMobile);
+                        }}
+                        className="text-[10px] font-black text-blue-700 bg-white border border-blue-300 hover:bg-blue-100 px-3 py-1 rounded-xl transition-all cursor-pointer shadow-2xs"
+                      >
+                        📋 {t('Copy Leader Details from Self', 'സ്വന്തം ലീഡർ വിവരങ്ങൾ പകർത്തുക')}
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <FormFieldBox
+                      label={tLabel('Leader / Sponsor Name', 'ലീഡർ / സ്പോൺസർ പേര്')}
+                      icon="👤"
+                      badge={t('Optional', 'ഓപ്ഷണൽ')}
+                      badgeType="optional"
+                      theme="blue"
+                    >
+                      <Input 
+                        value={parentSponsorName} 
+                        onChange={(e) => setParentSponsorName(e.target.value)} 
+                        placeholder={tPlaceholder('Leader / Sponsor Name', 'ലീഡർ / സ്പോൺസർ പേര്')}
+                        className="h-10 border border-blue-200 rounded-lg font-bold bg-white text-xs sm:text-sm text-slate-900"
+                      />
+                    </FormFieldBox>
+                    <FormFieldBox
+                      label={tLabel('Leader / Sponsor Mobile', 'ലീഡർ / സ്പോൺസർ മൊബൈൽ')}
+                      icon="📞"
+                      badge={t('Optional', 'ഓപ്ഷണൽ')}
+                      badgeType="optional"
+                      theme="blue"
+                    >
+                      <Input 
+                        value={parentSponsorMobile} 
+                        onChange={(e) => setParentSponsorMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                        placeholder={tPlaceholder('10-digit Mobile Number', '10 അക്ക മൊബൈൽ നമ്പർ')}
+                        type="tel"
+                        maxLength={10}
+                        className="h-10 border border-blue-200 rounded-lg font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono"
+                      />
+                    </FormFieldBox>
+                  </div>
+                </div>
+
+                {/* Sub-breakup Selector */}
+                <div className="bg-amber-50/70 p-3.5 rounded-2xl border-2 border-amber-200 flex items-center gap-3 shadow-xs">
+                   <Checkbox 
+                     id="parent-no-breakup"
+                     checked={parentNoBreakup}
+                     onCheckedChange={(val) => setParentNoBreakup(!!val)}
+                     className="w-5 h-5 rounded border-amber-400 data-[state=checked]:bg-amber-600 cursor-pointer"
+                   />
+                   <Label htmlFor="parent-no-breakup" className="text-xs font-black text-amber-950 leading-tight cursor-pointer">
+                     {t('Provide single manual total without category breakup', 'കാറ്റഗറി തിരിച്ചുള്ള വിവരം നൽകാൻ സാധിക്കില്ല (Single manual total)')}
+                   </Label>
+                </div>
+
+                {/* Breakup Details OR Total manual entries */}
+                {parentNoBreakup ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormFieldBox
+                      label={tLabel('Total Paid Amount', 'ആകെ നൽകിയ തുക')}
+                      icon="💵"
+                      badge={t('Required', 'നിർബന്ധം')}
+                      badgeType="required"
+                      theme="amber"
+                    >
+                      <div className="relative">
+                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input 
+                          type="number"
+                          placeholder={tPlaceholder('Paid Amount', 'നൽകിയ തുക')}
+                          value={parentTotalPaid || ''}
+                          onChange={(e) => handleTotalChange('parent', 'paid', e.target.value)}
+                          className="pl-9 h-11 bg-white border-2 border-amber-200 rounded-xl font-black text-sm text-slate-900 shadow-xs focus:border-amber-500"
+                        />
+                      </div>
+                    </FormFieldBox>
+
+                    <FormFieldBox
+                      label={tLabel('Total Received Amount', 'ആകെ ലഭിച്ച തുക')}
+                      icon="💰"
+                      badge={t('Received', 'ലഭിച്ചത്')}
+                      badgeType="info"
+                      theme="emerald"
+                    >
+                      <div className="relative">
+                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input 
+                          type="number"
+                          placeholder={tPlaceholder('Received', 'ലഭിച്ച തുക')}
+                          value={parentTotalReceived || ''}
+                          onChange={(e) => handleTotalChange('parent', 'received', e.target.value)}
+                          className="pl-9 h-11 bg-white border-2 border-emerald-200 rounded-xl font-black text-sm text-slate-900 shadow-xs focus:border-emerald-500"
+                        />
+                      </div>
+                    </FormFieldBox>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <span className="px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800 text-[11px] font-black">1</span>
+                        <span>{tLabel('Select Applicable Categories', 'ലഭ്യമായ കാറ്റഗറികൾ തിരഞ്ഞെടുക്കുക')}</span>
+                      </Label>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {CATEGORIES.map(cat => {
+                        const isSel = parentCategories.includes(cat.id);
+                        return (
+                          <div 
+                            key={cat.id} 
+                            onClick={() => {
+                              setParentCategories(prev => prev.includes(cat.id) ? prev.filter(c => c !== cat.id) : [...prev, cat.id]);
+                            }}
+                            className={`px-3.5 py-2.5 border-2 rounded-2xl cursor-pointer text-xs font-black flex items-center gap-2.5 transition-all ${isSel ? 'border-amber-500 bg-amber-50 text-amber-900 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'}`}
+                          >
+                            <Checkbox checked={isSel} className="w-4 h-4 border-slate-300 pointer-events-none rounded" />
+                            {cat.heading}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                     {/* Detailed Inputs */}
+                    <div className="space-y-3">
+                      {parentCategories.map(catId => {
+                        const cat = CATEGORIES.find(c => c.id === catId);
+                        return (
+                          <div key={catId} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border-2 border-amber-100 rounded-2xl bg-amber-50/20 gap-3 shadow-xs">
+                            <span className="text-xs font-black text-slate-800 shrink-0 w-36 truncate">{cat?.heading || catId}</span>
+                            <div className="flex gap-2.5 flex-1">
+                              <Input 
+                                type="number" 
+                                placeholder={tPlaceholder('Paid Amount', 'നൽകിയ തുക')} 
+                                value={parentCategoryDetails[catId]?.paid || ''}
+                                onChange={(e) => handleCategoryDetailChange('parent', catId, 'paid', e.target.value)}
+                                className="h-10 border-2 border-amber-200 text-xs text-slate-800 bg-white rounded-xl font-bold"
+                              />
+                              <Input 
+                                type="number" 
+                                placeholder={tPlaceholder('Received Amount', 'ലഭിച്ച തുക')} 
+                                value={parentCategoryDetails[catId]?.received || ''}
+                                onChange={(e) => handleCategoryDetailChange('parent', catId, 'received', e.target.value)}
+                                className="h-10 border-2 border-emerald-200 text-xs text-slate-800 bg-white rounded-xl font-bold"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Notes Input */}
+                <FormFieldBox
+                  label={tLabel('Notes / Remarks Regarding Payment', 'നോട്ട് / പേയ്മെന്റ് കൂടുതൽ വിവരങ്ങൾ')}
+                  icon="📝"
+                  badge={t('Optional', 'ഓപ്ഷണൽ')}
+                  badgeType="optional"
+                  theme="slate"
+                >
+                  <textarea 
+                    value={parentNotes} 
+                    onChange={(e) => setParentNotes(e.target.value)} 
+                    placeholder={tPlaceholder(
+                      'Enter any details regarding bank account paid from or transaction references...',
+                      'ഏത് അക്കൗണ്ടിൽ നിന്നാണ് പണം നൽകിയത് അല്ലെങ്കിൽ ട്രാൻസാക്ഷൻ സംബന്ധമായ കൂടുതൽ വിവരങ്ങൾ ഇവിടെ രേഖപ്പെടുത്താം...'
+                    )}
+                    className="w-full text-xs font-semibold p-3 border-2 border-slate-200 rounded-xl focus:border-amber-500 focus:ring-0 focus:outline-none min-h-20 bg-white text-slate-900 shadow-2xs"
+                  />
+                </FormFieldBox>
+
+                {/* Parent Bank & PAN details */}
+                <div className="space-y-4 pt-4 border-t-2 border-slate-200">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-emerald-700 text-white font-black text-xs uppercase tracking-wider shadow-xs">
+                      <span>🏦</span>
+                      <span>{t('Parent Bank Account & PAN Details', 'മാതാവ് / പിതാവിന്റെ ബാങ്ക് അക്കൗണ്ട് & പാൻ വിവരങ്ങൾ')}</span>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        if (settlementAccountNumber) setParentSettlementAccountNumber(settlementAccountNumber);
+                        if (customerPan) setParentPan(customerPan);
+                        if (settlementBankName) setParentSettlementBankName(settlementBankName);
+                        if (settlementBranch) setParentSettlementBranch(settlementBranch);
+                        if (settlementIfsc) setParentSettlementIfsc(settlementIfsc);
+                        toast.success(t('Applicant bank details copied to Parent!', 'അപേക്ഷകന്റെ ബാങ്ക് വിവരങ്ങൾ പകർത്തി!'));
+                      }}
+                      className="h-8 px-3 text-[11px] font-black border-2 border-emerald-300 text-emerald-900 hover:bg-emerald-50 bg-white rounded-xl cursor-pointer shadow-xs"
+                    >
+                      📋 {t('Copy from Applicant', 'അപേക്ഷകന്റെ വിവരങ്ങൾ പകർത്തുക')}
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Bank Account Number Column */}
+                    <FormFieldBox
+                      label={tLabel('Bank Account Number Registered with Company', 'കമ്പനിയിൽ നൽകിയ ബാങ്ക് അക്കൗണ്ട് നമ്പർ')}
+                      icon="💳"
+                      badge={t('Required', 'നിർബന്ധം')}
+                      badgeType="required"
+                      theme="emerald"
+                      className="md:col-span-2"
+                    >
+                      <Input
+                        value={parentSettlementAccountNumber}
+                        onChange={(e) => setParentSettlementAccountNumber(e.target.value)}
+                        placeholder={tPlaceholder('Bank account number registered with company', 'കമ്പനിയിൽ നൽകിയിട്ടുള്ള ബാങ്ക് അക്കൗണ്ട് നമ്പർ')}
+                        className="h-11 border-2 border-emerald-300 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono shadow-xs focus:border-emerald-600"
+                      />
+                    </FormFieldBox>
+
+                    {/* PAN Card Number Column */}
+                    <FormFieldBox
+                      label={tLabel('PAN Card Number', 'പാൻ കാർഡ് നമ്പർ')}
+                      icon="🪪"
+                      badge={t('Optional', 'ഓപ്ഷണൽ')}
+                      badgeType="optional"
+                      theme="indigo"
+                      className="md:col-span-2"
+                    >
+                      <Input
+                        value={parentPan}
+                        onChange={(e) => setParentPan(e.target.value.toUpperCase())}
+                        placeholder={tPlaceholder('e.g. ABCDE1234F', 'e.g. ABCDE1234F (പാൻ കാർഡ് നമ്പർ)')}
+                        maxLength={10}
+                        className="h-11 border-2 border-indigo-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono uppercase shadow-xs focus:border-indigo-500"
+                      />
+                    </FormFieldBox>
+
+                    {/* Bank Name Column */}
+                    <FormFieldBox
+                      label={tLabel('Bank Name', 'ബാങ്കിന്റെ പേര്')}
+                      icon="🏛️"
+                      badge={t('Optional', 'ഓപ്ഷണൽ')}
+                      badgeType="optional"
+                      theme="indigo"
+                    >
+                      <Input
+                        value={parentSettlementBankName}
+                        onChange={(e) => setParentSettlementBankName(e.target.value)}
+                        placeholder="e.g. State Bank of India / Federal Bank"
+                        className="h-11 border-2 border-indigo-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 shadow-xs focus:border-indigo-500"
+                      />
+                    </FormFieldBox>
+
+                    {/* Branch Name Column */}
+                    <FormFieldBox
+                      label={tLabel('Branch Name', 'ബാങ്ക് ബ്രാഞ്ച്')}
+                      icon="📍"
+                      badge={t('Optional', 'ഓപ്ഷണൽ')}
+                      badgeType="optional"
+                      theme="indigo"
+                    >
+                      <Input
+                        value={parentSettlementBranch}
+                        onChange={(e) => setParentSettlementBranch(e.target.value)}
+                        placeholder={tPlaceholder('Branch Name', 'ബ്രാഞ്ച് പേര്')}
+                        className="h-11 border-2 border-indigo-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 shadow-xs focus:border-indigo-500"
+                      />
+                    </FormFieldBox>
+
+                    {/* IFSC Code Column */}
+                    <FormFieldBox
+                      label={tLabel('IFSC Code', 'IFSC കോഡ്')}
+                      icon="🔢"
+                      badge={t('Optional', 'ഓപ്ഷണൽ')}
+                      badgeType="optional"
+                      theme="indigo"
+                      className="md:col-span-2"
+                    >
+                      <Input
+                        value={parentSettlementIfsc}
+                        onChange={(e) => setParentSettlementIfsc(e.target.value.toUpperCase())}
+                        placeholder="e.g. SBIN0001234"
+                        className="h-11 border-2 border-indigo-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono uppercase shadow-xs focus:border-indigo-500"
+                      />
+                    </FormFieldBox>
+                  </div>
+                </div>
+
+                {/* Amount mini-badge */}
+                <div className="bg-slate-900 text-white rounded-2xl p-4 flex justify-between items-center text-xs font-bold shadow-md">
+                  <span className="text-slate-300 font-black uppercase tracking-wide">{t('Parent Total Pending Amount:', 'മാതാവ് / പിതാവിന്റെ ആകെ മിച്ച തുക:')}</span>
+                  <span className="text-base font-black text-emerald-400 font-mono">₹{parentTotalPending.toLocaleString('en-IN')}</span>
+                </div>
+
+                {/* FUTURE PREFERENCE, HARDSHIPS & CONDITIONS/DECLARATION (INSIDE GOLD BOX) */}
+                {(hasSelf && !editingSelf && hasSpouse && !editingSpouse) && renderFutureAndConditionsBlock('parent')}
+
+                {/* INLINE SUBMIT BUTTON FOR PARENT FORM */}
+                <div className="pt-4 border-t-2 border-amber-300/80 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 p-4 sm:p-5 rounded-b-3xl">
+                  <div className="text-xs font-bold text-slate-800 space-y-0.5">
+                    <div className="font-black text-amber-950 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      {t('Parent Form Completed', 'മാതാവ് / പിതാവിന്റെ ഫോം പൂർത്തിയായി')}
+                    </div>
+                    <p className="text-[11px] text-slate-600">
+                      {t('Click below to submit claim form with parent details.', 'മാതാവ് / പിതാവിന്റെ വിവരങ്ങളോടെ ക്ലെയിം ഫോം സമർപ്പിക്കാൻ താഴെയുള്ള ബട്ടൺ അമർത്തുക.')}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    disabled={loading}
+                    onClick={handleSubmit}
+                    className="w-full sm:w-auto h-12 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 hover:shadow-xl transition-all cursor-pointer shrink-0"
+                  >
+                    {loading ? (
+                      <span className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 animate-spin" /> {t('Saving Details...', 'വിവരങ്ങൾ സേവ് ചെയ്യുന്നു...')}
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <CheckCircle2 className="w-5 h-5 text-amber-200" />
+                        {editingParent ? t('Update Form 3 Details', 'ഫോം 3 അപ്ഡേറ്റ് ചെയ്യുക') : t('Submit Parent Form', 'മാതാവ് / പിതാവിന്റെ ഫോം സബ്മിറ്റ് ചെയ്യുക')}
+                        <ArrowRight className="w-4 h-4" />
+                      </span>
+                    )}
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+          </CardContent>
+          )}
+        </div>
+        )}
+
+        {/* SUBMITTED CARD OR FULL FORM: 4. CHILD CLAIM FORM */}
+        {hasChild && !editingChild && (
+          <div className="border-2 border-emerald-400/80 bg-gradient-to-br from-emerald-50/90 via-white to-amber-50/40 rounded-3xl shadow-lg p-5 sm:p-6 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-200/80 pb-3.5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-emerald-300">
+                  ✓ 4
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight">
+                      {childClaim?.userName || childName}
+                    </h3>
+                    <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black">
+                      {childClaim?.relation === 'Son' ? t('4. Son (മകൻ - സമർപ്പിച്ചു)', '4. മകൻ (സമർപ്പിച്ചു)') : t('4. Daughter (മകൾ - സമർപ്പിച്ചു)', '4. മകൾ (സമർപ്പിച്ചു)')}
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] font-bold text-emerald-800 flex items-center gap-1.5 mt-0.5">
+                    <span>{t('Token / Serial No:', 'ഔദ്യോഗിക ടോക്കൺ നമ്പർ:')}</span>
+                    <span className="font-mono bg-emerald-600 text-white px-2 py-0.5 rounded-lg text-xs font-black shadow-2xs">
+                      {childClaim?.tokenNo || childClaim?.serialNo || 'SUBMITTED'}
+                    </span>
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                onClick={() => {
+                  if (childClaim) populateChildFromClaim(childClaim);
+                  setEditingChild(true);
+                  setChildSelected(true);
+                }}
+                className="h-10 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md cursor-pointer"
+              >
+                <Edit3 className="w-4 h-4 text-slate-950" />
+                <span>{t('Edit Form 4', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5">
+                <span className="text-[10px] text-slate-500 font-bold block">{t('Highrich ID', 'ഹൈറിച്ച് ഐഡി')}</span>
+                <span className="font-mono font-bold text-slate-800">{childClaim?.highrichId || '—'}</span>
+              </div>
+              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5">
+                <span className="text-[10px] text-slate-500 font-bold block">{t('Mobile Number', 'മൊബൈൽ നമ്പർ')}</span>
+                <span className="font-mono font-bold text-slate-800">{childClaim?.userMobile || childMobile || '—'}</span>
+              </div>
+              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5 col-span-2 sm:col-span-1">
+                <span className="text-[10px] text-slate-500 font-bold block">{t('Total Pending', 'ആകെ മിച്ച തുക')}</span>
+                <span className="font-black text-emerald-700">₹{(childClaim?.totalPending || childTotalPending || 0).toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* GOLD WRAPPER: 4. CHILD CLAIM FORM */}
+        {(!hasChild || editingChild) && (
+        <div className="border-2 border-amber-400 dark:border-amber-500 bg-white/95 backdrop-blur-xl rounded-3xl shadow-xl ring-2 ring-amber-400/20 overflow-hidden p-4 sm:p-6 space-y-6">
+          {editingChild && (
+            <div className="bg-amber-100 border-2 border-amber-400 rounded-2xl p-3 flex items-center justify-between gap-3 text-amber-950">
+              <div className="flex items-center gap-2">
+                <Edit3 className="w-4 h-4 text-amber-700" />
+                <span className="text-xs font-black uppercase tracking-wide">
+                  {t('Editing Form 4 (Child) Information', 'ഫോം 4 (മക്കൾ വിവരങ്ങൾ) എഡിറ്റ് ചെയ്യുന്നു')}
+                </span>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setEditingChild(false)}
+                className="h-8 px-3 text-[11px] font-bold border-amber-400 text-amber-900 bg-white hover:bg-amber-50"
+              >
+                {t('Cancel Edit', 'റദ്ദാക്കുക')}
+              </Button>
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center justify-between pb-4 border-b-2 border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 p-4 sm:p-5 rounded-t-3xl gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-amber-300">
+                👑 4
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                  {t('4. CHILD CLAIM FORM (SON / DAUGHTER)', '4. മകൻ / മകൾ ക്ലെയിം ഫോം')}
+                </h3>
+                <p className="text-[10px] sm:text-xs font-bold text-amber-900 uppercase tracking-wider">
+                  {t('Child Settlement Claim Form', 'മകൻ അല്ലെങ്കിൽ മകളുടെ സെറ്റിൽമെന്റ് ഫോം')}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Badge className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black rounded-xl px-3 py-1 shadow-xs">
+                {t('Form 4 (Child)', 'ഫോം 4 (മക്കൾ)')}
+              </Badge>
+              <Checkbox 
+                checked={childSelected} 
+                onCheckedChange={(val) => {
+                  setChildSelected(!!val);
+                  if (!!val && !childRelation) setChildRelation('Son');
+                }} 
+                className="w-5 h-5 border-amber-400 rounded-md data-[state=checked]:bg-amber-600 cursor-pointer" 
+              />
+            </div>
+          </div>
+
+          {!childSelected && (
+            <div 
+              onClick={() => {
+                setChildSelected(true);
+                if (!childRelation) setChildRelation('Son');
+              }}
+              className="p-4 bg-amber-50/50 hover:bg-amber-50/80 border-2 border-dashed border-amber-300 rounded-2xl flex items-center justify-between cursor-pointer transition-all"
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="text-lg">👶</span>
+                <div>
+                  <p className="text-xs font-black text-slate-800">
+                    {t('Click here to fill Child (Son / Daughter) Form', 'മകൻ അല്ലെങ്കിൽ മകളുടെ വിവരങ്ങൾ പൂരിപ്പിക്കാൻ ഇവിടെ ക്ലിക്ക് ചെയ്യുക')}
+                  </p>
+                  <p className="text-[10px] text-slate-500 font-bold">
+                    {t('Adds an individual court serial registry number for child', 'മകൻ/മകൾക്ക് പ്രത്യേക ഔദ്യോഗിക കോർട്ട് നമ്പർ ലഭിക്കുന്നു')}
+                  </p>
+                </div>
+              </div>
+              <Button size="sm" variant="outline" className="text-xs font-bold border-amber-400 text-amber-800 bg-white">
+                {t('+ Open Form', '+ ഫോം തുറക്കുക')}
+              </Button>
+            </div>
+          )}
+
+          {childSelected && (
+            <CardContent className="p-0 space-y-6">
+
+            {childSelected && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5">
+                {/* Relationship selector - MANDATORY & Restricted to Child */}
+                <FormFieldBox
+                  label={tLabel('Relationship with Applicant (Son / Daughter)', 'അപേക്ഷകനുമായുള്ള ബന്ധം (മകൻ / മകൾ)')}
+                  icon="👶"
+                  badge={t('Required', 'നിർബന്ധം')}
+                  badgeType="required"
+                  theme="amber"
+                >
+                  <RadioGroup 
+                    value={childRelation} 
+                    onValueChange={(val) => setChildRelation(val as 'Son' | 'Daughter')} 
+                    className="flex flex-wrap gap-4 pt-1"
+                  >
+                    <div className="flex items-center gap-2 cursor-pointer bg-white px-4 py-2.5 rounded-xl border border-amber-200 shadow-2xs">
+                      <RadioGroupItem value="Son" id="child-son" className="text-amber-600" />
+                      <Label htmlFor="child-son" className="text-xs font-black text-slate-800 cursor-pointer">
+                        👦 {t('Son', 'മകൻ')}
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-2 cursor-pointer bg-white px-4 py-2.5 rounded-xl border border-amber-200 shadow-2xs">
+                      <RadioGroupItem value="Daughter" id="child-daughter" className="text-amber-600" />
+                      <Label htmlFor="child-daughter" className="text-xs font-black text-slate-800 cursor-pointer">
+                        👧 {t('Daughter', 'മകൾ')}
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </FormFieldBox>
+
+                {/* Child Personal Details Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormFieldBox
+                    label={tLabel('Child Full Name', 'മകൻ / മകളുടെ മുഴുവൻ പേര്')}
+                    icon="👤"
+                    badge={t('Required', 'നിർബന്ധം')}
+                    badgeType="required"
+                    theme="amber"
+                  >
+                    <Input 
+                      value={childName} 
+                      onChange={(e) => setChildName(e.target.value)} 
+                      placeholder={tPlaceholder('Enter Full Name', 'മുഴുവൻ പേര് നൽകുക')}
+                      className="h-11 border-2 border-amber-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 shadow-xs focus:border-amber-500"
+                    />
+                  </FormFieldBox>
+
+                  <FormFieldBox
+                    label={tLabel('Child Mobile Number', 'മകൻ / മകളുടെ മൊബൈൽ നമ്പർ')}
+                    icon="📱"
+                    badge={childMobile && childMobile !== (customerMobile || user?.mobile) ? t('Custom', 'സ്വന്തം നമ്പർ') : t('Auto', 'അപേക്ഷകന്റെ നമ്പർ')}
+                    badgeType="info"
+                    theme="amber"
+                  >
+                    <Input 
+                      value={childMobile !== '' ? childMobile : (customerMobile || user?.mobile || '')} 
+                      onChange={(e) => setChildMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                      placeholder={tPlaceholder('10-digit Mobile', '10 അക്ക മൊബൈൽ നമ്പർ')}
+                      type="tel"
+                      maxLength={10}
+                      className="h-11 border-2 border-amber-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono shadow-xs focus:border-amber-500"
+                    />
+                  </FormFieldBox>
+
+                  <FormFieldBox
+                    label={tLabel('Child Customer ID', 'മകൻ / മകളുടെ കസ്റ്റമർ ഐഡി')}
+                    icon="🆔"
+                    badge={t('Optional', 'ഓപ്ഷണൽ')}
+                    badgeType="optional"
+                    theme="slate"
+                    className="md:col-span-2"
+                  >
+                    <Input 
+                      value={childHighrichId} 
+                      onChange={(e) => setChildHighrichId(e.target.value)} 
+                      placeholder={tPlaceholder('Enter Customer ID if known', 'കസ്റ്റമർ ഐഡി അറിയാമെങ്കിൽ നൽകുക')}
+                      className="h-11 border-2 border-slate-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 shadow-xs focus:border-slate-400"
+                    />
+                  </FormFieldBox>
+                </div>
+
+                {/* Leader / Sponsor Section */}
+                <div className="border-2 border-blue-200 bg-blue-50/40 rounded-2xl p-4 space-y-3 shadow-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-600 text-white font-black text-xs uppercase tracking-wider shadow-xs">
+                      <span>👤</span>
+                      <span>{t('Leader / Sponsor Details', 'ലീഡർ / സ്പോൺസർ വിവരങ്ങൾ')}</span>
+                    </div>
+                    {selfSponsorName && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setChildSponsorName(selfSponsorName);
+                          setChildSponsorMobile(selfSponsorMobile);
+                        }}
+                        className="text-[10px] font-black text-blue-700 bg-white border border-blue-300 hover:bg-blue-100 px-3 py-1 rounded-xl transition-all cursor-pointer shadow-2xs"
+                      >
+                        📋 {t('Copy Leader Details from Self', 'സ്വന്തം ലീഡർ വിവരങ്ങൾ പകർത്തുക')}
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <FormFieldBox
+                      label={tLabel('Leader / Sponsor Name', 'ലീഡർ / സ്പോൺസർ പേര്')}
+                      icon="👤"
+                      badge={t('Optional', 'ഓപ്ഷണൽ')}
+                      badgeType="optional"
+                      theme="blue"
+                    >
+                      <Input 
+                        value={childSponsorName} 
+                        onChange={(e) => setChildSponsorName(e.target.value)} 
+                        placeholder={tPlaceholder('Leader / Sponsor Name', 'ലീഡർ / സ്പോൺസർ പേര്')}
+                        className="h-10 border border-blue-200 rounded-lg font-bold bg-white text-xs sm:text-sm text-slate-900"
+                      />
+                    </FormFieldBox>
+                    <FormFieldBox
+                      label={tLabel('Leader / Sponsor Mobile', 'ലീഡർ / സ്പോൺസർ മൊബൈൽ')}
+                      icon="📞"
+                      badge={t('Optional', 'ഓപ്ഷണൽ')}
+                      badgeType="optional"
+                      theme="blue"
+                    >
+                      <Input 
+                        value={childSponsorMobile} 
+                        onChange={(e) => setChildSponsorMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                        placeholder={tPlaceholder('10-digit Mobile Number', '10 അക്ക മൊബൈൽ നമ്പർ')}
+                        type="tel"
+                        maxLength={10}
+                        className="h-10 border border-blue-200 rounded-lg font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono"
+                      />
+                    </FormFieldBox>
+                  </div>
+                </div>
+
+                {/* Sub-breakup Selector */}
+                <div className="bg-amber-50/70 p-3.5 rounded-2xl border-2 border-amber-200 flex items-center gap-3 shadow-xs">
+                   <Checkbox 
+                     id="child-no-breakup"
+                     checked={childNoBreakup}
+                     onCheckedChange={(val) => setChildNoBreakup(!!val)}
+                     className="w-5 h-5 rounded border-amber-400 data-[state=checked]:bg-amber-600 cursor-pointer"
+                   />
+                   <Label htmlFor="child-no-breakup" className="text-xs font-black text-amber-950 leading-tight cursor-pointer">
+                     {t('Provide single manual total without category breakup', 'കാറ്റഗറി തിരിച്ചുള്ള വിവരം നൽകാൻ സാധിക്കില്ല (Single manual total)')}
+                   </Label>
+                </div>
+
+                {/* Breakup Details OR Total manual entries */}
+                {childNoBreakup ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormFieldBox
+                      label={tLabel('Total Paid Amount', 'ആകെ നൽകിയ തുക')}
+                      icon="💵"
+                      badge={t('Required', 'നിർബന്ധം')}
+                      badgeType="required"
+                      theme="amber"
+                    >
+                      <div className="relative">
+                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input 
+                          type="number"
+                          placeholder={tPlaceholder('Paid Amount', 'നൽകിയ തുക')}
+                          value={childTotalPaid || ''}
+                          onChange={(e) => handleTotalChange('child', 'paid', e.target.value)}
+                          className="pl-9 h-11 bg-white border-2 border-amber-200 rounded-xl font-black text-sm text-slate-900 shadow-xs focus:border-amber-500"
+                        />
+                      </div>
+                    </FormFieldBox>
+
+                    <FormFieldBox
+                      label={tLabel('Total Received Amount', 'ആകെ ലഭിച്ച തുക')}
+                      icon="💰"
+                      badge={t('Received', 'ലഭിച്ചത്')}
+                      badgeType="info"
+                      theme="emerald"
+                    >
+                      <div className="relative">
+                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input 
+                          type="number"
+                          placeholder={tPlaceholder('Received', 'ലഭിച്ച തുക')}
+                          value={childTotalReceived || ''}
+                          onChange={(e) => handleTotalChange('child', 'received', e.target.value)}
+                          className="pl-9 h-11 bg-white border-2 border-emerald-200 rounded-xl font-black text-sm text-slate-900 shadow-xs focus:border-emerald-500"
+                        />
+                      </div>
+                    </FormFieldBox>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <span className="px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800 text-[11px] font-black">1</span>
+                        <span>{tLabel('Select Applicable Categories', 'ലഭ്യമായ കാറ്റഗറികൾ തിരഞ്ഞെടുക്കുക')}</span>
+                      </Label>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {CATEGORIES.map(cat => {
+                        const isSel = childCategories.includes(cat.id);
+                        return (
+                          <div 
+                            key={cat.id} 
+                            onClick={() => {
+                              setChildCategories(prev => prev.includes(cat.id) ? prev.filter(c => c !== cat.id) : [...prev, cat.id]);
+                            }}
+                            className={`px-3.5 py-2.5 border-2 rounded-2xl cursor-pointer text-xs font-black flex items-center gap-2.5 transition-all ${isSel ? 'border-amber-500 bg-amber-50 text-amber-900 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'}`}
+                          >
+                            <Checkbox checked={isSel} className="w-4 h-4 border-slate-300 pointer-events-none rounded" />
+                            {cat.heading}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                     {/* Detailed Inputs */}
+                    <div className="space-y-3">
+                      {childCategories.map(catId => {
+                        const cat = CATEGORIES.find(c => c.id === catId);
+                        return (
+                          <div key={catId} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border-2 border-amber-100 rounded-2xl bg-amber-50/20 gap-3 shadow-xs">
+                            <span className="text-xs font-black text-slate-800 shrink-0 w-36 truncate">{cat?.heading || catId}</span>
+                            <div className="flex gap-2.5 flex-1">
+                              <Input 
+                                type="number" 
+                                placeholder={tPlaceholder('Paid Amount', 'നൽകിയ തുക')} 
+                                value={childCategoryDetails[catId]?.paid || ''}
+                                onChange={(e) => handleCategoryDetailChange('child', catId, 'paid', e.target.value)}
+                                className="h-10 border-2 border-amber-200 text-xs text-slate-800 bg-white rounded-xl font-bold"
+                              />
+                              <Input 
+                                type="number" 
+                                placeholder={tPlaceholder('Received Amount', 'ലഭിച്ച തുക')} 
+                                value={childCategoryDetails[catId]?.received || ''}
+                                onChange={(e) => handleCategoryDetailChange('child', catId, 'received', e.target.value)}
+                                className="h-10 border-2 border-emerald-200 text-xs text-slate-800 bg-white rounded-xl font-bold"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Notes Input */}
+                <FormFieldBox
+                  label={tLabel('Notes / Remarks Regarding Payment', 'നോട്ട് / പേയ്മെന്റ് കൂടുതൽ വിവരങ്ങൾ')}
+                  icon="📝"
+                  badge={t('Optional', 'ഓപ്ഷണൽ')}
+                  badgeType="optional"
+                  theme="slate"
+                >
+                  <textarea 
+                    value={childNotes} 
+                    onChange={(e) => setChildNotes(e.target.value)} 
+                    placeholder={tPlaceholder(
+                      'Enter any details regarding bank account paid from or transaction references...',
+                      'ഏത് അക്കൗണ്ടിൽ നിന്നാണ് പണം നൽകിയത് അല്ലെങ്കിൽ ട്രാൻസാക്ഷൻ സംബന്ധമായ കൂടുതൽ വിവരങ്ങൾ ഇവിടെ രേഖപ്പെടുത്താം...'
+                    )}
+                    className="w-full text-xs font-semibold p-3 border-2 border-slate-200 rounded-xl focus:border-amber-500 focus:ring-0 focus:outline-none min-h-20 bg-white text-slate-900 shadow-2xs"
+                  />
+                </FormFieldBox>
+
+                {/* Child Bank & PAN details */}
+                <div className="space-y-4 pt-4 border-t-2 border-slate-200">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-emerald-700 text-white font-black text-xs uppercase tracking-wider shadow-xs">
+                      <span>🏦</span>
+                      <span>{t('Child Bank Account & PAN Details', 'മകൻ / മകളുടെ ബാങ്ക് അക്കൗണ്ട് & പാൻ വിവരങ്ങൾ')}</span>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        if (settlementAccountNumber) setChildSettlementAccountNumber(settlementAccountNumber);
+                        if (customerPan) setChildPan(customerPan);
+                        if (settlementBankName) setChildSettlementBankName(settlementBankName);
+                        if (settlementBranch) setChildSettlementBranch(settlementBranch);
+                        if (settlementIfsc) setChildSettlementIfsc(settlementIfsc);
+                        toast.success(t('Applicant bank details copied to Child!', 'അപേക്ഷകന്റെ ബാങ്ക് വിവരങ്ങൾ പകർത്തി!'));
+                      }}
+                      className="h-8 px-3 text-[11px] font-black border-2 border-emerald-300 text-emerald-900 hover:bg-emerald-50 bg-white rounded-xl cursor-pointer shadow-xs"
+                    >
+                      📋 {t('Copy from Applicant', 'അപേക്ഷകന്റെ വിവരങ്ങൾ പകർത്തുക')}
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Bank Account Number Column */}
+                    <FormFieldBox
+                      label={tLabel('Bank Account Number Registered with Company', 'കമ്പനിയിൽ നൽകിയ ബാങ്ക് അക്കൗണ്ട് നമ്പർ')}
+                      icon="💳"
+                      badge={t('Required', 'നിർബന്ധം')}
+                      badgeType="required"
+                      theme="emerald"
+                      className="md:col-span-2"
+                    >
+                      <Input
+                        value={childSettlementAccountNumber}
+                        onChange={(e) => setChildSettlementAccountNumber(e.target.value)}
+                        placeholder={tPlaceholder('Bank account number registered with company', 'കമ്പനിയിൽ നൽകിയിട്ടുള്ള ബാങ്ക് അക്കൗണ്ട് നമ്പർ')}
+                        className="h-11 border-2 border-emerald-300 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono shadow-xs focus:border-emerald-600"
+                      />
+                    </FormFieldBox>
+
+                    {/* PAN Card Number Column */}
+                    <FormFieldBox
+                      label={tLabel('PAN Card Number', 'പാൻ കാർഡ് നമ്പർ')}
+                      icon="🪪"
+                      badge={t('Optional', 'ഓപ്ഷണൽ')}
+                      badgeType="optional"
+                      theme="indigo"
+                      className="md:col-span-2"
+                    >
+                      <Input
+                        value={childPan}
+                        onChange={(e) => setChildPan(e.target.value.toUpperCase())}
+                        placeholder={tPlaceholder('e.g. ABCDE1234F', 'e.g. ABCDE1234F (പാൻ കാർഡ് നമ്പർ)')}
+                        maxLength={10}
+                        className="h-11 border-2 border-indigo-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono uppercase shadow-xs focus:border-indigo-500"
+                      />
+                    </FormFieldBox>
+
+                    {/* Bank Name Column */}
+                    <FormFieldBox
+                      label={tLabel('Bank Name', 'ബാങ്കിന്റെ പേര്')}
+                      icon="🏛️"
+                      badge={t('Optional', 'ഓപ്ഷണൽ')}
+                      badgeType="optional"
+                      theme="indigo"
+                    >
+                      <Input
+                        value={childSettlementBankName}
+                        onChange={(e) => setChildSettlementBankName(e.target.value)}
+                        placeholder="e.g. State Bank of India / Federal Bank"
+                        className="h-11 border-2 border-indigo-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 shadow-xs focus:border-indigo-500"
+                      />
+                    </FormFieldBox>
+
+                    {/* Branch Name Column */}
+                    <FormFieldBox
+                      label={tLabel('Branch Name', 'ബാങ്ക് ബ്രാഞ്ച്')}
+                      icon="📍"
+                      badge={t('Optional', 'ഓപ്ഷണൽ')}
+                      badgeType="optional"
+                      theme="indigo"
+                    >
+                      <Input
+                        value={childSettlementBranch}
+                        onChange={(e) => setChildSettlementBranch(e.target.value)}
+                        placeholder={tPlaceholder('Branch Name', 'ബ്രാഞ്ച് പേര്')}
+                        className="h-11 border-2 border-indigo-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 shadow-xs focus:border-indigo-500"
+                      />
+                    </FormFieldBox>
+
+                    {/* IFSC Code Column */}
+                    <FormFieldBox
+                      label={tLabel('IFSC Code', 'IFSC കോഡ്')}
+                      icon="🔢"
+                      badge={t('Optional', 'ഓപ്ഷണൽ')}
+                      badgeType="optional"
+                      theme="indigo"
+                      className="md:col-span-2"
+                    >
+                      <Input
+                        value={childSettlementIfsc}
+                        onChange={(e) => setChildSettlementIfsc(e.target.value.toUpperCase())}
+                        placeholder="e.g. SBIN0001234"
+                        className="h-11 border-2 border-indigo-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono uppercase shadow-xs focus:border-indigo-500"
+                      />
+                    </FormFieldBox>
+                  </div>
+                </div>
+
+                {/* Amount mini-badge */}
+                <div className="bg-slate-900 text-white rounded-2xl p-4 flex justify-between items-center text-xs font-bold shadow-md">
+                  <span className="text-slate-300 font-black uppercase tracking-wide">{t('Child Total Pending Amount:', 'മകൻ / മകളുടെ ആകെ മിച്ച തുക:')}</span>
+                  <span className="text-base font-black text-emerald-400 font-mono">₹{childTotalPending.toLocaleString('en-IN')}</span>
+                </div>
+
+                {/* FUTURE PREFERENCE, HARDSHIPS & CONDITIONS/DECLARATION (INSIDE GOLD BOX) */}
+                {(hasSelf && !editingSelf && hasSpouse && !editingSpouse && hasParent && !editingParent) && renderFutureAndConditionsBlock('child')}
+
+                {/* INLINE SUBMIT BUTTON FOR CHILD FORM */}
+                <div className="pt-4 border-t-2 border-amber-300/80 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 p-4 sm:p-5 rounded-b-3xl">
+                  <div className="text-xs font-bold text-slate-800 space-y-0.5">
+                    <div className="font-black text-amber-950 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      {t('Child Form Completed', 'മകൻ / മകളുടെ ഫോം പൂർത്തിയായി')}
+                    </div>
+                    <p className="text-[11px] text-slate-600">
+                      {t('Click below to submit claim form with child details.', 'മകൻ / മകളുടെ വിവരങ്ങളോടെ ക്ലെയിം ഫോം സമർപ്പിക്കാൻ താഴെയുള്ള ബട്ടൺ അമർത്തുക.')}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    disabled={loading}
+                    onClick={handleSubmit}
+                    className="w-full sm:w-auto h-12 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 hover:shadow-xl transition-all cursor-pointer shrink-0"
+                  >
+                    {loading ? (
+                      <span className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 animate-spin" /> {t('Saving Details...', 'വിവരങ്ങൾ സേവ് ചെയ്യുന്നു...')}
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <CheckCircle2 className="w-5 h-5 text-amber-200" />
+                        {editingChild ? t('Update Form 4 Details', 'ഫോം 4 അപ്ഡേറ്റ് ചെയ്യുക') : t('Submit Child Form', 'മകൻ / മകളുടെ ഫോം സബ്മിറ്റ് ചെയ്യുക')}
+                        <ArrowRight className="w-4 h-4" />
+                      </span>
+                    )}
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+          </CardContent>
+          )}
+        </div>
+        )}
         {/* COMBINED TOTAL DISPLAY */}
         <section className="bg-brand-blue rounded-3xl p-6 text-white space-y-6 shadow-xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
           
           <div className="flex items-center gap-2">
             <LayoutDashboard className="w-5 h-5 text-brand-magenta" />
-            <h4 className="text-[10px] font-black uppercase tracking-wider opacity-60">ആകെ തുക വിവരങ്ങൾ (Combined Totals)</h4>
+            <h4 className="text-[10px] font-black uppercase tracking-wider opacity-60">
+              {t('Combined Totals', 'ആകെ തുക വിവരങ്ങൾ')}
+            </h4>
           </div>
 
           {/* Claimant-wise Breakdown List */}
           <div className="space-y-2 border-b border-white/10 pb-4">
-            <p className="text-[9px] font-black opacity-55 uppercase tracking-wider text-pink-300">വ്യക്തിഗത തുകകൾ (Individual Claimants Breakdown):</p>
+            <p className="text-[9px] font-black opacity-55 uppercase tracking-wider text-pink-300">
+              {t('Individual Claimants Breakdown:', 'വ്യക്തിഗത തുകകൾ:')}
+            </p>
             <div className="grid grid-cols-1 gap-2 pt-1">
               {selfSelected && (
                 <div className="flex justify-between items-center bg-white/5 rounded-xl px-3 py-2 border border-white/5">
                   <div>
-                    <span className="text-[10px] font-black text-brand-magenta uppercase">സ്വന്തം (Self)</span>
+                    <span className="text-[10px] font-black text-brand-magenta uppercase">
+                      {t('Self', 'സ്വന്തം')}
+                    </span>
                     <span className="text-xs font-bold text-slate-200 block truncate max-w-[200px]">{selfName || user?.name}</span>
                   </div>
                   <div className="text-right">
@@ -2381,7 +4667,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                 <div className="flex justify-between items-center bg-white/5 rounded-xl px-3 py-2 border border-white/5">
                   <div>
                     <span className="text-[10px] font-black text-brand-magenta uppercase">
-                      {parentRelation === 'Mother' ? 'അമ്മ (Mother)' : parentRelation === 'Father' ? 'അച്ഛൻ (Father)' : 'മാതാവ്/പിതാവ് (Parent)'}
+                      {parentRelation === 'Mother' ? t('Mother', 'അമ്മ') : parentRelation === 'Father' ? t('Father', 'അച്ഛൻ') : t('Parent', 'മാതാവ്/പിതാവ്')}
                     </span>
                     <span className="text-xs font-bold text-slate-200 block truncate max-w-[200px]">{parentName}</span>
                   </div>
@@ -2395,7 +4681,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                 <div className="flex justify-between items-center bg-white/5 rounded-xl px-3 py-2 border border-white/5">
                   <div>
                     <span className="text-[10px] font-black text-brand-magenta uppercase">
-                      {childRelation === 'Son' ? 'മകൻ (Son)' : childRelation === 'Daughter' ? 'മകൾ (Daughter)' : 'മകൻ/മകൾ (Child)'}
+                      {childRelation === 'Son' ? t('Son', 'മകൻ') : childRelation === 'Daughter' ? t('Daughter', 'മകൾ') : t('Child', 'മകൻ/മകൾ')}
                     </span>
                     <span className="text-xs font-bold text-slate-200 block truncate max-w-[200px]">{childName}</span>
                   </div>
@@ -2405,195 +4691,51 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                   </div>
                 </div>
               )}
+              {spouseSelected && (
+                <div className="flex justify-between items-center bg-white/5 rounded-xl px-3 py-2 border border-white/5">
+                  <div>
+                    <span className="text-[10px] font-black text-brand-magenta uppercase">
+                      {spouseRelation === 'Wife' ? t('Wife', 'ഭാര്യ') : spouseRelation === 'Husband' ? t('Husband', 'ഭർത്താവ്') : t('Spouse', 'ഭാര്യ/ഭർത്താവ്')}
+                    </span>
+                    <span className="text-xs font-bold text-slate-200 block truncate max-w-[200px]">{spouseName}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[8px] opacity-45 block">Pending</span>
+                    <span className="text-sm font-black text-white">₹{spouseTotalPending.toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4">
             <div className="flex items-end justify-between border-b border-white/10 pb-3">
                <div>
-                  <p className="text-[9px] font-bold opacity-50 uppercase tracking-widest text-white">Combined Pending Claim</p>
+                  <p className="text-[9px] font-bold opacity-50 uppercase tracking-widest text-white">
+                    {t('Combined Pending Claim', 'ആകെ മിച്ച ക്ലെയിം തുക')}
+                  </p>
                   <p className="text-3xl font-black text-brand-magenta tracking-tight">
                     ₹{combinedTotalPending.toLocaleString('en-IN')}
                   </p>
                </div>
-               <Badge className="bg-white/10 text-white border-0 text-[10px] py-1 mb-1">Combined</Badge>
+               <Badge className="bg-white/10 text-white border-0 text-[10px] py-1 mb-1">
+                 {t('Combined', 'ആകെ')}
+               </Badge>
             </div>
 
             <div className="grid grid-cols-2 gap-3 pb-1">
                <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-                  <p className="text-[8px] font-bold opacity-50 uppercase tracking-wider mb-0.5">Total Paid</p>
+                  <p className="text-[8px] font-bold opacity-50 uppercase tracking-wider mb-0.5">
+                    {t('Total Paid', 'ആകെ നൽകിയത്')}
+                  </p>
                   <p className="text-base font-black text-white">₹{combinedTotalPaid.toLocaleString('en-IN')}</p>
                </div>
                <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-                  <p className="text-[8px] font-bold opacity-50 uppercase tracking-wider mb-0.5">Total Received</p>
+                  <p className="text-[8px] font-bold opacity-50 uppercase tracking-wider mb-0.5">
+                    {t('Total Received', 'ആകെ ലഭിച്ചത്')}
+                  </p>
                   <p className="text-base font-black text-white">₹{combinedTotalReceived.toLocaleString('en-IN')}</p>
                </div>
-            </div>
-          </div>
-        </section>
-
-        {/* GENERAL STATEMENT PREFERENCE */}
-        <Card className={`border-2 rounded-3xl shadow-sm overflow-hidden bg-white transition-all duration-300 ${
-          !futurePreference 
-            ? 'border-rose-450 bg-rose-50/10 shadow-[0_0_15px_rgba(239,68,68,0.1)]' 
-            : 'border-emerald-200 bg-white'
-        }`}>
-          <CardContent className="p-5 md:p-6 space-y-4">
-              <div className="flex items-center justify-between border-b pb-3 border-slate-100">
-                <div className="flex items-center gap-2">
-                  <Heart className="w-5 h-5 text-brand-magenta animate-pulse" />
-                  <h4 className="text-xs font-black text-brand-blue uppercase tracking-widest">ഭാവിയിലെ താല്പര്യം (Future Preference)</h4>
-                </div>
-                {!futurePreference ? (
-                  <Badge className="bg-rose-500 hover:bg-rose-600 text-white font-black text-[9px] uppercase px-2 py-0.5 rounded animate-bounce">
-                    ⚠️ തിരഞ്ഞെടുക്കൽ നിർബന്ധം (Required)
-                  </Badge>
-                ) : (
-                  <Badge className="bg-emerald-500 text-white font-black text-[9px] uppercase px-2 py-0.5 rounded flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" /> പൂർത്തിയായി (Selected)
-                  </Badge>
-                )}
-              </div>
-              
-              <div className="space-y-3">
-                 <p className="text-xs font-bold text-slate-600 leading-relaxed">
-                   കമ്പനി പ്രവർത്തനം പുനരാരംഭിക്കുകയാണെങ്കിൽ താങ്കളുടെ കുടുംബത്തിന്റെ താൽപര്യം? (Select family preference) *
-                 </p>
-                 <RadioGroup value={futurePreference} onValueChange={setFuturePreference} className="space-y-3">
-                    {PREFERENCES.map(pref => {
-                      const isSelected = futurePreference === pref.id;
-                      return (
-                        <div 
-                          key={pref.id}
-                          className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all cursor-pointer ${
-                            isSelected 
-                              ? 'border-brand-magenta bg-brand-magenta/5 shadow-sm scale-[1.01]' 
-                              : 'border-slate-150 hover:border-slate-250 bg-slate-50/50'
-                          }`}
-                          onClick={() => setFuturePreference(pref.id)}
-                        >
-                           <RadioGroupItem value={pref.id} id={pref.id} className="text-brand-magenta w-4.5 h-4.5" />
-                           <Label htmlFor={pref.id} className={`text-xs font-extrabold cursor-pointer flex-1 leading-normal ${
-                             isSelected ? 'text-brand-magenta' : 'text-slate-800'
-                           }`}>
-                             {pref.label}
-                           </Label>
-                        </div>
-                      );
-                    })}
-                 </RadioGroup>
-              </div>
-          </CardContent>
-        </Card>
-
-        {/* HARDSHIP STATUS (EMERGENCY STATUS) */}
-        <Card className={`border-2 rounded-3xl shadow-sm overflow-hidden bg-white transition-all duration-300 ${
-          hardshipStatus.length === 0 
-            ? 'border-rose-450 bg-rose-50/10 shadow-[0_0_15px_rgba(239,68,68,0.1)]' 
-            : 'border-emerald-200 bg-white'
-        }`}>
-          <CardContent className="p-5 md:p-6 space-y-4">
-              <div className="flex items-center justify-between border-b pb-3 border-slate-100">
-                <div className="flex items-center gap-2">
-                  <ShieldAlert className="w-5 h-5 text-red-500 animate-pulse" />
-                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider font-sans">നിലവിലെ ബുദ്ധിമുട്ടുകൾ (Hardship Status)</h4>
-                </div>
-                {hardshipStatus.length === 0 ? (
-                  <Badge className="bg-rose-500 hover:bg-rose-600 text-white font-black text-[9px] uppercase px-2 py-0.5 rounded animate-bounce">
-                    ⚠️ തിരഞ്ഞെടുക്കൽ നിർബന്ധം (Required)
-                  </Badge>
-                ) : (
-                  <Badge className="bg-emerald-500 text-white font-black text-[9px] uppercase px-2 py-0.5 rounded flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" /> പൂർത്തിയായി (Selected)
-                  </Badge>
-                )}
-              </div>
-
-              <div className="space-y-3">
-                 <p className="text-xs font-bold text-slate-600 leading-relaxed">
-                   നിലവിൽ താങ്കളോ കുടുംബമോ നേരിടുന്ന ബുദ്ധിമുട്ടുകൾ തിരഞ്ഞെടുക്കുക (Select economic hardship) *
-                 </p>
-                 <div className="grid grid-cols-1 gap-2.5">
-                   {HARDSHIPS.map(hard => {
-                     const isSelected = hardshipStatus.includes(hard.id);
-                     return (
-                       <div 
-                         key={hard.id}
-                         onClick={() => {
-                           if (isSelected) {
-                             setHardshipStatus(prev => prev.filter(i => i !== hard.id));
-                           } else {
-                             if (hard.id === 'none') {
-                               setHardshipStatus(['none']);
-                             } else {
-                               setHardshipStatus(prev => [...prev.filter(i => i !== 'none'), hard.id]);
-                             }
-                           }
-                         }}
-                         className={`flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all cursor-pointer ${
-                           isSelected
-                             ? 'border-red-550 bg-red-50/40 shadow-sm'
-                             : 'border-slate-150 hover:border-slate-250 bg-slate-50/50'
-                         }`}
-                       >
-                         <Checkbox 
-                           checked={isSelected} 
-                           className={`pointer-events-none w-4.5 h-4.5 ${
-                             isSelected ? "border-red-600 bg-red-600 text-white" : "border-slate-300"
-                           }`} 
-                         />
-                         <Label className={`text-xs font-extrabold cursor-pointer flex-1 leading-relaxed ${
-                           isSelected ? 'text-red-700 font-bold' : 'text-slate-800'
-                         }`}>{hard.label}</Label>
-                         {['bank', 'crisis', 'medical'].includes(hard.id) && (
-                           <ShieldAlert className={`w-4 h-4 ${isSelected ? 'text-red-600 animate-bounce' : 'text-slate-400'}`} />
-                         )}
-                       </div>
-                     );
-                   })}
-                 </div>
-              </div>
-          </CardContent>
-        </Card>
-
-        {/* SHARING CONSENT */}
-        <section className="space-y-3">
-          <div 
-            onClick={() => setConsentLegal(!consentLegal)}
-            className={`p-5 rounded-3xl border-2 transition-all cursor-pointer flex items-start gap-4 ${
-              consentLegal 
-                ? 'border-emerald-500 bg-emerald-50/40 shadow-sm' 
-                : 'border-rose-455 bg-rose-50/10 shadow-[0_0_15px_rgba(239,68,68,0.1)] hover:border-rose-300'
-            }`}
-          >
-            <Checkbox 
-              checked={consentLegal} 
-              onCheckedChange={(val) => setConsentLegal(!!val)} 
-              className={`w-5 h-5 mt-1 pointer-events-none ${
-                consentLegal 
-                  ? 'border-emerald-600 bg-emerald-600 text-white' 
-                  : 'border-rose-400 bg-white'
-              }`} 
-            />
-            <div className="flex-1 min-w-0 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">സമ്മതപത്രം (Consent Declaration) *</span>
-                {!consentLegal ? (
-                  <Badge className="bg-rose-500 hover:bg-rose-600 text-white font-black text-[9px] px-1.5 py-0 rounded animate-bounce">
-                    ⚠️ സമ്മതം ആവശ്യമാണ് (Tick required)
-                  </Badge>
-                ) : (
-                  <Badge className="bg-emerald-500 text-white font-black text-[9px] px-1.5 py-0 rounded flex items-center gap-1">
-                    <CheckCircle2 className="w-2.5 h-2.5" /> പൂർത്തിയായി
-                  </Badge>
-                )}
-              </div>
-              <p className={`text-xs font-bold leading-relaxed ${consentLegal ? 'text-slate-800' : 'text-rose-900 font-extrabold'}`}>
-                ഇതിന്റെ കോപ്പികൾ വെരിഫിക്കേഷനും ഓഡിറ്റിംഗിനുമായി മാനേജ്മെന്റും ലീഗൽ കൗൺസിലറുമായി പങ്കുവെക്കുന്നതിന് ഞാൻ സമ്മതിക്കുന്നു. * (Consent Required)
-              </p>
-              <p className="text-[10px] text-slate-400 font-bold uppercase leading-normal">
-                I hereby consent to verify and share these claims with company management and legal advisors.
-              </p>
             </div>
           </div>
         </section>
@@ -2601,39 +4743,16 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
       </div>
 
       {/* STICKY BOTTOM ACTIONS */}
-      <div className="fixed bottom-0 left-0 right-0 p-5 bg-white/80 backdrop-blur-2xl border-t z-20 flex gap-4 max-w-2xl mx-auto rounded-t-3xl shadow-lg border">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-2xl border-t border-slate-200 z-20 max-w-2xl mx-auto rounded-t-3xl shadow-xl flex items-center justify-center gap-3">
         <Button
+          type="button"
           variant="outline"
           onClick={onBack || onClose}
-          className="h-12 flex-1 rounded-xl border-slate-200 font-semibold text-slate-500"
+          className="h-12 w-full rounded-2xl border-2 border-slate-300 bg-white hover:bg-slate-100 text-slate-800 font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer transition-all hover:border-slate-400"
         >
-          ← തിരികെ ഐഡി കാർഡിലേക്ക് (Back)
+          <ArrowLeft className="w-4 h-4 text-slate-600" />
+          <span>{t('Exit Page / Close', 'പേജിൽ നിന്ന് പുറത്തുപോവുക')}</span>
         </Button>
-        {submittedClaims.length >= 4 ? (
-          <Button 
-            onClick={() => setFormMode('statement')}
-            className="h-12 flex-[2] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl shadow-emerald-600/15 hover:shadow-2xl transition-all font-black text-xs relative overflow-hidden flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <FileText className="w-4 h-4" />
-            <span>ഔദ്യോഗിക കോർട്ട് സ്റ്റേറ്റ്‌മെന്റ് കാണുക</span>
-          </Button>
-        ) : (
-          <Button 
-            disabled={loading || !formIsValid}
-            onClick={handleSubmit} 
-            className="h-12 flex-[2] rounded-xl bg-brand-blue text-white shadow-xl shadow-brand-blue/15 hover:shadow-2xl transition-all font-black text-xs relative overflow-hidden"
-          >
-            {loading ? (
-              <span className="flex items-center gap-2 justify-center">
-                <Clock className="w-4 h-4 animate-spin" /> സുരക്ഷാ റജിസ്റ്റർ സമർപ്പിക്കുന്നു...
-              </span>
-            ) : (
-              <span className="flex items-center gap-2 justify-center">
-                ക്ലെയിം വിവരങ്ങൾ സമർപ്പിക്കുക (Submit Claim) <ArrowRight className="w-5 h-5" />
-              </span>
-            )}
-          </Button>
-        )}
       </div>
     </div>
   );

@@ -25,9 +25,9 @@ import LanguageSwitcher from './LanguageSwitcher';
 const loginSchema = z.object({
   mobile: z.string().trim().refine((val) => {
     const cleaned = val.replace(/\D/g, '');
-    return cleaned.length === 10 || (val.includes('@') && val.length > 5);
+    return cleaned.length === 10 || cleaned.length === 11 || cleaned.length === 12 || (val.includes('@') && val.length > 5) || val.trim().length >= 3;
   }, {
-    message: '10 അക്ക മൊബൈൽ നമ്പർ നൽകുക',
+    message: 'ശരിയായ 10 അക്ക മൊബൈൽ നമ്പർ നൽകുക',
   }),
   pin: z.string().min(1, 'Password നൽകുക'),
 });
@@ -38,10 +38,11 @@ interface LoginFormProps {
   onLogin: (values: { email: string; pin: string }) => Promise<{ success: boolean; error?: string } | boolean> | void;
   onGoogleLogin: () => void;
   onBack: () => void;
+  onRegisterClick?: () => void;
   isLoading?: boolean;
 }
 
-export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = false }: LoginFormProps) {
+export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterClick, isLoading = false }: LoginFormProps) {
   const { t } = useI18n();
   const [authError, setAuthError] = useState<string | null>(null);
   const form = useForm<LoginValues>({
@@ -55,7 +56,14 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
   const onSubmit = async (values: LoginValues) => {
     setAuthError(null);
     try {
-      const result: any = await onLogin({ email: values.mobile, pin: values.pin });
+      // Clean mobile input: if it contains digits with country code or prefix, extract the 10 digits
+      let processedInput = values.mobile.trim();
+      const onlyDigits = processedInput.replace(/\D/g, '');
+      if (!processedInput.includes('@') && onlyDigits.length >= 10) {
+        processedInput = onlyDigits.slice(-10);
+      }
+
+      const result: any = await onLogin({ email: processedInput, pin: values.pin });
       if (result && typeof result === 'object' && result.success === false) {
         setAuthError(result.error || 'ലോഗിൻ പരാജയപ്പെട്ടു. വിവരങ്ങൾ പരിശോധിക്കുക.');
       } else if (result === false) {
@@ -168,10 +176,12 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
                           onChange={(e) => {
                             if (authError) setAuthError(null);
                             const val = e.target.value;
-                            if (val.includes('@')) {
+                            if (val.includes('@') || /[a-zA-Z\/-]/.test(val)) {
                               field.onChange(val);
                             } else {
-                              field.onChange(val.replace(/\D/g, '').slice(0, 10));
+                              // If numeric, extract digits, support typing up to 12 digits or standard 10
+                              const digits = val.replace(/\D/g, '');
+                              field.onChange(digits);
                             }
                           }}
                           className={`pl-12 h-13 bg-white border-2 ${authError ? 'border-red-400 bg-red-50/10' : 'border-slate-300'} focus:border-[#1a2b5c] focus:ring-2 focus:ring-[#1a2b5c]/20 transition-all rounded-2xl font-bold text-sm text-slate-950 placeholder:text-slate-500 shadow-xs ${fieldState.error ? 'border-red-500' : ''}`} 
@@ -224,11 +234,22 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, isLoading = 
               />
 
               {authError && (
-                <div className="p-4 bg-red-50 border-2 border-red-500 rounded-2xl flex items-start gap-3 text-red-800 shadow-sm animate-in fade-in slide-in-from-top-1 duration-200">
-                  <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-                  <div className="text-xs font-bold leading-relaxed space-y-0.5">
-                    <p className="text-red-950 font-black">{authError}</p>
+                <div className="p-4 bg-red-50 border-2 border-red-500 rounded-2xl flex flex-col gap-2.5 text-red-800 shadow-sm animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                    <div className="text-xs font-bold leading-relaxed space-y-0.5 flex-1">
+                      <p className="text-red-950 font-black">{authError}</p>
+                    </div>
                   </div>
+                  {onRegisterClick && (authError.includes('രജിസ്റ്റർ') || authError.includes('not registered') || authError.includes('അംഗത്വം')) && (
+                    <button
+                      type="button"
+                      onClick={onRegisterClick}
+                      className="w-full py-2 px-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-colors cursor-pointer shadow-sm flex items-center justify-center gap-1.5 mt-1"
+                    >
+                      <span>ഇവിടെ ക്ലിക്ക് ചെയ്ത് പുതിയ അംഗത്വം എടുക്കുക (Register Now)</span>
+                    </button>
+                  )}
                 </div>
               )}
 

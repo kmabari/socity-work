@@ -212,6 +212,17 @@
         "timestamp": { "type": "string" }
       },
       "required": ["type", "timestamp"]
+    },
+    "GalleryCategory": {
+      "title": "Gallery Category",
+      "description": "Customizable categories for grouping gallery images.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["name"]
     }
   },
   "firestore": {
@@ -238,6 +249,10 @@
     "gallery": {
       "schema": "GalleryItem",
       "description": "Collection of gallery images."
+    },
+    "gallery_categories": {
+      "schema": "GalleryCategory",
+      "description": "Collection of categories for organizing gallery photos."
     },
     "support_tickets": {
       "schema": "SupportTicket",

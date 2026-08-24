@@ -31,19 +31,20 @@ const app = initializeApp(finalConfig);
 const secondaryApp = initializeApp(finalConfig, 'Secondary');
 
 // Gracefully determine which local cache configuration is safe to use.
-// In iframe/sandbox environments, IndexedDB and tab synchronizations 
-// can be blocked by browser security policies and cause connection hangs.
+// In iframe/sandbox/cloud-run environments, WebChannel stream connections and IndexedDB 
+// tab synchronizations can be blocked or cause connection errors.
 const getSafeFirestoreSettings = () => {
   try {
     if (typeof window === 'undefined' || !window.indexedDB) {
       return { 
         localCache: memoryLocalCache(),
-        experimentalAutoDetectLongPolling: true
+        experimentalForceLongPolling: true
       };
     }
 
     const isDevHost = window.location.hostname.includes('ais-dev') || 
                       window.location.hostname.includes('ais-pre') || 
+                      window.location.hostname.includes('run.app') || 
                       window.location.hostname.includes('localhost') || 
                       window.location.hostname.includes('127.0.0.1') || 
                       window.location.hostname.includes('google.com');
@@ -51,10 +52,9 @@ const getSafeFirestoreSettings = () => {
     const inIframe = window.self !== window.top;
     
     if (inIframe || isDevHost) {
-      console.log("Memory cache enabled for preview/iframe environment to avoid IndexedDB crashes.");
       return { 
         localCache: memoryLocalCache(),
-        experimentalAutoDetectLongPolling: true
+        experimentalForceLongPolling: true
       };
     }
 
@@ -66,13 +66,13 @@ const getSafeFirestoreSettings = () => {
       localCache: persistentLocalCache({
         tabManager: persistentMultipleTabManager()
       }),
-      experimentalAutoDetectLongPolling: true
+      experimentalForceLongPolling: true
     };
   } catch (e) {
     console.warn("IndexedDB access is restricted or threw an error. Falling back to memory cache.", e);
     return { 
       localCache: memoryLocalCache(),
-      experimentalAutoDetectLongPolling: true
+      experimentalForceLongPolling: true
     };
   }
 };
@@ -82,7 +82,7 @@ const databaseId = finalConfig.firestoreDatabaseId && finalConfig.firestoreDatab
   : undefined;
 
 export const db = initializeFirestore(app, getSafeFirestoreSettings(), databaseId);
-export const secondaryDb = initializeFirestore(secondaryApp, getSafeFirestoreSettings(), databaseId);
+export const secondaryDb = db;
 export const auth = getAuth(app);
 export const secondaryAuth = getAuth(secondaryApp);
 export const storage = getStorage(app);

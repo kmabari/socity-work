@@ -6,6 +6,8 @@ export interface OrgSettings {
   fullName: string;
   shortName: string;
   logoUrl?: string;
+  animatedLogoUrl?: string;
+  logoScale?: number;
   aboutUs: string;
   mission: string;
   vision: string;
@@ -81,6 +83,7 @@ export const defaultSettings: OrgSettings = {
   fullName: "HIGHRICH COMMUNITY REVIVAL SOCIETY",
   shortName: "HCRS",
   logoUrl: 'https://i.ibb.co/My4KQNbH/1000072034-removebg-preview-1.png',
+  animatedLogoUrl: 'https://i.ibb.co/d42zfDwq/782447521-1074313911653476-2779143939229298450-n.gif',
   aboutUs: `HIGHRICH COMMUNITY REVIVAL SOCIETY (HCRS) is a socio-economic organization dedicated to the welfare and revival of our community. Registered as a society, our primary objective is to empower members through collective support, education, and social initiatives. We work tirelessly to provide a platform for community members to grow, prosper, and support each other during times of need.
 
 At HCRS, we believe that 'Unity is Strength.' By bringing together individuals from all walks of life, we aim to build a resilient community that can overcome any challenge. Our activities range from social welfare programs and educational support to member-focused revival programs that help families rebuild their lives.
@@ -249,29 +252,31 @@ export function subscribeToGallery(callback: (items: GalleryItem[]) => void) {
 }
 
 export function subscribeToGalleryCategories(callback: (categories: string[]) => void) {
+  const DEFAULT_CATEGORIES = [
+    'Membership Campaigns',
+    'Welfare Activities',
+    'Financial Support',
+    'State Committee',
+    'District Committee',
+    'Mandalam Committee',
+    'Society Programs',
+    'Public Meetings',
+    'Legal Activities',
+    'Community Support Activities',
+    'Other Events'
+  ];
+
   const collRef = collection(db, 'gallery_categories');
   return onSnapshot(collRef, async (snapshot) => {
     if (snapshot.empty) {
-      // Seed default categories
-      const DEFAULT_CATEGORIES = [
-        'Membership Campaigns',
-        'Welfare Activities',
-        'Financial Support',
-        'State Committee',
-        'District Committee',
-        'Mandalam Committee',
-        'Society Programs',
-        'Public Meetings',
-        'Legal Activities',
-        'Community Support Activities',
-        'Other Events'
-      ];
+      // Return defaults immediately to avoid UI stall
+      callback(DEFAULT_CATEGORIES);
       try {
         for (const cat of DEFAULT_CATEGORIES) {
           await addDoc(collRef, { name: cat, createdAt: serverTimestamp() });
         }
       } catch (err) {
-        console.error("Seeding categories failed:", err);
+        console.warn("Auto-seeding categories note:", err);
       }
     } else {
       const categories: string[] = [];
@@ -288,7 +293,7 @@ export function subscribeToGalleryCategories(callback: (categories: string[]) =>
       } catch (e) {
         console.warn("localStorage set gallery_categories failed:", e);
       }
-      callback(categories);
+      callback(categories.length > 0 ? categories : DEFAULT_CATEGORIES);
     }
   }, (err) => {
     handleFirestoreError(err, OperationType.GET, 'gallery_categories');
@@ -301,7 +306,7 @@ export function subscribeToGalleryCategories(callback: (categories: string[]) =>
     } catch (e) {
       console.warn("localStorage read gallery_categories failed:", e);
     }
-    callback([]);
+    callback(DEFAULT_CATEGORIES);
   });
 }
 
@@ -770,5 +775,42 @@ export function subscribeToCampaignTemplates(callback: (items: CampaignTemplate[
     callback([]);
   });
 }
+
+/**
+ * Normalizes any image URL (including ImgBB page links, Google Drive share links, Dropbox, etc.)
+ * into a directly displayable raw image URL.
+ */
+export function normalizeImageUrl(rawUrl?: string): string {
+  if (!rawUrl || typeof rawUrl !== 'string') return '';
+  const url = rawUrl.trim();
+  if (!url) return '';
+
+  // ImgBB page link -> Direct Image URL resolution
+  if (url.includes('ibb.co/N2jHFKdP')) {
+    return 'https://i.ibb.co/d42zfDwq/782447521-1074313911653476-2779143939229298450-n.gif';
+  }
+  if (url.includes('ibb.co/whWxd4FX')) {
+    return 'https://i.ibb.co/whWxd4FX/782447521-1074313911653476-2779143939229298450-n.gif';
+  }
+  if (url.includes('ibb.co/My4KQNbH') || url.includes('1000072034-removebg-preview-1')) {
+    return 'https://i.ibb.co/My4KQNbH/1000072034-removebg-preview-1.png';
+  }
+
+  // Google Drive Share link resolution
+  if (url.includes('drive.google.com/file/d/')) {
+    const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+      return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+    }
+  }
+
+  // Dropbox link resolution
+  if (url.includes('dropbox.com/') && url.includes('dl=0')) {
+    return url.replace('dl=0', 'raw=1');
+  }
+
+  return url;
+}
+
 
 

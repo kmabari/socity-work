@@ -781,7 +781,7 @@ const I18nContext = createContext<I18nContextType | undefined>(undefined);
 export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [lang, setLangState] = useState<Language>(() => {
     const saved = localStorage.getItem('hcrs_lang');
-    return (saved as Language) || 'ml';
+    return (saved as Language) || 'en';
   });
   const [dynamicOverrides, setDynamicOverrides] = useState<TranslationDictionary>({});
   const [loading, setLoading] = useState(true);
@@ -821,7 +821,7 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // 3. Fallback to custom label provided in code
-    return customFallbackDefault !== undefined ? customFallbackDefault : (staticTranslations[key]?.ml || key);
+    return customFallbackDefault !== undefined ? customFallbackDefault : (staticTranslations[key]?.en || staticTranslations[key]?.ml || key);
   };
 
   const updateDynamicOverride = (key: string, lCode: Language, val: string) => {

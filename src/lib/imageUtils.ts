@@ -297,3 +297,78 @@ export function html2canvasOklchOnClone(clonedDoc: Document): void {
     }
   });
 }
+
+/**
+ * Convert any image URL (remote or local) to a Base64 data URL
+ * to avoid canvas CORS / tainting issues during export
+ */
+export async function imageUrlToDataUrl(url: string): Promise<string> {
+  if (!url) return '';
+  if (url.startsWith('data:')) return url;
+  
+  try {
+    const res = await fetch(url, { mode: 'cors' });
+    if (res.ok) {
+      const blob = await res.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve((reader.result as string) || url);
+        reader.onerror = () => resolve(url);
+        reader.readAsDataURL(blob);
+      });
+    }
+  } catch (err) {
+    // Ignore and attempt canvas fallback
+  }
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth || img.width || 100;
+        canvas.height = img.naturalHeight || img.height || 100;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL('image/png'));
+          return;
+        }
+      } catch {
+        // Ignored
+      }
+      resolve(url);
+    };
+    img.onerror = () => resolve(url);
+    img.src = url;
+  });
+}
+
+/**
+ * Safely trigger file download from blob or base64 data URL
+ */
+export function triggerFileDownload(dataUrlOrBlob: string | Blob, filename: string): boolean {
+  try {
+    const link = document.createElement('a');
+    link.download = filename;
+    if (typeof dataUrlOrBlob === 'string') {
+      link.href = dataUrlOrBlob;
+    } else {
+      link.href = URL.createObjectURL(dataUrlOrBlob);
+    }
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      document.body.removeChild(link);
+      if (typeof dataUrlOrBlob !== 'string') {
+        URL.revokeObjectURL(link.href);
+      }
+    }, 200);
+    return true;
+  } catch (err) {
+    console.error("triggerFileDownload failed:", err);
+    return false;
+  }
+}
+

@@ -38,49 +38,51 @@ export default function PaymentReceipts({ user }: PaymentReceiptsProps) {
         return;
       }
       setLoading(true);
+
+      // Generate virtual registration receipt first
+      const regDateStr = getFormattedDate(user.registrationDate) || new Date().toISOString().split('T')[0];
+      const registrationReceipt: PaymentReceipt = {
+        id: `reg-${user.uid}`,
+        receiptNo: `HCRS-REG-${String(user.serialNo || 1000).padStart(4, '0')}`,
+        receiptType: isLifeMember ? 'Life Membership' : 'Membership Fee',
+        receiptLabel: isLifeMember ? 'Life Membership Receipt' : 'Membership Registration Receipt',
+        amount: isLifeMember ? 300 : 200,
+        status: 'Paid',
+        paymentDate: regDateStr,
+        createdAt: user.registrationDate
+      };
+
+      let dbReceipts: PaymentReceipt[] = [];
       try {
         console.log(`PaymentReceipts: Fetching receipts for user UID: ${user.uid}`);
         const querySnapshot = await getDocs(collection(db, 'users', user.uid, 'receipts'));
-        const dbReceipts = querySnapshot.docs.map(doc => ({
+        dbReceipts = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         })) as PaymentReceipt[];
         console.log(`PaymentReceipts: Successfully fetched ${dbReceipts.length} receipts from database.`);
-
-        // Generate virtual registration receipt
-        const regDateStr = getFormattedDate(user.registrationDate) || new Date().toISOString().split('T')[0];
-        
-        const registrationReceipt: PaymentReceipt = {
-          id: `reg-${user.uid}`,
-          receiptNo: `HCRS-REG-${String(user.serialNo || 1000).padStart(4, '0')}`,
-          receiptType: isLifeMember ? 'Life Membership' : 'Membership Fee',
-          receiptLabel: isLifeMember ? 'Life Membership Receipt' : 'Membership Registration Receipt',
-          amount: isLifeMember ? 300 : 200,
-          status: 'Paid',
-          paymentDate: regDateStr,
-          createdAt: user.registrationDate
-        };
-
-        let combined = [registrationReceipt];
-
-        // Life members never renew - only show one receipt
-        if (!isLifeMember) {
-          combined = [...combined, ...dbReceipts];
-        }
-
-        // Sort chronologically, newest first
-        combined.sort((a, b) => {
-          const dateA = new Date(a.paymentDate).getTime();
-          const dateB = new Date(b.paymentDate).getTime();
-          return dateB - dateA;
-        });
-
-        setReceipts(combined);
       } catch (error) {
-        console.error('Error fetching receipts:', error);
-      } finally {
-        setLoading(false);
+        console.warn('PaymentReceipts: Could not load extra subcollection receipts, falling back to profile record:', error);
       }
+
+      let combined = [registrationReceipt];
+
+      // Life members never renew - only show one receipt
+      if (!isLifeMember && dbReceipts.length > 0) {
+        // Exclude duplicate registration receipts if any stored in subcollection
+        const filteredDbReceipts = dbReceipts.filter(r => r.id !== `reg-${user.uid}` && r.receiptNo !== registrationReceipt.receiptNo);
+        combined = [...combined, ...filteredDbReceipts];
+      }
+
+      // Sort chronologically, newest first
+      combined.sort((a, b) => {
+        const dateA = new Date(a.paymentDate || 0).getTime();
+        const dateB = new Date(b.paymentDate || 0).getTime();
+        return dateB - dateA;
+      });
+
+      setReceipts(combined);
+      setLoading(false);
     };
 
     fetchReceipts();
