@@ -554,7 +554,11 @@ export const renderPersonCourtClaimPage = (
   const tokenDisplay = claim.tokenNo ?? claim.serialNo ?? 'N/A';
   const dateStr = formatClaimDateTime(claim.createdAt);
   const memberName = claim.userName || userProf?.name || 'N/A';
-  const mobileStr = claim.userMobile || userProf?.mobile || 'N/A';
+  const individualMobile = claim.individualMobile || (claim.memberMobile && claim.memberMobile !== claim.userMobile ? claim.memberMobile : '');
+  const primaryMobile = claim.userMobile || userProf?.mobile || '';
+  const mobileStr = (individualMobile && individualMobile !== primaryMobile)
+    ? `${individualMobile} (Primary: ${primaryMobile})`
+    : (individualMobile || primaryMobile || 'N/A');
   const panStr = claim.panNumber || userProf?.panNumber || userProf?.pan || '';
 
   // Bank Particulars (Payment Made to Company)
@@ -815,7 +819,11 @@ export const renderPersonFullAdminClaimPage = (
   const tokenDisplay = claim.tokenNo ?? claim.serialNo ?? 'N/A';
   const dateStr = formatClaimDateTime(claim.createdAt);
   const memberName = claim.userName || userProf?.name || 'N/A';
-  const mobileStr = claim.userMobile || userProf?.mobile || 'N/A';
+  const individualMobile = claim.individualMobile || (claim.memberMobile && claim.memberMobile !== claim.userMobile ? claim.memberMobile : '');
+  const primaryMobile = claim.userMobile || userProf?.mobile || '';
+  const mobileStr = (individualMobile && individualMobile !== primaryMobile)
+    ? `${individualMobile} (Primary: ${primaryMobile})`
+    : (individualMobile || primaryMobile || 'N/A');
   const membershipIdStr = claim.membershipId || userProf?.membershipId || 'PENDING';
   const panStr = claim.panNumber || userProf?.panNumber || userProf?.pan || 'N/A';
 

@@ -11,6 +11,7 @@ interface LogoProps {
   src?: string;
   showGlow?: boolean;
   showAura?: boolean;
+  showRotatingBorder?: boolean;
 }
 
 export const Logo: React.FC<LogoProps> = ({ 
@@ -20,9 +21,10 @@ export const Logo: React.FC<LogoProps> = ({
   src,
   showGlow = false,
   showAura = false,
+  showRotatingBorder = true,
 }) => {
   const sizeClasses = {
-    sm: 'w-12 h-12 sm:w-16 sm:h-16',
+    sm: 'w-10 h-10 sm:w-12 sm:h-12',
     md: 'w-24 h-24 sm:w-28 sm:h-28',
     lg: 'w-36 h-36 sm:w-44 sm:h-44 md:w-52 md:h-52',
     xl: 'w-48 h-48 sm:w-56 sm:h-56 md:w-64 md:h-64',
@@ -84,72 +86,74 @@ export const Logo: React.FC<LogoProps> = ({
     }
   };
 
-  const isLarge = size === 'lg' || size === 'xl';
+  const isSmall = size === 'sm';
 
   return (
-    <div className={cn("relative flex items-center justify-center p-1 select-none", sizeClasses[size], className)}>
-      {/* Dynamic Animated Ambient Glow Halo */}
-      {animated && (
-        <>
+    <div className={cn("relative flex items-center justify-center select-none", sizeClasses[size], className)}>
+      {/* Crisp Rotating Multi-Color Glass Border Ring (Tight & Sharp, No muddy blur bleeding) */}
+      {animated && showRotatingBorder ? (
+        <div className={cn(
+          "relative w-full h-full rounded-full flex items-center justify-center overflow-hidden shadow-xs",
+          isSmall ? "p-[1.5px]" : "p-[2.5px]"
+        )}>
+          {/* Continuous Multi-Color Spectrum Beam spinning smoothly along the rim */}
           <motion.div
-            animate={{
-              scale: [0.95, 1.05, 0.95],
-              opacity: [0.3, 0.65, 0.3],
-              rotate: [0, 180, 360],
-            }}
+            animate={{ rotate: 360 }}
             transition={{
-              scale: { duration: 8, repeat: Infinity, ease: "easeInOut" },
-              opacity: { duration: 7, repeat: Infinity, ease: "easeInOut" },
-              rotate: { duration: 28, repeat: Infinity, ease: "linear" },
+              duration: isSmall ? 6 : 8,
+              repeat: Infinity,
+              ease: "linear",
             }}
-            className="absolute inset-0 -z-10 rounded-full bg-gradient-to-tr from-[#c9a227]/25 via-[#0070f3]/20 to-[#f59e0b]/25 blur-xl pointer-events-none"
+            className="absolute -inset-[100%] pointer-events-none -z-10 bg-[conic-gradient(from_0deg,#ff007a_0deg,#7928ca_45deg,#0070f3_90deg,#00dfd8_135deg,#10b981_180deg,#c9a227_225deg,#f59e0b_270deg,#ff4b4b_315deg,#ff007a_360deg)] opacity-100"
           />
 
-          {/* Golden Orbital Pulse Ring for Medium & Large Logos */}
-          {(isLarge || showGlow) && (
-            <motion.div
-              animate={{
-                scale: [1, 1.1, 1],
-                opacity: [0.25, 0.55, 0.25],
-              }}
-              transition={{
-                duration: 7,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-              className="absolute -inset-2 -z-10 rounded-full border border-amber-400/35 blur-[2px] pointer-events-none"
+          {/* Clean Pristine Inner Glass Surface */}
+          <div className="relative w-full h-full rounded-full bg-white flex items-center justify-center p-0.5 shadow-[inset_0_1px_2px_rgba(255,255,255,0.9)] overflow-hidden">
+            {useSvgFallback ? (
+              <div className="w-full h-full rounded-full bg-gradient-to-br from-[#1a2b5c] to-[#003366] text-[#c9a227] flex flex-col items-center justify-center p-1 shadow-inner border border-amber-400/40">
+                <span className="font-black text-[10px] sm:text-xs tracking-wider">HCRS</span>
+                <span className="text-[6px] text-white/80 font-bold uppercase tracking-widest">KERALA</span>
+              </div>
+            ) : (
+              <img 
+                src={currentSrc} 
+                alt="HCRS Society" 
+                onLoad={() => setLoaded(true)}
+                onError={handleError}
+                className={cn(
+                  "w-full h-full object-contain transition-all duration-300",
+                  loaded ? "opacity-100" : "opacity-80 scale-95"
+                )}
+                referrerPolicy="no-referrer"
+                crossOrigin="anonymous"
+              />
+            )}
+          </div>
+        </div>
+      ) : (
+        /* Static / Non-bordered Clean Logo */
+        <div className="relative w-full h-full flex items-center justify-center p-0.5">
+          {useSvgFallback ? (
+            <div className="w-full h-full rounded-full bg-gradient-to-br from-[#1a2b5c] to-[#003366] text-[#c9a227] flex flex-col items-center justify-center p-2 shadow-inner border border-amber-400/40">
+              <span className="font-black text-xs sm:text-sm tracking-wider">HCRS</span>
+              <span className="text-[7px] text-white/80 font-bold uppercase tracking-widest">KERALA</span>
+            </div>
+          ) : (
+            <img 
+              src={currentSrc} 
+              alt="HCRS Society" 
+              onLoad={() => setLoaded(true)}
+              onError={handleError}
+              className={cn(
+                "w-full h-full object-contain transition-all duration-300",
+                loaded ? "opacity-100" : "opacity-80 scale-95"
+              )}
+              referrerPolicy="no-referrer"
+              crossOrigin="anonymous"
             />
           )}
-        </>
+        </div>
       )}
-
-      {/* Main Logo Container with website-logo styles */}
-      <div
-        className={cn(
-          "website-logo relative w-full h-full flex items-center justify-center p-0.5",
-          animated && "website-logo-animated"
-        )}
-      >
-        {useSvgFallback ? (
-          <div className="w-full h-full rounded-full bg-gradient-to-br from-[#1a2b5c] to-[#003366] text-[#c9a227] flex flex-col items-center justify-center p-2 shadow-inner border border-amber-400/40">
-            <span className="font-black text-xs sm:text-sm tracking-wider">HCRS</span>
-            <span className="text-[7px] text-white/80 font-bold uppercase tracking-widest">KERALA</span>
-          </div>
-        ) : (
-          <img 
-            src={currentSrc} 
-            alt="HCRS Society" 
-            onLoad={() => setLoaded(true)}
-            onError={handleError}
-            className={cn(
-              "w-full h-full object-contain transition-all duration-300",
-              loaded ? "opacity-100" : "opacity-80 scale-95"
-            )}
-            referrerPolicy="no-referrer"
-            crossOrigin="anonymous"
-          />
-        )}
-      </div>
     </div>
   );
 };

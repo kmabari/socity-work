@@ -414,36 +414,21 @@ export default function LandingPage({
                   delay: 0.8
                 }
               }}
-              className="relative group p-[2.5px] rounded-3xl sm:rounded-[38px] mb-5 sm:mb-8 flex items-center justify-center mx-auto overflow-hidden shadow-[0_20px_50px_-10px_rgba(26,43,92,0.14),0_6px_20px_-3px_rgba(201,162,39,0.12)]"
+              className="relative group p-[2px] rounded-3xl sm:rounded-[38px] mb-5 sm:mb-8 flex items-center justify-center mx-auto overflow-hidden shadow-[0_12px_36px_-6px_rgba(26,43,92,0.12)]"
             >
-              {/* Slow Continuous Multi-Color Infinite Light Spectrum Tracing around the Card Perimeter */}
+              {/* Crisp Continuous Multi-Color Spectrum Light Tracing around the Card Perimeter */}
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{
-                  duration: 20,
+                  duration: 8,
                   repeat: Infinity,
                   ease: "linear"
                 }}
-                className="absolute -inset-[160%] pointer-events-none -z-10 bg-[conic-gradient(from_0deg,#ff007a_0deg,#7928ca_45deg,#0070f3_90deg,#00dfd8_135deg,#10b981_180deg,#c9a227_225deg,#f59e0b_270deg,#ff4b4b_315deg,#ff007a_360deg)] opacity-95 blur-[1px]"
+                className="absolute -inset-[150%] pointer-events-none -z-10 bg-[conic-gradient(from_0deg,#ff007a_0deg,#7928ca_45deg,#0070f3_90deg,#00dfd8_135deg,#10b981_180deg,#c9a227_225deg,#f59e0b_270deg,#ff4b4b_315deg,#ff007a_360deg)] opacity-100"
               />
 
-              {/* Ambient Soft Multi-Color Glow underneath Card */}
-              <motion.div 
-                animate={{
-                  opacity: [0.65, 0.9, 0.65],
-                  scale: [1, 1.04, 1]
-                }}
-                transition={{
-                  duration: 9,
-                  repeat: Infinity,
-                  repeatType: "mirror",
-                  ease: "easeInOut"
-                }}
-                className="absolute -inset-3 -z-20 rounded-[44px] bg-gradient-to-tr from-[#0070f3]/15 via-[#c9a227]/20 to-[#ff007a]/15 blur-2xl pointer-events-none" 
-              />
-
-              {/* Inner Frosted Glass Surface */}
-              <div className="relative w-full h-full p-5 sm:p-7 md:p-8 bg-white/90 backdrop-blur-2xl backdrop-saturate-150 rounded-[21px] sm:rounded-[35px] flex items-center justify-center border border-white/90 shadow-[inset_0_1px_3px_rgba(255,255,255,1)]">
+              {/* Inner Clean Crystal Glass Surface (Pure & Sharp) */}
+              <div className="relative w-full h-full p-4 sm:p-6 md:p-7 bg-white rounded-[22px] sm:rounded-[36px] flex items-center justify-center border border-white shadow-[inset_0_1px_3px_rgba(255,255,255,1)]">
                 {/* Slow Gentle Breathing Logo Animation */}
                 <motion.div
                   initial={{ scale: 0.9 }}
@@ -451,7 +436,7 @@ export default function LandingPage({
                     scale: [1, 1.02, 1],
                   }}
                   transition={{
-                    duration: 9,
+                    duration: 8,
                     repeat: Infinity,
                     repeatType: "mirror",
                     ease: "easeInOut",
@@ -460,9 +445,10 @@ export default function LandingPage({
                   className="flex items-center justify-center"
                 >
                   <Logo 
-                    className="w-40 h-40 sm:w-48 sm:h-48 md:w-56 md:h-56 lg:w-60 lg:h-60 flex items-center justify-center mx-auto" 
+                    className="w-36 h-36 sm:w-44 sm:h-44 md:w-52 md:h-52 lg:w-56 lg:h-56 flex items-center justify-center mx-auto" 
                     size="lg" 
-                    showGlow={true}
+                    showGlow={false}
+                    showRotatingBorder={false}
                   />
                 </motion.div>
               </div>

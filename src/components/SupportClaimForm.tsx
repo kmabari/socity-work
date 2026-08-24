@@ -30,7 +30,8 @@ import {
   Plus,
   ShieldCheck,
   MessageCircle,
-  Edit3
+  Edit3,
+  Lock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -153,21 +154,21 @@ const CATEGORIES_DEF = [
 const PREFERENCES_DEF = [
   { 
     id: 'settlement', 
-    en: 'I prefer full settlement and account closure after receiving remaining balance',
-    ml: 'ബാക്കി തുക ലഭിച്ച ശേഷം സെറ്റിൽമെന്റും അക്കൗണ്ട് ക്ലോസ് ചെയ്യാനും ഞാൻ താല്പര്യപ്പെടുന്നു',
-    bilingual: 'ബാക്കി തുക ലഭിച്ച ശേഷം സെറ്റിൽമെന്റും അക്കൗണ്ട് ക്ലോസ് ചെയ്യാനും ഞാൻ താല്പര്യപ്പെടുന്നു (I prefer settlement and closure after receiving balance)' 
+    en: 'I prefer settlement and closure after receiving the balance amount.',
+    ml: 'ബാക്കി തുക ലഭിച്ച ശേഷം സെറ്റിൽമെന്റും അക്കൗണ്ട് ക്ലോസ് ചെയ്യാനും ഞാൻ താല്പര്യപ്പെടുന്നു.',
+    bilingual: 'ബാക്കി തുക ലഭിച്ച ശേഷം സെറ്റിൽമെന്റും അക്കൗണ്ട് ക്ലോസ് ചെയ്യാനും ഞാൻ താല്പര്യപ്പെടുന്നു. (I prefer settlement and closure after receiving the balance amount.)' 
   },
   { 
     id: 'wait', 
-    en: 'I can wait if the company continues and grows operations',
-    ml: 'കമ്പനി തുടർന്നു പോകുകയാണെങ്കിൽ എനിക്ക് കാത്തിരിക്കാൻ സാധിക്കും',
-    bilingual: 'കമ്പനി തുടർന്നു പോകുകയാണെങ്കിൽ എനിക്ക് കാത്തിരിക്കാൻ സാധിക്കും (I can wait if company continues and grows)' 
+    en: 'I can wait if the company continues and grows, provided I receive one-fourth of the pending balance.',
+    ml: 'കമ്പനി തുടർന്നു പ്രവർത്തിക്കുകയാണെങ്കിൽ, തരാനുള്ള ബാലൻസ് തുകയുടെ നാലിൽ ഒരു ഭാഗം ലഭിച്ചാൽ എനിക്ക് കാത്തിരിക്കാൻ സാധിക്കും.',
+    bilingual: 'കമ്പനി തുടർന്നു പ്രവർത്തിക്കുകയാണെങ്കിൽ, തരാനുള്ള ബാലൻസ് തുകയുടെ നാലിൽ ഒരു ഭാഗം ലഭിച്ചാൽ എനിക്ക് കാത്തിരിക്കാൻ സാധിക്കും. (I can wait if the company continues and grows, provided I receive one-fourth of the pending balance.)' 
   },
   { 
     id: 'continue', 
-    en: 'I am ready to continue with the company based on future business plans',
-    ml: 'ഭാവി പ്ലാനുകൾ അനുസരിച്ച് കമ്പനിയുമായി തുടർന്നു പോകാൻ ഞാൻ തയ്യാറാണ്',
-    bilingual: 'ഭാവി പ്ലാനുകൾ അനുസരിച്ച് കമ്പനിയുമായി തുടർന്നു പോകാൻ ഞാൻ തയ്യാറാണ് (I am ready to continue with company based on future plans)' 
+    en: 'I am ready to continue with the company based on its business plan, future projects, and commitments.',
+    ml: 'കമ്പനിയുടെ ബിസിനസ് പ്ലാനിൽ പറഞ്ഞതുപോലെ ഭാവി പ്ലാനുകൾക്കും പുതിയ പ്രൊജക്ടുകൾക്കും ഒപ്പം ചേർന്നും കമ്പനിയുമായി തുടർന്നു പോകാൻ ഞാൻ തയ്യാറാണ്.',
+    bilingual: 'കമ്പനിയുടെ ബിസിനസ് പ്ലാനിൽ പറഞ്ഞതുപോലെ ഭാവി പ്ലാനുകൾക്കും പുതിയ പ്രൊജക്ടുകൾക്കും ഒപ്പം ചേർന്നും കമ്പനിയുമായി തുടർന്നു പോകാൻ ഞാൻ തയ്യാറാണ്. (I am ready to continue with the company based on its business plan, future projects, and commitments.)' 
   }
 ];
 
@@ -197,6 +198,79 @@ const HARDSHIPS_DEF = [
     bilingual: 'അടിയന്തിര പ്രാധാന്യമില്ല (No emergency)' 
   }
 ];
+
+const themeStyles: Record<string, string> = {
+  blue: 'bg-[#003366] text-white shadow-blue-900/20',
+  navy: 'bg-slate-900 text-white shadow-slate-900/20',
+  indigo: 'bg-indigo-700 text-white shadow-indigo-900/20',
+  emerald: 'bg-emerald-700 text-white shadow-emerald-900/20',
+  teal: 'bg-teal-700 text-white shadow-teal-900/20',
+  amber: 'bg-amber-600 text-white shadow-amber-900/20',
+  magenta: 'bg-brand-magenta text-white shadow-pink-900/20',
+  purple: 'bg-purple-700 text-white shadow-purple-900/20',
+  slate: 'bg-slate-700 text-white shadow-slate-900/20',
+  rose: 'bg-rose-700 text-white shadow-rose-900/20',
+};
+
+// Reusable Form Column Box with vibrant colored button/pill header and clearly demarcated column borders
+const FormFieldBox = ({
+  label,
+  badge,
+  badgeType,
+  required,
+  optional,
+  icon,
+  theme = 'blue',
+  className = '',
+  children,
+  hint,
+  formLang = 'bilingual',
+}: {
+  label: string;
+  badge?: string;
+  badgeType?: string;
+  required?: boolean;
+  optional?: boolean;
+  icon?: React.ReactNode;
+  theme?: 'blue' | 'navy' | 'indigo' | 'emerald' | 'teal' | 'amber' | 'magenta' | 'purple' | 'slate' | 'rose';
+  className?: string;
+  children: React.ReactNode;
+  hint?: string;
+  formLang?: string;
+}) => {
+  return (
+    <div className={`group space-y-2 bg-slate-50/90 hover:bg-white border-2 border-slate-300 hover:border-indigo-400 focus-within:border-brand-blue focus-within:bg-white focus-within:ring-4 focus-within:ring-brand-blue/10 transition-all rounded-2xl p-3 sm:p-3.5 shadow-xs flex flex-col justify-between ${className}`}>
+      <div className="space-y-1">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          {/* Colored Button/Pill Label */}
+          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-black tracking-wide shadow-2xs ${themeStyles[theme] || themeStyles.blue}`}>
+            {icon && <span className="text-xs shrink-0">{icon}</span>}
+            <span className="leading-tight">{label}</span>
+          </div>
+          {required && (
+            <span className="text-[9px] font-black text-rose-700 bg-rose-100 border border-rose-200 px-2 py-0.5 rounded-md shrink-0 uppercase tracking-wider">
+              {formLang === 'english' ? 'Required *' : 'നിർബന്ധം *'}
+            </span>
+          )}
+          {optional && (
+            <span className="text-[9px] font-black text-slate-500 bg-slate-200/80 px-2 py-0.5 rounded-md shrink-0">
+              {formLang === 'english' ? 'Optional' : 'ഓപ്ഷണൽ'}
+            </span>
+          )}
+          {badge && !required && !optional && (
+            <span className="text-[9px] font-bold text-slate-600 bg-slate-200/80 px-2 py-0.5 rounded-md shrink-0">
+              {badge}
+            </span>
+          )}
+        </div>
+        {hint && (
+          <p className="text-[10px] text-slate-500 font-semibold px-0.5 leading-tight">{hint}</p>
+        )}
+      </div>
+      <div className="pt-0.5">{children}</div>
+    </div>
+  );
+};
 
 export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProps) {
   const [formLang, setFormLang] = useState<FormLanguage>('bilingual');
@@ -521,7 +595,8 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
     if (!claim) return;
     if (claim.relation === 'Wife' || claim.relation === 'Husband') setSpouseRelation(claim.relation);
     if (claim.userName) setSpouseName(claim.userName);
-    if (claim.userMobile || claim.memberMobile) setSpouseMobile(claim.userMobile || claim.memberMobile);
+    const spouseOwn = claim.individualMobile || claim.spouseMobile || (claim.memberMobile && claim.memberMobile !== claim.userMobile ? claim.memberMobile : '');
+    setSpouseMobile(spouseOwn || '');
     if (claim.highrichId) setSpouseHighrichId(claim.highrichId);
     if (claim.sponsorName) setSpouseSponsorName(claim.sponsorName);
     if (claim.sponsorMobile) setSpouseSponsorMobile(claim.sponsorMobile);
@@ -550,7 +625,8 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
     if (!claim) return;
     if (claim.relation === 'Mother' || claim.relation === 'Father') setParentRelation(claim.relation);
     if (claim.userName) setParentName(claim.userName);
-    if (claim.userMobile || claim.memberMobile) setParentMobile(claim.userMobile || claim.memberMobile);
+    const parentOwn = claim.individualMobile || claim.parentMobile || (claim.memberMobile && claim.memberMobile !== claim.userMobile ? claim.memberMobile : '');
+    setParentMobile(parentOwn || '');
     if (claim.highrichId) setParentHighrichId(claim.highrichId);
     if (claim.sponsorName) setParentSponsorName(claim.sponsorName);
     if (claim.sponsorMobile) setParentSponsorMobile(claim.sponsorMobile);
@@ -579,7 +655,8 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
     if (!claim) return;
     if (claim.relation === 'Son' || claim.relation === 'Daughter') setChildRelation(claim.relation);
     if (claim.userName) setChildName(claim.userName);
-    if (claim.userMobile || claim.memberMobile) setChildMobile(claim.userMobile || claim.memberMobile);
+    const childOwn = claim.individualMobile || claim.childMobile || (claim.memberMobile && claim.memberMobile !== claim.userMobile ? claim.memberMobile : '');
+    setChildMobile(childOwn || '');
     if (claim.highrichId) setChildHighrichId(claim.highrichId);
     if (claim.sponsorName) setChildSponsorName(claim.sponsorName);
     if (claim.sponsorMobile) setChildSponsorMobile(claim.sponsorMobile);
@@ -1210,7 +1287,11 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           relationLabel: 'Self (സ്വന്തം)',
           userName: selfName || customerName || user.name,
           userMobile: customerMobile || user.mobile || '',
+          primaryMobile: customerMobile || user.mobile || '',
+          mainMemberMobile: customerMobile || user.mobile || '',
+          applicantMobile: customerMobile || user.mobile || '',
           memberMobile: customerMobile || user.mobile || '',
+          individualMobile: customerMobile || user.mobile || '',
           panNumber: customerPan || user.panNumber || user.pan || '',
           settlementAccountNumber: settlementAccountNumber || user.settlementAccountNumber || user.accountNumber || '',
           settlementBankName: settlementBankName || user.settlementBankName || user.bankName || '',
@@ -1249,10 +1330,16 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
         const relType = spouseRelation || 'Spouse';
         assignedTokens[relType] = tokenVal;
         await deleteExistingForCategory(['Wife', 'Husband']);
+        const ownSpouseMob = spouseMobile.trim();
         const newSpouseClaim = {
           ...commonData,
-          userMobile: spouseMobile || customerMobile || user.mobile || '',
-          memberMobile: spouseMobile || customerMobile || user.mobile || '',
+          userMobile: customerMobile || user.mobile || '',
+          primaryMobile: customerMobile || user.mobile || '',
+          mainMemberMobile: customerMobile || user.mobile || '',
+          applicantMobile: customerMobile || user.mobile || '',
+          memberMobile: ownSpouseMob || customerMobile || user.mobile || '',
+          individualMobile: ownSpouseMob || '',
+          spouseMobile: ownSpouseMob || '',
           relation: spouseRelation,
           relationLabel: spouseRelation === 'Wife' ? 'ഭാര്യ (Wife)' : 'ഭർത്താവ് (Husband)',
           userName: spouseName,
@@ -1294,10 +1381,16 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
         const relType = parentRelation || 'Parent';
         assignedTokens[relType] = tokenVal;
         await deleteExistingForCategory(['Mother', 'Father']);
+        const ownParentMob = parentMobile.trim();
         const newParentClaim = {
           ...commonData,
-          userMobile: parentMobile || customerMobile || user.mobile || '',
-          memberMobile: parentMobile || customerMobile || user.mobile || '',
+          userMobile: customerMobile || user.mobile || '',
+          primaryMobile: customerMobile || user.mobile || '',
+          mainMemberMobile: customerMobile || user.mobile || '',
+          applicantMobile: customerMobile || user.mobile || '',
+          memberMobile: ownParentMob || customerMobile || user.mobile || '',
+          individualMobile: ownParentMob || '',
+          parentMobile: ownParentMob || '',
           relation: parentRelation,
           relationLabel: parentRelation === 'Mother' ? 'അമ്മ (Mother)' : 'അച്ഛൻ (Father)',
           userName: parentName,
@@ -1339,10 +1432,16 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
         const relType = childRelation || 'Child';
         assignedTokens[relType] = tokenVal;
         await deleteExistingForCategory(['Son', 'Daughter']);
+        const ownChildMob = childMobile.trim();
         const newChildClaim = {
           ...commonData,
-          userMobile: childMobile || customerMobile || user.mobile || '',
-          memberMobile: childMobile || customerMobile || user.mobile || '',
+          userMobile: customerMobile || user.mobile || '',
+          primaryMobile: customerMobile || user.mobile || '',
+          mainMemberMobile: customerMobile || user.mobile || '',
+          applicantMobile: customerMobile || user.mobile || '',
+          memberMobile: ownChildMob || customerMobile || user.mobile || '',
+          individualMobile: ownChildMob || '',
+          childMobile: ownChildMob || '',
           relation: childRelation,
           relationLabel: childRelation === 'Son' ? 'മകൻ (Son)' : 'മകൾ (Daughter)',
           userName: childName,
@@ -1419,77 +1518,6 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
     } finally {
       setLoading(false);
     }
-  };
-
-  // Reusable Form Column Box with vibrant colored button/pill header and clearly demarcated column borders
-  const FormFieldBox = ({
-    label,
-    badge,
-    badgeType,
-    required,
-    optional,
-    icon,
-    theme = 'blue',
-    className = '',
-    children,
-    hint,
-  }: {
-    label: string;
-    badge?: string;
-    badgeType?: string;
-    required?: boolean;
-    optional?: boolean;
-    icon?: React.ReactNode;
-    theme?: 'blue' | 'navy' | 'indigo' | 'emerald' | 'teal' | 'amber' | 'magenta' | 'purple' | 'slate' | 'rose';
-    className?: string;
-    children: React.ReactNode;
-    hint?: string;
-  }) => {
-    const themeStyles: Record<string, string> = {
-      blue: 'bg-[#003366] text-white shadow-blue-900/20',
-      navy: 'bg-slate-900 text-white shadow-slate-900/20',
-      indigo: 'bg-indigo-700 text-white shadow-indigo-900/20',
-      emerald: 'bg-emerald-700 text-white shadow-emerald-900/20',
-      teal: 'bg-teal-700 text-white shadow-teal-900/20',
-      amber: 'bg-amber-600 text-white shadow-amber-900/20',
-      magenta: 'bg-brand-magenta text-white shadow-pink-900/20',
-      purple: 'bg-purple-700 text-white shadow-purple-900/20',
-      slate: 'bg-slate-700 text-white shadow-slate-900/20',
-      rose: 'bg-rose-700 text-white shadow-rose-900/20',
-    };
-
-    return (
-      <div className={`group space-y-2 bg-slate-50/90 hover:bg-white border-2 border-slate-300 hover:border-indigo-400 focus-within:border-brand-blue focus-within:bg-white focus-within:ring-4 focus-within:ring-brand-blue/10 transition-all rounded-2xl p-3 sm:p-3.5 shadow-xs flex flex-col justify-between ${className}`}>
-        <div className="space-y-1">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            {/* Colored Button/Pill Label */}
-            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-black tracking-wide shadow-2xs ${themeStyles[theme] || themeStyles.blue}`}>
-              {icon && <span className="text-xs shrink-0">{icon}</span>}
-              <span className="leading-tight">{label}</span>
-            </div>
-            {required && (
-              <span className="text-[9px] font-black text-rose-700 bg-rose-100 border border-rose-200 px-2 py-0.5 rounded-md shrink-0 uppercase tracking-wider">
-                {formLang === 'english' ? 'Required *' : 'നിർബന്ധം *'}
-              </span>
-            )}
-            {optional && (
-              <span className="text-[9px] font-black text-slate-500 bg-slate-200/80 px-2 py-0.5 rounded-md shrink-0">
-                {formLang === 'english' ? 'Optional' : 'ഓപ്ഷണൽ'}
-              </span>
-            )}
-            {badge && !required && !optional && (
-              <span className="text-[9px] font-bold text-slate-600 bg-slate-200/80 px-2 py-0.5 rounded-md shrink-0">
-                {badge}
-              </span>
-            )}
-          </div>
-          {hint && (
-            <p className="text-[10px] text-slate-500 font-semibold px-0.5 leading-tight">{hint}</p>
-          )}
-        </div>
-        <div className="pt-0.5">{children}</div>
-      </div>
-    );
   };
 
   const renderFutureAndConditionsBlock = (formIdSuffix: string = 'self') => (
@@ -3005,7 +3033,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
               </div>
               <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5">
                 <span className="text-[10px] text-slate-500 font-bold block">{t('Mobile Number', 'മൊബൈൽ നമ്പർ')}</span>
-                <span className="font-mono font-bold text-slate-800">{spouseClaim?.userMobile || spouseMobile || '—'}</span>
+                <span className="font-mono font-bold text-slate-800">{spouseClaim?.individualMobile || (spouseClaim?.memberMobile && spouseClaim?.memberMobile !== spouseClaim?.userMobile ? spouseClaim?.memberMobile : '') || spouseClaim?.userMobile || spouseMobile || '—'}</span>
               </div>
               <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5 col-span-2 sm:col-span-1">
                 <span className="text-[10px] text-slate-500 font-bold block">{t('Total Pending', 'ആകെ മിച്ച തുക')}</span>
@@ -3143,29 +3171,11 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                   </FormFieldBox>
 
                   <FormFieldBox
-                    label={tLabel('Spouse Mobile Number', 'ഭാര്യ / ഭർത്താവിന്റെ മൊബൈൽ നമ്പർ')}
-                    icon="📱"
-                    badge={spouseMobile && spouseMobile !== (customerMobile || user?.mobile) ? t('Custom', 'സ്വന്തം നമ്പർ') : t('Auto', 'അപേക്ഷകന്റെ നമ്പർ')}
-                    badgeType="info"
-                    theme="rose"
-                  >
-                    <Input 
-                      value={spouseMobile !== '' ? spouseMobile : (customerMobile || user?.mobile || '')} 
-                      onChange={(e) => setSpouseMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
-                      placeholder={tPlaceholder('10-digit Mobile', '10 അക്ക മൊബൈൽ നമ്പർ')}
-                      type="tel"
-                      maxLength={10}
-                      className="h-11 border-2 border-rose-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono shadow-xs focus:border-rose-500"
-                    />
-                  </FormFieldBox>
-
-                  <FormFieldBox
                     label={tLabel('Spouse Customer ID', 'ഭാര്യ / ഭർത്താവിന്റെ കസ്റ്റമർ ഐഡി')}
                     icon="🆔"
                     badge={t('Optional', 'ഓപ്ഷണൽ')}
                     badgeType="optional"
                     theme="slate"
-                    className="md:col-span-2"
                   >
                     <Input 
                       value={spouseHighrichId} 
@@ -3173,6 +3183,47 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                       placeholder={tPlaceholder('Enter Customer ID if known', 'കസ്റ്റമർ ഐഡി അറിയാമെങ്കിൽ നൽകുക')}
                       className="h-11 border-2 border-slate-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 shadow-xs focus:border-slate-400"
                     />
+                  </FormFieldBox>
+
+                  <FormFieldBox
+                    label={tLabel('Primary Member Mobile (Locked - Combo Link)', 'മെയിൻ അക്കൗണ്ട് മൊബൈൽ നമ്പർ (കോംബോ ലിങ്ക് - മാറ്റാൻ കഴിയില്ല)')}
+                    icon="🔒"
+                    badge={t('Combo Linked 🔒', 'കോംബോ ലിങ്ക്ഡ് 🔒')}
+                    badgeType="required"
+                    theme="slate"
+                  >
+                    <div className="relative">
+                      <Input 
+                        value={customerMobile || user?.mobile || ''} 
+                        readOnly
+                        disabled
+                        className="h-11 border-2 border-slate-300 rounded-xl font-bold bg-slate-100 text-xs sm:text-sm text-slate-600 font-mono shadow-xs cursor-not-allowed select-none pl-9"
+                      />
+                      <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                    <p className="text-[10px] text-slate-500 font-semibold mt-1">
+                      {t('Auto-locked with main member account for unified combo statement & search.', 'കോംബോ സ്റ്റേറ്റ്‌മെന്റിൽ ഒരുമിച്ച് ലഭിക്കുന്നതിനായി മെയിൻ അക്കൗണ്ട് നമ്പറുമായി സുരക്ഷിതമായി ലിങ്ക് ചെയ്തിരിക്കുന്നു.')}
+                    </p>
+                  </FormFieldBox>
+
+                  <FormFieldBox
+                    label={tLabel('Spouse Own Mobile Number (Optional)', 'ഭാര്യ / ഭർത്താവിന്റെ സ്വന്തം മൊബൈൽ നമ്പർ (വേറെ നമ്പർ ഉണ്ടെങ്കിൽ)')}
+                    icon="📱"
+                    badge={spouseMobile ? t('Custom', 'സ്വന്തം നമ്പർ') : t('Optional', 'ഓപ്ഷണൽ')}
+                    badgeType={spouseMobile ? 'info' : 'optional'}
+                    theme="rose"
+                  >
+                    <Input 
+                      value={spouseMobile} 
+                      onChange={(e) => setSpouseMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                      placeholder={tPlaceholder('Own 10-digit Mobile (if different)', 'പ്രത്യേകം നമ്പർ ഉണ്ടെങ്കിൽ നൽകാം (10 അക്കം)')}
+                      type="tel"
+                      maxLength={10}
+                      className="h-11 border-2 border-rose-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono shadow-xs focus:border-rose-500"
+                    />
+                    <p className="text-[10px] text-rose-700/80 font-semibold mt-1">
+                      {t('If spouse has a separate phone number, enter it here. Otherwise, the main number will be used.', 'ഭാര്യ/ഭർത്താവിന് സ്വന്തമായി വേറെ നമ്പർ ഉണ്ടെങ്കിൽ ഇവിടെ നൽകാം. ഇല്ലെങ്കിൽ മെയിൻ നമ്പർ തന്നെ ഉപയോഗിക്കും.')}
+                    </p>
                   </FormFieldBox>
                 </div>
 
@@ -3563,7 +3614,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
               </div>
               <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5">
                 <span className="text-[10px] text-slate-500 font-bold block">{t('Mobile Number', 'മൊബൈൽ നമ്പർ')}</span>
-                <span className="font-mono font-bold text-slate-800">{parentClaim?.userMobile || parentMobile || '—'}</span>
+                <span className="font-mono font-bold text-slate-800">{parentClaim?.individualMobile || (parentClaim?.memberMobile && parentClaim?.memberMobile !== parentClaim?.userMobile ? parentClaim?.memberMobile : '') || parentClaim?.userMobile || parentMobile || '—'}</span>
               </div>
               <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5 col-span-2 sm:col-span-1">
                 <span className="text-[10px] text-slate-500 font-bold block">{t('Total Pending', 'ആകെ മിച്ച തുക')}</span>
@@ -3701,29 +3752,11 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                   </FormFieldBox>
 
                   <FormFieldBox
-                    label={tLabel('Parent Mobile Number', 'മാതാവ് / പിതാവിന്റെ മൊബൈൽ നമ്പർ')}
-                    icon="📱"
-                    badge={parentMobile && parentMobile !== (customerMobile || user?.mobile) ? t('Custom', 'സ്വന്തം നമ്പർ') : t('Auto', 'അപേക്ഷകന്റെ നമ്പർ')}
-                    badgeType="info"
-                    theme="amber"
-                  >
-                    <Input 
-                      value={parentMobile !== '' ? parentMobile : (customerMobile || user?.mobile || '')} 
-                      onChange={(e) => setParentMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
-                      placeholder={tPlaceholder('10-digit Mobile', '10 അക്ക മൊബൈൽ നമ്പർ')}
-                      type="tel"
-                      maxLength={10}
-                      className="h-11 border-2 border-amber-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono shadow-xs focus:border-amber-500"
-                    />
-                  </FormFieldBox>
-
-                  <FormFieldBox
                     label={tLabel('Parent Customer ID', 'മാതാവ് / പിതാവിന്റെ കസ്റ്റമർ ഐഡി')}
                     icon="🆔"
                     badge={t('Optional', 'ഓപ്ഷണൽ')}
                     badgeType="optional"
                     theme="slate"
-                    className="md:col-span-2"
                   >
                     <Input 
                       value={parentHighrichId} 
@@ -3731,6 +3764,47 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                       placeholder={tPlaceholder('Enter Customer ID if known', 'കസ്റ്റമർ ഐഡി അറിയാമെങ്കിൽ നൽകുക')}
                       className="h-11 border-2 border-slate-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 shadow-xs focus:border-slate-400"
                     />
+                  </FormFieldBox>
+
+                  <FormFieldBox
+                    label={tLabel('Primary Member Mobile (Locked - Combo Link)', 'മെയിൻ അക്കൗണ്ട് മൊബൈൽ നമ്പർ (കോംബോ ലിങ്ക് - മാറ്റാൻ കഴിയില്ല)')}
+                    icon="🔒"
+                    badge={t('Combo Linked 🔒', 'കോംബോ ലിങ്ക്ഡ് 🔒')}
+                    badgeType="required"
+                    theme="slate"
+                  >
+                    <div className="relative">
+                      <Input 
+                        value={customerMobile || user?.mobile || ''} 
+                        readOnly
+                        disabled
+                        className="h-11 border-2 border-slate-300 rounded-xl font-bold bg-slate-100 text-xs sm:text-sm text-slate-600 font-mono shadow-xs cursor-not-allowed select-none pl-9"
+                      />
+                      <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                    <p className="text-[10px] text-slate-500 font-semibold mt-1">
+                      {t('Auto-locked with main member account for unified combo statement & search.', 'കോംബോ സ്റ്റേറ്റ്‌മെന്റിൽ ഒരുമിച്ച് ലഭിക്കുന്നതിനായി മെയിൻ അക്കൗണ്ട് നമ്പറുമായി സുരക്ഷിതമായി ലിങ്ക് ചെയ്തിരിക്കുന്നു.')}
+                    </p>
+                  </FormFieldBox>
+
+                  <FormFieldBox
+                    label={tLabel('Parent Own Mobile Number (Optional)', 'മാതാവ് / പിതാവിന്റെ സ്വന്തം മൊബൈൽ നമ്പർ (വേറെ നമ്പർ ഉണ്ടെങ്കിൽ)')}
+                    icon="📱"
+                    badge={parentMobile ? t('Custom', 'സ്വന്തം നമ്പർ') : t('Optional', 'ഓപ്ഷണൽ')}
+                    badgeType={parentMobile ? 'info' : 'optional'}
+                    theme="amber"
+                  >
+                    <Input 
+                      value={parentMobile} 
+                      onChange={(e) => setParentMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                      placeholder={tPlaceholder('Own 10-digit Mobile (if different)', 'പ്രത്യേകം നമ്പർ ഉണ്ടെങ്കിൽ നൽകാം (10 അക്കം)')}
+                      type="tel"
+                      maxLength={10}
+                      className="h-11 border-2 border-amber-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono shadow-xs focus:border-amber-500"
+                    />
+                    <p className="text-[10px] text-amber-800/80 font-semibold mt-1">
+                      {t('If parent has a separate phone number, enter it here. Otherwise, the main number will be used.', 'മാതാവ്/പിതാവിന് സ്വന്തമായി വേറെ നമ്പർ ഉണ്ടെങ്കിൽ ഇവിടെ നൽകാം. ഇല്ലെങ്കിൽ മെയിൻ നമ്പർ തന്നെ ഉപയോഗിക്കും.')}
+                    </p>
                   </FormFieldBox>
                 </div>
 
@@ -4121,7 +4195,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
               </div>
               <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5">
                 <span className="text-[10px] text-slate-500 font-bold block">{t('Mobile Number', 'മൊബൈൽ നമ്പർ')}</span>
-                <span className="font-mono font-bold text-slate-800">{childClaim?.userMobile || childMobile || '—'}</span>
+                <span className="font-mono font-bold text-slate-800">{childClaim?.individualMobile || (childClaim?.memberMobile && childClaim?.memberMobile !== childClaim?.userMobile ? childClaim?.memberMobile : '') || childClaim?.userMobile || childMobile || '—'}</span>
               </div>
               <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5 col-span-2 sm:col-span-1">
                 <span className="text-[10px] text-slate-500 font-bold block">{t('Total Pending', 'ആകെ മിച്ച തുക')}</span>
@@ -4259,29 +4333,11 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                   </FormFieldBox>
 
                   <FormFieldBox
-                    label={tLabel('Child Mobile Number', 'മകൻ / മകളുടെ മൊബൈൽ നമ്പർ')}
-                    icon="📱"
-                    badge={childMobile && childMobile !== (customerMobile || user?.mobile) ? t('Custom', 'സ്വന്തം നമ്പർ') : t('Auto', 'അപേക്ഷകന്റെ നമ്പർ')}
-                    badgeType="info"
-                    theme="amber"
-                  >
-                    <Input 
-                      value={childMobile !== '' ? childMobile : (customerMobile || user?.mobile || '')} 
-                      onChange={(e) => setChildMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
-                      placeholder={tPlaceholder('10-digit Mobile', '10 അക്ക മൊബൈൽ നമ്പർ')}
-                      type="tel"
-                      maxLength={10}
-                      className="h-11 border-2 border-amber-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono shadow-xs focus:border-amber-500"
-                    />
-                  </FormFieldBox>
-
-                  <FormFieldBox
                     label={tLabel('Child Customer ID', 'മകൻ / മകളുടെ കസ്റ്റമർ ഐഡി')}
                     icon="🆔"
                     badge={t('Optional', 'ഓപ്ഷണൽ')}
                     badgeType="optional"
                     theme="slate"
-                    className="md:col-span-2"
                   >
                     <Input 
                       value={childHighrichId} 
@@ -4289,6 +4345,47 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                       placeholder={tPlaceholder('Enter Customer ID if known', 'കസ്റ്റമർ ഐഡി അറിയാമെങ്കിൽ നൽകുക')}
                       className="h-11 border-2 border-slate-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 shadow-xs focus:border-slate-400"
                     />
+                  </FormFieldBox>
+
+                  <FormFieldBox
+                    label={tLabel('Primary Member Mobile (Locked - Combo Link)', 'മെയിൻ അക്കൗണ്ട് മൊബൈൽ നമ്പർ (കോംബോ ലിങ്ക് - മാറ്റാൻ കഴിയില്ല)')}
+                    icon="🔒"
+                    badge={t('Combo Linked 🔒', 'കോംബോ ലിങ്ക്ഡ് 🔒')}
+                    badgeType="required"
+                    theme="slate"
+                  >
+                    <div className="relative">
+                      <Input 
+                        value={customerMobile || user?.mobile || ''} 
+                        readOnly
+                        disabled
+                        className="h-11 border-2 border-slate-300 rounded-xl font-bold bg-slate-100 text-xs sm:text-sm text-slate-600 font-mono shadow-xs cursor-not-allowed select-none pl-9"
+                      />
+                      <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                    <p className="text-[10px] text-slate-500 font-semibold mt-1">
+                      {t('Auto-locked with main member account for unified combo statement & search.', 'കോംബോ സ്റ്റേറ്റ്‌മെന്റിൽ ഒരുമിച്ച് ലഭിക്കുന്നതിനായി മെയിൻ അക്കൗണ്ട് നമ്പറുമായി സുരക്ഷിതമായി ലിങ്ക് ചെയ്തിരിക്കുന്നു.')}
+                    </p>
+                  </FormFieldBox>
+
+                  <FormFieldBox
+                    label={tLabel('Child Own Mobile Number (Optional)', 'മകൻ / മകളുടെ സ്വന്തം മൊബൈൽ നമ്പർ (വേറെ നമ്പർ ഉണ്ടെങ്കിൽ)')}
+                    icon="📱"
+                    badge={childMobile ? t('Custom', 'സ്വന്തം നമ്പർ') : t('Optional', 'ഓപ്ഷണൽ')}
+                    badgeType={childMobile ? 'info' : 'optional'}
+                    theme="amber"
+                  >
+                    <Input 
+                      value={childMobile} 
+                      onChange={(e) => setChildMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                      placeholder={tPlaceholder('Own 10-digit Mobile (if different)', 'പ്രത്യേകം നമ്പർ ഉണ്ടെങ്കിൽ നൽകാം (10 അക്കം)')}
+                      type="tel"
+                      maxLength={10}
+                      className="h-11 border-2 border-amber-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono shadow-xs focus:border-amber-500"
+                    />
+                    <p className="text-[10px] text-amber-800/80 font-semibold mt-1">
+                      {t('If child has a separate phone number, enter it here. Otherwise, the main number will be used.', 'മകൻ/മകൾക്ക് സ്വന്തമായി വേറെ നമ്പർ ഉണ്ടെങ്കിൽ ഇവിടെ നൽകാം. ഇല്ലെങ്കിൽ മെയിൻ നമ്പർ തന്നെ ഉപയോഗിക്കും.')}
+                    </p>
                   </FormFieldBox>
                 </div>
 
