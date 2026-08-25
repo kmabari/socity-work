@@ -1,8 +1,8 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { motion } from 'motion/react';
-import { Lock, ArrowRight, ArrowLeft, KeyRound, Smartphone, ShieldCheck, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Lock, ArrowRight, ArrowLeft, KeyRound, Smartphone, ShieldCheck, AlertCircle, RefreshCw, X, MessageCircle, Mail, CheckCircle2 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,6 +45,11 @@ interface LoginFormProps {
 export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterClick, isLoading = false }: LoginFormProps) {
   const { t } = useI18n();
   const [authError, setAuthError] = useState<string | null>(null);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetMobileInput, setResetMobileInput] = useState('');
+  const [isResettingPin, setIsResettingPin] = useState(false);
+  const [resetSuccessMessage, setResetSuccessMessage] = useState<string | null>(null);
+
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -74,38 +79,79 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
     }
   };
 
-  const handleForgotPassword = async () => {
-    const mobileOrEmail = form.getValues('mobile');
-    if (!mobileOrEmail) {
-      toast.error('നിങ്ങളുടെ മൊബൈൽ നമ്പർ / ഇമെയിൽ നൽകുക.');
+  const openResetModal = () => {
+    const currentMobile = form.getValues('mobile') || '';
+    setResetMobileInput(currentMobile);
+    setResetSuccessMessage(null);
+    setShowResetModal(true);
+  };
+
+  const handleResetPinSubmit = async () => {
+    const rawInput = resetMobileInput.trim();
+    if (!rawInput) {
+      toast.error('ദയവായി നിങ്ങളുടെ 10 അക്ക മൊബൈൽ നമ്പർ നൽകുക.');
       return;
     }
 
-    if (!mobileOrEmail.includes('@')) {
-      toast.error('മൊബൈൽ നമ്പർ ഉപയോഗിച്ചുള്ള അക്കൗണ്ടുകൾക്ക് പാസ്‌വേഡ് റീസെറ്റ് ചെയ്യാൻ നിങ്ങളുടെ അഡ്മിനെ ബന്ധപ്പെടുക.');
+    // If input is an email
+    if (rawInput.includes('@')) {
+      const loadingToast = toast.loading('Sending password reset email...');
+      setIsResettingPin(true);
+      try {
+        await sendPasswordResetEmail(auth, rawInput);
+        toast.success('പാസ്‌വേഡ് റീസെറ്റ് ലിങ്ക് ഇമെയിലിലേക്ക് അയച്ചു.', { id: loadingToast });
+        setResetSuccessMessage('പാസ്‌വേഡ് റീസെറ്റ് ലിങ്ക് നിങ്ങളുടെ ഇമെയിലിലേക്ക് അയച്ചിട്ടുണ്ട്. ഇൻബോക്സ് പരിശോധിക്കുക.');
+      } catch (error: any) {
+        console.error('Reset email error:', error);
+        toast.error(error?.message || 'Failed to send reset email.', { id: loadingToast });
+      } finally {
+        setIsResettingPin(false);
+      }
       return;
     }
 
-    const loadingToast = toast.loading('Sending reset link...');
+    const cleanMobile = rawInput.replace(/\D/g, '').slice(-10);
+    if (cleanMobile.length !== 10) {
+      toast.error('ദയവായി ശരിയായ 10 അക്ക മൊബൈൽ നമ്പർ നൽകുക.');
+      return;
+    }
+
+    const loadingToast = toast.loading('പാസ്‌വേഡ് 123456 ആയി റീസെറ്റ് ചെയ്യുന്നു...');
+    setIsResettingPin(true);
     try {
-      if (mobileOrEmail.includes('@hcrs.society')) {
-        toast.error('മൊബൈൽ നമ്പർ ഉപയോഗിച്ചുള്ള അക്കൗണ്ടുകൾക്ക് നേരിട്ട് പാസ്‌വേഡ് റീസെറ്റ് ചെയ്യാൻ കഴിയില്ല. അഡ്മിനെ ബന്ധപ്പെടുക.', { id: loadingToast, duration: 6000 });
-        return;
+      const res = await fetch('/api/reset-member-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mobile: cleanMobile })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || 'പാസ്‌വേഡ് റീസെറ്റ് ചെയ്യുന്നത് പരാജയപ്പെട്ടു.');
       }
-      await sendPasswordResetEmail(auth, mobileOrEmail);
-      toast.success('Reset link sent to your inbox.', { id: loadingToast });
-    } catch (error: any) {
-      console.error('Reset error:', error);
-      let errorMsg = 'Failed to send reset email.';
-      
-      if (error.code === 'auth/user-not-found') {
-        errorMsg = 'No user found with this email.';
-      } else if (error.code === 'auth/invalid-email') {
-        errorMsg = 'Invalid email address.';
-      }
-      
-      toast.error(errorMsg, { id: loadingToast });
+
+      toast.success('പാസ്‌വേഡ് വിജയകരമായി 123456 ആയി റീസെറ്റ് ചെയ്തു!', { id: loadingToast, duration: 6000 });
+      setResetSuccessMessage('താങ്കളുടെ പാസ്‌വേഡ് വിജയകരമായി 123456 ആയി മാറ്റിയിട്ടുണ്ട്. ഇനി താഴെ കാണുന്ന "ലോഗിൻ ചെയ്യുക" ബട്ടൺ ക്ലിക്ക് ചെയ്ത് പ്രവേശിക്കാം.');
+
+      // Auto fill form
+      form.setValue('mobile', cleanMobile);
+      form.setValue('pin', '123456');
+      setAuthError(null);
+    } catch (err: any) {
+      console.error('PIN reset failed:', err);
+      toast.error(err?.message || 'പാസ്‌വേഡ് റീസെറ്റ് സാധ്യമായില്ല. അഡ്മിനെ ബന്ധപ്പെടുക.', { id: loadingToast });
+    } finally {
+      setIsResettingPin(false);
     }
+  };
+
+  const handleWhatsAppHelp = () => {
+    const rawInput = resetMobileInput.trim() || form.getValues('mobile') || '';
+    const cleanMobile = rawInput.replace(/\D/g, '').slice(-10);
+    const msg = encodeURIComponent(
+      `നമസ്കാരം,\nഎന്റെ HCRS മെമ്പർഷിപ്പ് മൊബൈൽ നമ്പർ: ${cleanMobile || '—'}\nഎനിക്ക് പാസ്‌വേഡ് റീസെറ്റ് ചെയ്തു തരണമെന്ന് അഭ്യർത്ഥിക്കുന്നു.`
+    );
+    window.open(`https://wa.me/919645934571?text=${msg}`, '_blank');
   };
 
   return (
@@ -205,9 +251,10 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
                       <button 
                         type="button" 
                         disabled={isLoading}
-                        onClick={handleForgotPassword}
-                        className="text-xs text-blue-700 hover:text-blue-950 hover:underline transition-colors font-black uppercase tracking-wider disabled:opacity-50 cursor-pointer"
+                        onClick={openResetModal}
+                        className="text-xs text-blue-700 hover:text-blue-950 hover:underline transition-colors font-black uppercase tracking-wider disabled:opacity-50 cursor-pointer flex items-center gap-1"
                       >
+                        <RefreshCw className="w-3 h-3 text-blue-700" />
                         {t('btn_reset_password', 'Reset Password')}
                       </button>
                     </div>
@@ -241,6 +288,29 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
                       <p className="text-red-950 font-black">{authError}</p>
                     </div>
                   </div>
+
+                  {/* If error is related to wrong password or already changed password, provide instant Reset PIN trigger */}
+                  {(authError.includes('പാസ്‌വേഡ്') || authError.includes('Password') || authError.includes('മാറ്റിയിട്ടുണ്ട്') || authError.includes('അക്ക')) && (
+                    <div className="pt-2 border-t border-red-200/80 flex flex-col sm:flex-row gap-2 mt-1">
+                      <button
+                        type="button"
+                        onClick={openResetModal}
+                        className="flex-1 py-2 px-3 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-colors cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>പാസ്‌വേഡ് റീസെറ്റ് ചെയ്യുക (Reset PIN)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleWhatsAppHelp}
+                        className="py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-colors cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        <span>WhatsApp Help</span>
+                      </button>
+                    </div>
+                  )}
+
                   {onRegisterClick && (authError.includes('രജിസ്റ്റർ') || authError.includes('not registered') || authError.includes('അംഗത്വം')) && (
                     <button
                       type="button"
@@ -315,6 +385,124 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
           </div>
         </div>
       </motion.div>
+
+      {/* PASSWORD RESET / FORGOT PIN MODAL */}
+      <AnimatePresence>
+        {showResetModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.25 }}
+              className="relative w-full max-w-md bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border-2 border-slate-200 overflow-hidden"
+            >
+              {/* Top gradient stripe */}
+              <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-[#1a2b5c] via-[#c9a227] to-[#233875]" />
+
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={() => setShowResetModal(false)}
+                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-11 h-11 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-800">
+                  <RefreshCw className="w-5 h-5 text-blue-700" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 uppercase">
+                    പാസ്‌വേഡ് റീസെറ്റ് (Reset Password)
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-bold">
+                    രജിസ്റ്റർ ചെയ്ത മൊബൈൽ നമ്പർ നൽകുക
+                  </p>
+                </div>
+              </div>
+
+              {resetSuccessMessage ? (
+                <div className="space-y-4">
+                  <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-2xl flex items-start gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                    <div className="text-xs text-emerald-900 font-bold leading-relaxed">
+                      {resetSuccessMessage}
+                    </div>
+                  </div>
+
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setShowResetModal(false);
+                      // Trigger login with 123456
+                      form.handleSubmit(onSubmit)();
+                    }}
+                    className="w-full h-12 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-md"
+                  >
+                    123456 നൽകി ഇപ്പോൾ ലോഗിൻ ചെയ്യുക →
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1.5 ml-1">
+                      രജിസ്റ്റർ ചെയ്ത മൊബൈൽ നമ്പർ / ഇമെയിൽ
+                    </label>
+                    <div className="relative">
+                      <Smartphone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <Input
+                        value={resetMobileInput}
+                        onChange={(e) => setResetMobileInput(e.target.value)}
+                        placeholder="10 അക്ക മൊബൈൽ നമ്പർ"
+                        className="pl-10 h-12 border-2 border-slate-300 rounded-xl font-bold text-sm text-slate-950 focus:border-[#1a2b5c]"
+                      />
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed font-semibold ml-1">
+                      മൊബൈൽ നമ്പർ നൽകിയാൽ പാസ്‌വേഡ് നേരിട്ട് <strong className="text-slate-900 font-black">123456</strong> ആയി റീസെറ്റ് ചെയ്യപ്പെടും. ശേഷം പുതിയ പാസ്‌വേഡ് മാറ്റാം.
+                    </p>
+                  </div>
+
+                  <div className="pt-2 flex flex-col gap-2.5">
+                    <Button
+                      type="button"
+                      disabled={isResettingPin}
+                      onClick={handleResetPinSubmit}
+                      className="w-full h-12 bg-blue-700 hover:bg-blue-800 text-white font-black rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-sm flex items-center justify-center gap-2"
+                    >
+                      {isResettingPin ? (
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4" />
+                      )}
+                      {resetMobileInput.includes('@') ? 'ഇമെയിൽ റീസെറ്റ് ലിങ്ക് അയക്കുക' : 'പാസ്‌വേഡ് 123456 ആക്കുക (Reset PIN)'}
+                    </Button>
+
+                    <div className="relative py-1">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t border-slate-200" />
+                      </div>
+                      <div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest text-slate-400">
+                        <span className="bg-white px-2">അല്ലെങ്കിൽ (OR)</span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleWhatsAppHelp}
+                      className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-xs uppercase tracking-wider cursor-pointer shadow-sm flex items-center justify-center gap-2 transition-colors"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      WhatsApp അഡ്മിൻ സഹായം (Admin Helpline)
+                    </button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

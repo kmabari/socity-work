@@ -146,7 +146,7 @@ export async function getOrgSettings(): Promise<OrgSettings> {
     }
     return defaultSettings;
   } catch (error) {
-    console.error("Error fetching settings:", error);
+    // Gracefully fallback to cached settings or defaults if offline
     try {
       const cached = localStorage.getItem('hcrs_cached_org_settings');
       if (cached) {
@@ -501,131 +501,79 @@ export interface CampaignTemplate {
 
 export function subscribeToJanamailConfig(callback: (config: JanamailConfig) => void) {
   const docRef = doc(db, 'settings', 'janamail_config');
-  return onSnapshot(docRef, async (snapshot) => {
+  const defaultConf: JanamailConfig = {
+    recipients: "chiefminister@kerala.gov.in, home.dept@kerala.gov.in, hcrskerala@gmail.com",
+    cc: "",
+    active: true,
+    campaignName: "Operation Janamail",
+    campaignTagline: "പൊതുപങ്കാളിത്തത്തോടെയുള്ള ഇമെയിൽ ഹർജി ക്യാമ്പയിൻ",
+    startDate: "",
+    endDate: "",
+    artworkUrl: "",
+    campaignIntroduction: "ഓരോ പൗരനും അവരുടെ അഭിപ്രായങ്ങളും ആവശ്യങ്ങളും ബന്ധപ്പെട്ട സർക്കാർ അധികാരികളെ മാന്യവും ഉത്തരവാദിത്തപരവുമായി അറിയിക്കാൻ സഹായിക്കുന്ന ഒരു പൊതുപങ്കാളിത്ത ഇ-മെയിൽ ക്യാമ്പയിനാണ് Operation Janamail.",
+    whyThisCampaign: "ഹൈറിച്ച് തട്ടിപ്പ് കേസിലെ ഇരകൾക്ക് നീതി ലഭിക്കുന്നതിനും തട്ടിപ്പുകാർക്കെതിരെ മാതൃകാപരമായ ശിക്ഷാനടപടികൾ സ്വീകരിക്കുന്നതിനും ശക്തമായ അന്വേഷണം ആവശ്യപ്പെട്ട് ഞങ്ങൾ അധികാരികളിലേക്ക് ഈ ഹർജി സമർപ്പിക്കുന്നു.",
+    importantNotice: "ദയവായി ഇമെയിൽ അയയ്ക്കുന്നതിനു മുൻപായി നിങ്ങളുടെ വിവരങ്ങൾ കൃത്യമാണെന്നും ഇമെയിൽ ബോഡി ശ്രദ്ധാപൂർവ്വം വായിച്ചിട്ടുണ്ടെന്നും ഉറപ്പാക്കുക. നിയമപരമായ ആവശ്യങ്ങൾക്ക് മാത്രമേ ഈ ക്യാമ്പയിൻ ഉപയോഗിക്കുകയുള്ളൂ.",
+    faqItems: [
+      { question: "ഈ ക്യാമ്പയിൻ എന്തിനാണ്?", answer: "പൊതുജനങ്ങളുടെ അഭിപ്രായം ബന്ധപ്പെട്ട അധികാരികൾക്ക് ഇമെയിൽ വഴി അറിയിക്കാനാണ്." },
+      { question: "ഇത് നിയമപരമാണോ?", answer: "നിയമപരവും ഉത്തരവാദിത്തത്തോടെയും മാത്രമേ ഈ സംവിധാനം ഉപയോഗിക്കാവൂ." },
+      { question: "സ്പാം അയക്കാമോ?", answer: "ഇല്ല. ഒരേ സന്ദേശം ആവർത്തിച്ച് അയക്കുന്നത് ഒഴിവാക്കണം." }
+    ],
+    disclaimer: "ഈ ക്യാമ്പയിൻ പൊതുജനങ്ങൾക്ക് വിവരങ്ങൾ നൽകുന്നതിനായുള്ളതാണ്. എല്ലാ ഇമെയിലുകളും നിയമപരമായും ഉത്തരവാദിത്തത്തോടെയും മാത്രം ഉപയോഗിക്കണം. സ്പാം സന്ദേശങ്ങൾ അയയ്ക്കരുത്.",
+    termsAndConditions: "ഈ ക്യാമ്പയിനിൽ പങ്കെടുക്കുന്നതിലൂടെ നിങ്ങൾ പൂർണ്ണമായും സത്യസന്ധമായ വിവരങ്ങൾ മാത്രമേ നൽകുന്നുള്ളൂ എന്ന് സാക്ഷ്യപ്പെടുത്തുന്നു. ദുരുപയോഗം നിയമപരമായ നടപടികൾക്ക് കാരണമായേക്കാം.",
+    confirmations: [
+      "ഞാൻ നൽകിയിട്ടുള്ള എല്ലാ വിവരങ്ങളും സത്യസന്ധവും കൃത്യവുമാണ് എന്ന് സാക്ഷ്യപ്പെടുത്തുന്നു.",
+      "എന്റെ അറിവോടെയും സമ്മതത്തോടെയുമാണ് ഈ ഹർജി അയക്കുന്നത്.",
+      "ഈ ക്യാമ്പയിന്റെ എല്ലാ നിബന്ധനകളും വ്യവസ്ഥകളും ഞാൻ വായിച്ചു മനസ്സിലാക്കി അംഗീകരിക്കുന്നു.",
+      "കേരള സർക്കാരിന്റെയും മറ്റ് അന്വേഷണ ഏജൻസികളുടെയും സുതാര്യമായ അന്വേഷണത്തിന് ഞാൻ പിന്തുണ പ്രഖ്യാപിക്കുന്നു."
+    ],
+    thankYouMessage: "ഹർജി വിജയകരമായി സമർപ്പിച്ചു. നന്ദി!",
+    writeMyOwnEnabled: true,
+    campaignStatus: "live",
+    emailMode: "both",
+    mainNoticeTitle: "Operation Janamail – പ്രധാന അറിയിപ്പ്",
+    whyCampaignHeading: "എന്തുകൊണ്ടാണ് Operation Janamail?",
+    confirmationSectionTitle: "സ്ഥിരീകരണം (Mandatory)",
+    confirmationSectionDescription: "മേൽപ്പറഞ്ഞ കാര്യങ്ങൾ സ്ഥിരീകരിച്ച ശേഷം താഴെയുള്ള Continue to Gmail ബട്ടൺ ക്ലിക്ക് ചെയ്താൽ ജിമെയിലിൽ ഈ കത്തും വിഷയവും തനിയെ ലോഡ് ചെയ്യപ്പെടും.",
+    restrictOneParticipation: true
+  };
+
+  return onSnapshot(docRef, (snapshot) => {
     if (!snapshot.exists()) {
-      // Seed default settings
-      const defaultConf: JanamailConfig = {
-        recipients: "chiefminister@kerala.gov.in, home.dept@kerala.gov.in, hcrskerala@gmail.com",
-        cc: "",
-        active: true,
-        campaignName: "Operation Janamail",
-        campaignTagline: "പൊതുപങ്കാളിത്തത്തോടെയുള്ള ഇമെയിൽ ഹർജി ക്യാമ്പയിൻ",
-        startDate: "",
-        endDate: "",
-        artworkUrl: "",
-        campaignIntroduction: "ഓരോ പൗരനും അവരുടെ അഭിപ്രായങ്ങളും ആവശ്യങ്ങളും ബന്ധപ്പെട്ട സർക്കാർ അധികാരികളെ മാന്യവും ഉത്തരവാദിത്തപരവുമായി അറിയിക്കാൻ സഹായിക്കുന്ന ഒരു പൊതുപങ്കാളിത്ത ഇ-മെയിൽ ക്യാമ്പയിനാണ് Operation Janamail.",
-        whyThisCampaign: "ഹൈറിച്ച് തട്ടിപ്പ് കേസിലെ ഇരകൾക്ക് നീതി ലഭിക്കുന്നതിനും തട്ടിപ്പുകാർക്കെതിരെ മാതൃകാപരമായ ശിക്ഷാനടപടകളും സ്വീകരിക്കുന്നതിനും ശക്തമായ അന്വേഷണം ആവശ്യപ്പെട്ട് ഞങ്ങൾ അധികാരികളിലേക്ക് ഈ ഹർജി സമർപ്പിക്കുന്നു.",
-        importantNotice: "ദയവായി ഇമെയിൽ അയയ്ക്കുന്നതിനു മുൻപായി നിങ്ങളുടെ വിവരങ്ങൾ കൃത്യമാണെന്നും ഇമെയിൽ ബോഡി ശ്രദ്ധാപൂർവ്വം വായിച്ചിട്ടുണ്ടെന്നും ഉറപ്പാക്കുക. നിയമപരമായ ആവശ്യങ്ങൾക്ക് മാത്രമേ ഈ ക്യാമ്പയിൻ ഉപയോഗിക്കുകയുള്ളൂ.",
-        faqItems: [
-          { question: "ഈ ക്യാമ്പയിൻ എന്തിനാണ്?", answer: "പൊതുജനങ്ങളുടെ അഭിപ്രായം ബന്ധപ്പെട്ട അധികാരികൾക്ക് ഇമെയിൽ വഴി അറിയിക്കാനാണ്." },
-          { question: "ഇത് നിയമപരമാണോ?", answer: "നിയമപരവും ഉത്തരവാദിത്തത്തോടെയും മാത്രമേ ഈ സംവിധാനം ഉപയോഗിക്കാവൂ." },
-          { question: "സ്പാം അയക്കാമോ?", answer: "ഇല്ല. ഒരേ സന്ദേശം ആവർത്തിച്ച് അയക്കുന്നത് ഒഴിവാക്കണം." }
-        ],
-        disclaimer: "ഈ ക്യാമ്പയിൻ പൊതുജനങ്ങൾക്ക് വിവരങ്ങൾ നൽകുന്നതിനായുള്ളതാണ്. എല്ലാ ഇമെയിലുകളും നിയമപരമായും ഉത്തരവാദിത്തത്തോടെയും മാത്രം ഉപയോഗിക്കണം. സ്പാം സന്ദേശങ്ങൾ അയയ്ക്കരുത്.",
-        termsAndConditions: "ഈ ക്യാമ്പയിനിൽ പങ്കെടുക്കുന്നതിലൂടെ നിങ്ങൾ പൂർണ്ണമായും സത്യസന്ധമായ വിവരങ്ങൾ മാത്രമേ നൽകുന്നുള്ളൂ എന്ന് സാക്ഷ്യപ്പെടുത്തുന്നു. ദുരുപയോഗം നിയമപരമായ നടപടികൾക്ക് കാരണമായേക്കാം.",
-        confirmations: [
-          "ഞാൻ നൽകിയിട്ടുള്ള എല്ലാ വിവരങ്ങളും സത്യസന്ധവും കൃത്യവുമാണ് എന്ന് സാക്ഷ്യപ്പെടുത്തുന്നു.",
-          "എന്റെ അറിവോടെയും സമ്മതത്തോടെയുമാണ് ഈ ഹർജി അയക്കുന്നത്.",
-          "ഈ ക്യാമ്പയിന്റെ എല്ലാ നിബന്ധനകളും വ്യവസ്ഥകളും ഞാൻ വായിച്ചു മനസ്സിലാക്കി അംഗീകരിക്കുന്നു.",
-          "കേരള സർക്കാരിന്റെയും മറ്റ് അന്വേഷണ ഏജൻസികളുടെയും സുതാര്യമായ അന്വേഷണത്തിന് ഞാൻ പിന്തുണ പ്രഖ്യാപിക്കുന്നു."
-        ],
-        thankYouMessage: "ഹർജി വിജയകരമായി സമർപ്പിച്ചു. നന്ദി!",
-        writeMyOwnEnabled: true,
-        campaignStatus: "live",
-        emailMode: "both",
-        mainNoticeTitle: "Operation Janamail – പ്രധാന അറിയിപ്പ്",
-        whyCampaignHeading: "എന്തുകൊണ്ടാണ് Operation Janamail?",
-        confirmationSectionTitle: "സ്ഥിരീകരണം (Mandatory)",
-        confirmationSectionDescription: "മേൽപ്പറഞ്ഞ കാര്യങ്ങൾ സ്ഥിരീകരിച്ച ശേഷം താഴെയുള്ള Continue to Gmail ബട്ടൺ ക്ലിക്ക് ചെയ്താൽ ജിമെയിലിൽ ഈ കത്തും വിഷയവും തനിയെ ലോഡ് ചെയ്യപ്പെടും.",
-        restrictOneParticipation: true
-      };
-      try {
-        await setDoc(docRef, {
-          ...defaultConf,
-          lastUpdated: serverTimestamp()
-        });
-        callback({ id: 'janamail_config', ...defaultConf });
-      } catch (err) {
-        console.error("Seeding janamail_config failed:", err);
-        // Fallback: trigger callback with defaultConf anyway so the application doesn't hang
-        callback({ id: 'janamail_config', ...defaultConf });
-      }
+      callback({ id: 'janamail_config', ...defaultConf });
     } else {
       const data = snapshot.data();
       callback({
         id: snapshot.id,
-        recipients: data?.recipients || "chiefminister@kerala.gov.in, home.dept@kerala.gov.in, hcrskerala@gmail.com",
-        cc: data?.cc || "",
-        active: data?.active !== undefined ? data?.active : true,
-        campaignName: data?.campaignName || "Operation Janamail",
-        campaignTagline: data?.campaignTagline || "പൊതുപങ്കാളിത്തത്തോടെയുള്ള ഇമെയിൽ ഹർജി ക്യാമ്പയിൻ",
+        recipients: data?.recipients || defaultConf.recipients,
+        cc: data?.cc || defaultConf.cc,
+        active: data?.active !== undefined ? data?.active : defaultConf.active,
+        campaignName: data?.campaignName || defaultConf.campaignName,
+        campaignTagline: data?.campaignTagline || defaultConf.campaignTagline,
         startDate: data?.startDate || "",
         endDate: data?.endDate || "",
         artworkUrl: data?.artworkUrl || "",
-        campaignIntroduction: data?.campaignIntroduction || "ഓരോ പൗരനും അവരുടെ അഭിപ്രായങ്ങളും ആവശ്യങ്ങളും ബന്ധപ്പെട്ട സർക്കാർ അധികാരികളെ മാന്യവും ഉത്തരവാദിത്തപരവുമായി അറിയിക്കാൻ സഹായിക്കുന്ന ഒരു പൊതുപങ്കാളിത്ത ഇ-മെയിൽ ക്യാമ്പയിനാണ് Operation Janamail.",
-        whyThisCampaign: data?.whyThisCampaign || "ഹൈറിച്ച് തട്ടിപ്പ് കേസിലെ ഇരകൾക്ക് നീതി ലഭിക്കുന്നതിനും തട്ടിപ്പുകാർതിരെ മാതൃകാപരമായ ശിക്ഷാനടപടികൾ സ്വീകരിക്കുന്നതിനും ശക്തമായ അന്വേഷണം ആവശ്യപ്പെട്ട് ഞങ്ങൾ അധികാരികളിലേക്ക് ഈ ഹർജി സമർപ്പിക്കുന്നു.",
-        importantNotice: data?.importantNotice || "ദയവായി ഇമെയിൽ അയയ്ക്കുന്നതിനു മുൻപായി നിങ്ങളുടെ വിവരങ്ങൾ കൃത്യമാണെന്നും ഇമെയിൽ ബോഡി ശ്രദ്ധാപൂർവ്വം വായിച്ചിട്ടുണ്ടെന്നും ഉറപ്പാക്കുക. നിയമപരമായ ആവശ്യങ്ങൾക്ക് മാത്രമേ ഈ ക്യാമ്പയിൻ ഉപയോഗിക്കുകയുള്ളൂ.",
-        faqItems: data?.faqItems || [
-          { question: "ഈ ക്യാമ്പയിൻ എന്തിനാണ്?", answer: "പൊതുജനങ്ങളുടെ അഭിപ്രായം ബന്ധപ്പെട്ട അധികാരികൾക്ക് ഇമെയിൽ വഴി അറിയിക്കാനാണ്." },
-          { question: "ഇത് നിയമപരമാണോ?", answer: "നിയമപരവും ഉത്തരവാദിത്തത്തോടെയും മാത്രമേ ഈ സംവിധാനം ഉപയോഗിക്കാവൂ." },
-          { question: "സ്പാം അയക്കാമോ?", answer: "ഇല്ല. ഒരേ സന്ദേശം ആവർത്തിച്ച് അയക്കുന്നത് ഒഴിവാക്കണം." }
-        ],
-        disclaimer: data?.disclaimer || "ഈ ക്യാമ്പയിൻ പൊതുജനങ്ങൾക്ക് വിവരങ്ങൾ നൽകുന്നതിനായുള്ളതാണ്. എല്ലാ ഇമെയിലുകളും നിയമപരമായും ഉത്തരവാദിത്തത്തോടെയും മാത്രം ഉപയോഗിക്കണം. സ്പാം സന്ദേശങ്ങൾ അയയ്ക്കരുത്.",
-        termsAndConditions: data?.termsAndConditions || "ഈ ക്യാമ്പയിനിൽ പങ്കെടുക്കുന്നതിലൂടെ നിങ്ങൾ പൂർണ്ണമായും സത്യസന്ധമായ വിവരങ്ങൾ മാത്രമേ നൽകുന്നുള്ളൂ എന്ന് സാക്ഷ്യപ്പെടുത്തുന്നു. ദുരുപയോഗം നിയമപരമായ നടപടികൾക്ക് കാരണമായേക്കാം.",
-        confirmations: data?.confirmations || [
-          "ഞാൻ നൽകിയിട്ടുള്ള എല്ലാ വിവരങ്ങളും സത്യസന്ധവും കൃത്യവുമാണ് എന്ന് സാക്ഷ്യപ്പെടുത്തുന്നു.",
-          "എന്റെ അറിവോടെയും സമ്മതത്തോടെയുമാണ് ഈ ഹർജി അയക്കുന്നത്.",
-          "ഈ ക്യാമ്പയിന്റെ എല്ലാ നിബന്ധനകളും വ്യവസ്ഥകളും ഞാൻ വായിച്ചു മനസ്സിലാക്കി അംഗീകരിക്കുന്നു.",
-          "കേരള സർക്കാരിന്റെയും മറ്റ് അന്വേഷണ ഏജൻസികളുടെയും സുതാര്യമായ അന്വേഷണത്തിന് ഞാൻ പിന്തുണ പ്രഖ്യാപിക്കുന്നു."
-        ],
-        thankYouMessage: data?.thankYouMessage || "ഹർജി വിജയകരമായി സമർപ്പിച്ചു. നന്ദി!",
-        writeMyOwnEnabled: data?.writeMyOwnEnabled !== undefined ? data?.writeMyOwnEnabled : true,
-        campaignStatus: data?.campaignStatus || "live",
-        emailMode: data?.emailMode || "both",
-        mainNoticeTitle: data?.mainNoticeTitle || "Operation Janamail – പ്രധാന അറിയിപ്പ്",
-        whyCampaignHeading: data?.whyCampaignHeading || "എന്തുകൊണ്ടാണ് Operation Janamail?",
-        confirmationSectionTitle: data?.confirmationSectionTitle || "സ്ഥിരീകരണം (Mandatory)",
-        confirmationSectionDescription: data?.confirmationSectionDescription || "മേൽപ്പറഞ്ഞ കാര്യങ്ങൾ സ്ഥിരീകരിച്ച ശേഷം താഴെയുള്ള Continue to Gmail ബട്ടൺ ക്ലിക്ക് ചെയ്താൽ ജിമെയിലിൽ ഈ കത്തും വിഷയവും തനിയെ ലോഡ് ചെയ്യപ്പെടും.",
-        restrictOneParticipation: data?.restrictOneParticipation !== undefined ? data?.restrictOneParticipation : true,
+        campaignIntroduction: data?.campaignIntroduction || defaultConf.campaignIntroduction,
+        whyThisCampaign: data?.whyThisCampaign || defaultConf.whyThisCampaign,
+        importantNotice: data?.importantNotice || defaultConf.importantNotice,
+        faqItems: data?.faqItems || defaultConf.faqItems,
+        disclaimer: data?.disclaimer || defaultConf.disclaimer,
+        termsAndConditions: data?.termsAndConditions || defaultConf.termsAndConditions,
+        confirmations: data?.confirmations || defaultConf.confirmations,
+        thankYouMessage: data?.thankYouMessage || defaultConf.thankYouMessage,
+        writeMyOwnEnabled: data?.writeMyOwnEnabled !== undefined ? data?.writeMyOwnEnabled : defaultConf.writeMyOwnEnabled,
+        campaignStatus: data?.campaignStatus || defaultConf.campaignStatus,
+        emailMode: data?.emailMode || defaultConf.emailMode,
+        mainNoticeTitle: data?.mainNoticeTitle || defaultConf.mainNoticeTitle,
+        whyCampaignHeading: data?.whyCampaignHeading || defaultConf.whyCampaignHeading,
+        confirmationSectionTitle: data?.confirmationSectionTitle || defaultConf.confirmationSectionTitle,
+        confirmationSectionDescription: data?.confirmationSectionDescription || defaultConf.confirmationSectionDescription,
+        restrictOneParticipation: data?.restrictOneParticipation !== undefined ? data?.restrictOneParticipation : defaultConf.restrictOneParticipation,
         lastUpdated: data?.lastUpdated
       });
     }
   }, (err) => {
-    handleFirestoreError(err, OperationType.GET, 'settings/janamail_config');
-    callback({
-      recipients: "chiefminister@kerala.gov.in, home.dept@kerala.gov.in, hcrskerala@gmail.com",
-      cc: "",
-      active: true,
-      campaignName: "Operation Janamail",
-      campaignTagline: "പൊതുപങ്കാളിത്തത്തോടെയുള്ള ഇമെയിൽ ഹർജി ക്യാമ്പയിൻ",
-      startDate: "",
-      endDate: "",
-      artworkUrl: "",
-      campaignIntroduction: "ഓരോ പൗരനും അവരുടെ അഭിപ്രായങ്ങളും ആവശ്യങ്ങളും ബന്ധപ്പെട്ട സർക്കാർ അധികാരികളെ മാന്യവും ഉത്തരവാദിത്തപരവുമായി അറിയിക്കാൻ സഹായിക്കുന്ന ഒരു പൊതുപങ്കാളിത്ത ഇ-മെയിൽ ക്യാമ്പയിനാണ് Operation Janamail.",
-      whyThisCampaign: "ഹൈറിച്ച് തട്ടിപ്പ് കേസിലെ ഇരകൾക്ക് നീതി ലഭിക്കുന്നതിനും തട്ടിപ്പുകാർക്കെതിരെ മാതൃകാപരമായ ശിക്ഷാനടപടികൾ സ്വീകരിക്കുന്നതിനും ശക്തമായ അന്വേഷണം ആവശ്യപ്പെട്ട് ഞങ്ങൾ അധികാരികളിലേക്ക് ഈ ഹർജി സമർപ്പിക്കുന്നു.",
-      importantNotice: "ദയവായി ഇമെയിൽ അയയ്ക്കുന്നതിനു മുൻപായി നിങ്ങളുടെ വിവരങ്ങൾ കൃത്യമാണെന്നും ഇമെയിൽ ബോഡി ശ്രദ്ധാപൂർവ്വം വായിച്ചിട്ടുണ്ടെന്നും ഉറപ്പാക്കുക. നിയമപരമായ ആവശ്യങ്ങൾക്ക് മാത്രമേ ഈ ക്യാമ്പയിൻ ഉപയോഗിക്കുകയുള്ളൂ.",
-      faqItems: [
-        { question: "ഈ ക്യാമ്പയിൻ എന്തിനാണ്?", answer: "പൊതുജനങ്ങളുടെ അഭിപ്രായം ബന്ധപ്പെട്ട അധികാരികൾക്ക് ഇമെയിൽ വഴി അറിയിക്കാനാണ്." },
-        { question: "ഇത് നിയമപരമാണോ?", answer: "നിയമപരവും ഉത്തരവാദിത്തത്തോടെയും മാത്രമേ ഈ സംവിധാനം ഉപയോഗിക്കാവൂ." },
-        { question: "സ്പാം അയക്കാമോ?", answer: "ഇല്ല. ഒരേ സന്ദേശം ആവർсть അയക്കുന്നത് ഒഴിവാക്കണം." }
-      ],
-      disclaimer: "ഈ ക്യാമ്പയിൻ പൊതുജനങ്ങൾക്ക് വിവരങ്ങൾ നൽകുന്നതിനായുള്ളതാണ്. എല്ലാ ഇമെയിലുകളും നിയമപരമായും ഉത്തരവാദിത്തത്തോടെയും മാത്രം ഉപയോഗിക്കണം. സ്പാം സന്ദേശങ്ങൾ അയയ്ക്കരുത്.",
-      termsAndConditions: "ഈ ക്യാമ്പയിനിൽ പങ്കെടുക്കുന്നതിലൂടെ നിങ്ങൾ പൂർണ്ണമായും സത്യസന്ധമായ വിവരങ്ങൾ മാത്രമേ നൽകുന്നുള്ളൂ എന്ന് സാക്ഷ്യപ്പെടുത്തുന്നു. ദുരുപയോഗം നിയമപരമായ നടപടികൾക്ക് കാരണമായേക്കാം.",
-      confirmations: [
-        "ഞാൻ നൽകിയിട്ടുള്ള എല്ലാ വിവരങ്ങളും സത്യസന്ധവും കൃത്യവുമാണ് എന്ന് സാക്ഷ്യപ്പെടുത്തുന്നു.",
-        "എന്റെ അറിവോടെയും സമ്മതത്തോടെയുമാണ് ഈ ഹർജി അയക്കുന്നത്.",
-        "ഈ ക്യാമ്പയിന്റെ എല്ലാ നിബന്ധനകളും വ്യവസ്ഥകളും ഞാൻ വായിച്ചു മനസ്സിലാക്കി അംഗീകരിക്കുന്നു.",
-        "കേരള സർക്കാരിന്റെയും മറ്റ് അന്വേഷണ ഏജൻസികളുടെയും സുതാര്യമായ അന്വേഷണത്തിന് ഞാൻ പിന്തുണ പ്രഖ്യാപിക്കുന്നു."
-      ],
-      thankYouMessage: "ഹർജി വിജയകരമായി സമർപ്പിച്ചു. നന്ദി!",
-      writeMyOwnEnabled: true,
-      campaignStatus: "live",
-      emailMode: "both",
-      mainNoticeTitle: "Operation Janamail – പ്രധാന അറിയിപ്പ്",
-      whyCampaignHeading: "എന്തുകൊണ്ടാണ് Operation Janamail?",
-      confirmationSectionTitle: "സ്ഥിരീകരണം (Mandatory)",
-      confirmationSectionDescription: "മേൽപ്പറഞ്ഞ കാര്യങ്ങൾ സ്ഥിരീകരിച്ച ശേഷം താഴെയുള്ള Continue to Gmail ബട്ടൺ ക്ലിക്ക് ചെയ്താൽ ജിമെയിലിൽ ഈ കത്തും വിഷയവും തനിയെ ലോഡ് ചെയ്യപ്പെടും."
-    });
+    // Graceful fallback for offline or unauthenticated users
+    callback({ id: 'janamail_config', ...defaultConf });
   });
 }
 

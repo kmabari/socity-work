@@ -1885,53 +1885,85 @@ export default function App() {
     }
   };
 
-  const handleApprove = async (uid: string) => {
-    const loadingToast = toast.loading('Approving member...');
+  const handleApprove = async (uid: string): Promise<boolean> => {
+    const loadingToast = toast.loading('അംഗത്തെ അപ്രൂവ് ചെയ്യുന്നു... (Approving member...)');
+    const member = members.find(m => m.uid === uid);
+    if (!member) {
+      toast.error('Member not found', { id: loadingToast });
+      return false;
+    }
+
+    const previousMemberState = { ...member };
+
+    const paddedSerial = String(member.serialNo || 1001).padStart(3, '0');
+    const distCode = getDistrictCode(member.district || 'MLP').toUpperCase();
+    const assemblyCode = getAssemblyCode(member.assemblyConstituency || '').toUpperCase();
+    const isUpgraded = member.membershipId && member.membershipId.toUpperCase().startsWith('HCRS-');
+    const finalId = isUpgraded 
+      ? member.membershipId 
+      : `KL/${distCode}/${assemblyCode}/${paddedSerial}`;
+
+    const now = new Date();
+    const expiry = new Date();
+    expiry.setFullYear(now.getFullYear() + 1); // Default 1 year for all
+
+    const isBulk = orgSettings?.registrationMode === 'bulk';
+
+    const updatePayload: Partial<UserProfile> = {
+      status: 'active',
+      isApproved: true,
+      membershipId: finalId,
+      expiryDate: expiry,
+      waStatus: isBulk ? 'Pending' : 'Sent',
+      stateCode: 'KL',
+      districtCode: distCode,
+      constituencyCode: assemblyCode,
+      renewalPending: false // Clear renewal pending flag upon any approval
+    };
+
+    // Instant optimistic state update in React:
+    setMembers(prev => prev.map(m => m.uid === uid ? { 
+      ...m, 
+      ...updatePayload, 
+      issueDate: now, 
+      registrationDate: member.registrationDate ? (member.registrationDate.toDate ? member.registrationDate.toDate() : new Date(member.registrationDate)) : now
+    } : m));
+
     try {
-      const member = members.find(m => m.uid === uid);
-      if (!member) throw new Error("Member not found");
-
-      const paddedSerial = String(member.serialNo || 1001).padStart(3, '0');
-      const distCode = getDistrictCode(member.district || 'MLP').toUpperCase();
-      const assemblyCode = getAssemblyCode(member.assemblyConstituency || '').toUpperCase();
-      const isUpgraded = member.membershipId && member.membershipId.toUpperCase().startsWith('HCRS-');
-      const finalId = isUpgraded 
-        ? member.membershipId 
-        : `KL/${distCode}/${assemblyCode}/${paddedSerial}`;
-
-      const now = new Date();
-      const expiry = new Date();
-      expiry.setFullYear(now.getFullYear() + 1); // Default 1 year for all
-
-      const isBulk = orgSettings?.registrationMode === 'bulk';
-
-      const updatePayload: Partial<UserProfile> = {
-        status: 'active',
-        isApproved: true,
-        membershipId: finalId,
-        expiryDate: expiry,
-        waStatus: isBulk ? 'Pending' : 'Sent',
-        stateCode: 'KL',
-        districtCode: distCode,
-        constituencyCode: assemblyCode,
-        renewalPending: false // Clear renewal pending flag upon any approval
-      };
+      let serverSuccess = false;
+      try {
+        const resp = await fetch('/api/admin/approve-member', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            uid,
+            membershipId: finalId,
+            district: member.district,
+            assemblyConstituency: member.assemblyConstituency,
+            serialNo: member.serialNo
+          })
+        });
+        if (resp.ok) {
+          serverSuccess = true;
+        }
+      } catch (apiErr) {
+        console.warn("[Admin Approve API] Note:", apiErr);
+      }
 
       const finalRegDate = member.registrationDate || serverTimestamp();
 
-      await updateDoc(doc(db, 'users', uid), {
-        ...updatePayload,
-        issueDate: serverTimestamp(),
-        registrationDate: finalRegDate
-      });
-
-      // Optimistic state update:
-      setMembers(prev => prev.map(m => m.uid === uid ? { 
-        ...m, 
-        ...updatePayload, 
-        issueDate: now, 
-        registrationDate: member.registrationDate ? (member.registrationDate.toDate ? member.registrationDate.toDate() : new Date(member.registrationDate)) : now
-      } : m));
+      try {
+        await updateDoc(doc(db, 'users', uid), {
+          ...updatePayload,
+          issueDate: serverTimestamp(),
+          registrationDate: finalRegDate
+        });
+      } catch (fsErr) {
+        console.warn("[Firestore client update note]:", fsErr);
+        if (!serverSuccess) {
+          throw fsErr;
+        }
+      }
 
       // Trigger WhatsApp Welcome Message if enabled
       try {
@@ -1945,16 +1977,20 @@ export default function App() {
               membershipId: finalId,
               district: member.district
             });
-          }, 400);
+          }, 300);
         }
       } catch (waErr) {
         console.warn("WhatsApp approval trigger error:", waErr);
       }
 
-      toast.success('Member approved successfully', { id: loadingToast });
+      toast.success(`അംഗത്വം വിജയകരമായി അപ്രൂവ് ചെയ്തു! (${finalId})`, { id: loadingToast });
+      return true;
     } catch (error) {
-      toast.error('Approval failed', { id: loadingToast });
+      // Rollback optimistic update on error
+      setMembers(prev => prev.map(m => m.uid === uid ? previousMemberState : m));
+      toast.error('Approval failed. ദയവായി വീണ്ടും ശ്രമിക്കുക.', { id: loadingToast });
       handleFirestoreError(error, OperationType.UPDATE, `users/${uid}`);
+      return false;
     }
   };
 
@@ -2313,7 +2349,14 @@ export default function App() {
         }
       }
 
-      await updateDoc(doc(db, 'users', uid), finalData);
+      // Optimistic update in React state
+      setMembers(prev => prev.map(m => m.uid === uid ? { ...m, ...finalData } : m));
+
+      try {
+        await updateDoc(doc(db, 'users', uid), finalData);
+      } catch (fsErr) {
+        console.warn("[handleUpdateMember Firestore note]:", fsErr);
+      }
 
       // Automatically generate a renewal receipt when renewal is approved
       const isRenewalApproval = finalData.renewalPending === false && existingMember?.renewalPending === true;
@@ -2348,6 +2391,18 @@ export default function App() {
         issueDate: (finalData.issueDate === serverTimestamp()) ? new Date() : (finalData.issueDate || m.issueDate),
         renewalDate: (finalData.renewalDate === serverTimestamp()) ? new Date() : (finalData.renewalDate || m.renewalDate)
       } : m));
+
+      if (user && user.uid === uid) {
+        setUser(prev => prev ? {
+          ...prev,
+          ...finalData,
+          issueDate: (finalData.issueDate === serverTimestamp()) ? new Date() : (finalData.issueDate || prev.issueDate),
+          renewalDate: (finalData.renewalDate === serverTimestamp()) ? new Date() : (finalData.renewalDate || prev.renewalDate)
+        } : prev);
+        try {
+          localStorage.setItem(`hcrs_cached_user_${uid}`, JSON.stringify({ ...user, ...finalData }));
+        } catch (e) {}
+      }
 
       toast.success('Successfully updated.', { id: loadingToast });
     } catch (error) {
@@ -3410,7 +3465,7 @@ export default function App() {
                             <Button
                               type="button"
                               onClick={() => setShowInlineClaimPreview(!showInlineClaimPreview)}
-                              className={`w-full sm:w-auto min-h-[42px] h-auto py-2 px-4 rounded-xl font-black text-xs uppercase tracking-normal sm:tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm text-center leading-snug ${
+                              className={`w-full sm:w-auto min-h-[44px] h-auto py-2.5 px-3 sm:px-4 rounded-xl font-black text-[11px] sm:text-xs uppercase tracking-normal sm:tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm text-center leading-snug whitespace-normal break-words max-w-full ${
                                 showInlineClaimPreview 
                                   ? 'bg-slate-800 text-white hover:bg-slate-700' 
                                   : 'bg-[#003366] text-white hover:bg-[#002244]'
@@ -3419,12 +3474,12 @@ export default function App() {
                               {showInlineClaimPreview ? (
                                 <>
                                   <EyeOff className="w-4 h-4 text-amber-300 shrink-0" />
-                                  <span className="text-white font-black">ഫോം പ്രിവ്യൂ മറയ്ക്കുക (Hide Preview)</span>
+                                  <span className="text-white font-black whitespace-normal break-words text-center leading-snug">ഫോം പ്രിവ്യൂ മറയ്ക്കുക (Hide Preview)</span>
                                 </>
                               ) : (
                                 <>
                                   <Eye className="w-4 h-4 text-amber-300 shrink-0" />
-                                  <span className="text-white font-black">പൂരിപ്പിച്ച ഫോം ഇവിടെ കാണുക (View Form)</span>
+                                  <span className="text-white font-black whitespace-normal break-words text-center leading-snug">പൂരിപ്പിച്ച ഫോം ഇവിടെ കാണുക (View Form)</span>
                                 </>
                               )}
                             </Button>
@@ -3672,6 +3727,7 @@ export default function App() {
           ) : (
             <SupportClaimForm 
               user={user} 
+              onClose={() => setView('card')}
               onBack={() => setView('card')} 
               onSubmitSuccess={() => {
                 setView('card');

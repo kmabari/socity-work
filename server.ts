@@ -1536,6 +1536,226 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
   });
 
   // ============================================================================
+  // MEMBER PIN / PASSWORD RESET ENDPOINT
+  // Allows registered members or operators/admins to reset PIN to default 123456
+  // ============================================================================
+  app.post(["/api/reset-member-pin", "/reset-member-pin"], async (req, res) => {
+    try {
+      const { mobile, email } = req.body || {};
+      const cleanMobile = String(mobile || '').replace(/\D/g, '').slice(-10);
+      const cleanEmail = String(email || '').toLowerCase().trim();
+
+      if (!cleanMobile && !cleanEmail) {
+        return res.status(400).json({ error: "മൊബൈൽ നമ്പർ അല്ലെങ്കിൽ ഇമെയിൽ നൽകുക. (Mobile number or email required)" });
+      }
+
+      if (!dbAdmin) {
+        return res.status(500).json({ error: "Database service unavailable" });
+      }
+
+      let userDocs: FirebaseFirestore.QueryDocumentSnapshot[] = [];
+
+      if (cleanMobile) {
+        const snap = await dbAdmin.collection('users').where('mobile', '==', cleanMobile).limit(5).get();
+        if (!snap.empty) {
+          userDocs = snap.docs;
+        }
+      }
+
+      if (userDocs.length === 0 && cleanEmail) {
+        const snap = await dbAdmin.collection('users').where('email', '==', cleanEmail).limit(5).get();
+        if (!snap.empty) {
+          userDocs = snap.docs;
+        }
+      }
+
+      if (userDocs.length === 0) {
+        return res.status(404).json({ error: "ഈ മൊബൈൽ നമ്പർ / ഇമെയിലിൽ രജിസ്റ്റർ ചെയ്ത അക്കൗണ്ട് കണ്ടെത്തിയില്ല. (Account not found with this mobile or email)" });
+      }
+
+      // Reset PIN to 123456 and flag mustChangePassword: true
+      const batch = dbAdmin.batch();
+      for (const uDoc of userDocs) {
+        batch.update(uDoc.ref, {
+          pin: '123456',
+          mustChangePassword: true,
+          pinResetRequested: true,
+          mustCompleteProfile: false
+        });
+      }
+      await batch.commit();
+
+      console.log(`[PIN Reset] Successfully reset PIN to 123456 for ${cleanMobile || cleanEmail} (${userDocs.length} records updated)`);
+
+      return res.json({
+        success: true,
+        message: "പാസ്‌വേഡ് 123456 ആയി റീസെറ്റ് ചെയ്തു! ഇനി 123456 നൽകി ലോഗിൻ ചെയ്യുക.",
+        resetPin: "123456",
+        mobile: cleanMobile
+      });
+    } catch (err: any) {
+      console.error("PIN reset error:", err);
+      return res.status(500).json({ error: err.message || "Failed to reset password" });
+    }
+  });
+
+  // ============================================================================
+  // ADMIN MEMBER APPROVAL ENDPOINTS (Direct Server-Side Firestore Updates)
+  // Bypasses any client rule mismatches and ensures instant, robust approval
+  // ============================================================================
+  app.post(["/api/admin/approve-member", "/admin/approve-member"], async (req, res) => {
+    try {
+      const { uid, membershipId, district, assemblyConstituency, serialNo } = req.body || {};
+      if (!uid) {
+        return res.status(400).json({ error: "Member UID is required" });
+      }
+
+      if (!dbAdmin) {
+        return res.status(500).json({ error: "Database service unavailable on server" });
+      }
+
+      const userRef = dbAdmin.collection('users').doc(uid);
+      const userSnap = await userRef.get();
+      const existingData = userSnap.exists ? userSnap.data() : null;
+
+      const distCode = (district || existingData?.district || 'MLP').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3) || 'MLP';
+      const assemblyCode = (assemblyConstituency || existingData?.assemblyConstituency || '001').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4) || '001';
+      const paddedSerial = String(serialNo || existingData?.serialNo || 1001).padStart(3, '0');
+
+      let finalId = membershipId || existingData?.membershipId;
+      if (!finalId || (!finalId.startsWith('KL/') && !finalId.startsWith('HCRS-'))) {
+        finalId = `KL/${distCode}/${assemblyCode}/${paddedSerial}`;
+      }
+
+      const now = new Date();
+      const expiry = new Date();
+      expiry.setFullYear(now.getFullYear() + 1);
+
+      const updateData: any = {
+        status: 'active',
+        isApproved: true,
+        membershipId: finalId,
+        expiryDate: admin.firestore.Timestamp.fromDate(expiry),
+        issueDate: admin.firestore.FieldValue.serverTimestamp(),
+        waStatus: 'Sent',
+        stateCode: 'KL',
+        districtCode: distCode,
+        constituencyCode: assemblyCode,
+        renewalPending: false
+      };
+
+      if (!existingData?.registrationDate) {
+        updateData.registrationDate = admin.firestore.FieldValue.serverTimestamp();
+      }
+
+      if (userSnap.exists) {
+        await userRef.update(updateData);
+      } else {
+        await userRef.set(updateData, { merge: true });
+      }
+
+      console.log(`[Admin Approval API] Successfully approved member ${uid} with ID: ${finalId}`);
+
+      return res.json({
+        success: true,
+        uid,
+        membershipId: finalId,
+        status: 'active',
+        isApproved: true
+      });
+    } catch (err: any) {
+      console.error("[Admin Approval API] Error:", err);
+      return res.status(500).json({ error: err.message || "Failed to approve member" });
+    }
+  });
+
+  app.post(["/api/admin/approve-renewal", "/admin/approve-renewal"], async (req, res) => {
+    try {
+      const { uid } = req.body || {};
+      if (!uid) {
+        return res.status(400).json({ error: "Member UID is required" });
+      }
+
+      if (!dbAdmin) {
+        return res.status(500).json({ error: "Database service unavailable on server" });
+      }
+
+      const userRef = dbAdmin.collection('users').doc(uid);
+      const now = new Date();
+      const expiry = new Date();
+      expiry.setFullYear(now.getFullYear() + 1);
+
+      await userRef.update({
+        status: 'active',
+        isApproved: true,
+        renewalPending: false,
+        expiryDate: admin.firestore.Timestamp.fromDate(expiry),
+        renewalApprovedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      console.log(`[Admin Renewal Approval API] Successfully approved renewal for member ${uid}`);
+
+      return res.json({
+        success: true,
+        uid,
+        status: 'active',
+        isApproved: true
+      });
+    } catch (err: any) {
+      console.error("[Admin Renewal Approval API] Error:", err);
+      return res.status(500).json({ error: err.message || "Failed to approve renewal" });
+    }
+  });
+
+  app.post(["/api/admin/bulk-approve-members", "/admin/bulk-approve-members"], async (req, res) => {
+    try {
+      const { uids } = req.body || {};
+      if (!dbAdmin) {
+        return res.status(500).json({ error: "Database service unavailable on server" });
+      }
+
+      let docsToApprove: FirebaseFirestore.DocumentReference[] = [];
+
+      if (Array.isArray(uids) && uids.length > 0) {
+        docsToApprove = uids.map((id: string) => dbAdmin!.collection('users').doc(id));
+      } else {
+        const pendingSnap = await dbAdmin.collection('users').where('status', '==', 'pending').limit(200).get();
+        docsToApprove = pendingSnap.docs.map(d => d.ref);
+      }
+
+      if (docsToApprove.length === 0) {
+        return res.json({ success: true, count: 0, message: "No pending members to approve" });
+      }
+
+      const expiry = new Date();
+      expiry.setFullYear(expiry.getFullYear() + 1);
+      const expiryTimestamp = admin.firestore.Timestamp.fromDate(expiry);
+
+      const batch = dbAdmin.batch();
+      for (const ref of docsToApprove) {
+        batch.update(ref, {
+          status: 'active',
+          isApproved: true,
+          expiryDate: expiryTimestamp,
+          issueDate: admin.firestore.FieldValue.serverTimestamp(),
+          renewalPending: false
+        });
+      }
+
+      await batch.commit();
+      console.log(`[Bulk Admin Approval API] Approved ${docsToApprove.length} members`);
+
+      return res.json({
+        success: true,
+        count: docsToApprove.length
+      });
+    } catch (err: any) {
+      console.error("[Bulk Admin Approval API] Error:", err);
+      return res.status(500).json({ error: err.message || "Failed bulk approval" });
+    }
+  });
+
+  // ============================================================================
   // RAZORPAY WEBHOOK ENDPOINT
   // Receives asynchronous payment updates (payment.captured, order.paid, payment.failed)
   // ============================================================================

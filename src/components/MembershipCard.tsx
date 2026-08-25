@@ -645,9 +645,9 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
         expD.setFullYear(expD.getFullYear() + 1);
         return expD;
       })();
-      if (!exp) return true;
+      if (!exp) return false;
       const d = exp.toDate ? exp.toDate() : (exp.seconds ? new Date(exp.seconds * 1000) : new Date(exp));
-      return isNaN(d.getTime()) ? true : d.getTime() < Date.now();
+      return isNaN(d.getTime()) ? false : d.getTime() < Date.now();
     })()
   );
 
@@ -858,21 +858,6 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
                 </div>
               )}
 
-              {/* Central Rubber Stamp Watermark for Security */}
-              {isExpired && !isBanned && (
-                <div className="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-15deg] z-40 pointer-events-none select-none">
-                  <div className="border-[4px] border-double border-red-600 p-2 px-4 rounded-xl flex flex-col items-center justify-center bg-white/20 backdrop-blur-[1px] shadow-[0_4px_12px_rgba(0,0,0,0.2)] max-w-[220px]">
-                    <span className="text-[13px] font-black tracking-[0.1em] text-red-600 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.3)] font-sans uppercase text-center leading-none">
-                      YOU HAVE EXPIRED
-                    </span>
-                    <div className="w-full h-[1.5px] bg-red-600 my-1" />
-                    <span className="text-[12px] font-extrabold text-red-600 tracking-tight text-center font-sans leading-none">
-                      കാലാവധി കഴിഞ്ഞു
-                    </span>
-                  </div>
-                </div>
-              )}
-
               {isPending && !isBanned && !isExpired && (
                 <div className="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-12deg] z-40 pointer-events-none select-none">
                   <div className="border-[4px] border-double border-rose-600/90 p-2 px-4 rounded-xl flex flex-col items-center justify-center bg-white/20 backdrop-blur-[1px] shadow-[0_4px_12px_rgba(0,0,0,0.2)] max-w-[220px]">
@@ -1080,17 +1065,17 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
               {/* 1. TOP PRIORITY: SCREENSHOT MODE BUTTON */}
               <Button 
                 onClick={() => setIsScreenshotMode(true)}
-                className="w-full min-h-[56px] h-auto py-2.5 px-3 sm:px-4 font-black rounded-2xl shadow-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 hover:from-amber-500 hover:to-yellow-600 text-slate-950 flex items-center justify-center gap-2.5 sm:gap-3 transition-transform active:scale-95 border-2 border-amber-300 cursor-pointer overflow-hidden text-left"
+                className="w-full min-h-[56px] h-auto py-2.5 px-3 sm:px-4 font-black rounded-2xl shadow-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 hover:from-amber-500 hover:to-yellow-600 text-slate-950 flex items-center justify-start gap-2.5 sm:gap-3 transition-transform active:scale-95 border-2 border-amber-300 cursor-pointer text-left"
               >
                 <div className="p-2 rounded-xl bg-slate-950 text-amber-400 shrink-0 shadow-sm flex items-center justify-center">
                   <Camera className="w-5 h-5" />
                 </div>
-                <div className="flex flex-col items-start leading-snug flex-1 min-w-0">
-                  <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-950 leading-tight">
-                    സ്ക്രീൻഷോട്ട് മോഡ് (Screenshot Mode)
+                <div className="flex flex-col items-start leading-tight flex-1 min-w-0">
+                  <span className="text-xs sm:text-sm font-black uppercase tracking-normal sm:tracking-wider text-slate-950 leading-tight">
+                    സ്ക്രീൻഷോട്ട് എടുക്കുക (Screenshot Mode)
                   </span>
-                  <span className="text-[10px] sm:text-[11.5px] font-bold text-slate-900 font-sans opacity-95 leading-tight mt-0.5 break-words">
-                    നേരിട്ട് ക്ലിയർ സ്ക്രീൻഷോട്ട് എടുക്കാൻ ഇവിടെ അമർത്തുക
+                  <span className="text-[10px] sm:text-[11.5px] font-bold text-slate-900 font-sans opacity-95 leading-snug mt-0.5 break-words">
+                    വ്യക്തമായ സ്ക്രീൻഷോട്ട് എടുക്കാൻ ഇവിടെ അമർത്തുക
                   </span>
                 </div>
               </Button>
@@ -1100,37 +1085,37 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
                 {/* 1. DOWNLOAD CARD IMAGE */}
                 <Button 
                   onClick={downloadPNG}
-                  className="min-h-[40px] h-auto py-2 px-2 font-black rounded-xl text-[11px] sm:text-xs shadow-sm bg-gradient-to-r from-blue-700 to-indigo-800 hover:from-blue-800 hover:to-indigo-900 text-white flex items-center justify-center gap-1.5 transition-transform active:scale-95 border border-blue-400/30 cursor-pointer text-center"
+                  className="min-h-[42px] h-auto py-2 px-2 font-black rounded-xl text-[11px] sm:text-xs shadow-md bg-gradient-to-r from-blue-700 to-indigo-800 hover:from-blue-800 hover:to-indigo-900 text-white flex items-center justify-center gap-1.5 transition-transform active:scale-95 border border-blue-400/40 cursor-pointer text-center"
                 >
-                  <Download className="w-3.5 h-3.5 text-blue-200 shrink-0" />
-                  <span className="leading-tight">ഡൗൺലോഡ് (PNG)</span>
+                  <Download className="w-3.5 h-3.5 text-white shrink-0" />
+                  <span className="leading-tight text-white font-black">ഡൗൺലോഡ് (PNG)</span>
                 </Button>
 
                 {/* 2. SHARE VIA WHATSAPP */}
                 <Button 
                   onClick={shareCardImage}
-                  className="min-h-[40px] h-auto py-2 px-2 font-black rounded-xl text-[11px] sm:text-xs shadow-sm bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 flex items-center justify-center gap-1.5 transition-transform active:scale-95 border border-green-400/30 cursor-pointer text-center"
+                  className="min-h-[42px] h-auto py-2 px-2 font-black rounded-xl text-[11px] sm:text-xs shadow-md bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 flex items-center justify-center gap-1.5 transition-transform active:scale-95 border border-green-500 cursor-pointer text-center"
                 >
                   <Share2 className="w-3.5 h-3.5 text-slate-950 shrink-0" />
-                  <span className="leading-tight">ഷെയർ (Share)</span>
+                  <span className="leading-tight font-black text-slate-950">ഷെയർ (Share)</span>
                 </Button>
 
                 {/* 3. DISTRICT CUSTOMER CARE */}
                 <Button 
                   onClick={handleOpenCustomerCareWhatsApp}
-                  className="min-h-[40px] h-auto py-2 px-2 font-black rounded-xl text-[11px] sm:text-xs shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-1.5 transition-transform active:scale-95 border border-emerald-400/30 cursor-pointer text-center"
+                  className="min-h-[42px] h-auto py-2 px-2 font-black rounded-xl text-[11px] sm:text-xs shadow-md bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-1.5 transition-transform active:scale-95 border border-emerald-400 cursor-pointer text-center"
                 >
-                  <MessageCircle className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
-                  <span className="leading-tight">കസ്റ്റമർ കെയർ</span>
+                  <MessageCircle className="w-3.5 h-3.5 text-white shrink-0" />
+                  <span className="leading-tight text-white font-black">കസ്റ്റമർ കെയർ</span>
                 </Button>
 
                 {/* 4. A4 PRINT PDF */}
                 <Button 
                   onClick={downloadA4PDF}
-                  className="min-h-[40px] h-auto py-2 px-2 font-black rounded-xl text-[11px] sm:text-xs shadow-sm bg-slate-800 hover:bg-slate-700 text-slate-100 flex items-center justify-center gap-1.5 transition-transform active:scale-95 border border-slate-600 cursor-pointer text-center"
+                  className="min-h-[42px] h-auto py-2 px-2 font-black rounded-xl text-[11px] sm:text-xs shadow-md bg-slate-900 hover:bg-slate-800 text-white flex items-center justify-center gap-1.5 transition-transform active:scale-95 border border-slate-600 cursor-pointer text-center"
                 >
-                  <Printer className="w-3.5 h-3.5 text-slate-300 shrink-0" />
-                  <span className="leading-tight">A4 PDF പ്രിന്റ്</span>
+                  <Printer className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                  <span className="leading-tight text-white font-black">A4 PDF പ്രിന്റ്</span>
                 </Button>
               </div>
 

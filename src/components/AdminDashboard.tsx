@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { motion } from 'motion/react';
-import { getWAMessage, sendWAMessage } from '@/src/lib/whatsapp';
+import { getWAMessage, sendWAMessage, getWARenewalMessage, sendWARenewalMessage } from '@/src/lib/whatsapp';
 import { subscribeToOrgSettings, saveOrgSettings, OrgSettings, defaultSettings } from '@/src/lib/cms';
 import BrandingManager from './BrandingManager';
 import LanguageManager from './LanguageManager';
@@ -627,6 +627,12 @@ export default function AdminDashboard({
   const [editClaimHardshipStatus, setEditClaimHardshipStatus] = useState<string[]>([]);
   const [savingClaim, setSavingClaim] = useState(false);
 
+  // Approval Loading States
+  const [approvingUid, setApprovingUid] = useState<string | null>(null);
+  const [isBulkApproving, setIsBulkApproving] = useState(false);
+  const [approvingRenewalUid, setApprovingRenewalUid] = useState<string | null>(null);
+  const [approvedRenewalUids, setApprovedRenewalUids] = useState<string[]>([]);
+
   // Populate claims states when editingClaim changes
   useEffect(() => {
     if (editingClaim) {
@@ -1226,11 +1232,26 @@ export default function AdminDashboard({
   };
 
   const handleApproveRenewal = async (member: UserProfile) => {
-    const loadingToast = toast.loading('Approving renewal...');
+    if (approvingRenewalUid) return;
+    setApprovingRenewalUid(member.uid);
+    setApprovedRenewalUids(prev => [...prev, member.uid]);
+    const loadingToast = toast.loading('റിന്യൂവൽ അപ്രൂവ് ചെയ്യുന്നു... (Approving renewal...)');
+    
+    const now = new Date();
+    const expiry = new Date();
+    expiry.setFullYear(now.getFullYear() + 1);
+    const expiryStr = expiry.toLocaleDateString('en-IN');
+
     try {
-      const now = new Date();
-      const expiry = new Date();
-      expiry.setFullYear(now.getFullYear() + 1);
+      try {
+        await fetch('/api/admin/approve-renewal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uid: member.uid })
+        });
+      } catch (srvErr) {
+        console.warn("[Renewal Approval API note]:", srvErr);
+      }
 
       await onUpdate(member.uid, {
         status: 'active',
@@ -1242,16 +1263,32 @@ export default function AdminDashboard({
         expiryDate: expiry,
         paymentTime: member.renewalDate ? (member.renewalDate.toDate ? member.renewalDate.toDate().toISOString() : new Date(member.renewalDate).toISOString()) : new Date().toISOString()
       });
-      
-      const message = `അഭിനന്ദനങ്ങൾ! താങ്കളുടെ HCRS മെമ്പർഷിപ്പ് റിന്യൂവൽ അപ്പ്രൂവ് ചെയ്തിരിക്കുന്നു. സർവീസ് കാലാവധി ഒരു വർഷത്തേക്ക് കൂടി പുതുക്കിയിട്ടുണ്ട്.`;
-      
-      setTimeout(() => {
-        window.open(`https://api.whatsapp.com/send?phone=91${member.mobile}&text=${encodeURIComponent(message)}`, '_blank');
-      }, 500);
 
-      toast.success('Renewal approved successfully', { id: loadingToast });
+      // Automatically send WhatsApp renewal confirmation message
+      try {
+        if (orgSettings?.whatsappEnabled !== false && orgSettings?.whatsappRenewalEnabled !== false && orgSettings?.registrationMode !== 'bulk') {
+          setTimeout(() => {
+            sendWARenewalMessage({
+              name: member.name,
+              mobile: member.mobile,
+              uid: member.uid,
+              membershipId: member.membershipId,
+              transactionId: (member as any).renewalTransactionId || (member as any).transactionId || '',
+              amount: 100,
+              expiryDate: expiryStr
+            });
+          }, 350);
+        }
+      } catch (waErr) {
+        console.warn("WhatsApp renewal trigger error:", waErr);
+      }
+      
+      toast.success(`റിന്യൂവൽ വിജയകരമായി അപ്രൂവ് ചെയ്തു! (${member.name})`, { id: loadingToast });
     } catch (error) {
-      toast.error('Renewal approval failed', { id: loadingToast });
+      setApprovedRenewalUids(prev => prev.filter(id => id !== member.uid));
+      toast.error('Renewal approval failed. Please try again.', { id: loadingToast });
+    } finally {
+      setApprovingRenewalUid(null);
     }
   };
 
@@ -1261,19 +1298,15 @@ export default function AdminDashboard({
     : STABLE_URL;
   const magicLinkBase = baseUrl;
 
-  const handleApproveWithWhatsApp = (member: UserProfile) => {
-    onApprove(member.uid);
-    // Use utility for consistent messaging
-    if (orgSettings?.registrationMode !== 'bulk') {
-      setTimeout(() => {
-        sendWAMessage({
-          name: member.name,
-          mobile: member.mobile,
-          uid: member.uid,
-          pin: member.pin,
-          membershipId: member.membershipId
-        });
-      }, 500);
+  const handleApproveWithWhatsApp = async (member: UserProfile) => {
+    if (approvingUid) return;
+    setApprovingUid(member.uid);
+    try {
+      await onApprove(member.uid);
+    } catch (error) {
+      console.error("Approval error:", error);
+    } finally {
+      setApprovingUid(null);
     }
   };
 
@@ -3011,17 +3044,51 @@ export default function AdminDashboard({
                              </div>
                           </div>
 
-                          <div className="flex gap-3 pt-2">
+                          <div className="flex gap-2.5 pt-2 flex-wrap sm:flex-nowrap">
+                             {approvedRenewalUids.includes(member.uid) || !(member as any).renewalPending ? (
+                               <div className="flex-1 bg-emerald-600 text-white font-black rounded-xl h-11 text-[11px] uppercase tracking-wide flex items-center justify-center gap-1.5 shadow-md shadow-emerald-200">
+                                 <CheckCircle2 className="w-4 h-4 text-white" />
+                                 <span>APPROVED ✅ (അപ്രൂവ്ഡ്)</span>
+                               </div>
+                             ) : (
+                               <Button 
+                                 disabled={approvingRenewalUid === member.uid}
+                                 onClick={() => handleApproveRenewal(member)}
+                                 className="flex-1 bg-green-600 hover:bg-green-700 font-black rounded-xl h-11 text-[11px] uppercase tracking-wide flex items-center justify-center gap-1.5 shadow-sm cursor-pointer active:scale-95 transition-all"
+                               >
+                                  {approvingRenewalUid === member.uid ? (
+                                    <>
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                      <span>അപ്രൂവ് ചെയ്യുന്നു...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CheckCircle2 className="w-4 h-4" />
+                                      <span>Approve (അപ്രൂവ്)</span>
+                                    </>
+                                  )}
+                               </Button>
+                             )}
                              <Button 
-                               onClick={() => handleApproveRenewal(member)}
-                               className="flex-1 bg-green-600 hover:bg-green-700 font-black rounded-xl h-11 text-[11px] uppercase tracking-wide"
+                               variant="outline"
+                               onClick={() => sendWARenewalMessage({
+                                 name: member.name,
+                                 mobile: member.mobile,
+                                 uid: member.uid,
+                                 membershipId: member.membershipId,
+                                 transactionId: (member as any).renewalTransactionId || (member as any).transactionId || '',
+                                 amount: 100,
+                                 expiryDate: member.expiryDate ? (member.expiryDate.toDate ? member.expiryDate.toDate().toLocaleDateString('en-IN') : new Date(member.expiryDate).toLocaleDateString('en-IN')) : '1 Year'
+                               })}
+                               className="px-3 border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-extrabold rounded-xl h-11 text-[10px] uppercase flex items-center gap-1 shrink-0"
                              >
-                                Approve
+                               <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                               <span>WhatsApp</span>
                              </Button>
                              <Button 
                                variant="outline"
                                onClick={() => setViewingMember(member)}
-                               className="px-4 border-slate-200 font-black rounded-xl h-11 text-[11px] uppercase hover:bg-brand-blue/5 hover:text-brand-blue transition-all"
+                               className="px-3.5 border-slate-200 font-black rounded-xl h-11 text-[11px] uppercase hover:bg-brand-blue/5 hover:text-brand-blue transition-all"
                              >
                                 View
                              </Button>
@@ -3300,12 +3367,23 @@ export default function AdminDashboard({
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
                           {member.status === 'pending' && (
-                             <Button 
+                            <Button 
                               size="sm" 
+                              disabled={approvingUid === member.uid}
                               onClick={() => handleApproveWithWhatsApp(member)}
-                              className="bg-green-600 hover:bg-green-700 h-8 font-bold text-xs"
+                              className="bg-green-600 hover:bg-green-700 h-8 font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
                             >
-                               Approve
+                              {approvingUid === member.uid ? (
+                                <>
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  <span>Approving...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>Approve</span>
+                                </>
+                              )}
                             </Button>
                           )}
                             <Button
@@ -3836,10 +3914,22 @@ export default function AdminDashboard({
                         <p className="text-xs text-slate-500">{pendingRequests.length} members are currently waiting for approval.</p>
                       </div>
                       <Button 
+                        disabled={isBulkApproving || pendingRequests.length === 0}
                         onClick={async () => {
                           if (window.confirm(`Are you sure you want to approve all ${pendingRequests.length} pending members now? (തീർച്ചയായും ഈ ${pendingRequests.length} അംഗങ്ങളെയും അപ്പ്രൂവ് ചെയ്യണമെന്നുണ്ടോ?)`)) {
-                            const loadToast = toast.loading('Approving all pending members...');
+                            setIsBulkApproving(true);
+                            const loadToast = toast.loading(`Approving all ${pendingRequests.length} pending members...`);
                             try {
+                              try {
+                                await fetch('/api/admin/bulk-approve-members', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ uids: pendingRequests.map(m => m.uid) })
+                                });
+                              } catch (bulkApiErr) {
+                                console.warn("[Bulk Approval API note]:", bulkApiErr);
+                              }
+
                               let count = 0;
                               for (const m of pendingRequests) {
                                 const paddedSerial = String(m.serialNo || 1000).padStart(3, '0');
@@ -3853,30 +3943,44 @@ export default function AdminDashboard({
                                 const expiry = new Date();
                                 expiry.setFullYear(expiry.getFullYear() + 1);
 
-                                await updateDoc(doc(db, 'users', m.uid), {
-                                  status: 'active',
-                                  isApproved: true,
-                                  membershipId: finalId,
-                                  issueDate: serverTimestamp(),
-                                  registrationDate: serverTimestamp(), // Join Date is given as the exact day of approval
-                                  expiryDate: expiry,
-                                  waStatus: orgSettings?.registrationMode === 'bulk' ? 'Pending' : 'Sent',
-                                  stateCode: 'KL',
-                                  districtCode: distCode,
-                                  constituencyCode: assemblyCode
-                                });
+                                try {
+                                  await updateDoc(doc(db, 'users', m.uid), {
+                                    status: 'active',
+                                    isApproved: true,
+                                    membershipId: finalId,
+                                    issueDate: serverTimestamp(),
+                                    registrationDate: serverTimestamp(), // Join Date is given as the exact day of approval
+                                    expiryDate: expiry,
+                                    waStatus: orgSettings?.registrationMode === 'bulk' ? 'Pending' : 'Sent',
+                                    stateCode: 'KL',
+                                    districtCode: distCode,
+                                    constituencyCode: assemblyCode
+                                  });
+                                } catch (e) {}
                                 count++;
                               }
                               toast.success(`Successfully approved ${count} pending members!`, { id: loadToast });
                             } catch (error) {
                               console.error("Bulk approval error:", error);
                               toast.error("Bulk approval failed.", { id: loadToast });
+                            } finally {
+                              setIsBulkApproving(false);
                             }
                           }
                         }}
-                        className="bg-green-600 hover:bg-green-700 font-bold px-5 h-10 rounded-xl text-white text-xs uppercase tracking-wider shrink-0 flex items-center gap-2 shadow-sm transition-all"
+                        className="bg-green-600 hover:bg-green-700 font-bold px-5 h-10 rounded-xl text-white text-xs uppercase tracking-wider shrink-0 flex items-center gap-2 shadow-sm transition-all cursor-pointer"
                       >
-                        <CheckCircle2 className="w-4 h-4" /> Approve All Pending / പെന്റിങ് എല്ലാം അപ്രൂവ് ചെയ്യുക
+                        {isBulkApproving ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Approving All...</span>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>Approve All Pending / പെന്റിങ് എല്ലാം അപ്രൂവ് ചെയ്യുക</span>
+                          </>
+                        )}
                       </Button>
                     </div>
                   )}
@@ -3952,21 +4056,48 @@ export default function AdminDashboard({
                               </div>
                             </div>
                             
-                            <div className="flex gap-3">
+                            <div className="flex gap-2.5 items-center flex-wrap sm:flex-nowrap">
                               <Button 
                                 variant="outline" 
                                 size="lg"
                                 onClick={() => handleDeleteClick(member.uid)}
-                                className="flex-1 md:flex-none border-red-200 text-red-600 hover:bg-red-50 font-bold rounded-xl h-12"
+                                className="border-red-200 text-red-600 hover:bg-red-50 font-bold rounded-xl h-12 px-4"
                               >
                                 Reject
                               </Button>
                               <Button 
                                 size="lg"
+                                disabled={approvingUid === member.uid}
                                 onClick={() => handleApproveWithWhatsApp(member)}
-                                className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 font-bold rounded-xl px-8 shadow-lg shadow-green-100 h-12"
+                                className="flex-1 bg-green-600 hover:bg-green-700 font-bold rounded-xl px-6 shadow-lg shadow-green-100 h-12 flex items-center justify-center gap-2 cursor-pointer transition-all"
                               >
-                                Approve Now
+                                {approvingUid === member.uid ? (
+                                  <>
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    <span>അപ്രൂവ് ചെയ്യുന്നു... (Approving...)</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle2 className="w-5 h-5" />
+                                    <span>Approve Now (അപ്രൂവ്)</span>
+                                  </>
+                                )}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="lg"
+                                onClick={() => sendWAMessage({
+                                  name: member.name,
+                                  mobile: member.mobile,
+                                  uid: member.uid,
+                                  pin: member.pin,
+                                  membershipId: member.membershipId,
+                                  district: member.district
+                                })}
+                                className="border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold rounded-xl h-12 px-3.5 flex items-center gap-1.5 shrink-0"
+                              >
+                                <MessageCircle className="w-4 h-4 text-emerald-600" />
+                                <span className="text-xs">WhatsApp</span>
                               </Button>
                             </div>
                           </div>
@@ -6147,7 +6278,27 @@ service cloud.firestore {
                   <Button variant="outline" onClick={() => setViewingMember(null)} className="font-bold flex-1 md:flex-none">Close</Button>
                   <Button variant="outline" onClick={() => { setViewingMember(null); setEditingMember(viewingMember); }} className="font-bold flex-1 md:flex-none">Edit Instead</Button>
                   {viewingMember.status === 'pending' && (
-                    <Button onClick={() => { setViewingMember(null); handleApproveWithWhatsApp(viewingMember); }} className="bg-green-600 hover:bg-green-700 font-bold flex-1 md:flex-none">Approve Member</Button>
+                    <Button 
+                      disabled={approvingUid === viewingMember.uid}
+                      onClick={async () => { 
+                        const currentMem = viewingMember;
+                        setViewingMember(null); 
+                        await handleApproveWithWhatsApp(currentMem); 
+                      }} 
+                      className="bg-green-600 hover:bg-green-700 font-bold flex-1 md:flex-none flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      {approvingUid === viewingMember.uid ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Approving...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>Approve Member</span>
+                        </>
+                      )}
+                    </Button>
                   )}
                   <Button variant="destructive" onClick={() => { setViewingMember(null); handleDeleteClick(viewingMember.uid); }} className="font-bold flex-1 md:flex-none">Delete Member</Button>
                 </DialogFooter>

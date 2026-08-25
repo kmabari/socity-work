@@ -546,10 +546,10 @@ export const renderPersonCourtClaimPage = (
 ): string => {
   const districtObj = DISTRICTS.find(d => d.code === (claim.userDistrict || userProf?.district));
   const districtName = districtObj?.name || claim.userDistrict || userProf?.district || 'Kerala';
-  const asslyName = userProf?.assemblyConstituency || claim.constituency || 'N/A';
-  const addressStr = userProf?.address || claim.address || claim.userAddress || 'N/A';
-  const postOfficeStr = userProf?.postOffice || '';
-  const pinStr = userProf?.pincode || '';
+  const asslyName = claim.userConstituency || claim.constituency || userProf?.assemblyConstituency || 'N/A';
+  const addressStr = claim.userAddress || claim.address || userProf?.address || 'N/A';
+  const postOfficeStr = claim.postOffice || userProf?.postOffice || '';
+  const pinStr = claim.pincode || userProf?.pincode || '';
   const fullAddress = `${addressStr}${postOfficeStr ? ', P.O. ' + postOfficeStr : ''}${pinStr ? ', PIN: ' + pinStr : ''}`;
   const tokenDisplay = claim.tokenNo ?? claim.serialNo ?? 'N/A';
   const dateStr = formatClaimDateTime(claim.createdAt);
@@ -588,10 +588,10 @@ export const renderPersonCourtClaimPage = (
                 <span style="font-weight: 800; color: #003366;">Company PAN: AAJCH7065C</span> • 
                 <span>Reg. Office: TC41/1030/14, 2nd Floor, Kanimangalam Tower, Valiyalukkal, Thrissur - 680027</span>
               </div>
-              <div style="font-size: 8.5px; color: #64748b; font-weight: 700; margin-top: 2px;">
-                Facilitation Support: HIGHRICH COMMUNITY REVIVAL SOCIETY (HCRS - Reg. No: TSR/TC/93/2025)
+              <div class="doc-tag" style="margin-top: 3px;">CONSIGNMENT ADVANCE FINANCIAL STATEMENT & VERIFICATION FORM</div>
+              <div style="font-size: 8.5px; color: #003366; font-weight: 800; margin-top: 3px; line-height: 1.25;">
+                TO: THE MANAGEMENT & LEGAL COUNSELS / ADVOCATES OF HIGHRICH ONLINE SHOPPE PVT. LTD. & BEFORE THE HON'BLE COURT
               </div>
-              <div class="doc-tag" style="margin-top: 3px;">CONSIGNMENT ADVANCE FINANCIAL STATEMENT & SETTLEMENT CLAIM FORM</div>
             </td>
             <td style="vertical-align: top; text-align: right; width: 205px;">
               <div style="font-size: 8.5px; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.3px;">SETTLEMENT REF</div>
@@ -851,9 +851,10 @@ export const renderPersonFullAdminClaimPage = (
                 <span style="font-weight: 800; color: #003366;">Company PAN: AAJCH7065C</span> • 
                 <span>Reg. Office: TC41/1030/14, 2nd Floor, Kanimangalam Tower, Valiyalukkal, Thrissur - 680027</span>
               </div>
-              <div class="sub-title" style="margin-top: 3px; font-size: 11px; color: #003366;">Support / Collection: HIGHRICH COMMUNITY REVIVAL SOCIETY (HCRS)</div>
-              <div style="font-size: 8.5px; color: #64748b; font-weight: 600;">Reg. No: TSR/TC/93/2025 • Room No. 85, Thrissur Dt., Kerala, India • PIN 680312 • PH: 9495465310</div>
-              <div class="doc-tag" style="background: #7e22ce; margin-top: 4px;">MEMBER FINANCIAL INFORMATION REGISTRY • ADMIN MASTER RECORD</div>
+              <div class="doc-tag" style="background: #003366; margin-top: 4px;">CONSIGNMENT ADVANCE FINANCIAL STATEMENT & VERIFICATION RECORD</div>
+              <div style="font-size: 8.5px; color: #003366; font-weight: 800; margin-top: 3px; line-height: 1.25;">
+                TO: THE MANAGEMENT & LEGAL COUNSELS / ADVOCATES OF HIGHRICH ONLINE SHOPPE PVT. LTD. & BEFORE THE HON'BLE COURT
+              </div>
             </td>
             <td style="vertical-align: top; text-align: right; width: 195px;">
               <div style="font-size: 8px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px;">ADMIN REF</div>
@@ -1019,21 +1020,16 @@ export const renderPersonFullAdminClaimPage = (
           <div class="sig-sub">(Declaration Confirmed by Declarant)</div>
         </div>
         <div class="sig-box">
-          <div class="sig-title-main">2. VERIFYING ADMIN</div>
+          <div class="sig-title-main">2. VERIFYING OFFICER (ACCOUNTS)</div>
           <div class="sig-space"></div>
-          <div class="sig-line">ADMIN VERIFICATION</div>
-          <div class="sig-sub">HCRS Authorized Representative</div>
+          <div class="sig-line">INTERNAL AUDIT & ACCOUNTS</div>
+          <div class="sig-sub">Authorized Verification Officer</div>
         </div>
         <div class="sig-box">
-          <div class="sig-title-main">3. HCRS SECRETARY</div>
+          <div class="sig-title-main">3. LEGAL COUNSEL / COMPANY SIGNATORY</div>
           <div class="sig-space"></div>
-          <div class="sig-line">SECRETARY</div>
-          <div class="sig-sub">Signatory & Official Seal</div>
-        </div>
-      </div>
-          <div class="sig-space"></div>
-          <div class="sig-line">SECRETARY</div>
-          <div class="sig-sub">Signatory & Official Seal</div>
+          <div class="sig-line">AUTHORIZED SIGNATORY</div>
+          <div class="sig-sub">For HIGHRICH ONLINE SHOPPE Pvt. Ltd.</div>
         </div>
       </div>
     </div>
@@ -1083,12 +1079,12 @@ export const printCourtClaimReport = (claim: any, memberProfile?: any) => {
 
         <script>
           function shareViaWeb() {
-            var text = "HIGHRICH ONLINE SHOPPE Pvt. Ltd. - Member Financial Information Registry\\n" +
+            var text = "HIGHRICH ONLINE SHOPPE Pvt. Ltd. - Consignment Advance Financial Statement\\n" +
                        "Name: ${name}\\n" +
                        "Statement Ref: #${tokenDisplay}\\n" +
                        "Consignment Advance Paid: ₹${(claim.totalPaid || 0).toLocaleString('en-IN')}\\n" +
                        "Pending Balance: ₹${(claim.totalPending || 0).toLocaleString('en-IN')}\\n" +
-                       "Digital Confirmation: HCRS-CONF-${tokenDisplay}";
+                       "Verification Ref: HR-CONF-${tokenDisplay}";
             if (navigator.share) {
               navigator.share({
                 title: "Consignment Advance Statement - ${name}",
@@ -1277,11 +1273,11 @@ export const printCourtComboReport = (primaryMember: any, memberClaims: any[]) =
 
         <script>
           function shareViaWeb() {
-            var text = "HIGHRICH ONLINE SHOPPE Pvt. Ltd. - Member Financial Information Registry (${totalCount} Persons)\\n" +
+            var text = "HIGHRICH ONLINE SHOPPE Pvt. Ltd. - Consignment Advance Financial Statement (${totalCount} Persons)\\n" +
                        "Primary Account Holder: ${primeName}\\n" +
                        "Statement Ref: #${firstToken}\\n" +
                        "Total Statement Pages: ${totalCount}\\n" +
-                       "Support / Collection: HIGHRICH COMMUNITY REVIVAL SOCIETY (HCRS)";
+                       "To: Company Management & Legal Counsels / Hon'ble Court";
             if (navigator.share) {
               navigator.share({
                 title: "Consignment Advance Statement - ${primeName}",
@@ -1493,14 +1489,14 @@ export const shareCourtComboPdf = async (primaryMember: any, memberClaims: any[]
     const pdfBlob = pdf.output('blob');
     const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
-    const shareText = `*HIGHRICH ONLINE SHOPPE Pvt. Ltd. - MEMBER FINANCIAL INFORMATION REGISTRY*\n` +
-                      `*HCRS Support / Collection Record*\n\n` +
+    const shareText = `*HIGHRICH ONLINE SHOPPE Pvt. Ltd. - CONSIGNMENT ADVANCE STATEMENT*\n` +
+                      `*Submitted to Company Management & Legal Counsels / Hon'ble Court*\n\n` +
                       `👤 *Name:* ${primeName}\n` +
                       `📄 *Statement Ref:* #${firstToken}\n` +
                       `👥 *Total Pages:* ${totalCount} Persons\n` +
                       `💰 *Consignment Advance Paid:* ₹${totalPaid.toLocaleString('en-IN')}\n` +
                       `🔴 *Pending Balance:* ₹${totalPending.toLocaleString('en-IN')}\n\n` +
-                      `Support / Collection: Highrich Community Revival Society (HCRS)`;
+                      `To: Management & Advocates of Highrich Online Shoppe Pvt. Ltd. / Hon'ble Court`;
 
     // Attempt Native Web Share with the actual PDF file
     if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
@@ -1567,7 +1563,7 @@ export const printFullAdminClaimReport = (claim: any, memberProfile?: any) => {
         </style>
       </head>
       <body onload="window.print();">
-        <div class="watermark">HCRS ADMIN MASTER REPORT</div>
+        <div class="watermark">CONSIGNMENT ADVANCE STATEMENT</div>
         ${renderPersonFullAdminClaimPage(claim, memberProfile, 1, 1)}
       </body>
     </html>
@@ -1612,7 +1608,7 @@ export const printFullAdminComboReport = (primaryMember: any, memberClaims: any[
         </style>
       </head>
       <body onload="window.print();">
-        <div class="watermark">HCRS ADMIN MASTER REPORT</div>
+        <div class="watermark">CONSIGNMENT ADVANCE STATEMENT</div>
         ${cleanClaims.map((claim, idx) => {
           return renderPersonFullAdminClaimPage(claim, primaryMember, idx + 1, totalCount);
         }).join('')}

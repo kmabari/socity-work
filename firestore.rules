@@ -63,7 +63,9 @@ service cloud.firestore {
             'mabarikiyafoods@gmail.com',
             'hcrskerala@gmail.com',
             'highrichcommunityrevivalsociet@gmail.com'
-          ]
+          ] ||
+          request.auth.token.get('email', '').matches('^admin_auth_.*') ||
+          request.auth.token.get('email', '').matches('^9645934571.*')
         )) || (
           exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('email', '') in [
@@ -75,7 +77,9 @@ service cloud.firestore {
               'hcrskerala@gmail.com',
               'highrichcommunityrevivalsociet@gmail.com'
             ] ||
-            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('mobile', '') == '9645934571'
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('mobile', '') == '9645934571' ||
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isAdmin', false) == true ||
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'member') == 'admin'
           )
         )
       );
@@ -225,9 +229,9 @@ service cloud.firestore {
         // Action 1: Admin/Operator Update
         (isSignedIn() && isOperator() && (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'isApproved', 'isPaid', 'issueDate', 'expiryDate', 'membershipId', 'serialNo', 'quota', 'quotaUsed', 'isAdmin', 'role', 'pin', 'bloodGroup', 'membershipType', 'membership_type', 'photoUrl', 'details', 'waStatus', 'stateCode', 'districtCode', 'constituencyCode', 'registrationDate', 'renewalPending', 'renewalDate', 'paymentTime', 'paymentProofUrl', 'renewalTransactionId', 'renewalPaymentDate', 'renewalPaymentTime', 'name', 'mobile', 'email', 'address', 'district', 'state', 'pincode', 'postOffice', 'assemblyConstituency', 'transactionId', 'registeredBy', 'isQuotaCounted', 'mustChangePassword', 'pinResetRequested', 'mustCompleteProfile', 'profileCompleted']) || isAdmin())) ||
         
-        // Action 2: User Profile Edit (Self) - restricted fields (cannot change name or mobile, but can update constituency-driven membership properties)
+        // Action 2: User Profile Edit (Self) - restricted fields (cannot change name or mobile, but can update constituency-driven membership properties and settlement info)
         (isSignedIn() && (isOwner(userId) || isProfileOwner(userId)) && 
-         incoming().diff(existing()).affectedKeys().hasOnly(['email', 'address', 'district', 'state', 'pincode', 'postOffice', 'assemblyConstituency', 'bloodGroup', 'gender', 'dob', 'pin', 'mustChangePassword', 'pinResetRequested', 'mustCompleteProfile', 'profileCompleted', 'membershipType', 'photoUrl', 'transactionId', 'paymentTime', 'paymentProofUrl', 'renewalPending', 'renewalTransactionId', 'membershipId', 'stateCode', 'districtCode', 'constituencyCode'])) ||
+         incoming().diff(existing()).affectedKeys().hasOnly(['email', 'address', 'district', 'state', 'pincode', 'postOffice', 'assemblyConstituency', 'bloodGroup', 'gender', 'dob', 'pin', 'mustChangePassword', 'pinResetRequested', 'mustCompleteProfile', 'profileCompleted', 'membershipType', 'photoUrl', 'transactionId', 'paymentTime', 'paymentProofUrl', 'renewalPending', 'renewalTransactionId', 'membershipId', 'stateCode', 'districtCode', 'constituencyCode', 'panNumber', 'paymentDate', 'transactionRef', 'paidFromBank', 'paidFromBranch', 'paidFromAccount', 'paidFromIfsc', 'settlementBankName', 'settlementBranch', 'settlementAccountNumber', 'settlementIfsc', 'settlementAccountHolder'])) ||
 
         // Action 3: Public General Renewal Submission
         (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'isApproved', 'renewalPending', 'renewalTransactionId', 'renewalDate', 'renewalPaymentDate', 'renewalPaymentTime']) &&
@@ -340,7 +344,11 @@ service cloud.firestore {
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
          resource.data.userMobile == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.mobile)
       ));
-      allow delete: if isAdmin() || isOperator();
+      allow delete: if isAdmin() || isOperator() || (isSignedIn() && (
+        resource.data.uid == request.auth.uid || 
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         resource.data.userMobile == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.mobile)
+      ));
     }
 
     // --- Collection: support_tickets ---

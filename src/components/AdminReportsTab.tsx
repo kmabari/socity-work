@@ -15,12 +15,13 @@ import {
   RefreshCw, 
   ShieldCheck,
   AlertCircle,
-  Printer
+  Printer,
+  Loader2
 } from 'lucide-react';
 
 interface AdminReportsTabProps {
   members: UserProfile[];
-  onApprove: (uid: string) => void;
+  onApprove: (uid: string) => void | Promise<any>;
   onViewDetails: (member: UserProfile) => void;
   DISTRICTS: { code: string; name: string }[];
   userDistrict?: string;
@@ -37,6 +38,7 @@ export default function AdminReportsTab({
 }: AdminReportsTabProps) {
   const [reportType, setReportType] = useState<'new_memberships' | 'renewals'>('new_memberships');
   const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | 'this_week' | 'this_month' | 'custom'>('today');
+  const [approvingUid, setApprovingUid] = useState<string | null>(null);
   
   const now = new Date();
   const todayStr = now.toISOString().split('T')[0];
@@ -611,10 +613,31 @@ export default function AdminReportsTab({
                             {!isApproved && (
                               <Button
                                 size="sm"
-                                onClick={() => onApprove(member.uid)}
-                                className="h-8 px-3 bg-brand-blue hover:bg-brand-blue/90 text-white text-[10px] font-black uppercase rounded-lg cursor-pointer shadow-xs"
+                                disabled={approvingUid === member.uid}
+                                onClick={async () => {
+                                  if (approvingUid) return;
+                                  setApprovingUid(member.uid);
+                                  try {
+                                    await onApprove(member.uid);
+                                  } catch (err) {
+                                    console.error("Approve error:", err);
+                                  } finally {
+                                    setApprovingUid(null);
+                                  }
+                                }}
+                                className="h-8 px-3 bg-brand-blue hover:bg-brand-blue/90 text-white text-[10px] font-black uppercase rounded-lg cursor-pointer shadow-xs inline-flex items-center gap-1.5"
                               >
-                                Approve
+                                {approvingUid === member.uid ? (
+                                  <>
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    <span>Approving...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    <span>Approve</span>
+                                  </>
+                                )}
                               </Button>
                             )}
                             <Button
