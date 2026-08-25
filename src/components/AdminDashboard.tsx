@@ -1232,7 +1232,7 @@ export default function AdminDashboard({
   };
 
   const handleApproveRenewal = async (member: UserProfile) => {
-    if (approvingRenewalUid) return;
+    if (approvingRenewalUid || approvedRenewalUids.includes(member.uid) || member.renewalPending === false) return;
     setApprovingRenewalUid(member.uid);
     setApprovedRenewalUids(prev => [...prev, member.uid]);
     const loadingToast = toast.loading('റിന്യൂവൽ അപ്രൂവ് ചെയ്യുന്നു... (Approving renewal...)');
@@ -1829,6 +1829,7 @@ export default function AdminDashboard({
 
   const pendingRenewals = useMemo(() => {
     return members.filter(m => {
+      if (approvedRenewalUids.includes(m.uid)) return false;
       if (!(m as any).renewalPending) return false;
       
       const term = searchTerm.toLowerCase().trim();
@@ -1852,7 +1853,7 @@ export default function AdminDashboard({
       
       return matchesSearch && matchesDistrict && matchesSource;
     });
-  }, [members, searchTerm, districtFilter, sourceFilter]);
+  }, [members, searchTerm, districtFilter, sourceFilter, approvedRenewalUids]);
 
   const exportToExcel = () => {
     const ws = XLSX.utils.json_to_sheet(filteredMembers.map(m => ({

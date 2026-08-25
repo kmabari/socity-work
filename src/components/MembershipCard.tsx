@@ -848,27 +848,13 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
 
               {/* Pending Approval Ribbon */}
               {isPending && !isBanned && !isExpired && (
-                <div className="absolute top-[26px] -right-[38px] w-[130px] bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-slate-900 font-extrabold text-[8px] py-1 uppercase tracking-wider text-center rotate-45 z-40 shadow-[0_2px_5px_rgba(0,0,0,0.4)] border-y border-white/20 flex flex-col items-center justify-center leading-none pointer-events-none">
-                  <span className="font-sans font-black drop-shadow-[0_1px_1px_rgba(255,255,255,0.4)] text-slate-950">
+                <div className="absolute top-[26px] -right-[38px] w-[130px] bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-slate-950 font-black text-[8px] py-1 uppercase tracking-wider text-center rotate-45 z-40 shadow-[0_2px_5px_rgba(0,0,0,0.35)] border-y border-amber-300 flex flex-col items-center justify-center leading-none pointer-events-none">
+                  <span className="font-sans font-black text-slate-950">
                     🕒 PENDING
                   </span>
-                  <span className="text-[5.5px] mt-0.5 tracking-normal leading-none font-bold opacity-90 drop-shadow-[0_1px_1.5px_rgba(255,255,255,0.3)] text-slate-900">
+                  <span className="text-[5.5px] mt-0.5 tracking-normal leading-none font-extrabold text-slate-950">
                     അപ്പ്രൂവൽ പെൻഡിങ്
                   </span>
-                </div>
-              )}
-
-              {isPending && !isBanned && !isExpired && (
-                <div className="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-12deg] z-40 pointer-events-none select-none">
-                  <div className="border-[4px] border-double border-rose-600/90 p-2 px-4 rounded-xl flex flex-col items-center justify-center bg-white/20 backdrop-blur-[1px] shadow-[0_4px_12px_rgba(0,0,0,0.2)] max-w-[220px]">
-                    <span className="text-[13px] font-black tracking-[0.1em] text-rose-600/90 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.3)] font-sans uppercase text-center leading-none">
-                      PENDING
-                    </span>
-                    <div className="w-full h-[1.5px] bg-rose-600/90 my-1" />
-                    <span className="text-[12px] font-extrabold text-rose-600/90 tracking-tight text-center font-sans leading-none">
-                      പെൻഡിങ്
-                    </span>
-                  </div>
                 </div>
               )}
 

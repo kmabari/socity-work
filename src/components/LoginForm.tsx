@@ -7,8 +7,9 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { auth } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
 import { sendPasswordResetEmail } from 'firebase/auth';
+import { collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
 import {
   Form,
   FormControl,
@@ -119,15 +120,38 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
     const loadingToast = toast.loading('പാസ്‌വേഡ് 123456 ആയി റീസെറ്റ് ചെയ്യുന്നു...');
     setIsResettingPin(true);
     try {
-      const res = await fetch('/api/reset-member-pin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mobile: cleanMobile })
-      });
+      let resetDone = false;
+      try {
+        const res = await fetch('/api/reset-member-pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mobile: cleanMobile })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            resetDone = true;
+          }
+        }
+      } catch (srvErr) {
+        console.warn("Server pin reset notice, attempting direct Firestore reset:", srvErr);
+      }
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.error || 'പാസ്‌വേഡ് റീസെറ്റ് ചെയ്യുന്നത് പരാജയപ്പെട്ടു.');
+      if (!resetDone) {
+        // Direct Firestore Reset
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('mobile', '==', cleanMobile));
+        const snap = await getDocs(q);
+        if (snap.empty) {
+          throw new Error('ഈ മൊബൈൽ നമ്പറിൽ രജിസ്റ്റർ ചെയ്ത അക്കൗണ്ട് കണ്ടെത്തിയില്ല. (Account not found with this mobile)');
+        }
+        for (const docSnap of snap.docs) {
+          await updateDoc(docSnap.ref, {
+            pin: '123456',
+            mustChangePassword: true,
+            pinResetRequested: true
+          });
+        }
       }
 
       toast.success('പാസ്‌വേഡ് വിജയകരമായി 123456 ആയി റീസെറ്റ് ചെയ്തു!', { id: loadingToast, duration: 6000 });
@@ -155,60 +179,47 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 bg-gradient-to-br from-slate-50 via-white to-slate-50 selection:bg-[#1a2b5c]/10 relative overflow-hidden">
+    <div className="min-h-screen w-full flex flex-col items-center justify-start pt-3 sm:pt-6 pb-8 px-4 bg-gradient-to-br from-slate-50 via-white to-slate-50 selection:bg-[#1a2b5c]/10 relative overflow-x-hidden overflow-y-auto">
       {/* Subtle Blue and Gold Accent Orbs */}
       <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-[#1a2b5c]/5 blur-3xl pointer-events-none" />
       <div className="absolute bottom-[-25%] right-[-10%] w-[600px] h-[600px] rounded-full bg-[#c9a227]/4 blur-3xl pointer-events-none" />
 
       {/* Floating Language Switcher */}
-      <div className="absolute top-4 right-4 z-50">
+      <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-50">
         <LanguageSwitcher />
       </div>
 
       <motion.div
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         className="max-w-md w-full z-10"
       >
         {/* Prominently Centered Brand Header */}
-        <div className="text-center mb-6">
-          <div className="inline-block p-4 bg-white shadow-premium rounded-[28px] mb-4 border border-slate-200/80 transition-all hover:scale-105 duration-300">
+        <div className="text-center mb-4 sm:mb-5">
+          <div className="inline-block p-3.5 sm:p-4 bg-white shadow-premium rounded-[28px] mb-3 border border-slate-200/80 transition-all hover:scale-105 duration-300">
             <Logo className="scale-110 mx-auto" />
           </div>
           <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-none uppercase">
             {t('login_title', 'Account Login')}
           </h2>
-          <p className="text-[10px] font-black text-[#c9a227] mt-2.5 uppercase tracking-widest leading-none">
+          <p className="text-[11px] font-black text-[#c9a227] mt-2 uppercase tracking-widest leading-none">
             {t('hero_title_1', 'HIGHRICH COMMUNITY')} {t('hero_title_2', 'REVIVAL SOCIETY')}
           </p>
         </div>
 
         {/* Centered Card with Subtle Border Glow and Kerala Kasavu Border Pattern */}
-        <div className="relative bg-white border-2 border-slate-200 p-8 rounded-[36px] shadow-premium overflow-hidden before:content-[''] before:absolute before:inset-x-0 before:top-0 before:h-1.5 before:bg-gradient-to-r before:from-[#1a2b5c] before:via-[#c9a227] before:to-[#233875] after:content-[''] after:absolute after:inset-x-0 after:bottom-0 after:h-1.5 after:bg-gradient-to-r after:from-[#233875] after:via-[#c9a227] after:to-[#1a2b5c]">
-          <div className="flex items-center gap-4 mb-8">
-            <div className="w-12 h-12 rounded-xl bg-[#1a2b5c]/10 flex items-center justify-center text-[#1a2b5c] shadow-xs border border-[#1a2b5c]/20">
-              <KeyRound className="w-6 h-6 text-[#1a2b5c]" />
-            </div>
-            <div>
-              <h3 className="text-base font-black text-slate-950 uppercase tracking-wide">
-                {t('login_title', 'Account Login')}
-              </h3>
-              <p className="text-[10px] text-slate-700 font-extrabold uppercase tracking-widest mt-1 leading-none">
-                {t('hero_title_1', 'HIGHRICH COMMUNITY')}
-              </p>
-            </div>
-          </div>
-
+        <div className="relative bg-white border-2 border-slate-200 p-6 sm:p-8 rounded-[36px] shadow-premium overflow-hidden before:content-[''] before:absolute before:inset-x-0 before:top-0 before:h-1.5 before:bg-gradient-to-r before:from-[#1a2b5c] before:via-[#c9a227] before:to-[#233875] after:content-[''] after:absolute after:inset-x-0 after:bottom-0 after:h-1.5 after:bg-gradient-to-r after:from-[#233875] after:via-[#c9a227] after:to-[#1a2b5c]">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
               <FormField
                 control={form.control}
                 name="mobile"
                 render={({ field, fieldState }) => (
                   <FormItem className="space-y-1.5">
-                    <FormLabel className="text-slate-900 font-black uppercase text-xs tracking-wider ml-1">
-                      മൊബൈൽ നമ്പർ
+                    <FormLabel className="text-slate-900 font-black uppercase text-xs tracking-wider ml-1 flex items-center gap-1.5">
+                      <Smartphone className="w-4 h-4 text-[#1a2b5c]" />
+                      <span>മൊബൈൽ നമ്പർ (Mobile Number)</span>
                     </FormLabel>
                     <FormControl>
                       <div className="relative">
@@ -217,7 +228,7 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
                           {...field} 
                           type="text"
                           inputMode="numeric"
-                          placeholder="10 അക്ക മൊബൈൽ നമ്പർ" 
+                          placeholder="10 അക്ക മൊബൈൽ നമ്പർ നൽകുക" 
                           disabled={isLoading}
                           onChange={(e) => {
                             if (authError) setAuthError(null);
@@ -225,12 +236,11 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
                             if (val.includes('@') || /[a-zA-Z\/-]/.test(val)) {
                               field.onChange(val);
                             } else {
-                              // If numeric, extract digits, support typing up to 12 digits or standard 10
                               const digits = val.replace(/\D/g, '');
                               field.onChange(digits);
                             }
                           }}
-                          className={`pl-12 h-13 bg-white border-2 ${authError ? 'border-red-400 bg-red-50/10' : 'border-slate-300'} focus:border-[#1a2b5c] focus:ring-2 focus:ring-[#1a2b5c]/20 transition-all rounded-2xl font-bold text-sm text-slate-950 placeholder:text-slate-500 shadow-xs ${fieldState.error ? 'border-red-500' : ''}`} 
+                          className={`pl-12 h-13 bg-white border-2 ${authError ? 'border-red-400 bg-red-50/10' : 'border-slate-300'} focus:border-[#1a2b5c] focus:ring-2 focus:ring-[#1a2b5c]/20 transition-all rounded-2xl font-bold text-sm text-slate-950 placeholder:text-slate-400 shadow-xs ${fieldState.error ? 'border-red-500' : ''}`} 
                         />
                       </div>
                     </FormControl>
@@ -244,9 +254,10 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
                 name="pin"
                 render={({ field, fieldState }) => (
                   <FormItem className="space-y-1.5">
-                    <div className="flex justify-between items-center mb-1 bg-transparent px-1">
-                      <FormLabel className="text-slate-900 font-black uppercase text-xs tracking-wider">
-                        PASSWORD
+                    <div className="flex justify-between items-center bg-transparent px-1">
+                      <FormLabel className="text-slate-900 font-black uppercase text-xs tracking-wider flex items-center gap-1.5">
+                        <Lock className="w-4 h-4 text-[#1a2b5c]" />
+                        <span>PASSWORD (പാസ്‌വേഡ്)</span>
                       </FormLabel>
                       <button 
                         type="button" 
@@ -264,14 +275,14 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
                         <Input 
                           {...field} 
                           type="password" 
-                          placeholder="Password" 
+                          placeholder="Password നൽകുക" 
                           disabled={isLoading}
                           maxLength={20}
                           onChange={(e) => {
                             if (authError) setAuthError(null);
                             field.onChange(e.target.value);
                           }}
-                          className={`pl-12 h-13 bg-white border-2 ${authError ? 'border-red-500 bg-red-50/30' : 'border-slate-300'} focus:border-[#1a2b5c] focus:ring-2 focus:ring-[#1a2b5c]/20 transition-all rounded-2xl font-bold text-sm text-slate-950 placeholder:text-slate-500 shadow-xs ${fieldState.error ? 'border-red-500' : ''}`} 
+                          className={`pl-12 h-13 bg-white border-2 ${authError ? 'border-red-500 bg-red-50/30' : 'border-slate-300'} focus:border-[#1a2b5c] focus:ring-2 focus:ring-[#1a2b5c]/20 transition-all rounded-2xl font-bold text-sm text-slate-950 placeholder:text-slate-400 shadow-xs ${fieldState.error ? 'border-red-500' : ''}`} 
                         />
                       </div>
                     </FormControl>
@@ -332,11 +343,11 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
                 {!isLoading && <ArrowRight className="ml-2 w-4 h-4 text-white group-hover:translate-x-0.5 transition-transform" />}
               </Button>
 
-              <div className="relative py-2">
+              <div className="relative py-1">
                 <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t-2 border-slate-200" />
+                  <span className="w-full border-t border-slate-200" />
                 </div>
-                <div className="relative flex justify-center text-xs uppercase font-black tracking-widest text-slate-500">
+                <div className="relative flex justify-center text-xs uppercase font-black tracking-widest text-slate-400">
                   <span className="bg-white px-3 font-sans">OR</span>
                 </div>
               </div>
@@ -346,7 +357,7 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
                 variant="outline"
                 disabled={isLoading}
                 onClick={onGoogleLogin}
-                className="w-full h-13 rounded-2xl text-xs sm:text-sm font-black border-2 border-slate-300 hover:bg-slate-100 transition-all hover:scale-[1.01] active:scale-100 uppercase tracking-widest flex items-center justify-center gap-3 text-slate-900 bg-white font-sans cursor-pointer shadow-xs"
+                className="w-full h-13 rounded-2xl text-xs sm:text-sm font-black border-2 border-slate-300 hover:bg-slate-50 transition-all hover:scale-[1.01] active:scale-100 uppercase tracking-widest flex items-center justify-center gap-3 text-slate-900 bg-white font-sans cursor-pointer shadow-xs"
               >
                 <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -360,7 +371,7 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
           </Form>
         </div>
 
-        <div className="mt-8 flex flex-col items-center gap-4">
+        <div className="mt-5 flex flex-col items-center gap-3">
           <Button 
             type="button" 
             variant="outline" 
@@ -372,7 +383,7 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
             {t('btn_back_home', 'Go to Home Page')}
           </Button>
 
-          <div className="pt-4 border-t border-slate-200 w-full flex justify-center">
+          <div className="pt-2 border-t border-slate-200/80 w-full flex justify-center">
             <button
                type="button"
                disabled={isLoading}

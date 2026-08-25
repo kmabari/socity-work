@@ -97,7 +97,7 @@ export const getCourtReportBaseStyles = (): string => `
     color: #0f172a;
     font-family: 'Noto Sans Malayalam', 'Manjari', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     font-size: 11.5px;
-    line-height: 1.4;
+    line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -112,7 +112,7 @@ export const getCourtReportBaseStyles = (): string => `
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 1.5mm 1.5mm;
+    padding: 3mm 3mm;
     overflow: hidden;
     position: relative;
     background: #ffffff;
@@ -125,66 +125,68 @@ export const getCourtReportBaseStyles = (): string => `
   .header-table {
     width: 100%;
     border-bottom: 2.5px solid #003366;
-    padding-bottom: 6px;
-    margin-bottom: 7px;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
   }
   .org-title {
-    font-size: 20px;
+    font-size: 19px;
     font-weight: 900;
     text-transform: uppercase;
     letter-spacing: 0.6px;
     color: #003366;
-    margin: 0;
-    line-height: 1.15;
+    margin: 0 0 2px 0;
+    line-height: 1.25;
   }
   .org-sub-meta {
     font-size: 9px;
     color: #334155;
     font-weight: 700;
-    margin-top: 2px;
-    line-height: 1.3;
+    margin-top: 3px;
+    line-height: 1.4;
   }
   .sub-title {
     font-size: 12px;
     font-weight: 800;
     color: #1e293b;
-    margin-top: 2px;
+    margin-top: 3px;
     text-transform: uppercase;
     letter-spacing: 0.3px;
+    line-height: 1.35;
   }
   .doc-tag {
     display: inline-block;
     background: #003366;
     color: #ffffff;
-    font-size: 10px;
+    font-size: 9.5px;
     font-weight: 900;
-    padding: 3.5px 9px;
+    padding: 4px 10px;
     border-radius: 4px;
     text-transform: uppercase;
     letter-spacing: 0.35px;
-    margin-top: 4px;
+    margin-top: 5px;
+    line-height: 1.3;
   }
   .meta-box {
     border: 1.4px solid #cbd5e1;
     background: #f8fafc;
     border-radius: 6px;
-    padding: 6.5px 11px;
-    margin-bottom: 5px;
+    padding: 8px 12px;
+    margin-bottom: 6px;
   }
   .grid-2 {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 5px 16px;
+    gap: 6px 18px;
   }
   .grid-3 {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
-    gap: 5px 12px;
+    gap: 6px 14px;
   }
   .grid-4 {
     display: grid;
     grid-template-columns: 1.1fr 1.1fr 1.35fr 0.95fr;
-    gap: 5px 12px;
+    gap: 6px 14px;
   }
   .meta-label {
     font-weight: 800;
@@ -192,30 +194,32 @@ export const getCourtReportBaseStyles = (): string => `
     text-transform: uppercase;
     font-size: 8.5px;
     display: block;
-    margin-bottom: 2px;
-    letter-spacing: 0.3px;
+    margin-bottom: 3.5px;
+    letter-spacing: 0.35px;
+    line-height: 1.3;
   }
   .meta-val {
     font-weight: 800;
     color: #0f172a;
     font-size: 11.5px;
     word-break: break-word;
-    line-height: 1.3;
+    line-height: 1.45;
   }
   .section-heading {
-    font-size: 11px;
+    font-size: 11.5px;
     font-weight: 900;
     text-transform: uppercase;
     color: #003366;
     letter-spacing: 0.4px;
-    margin: 6px 0 3.5px 0;
-    border-bottom: 1.8px solid #003366;
-    padding-bottom: 2px;
+    margin: 8px 0 5px 0;
+    border-bottom: 2px solid #003366;
+    padding-bottom: 4px;
+    line-height: 1.35;
   }
   table.claim-table {
     width: 100%;
     border-collapse: collapse;
-    margin: 4px 0 5px 0;
+    margin: 5px 0 6px 0;
     font-size: 11px;
   }
   table.claim-table th {
@@ -223,16 +227,19 @@ export const getCourtReportBaseStyles = (): string => `
     color: #ffffff;
     font-weight: 800;
     text-transform: uppercase;
-    padding: 5.5px 8px;
+    padding: 7px 10px;
     text-align: left;
     font-size: 9.5px;
     border: 1.2px solid #003366;
     letter-spacing: 0.3px;
+    line-height: 1.35;
   }
   table.claim-table td {
     border: 1.2px solid #cbd5e1;
-    padding: 5px 8px;
+    padding: 6.5px 10px;
     font-size: 11.5px;
+    line-height: 1.45;
+    vertical-align: middle;
   }
   table.claim-table tr:nth-child(even) {
     background: #f8fafc;
@@ -242,34 +249,37 @@ export const getCourtReportBaseStyles = (): string => `
     font-weight: 900;
     color: #003366;
     font-size: 12.5px;
+    padding: 8px 10px !important;
     border-top: 2.2px solid #003366 !important;
+    line-height: 1.4;
   }
   .declaration-box {
     border: 1.4px solid #64748b;
     background: #ffffff;
     border-radius: 6px;
-    padding: 7px 11px;
-    margin-top: 4px;
+    padding: 9px 12px;
+    margin-top: 5px;
     color: #1e293b;
+    line-height: 1.6;
   }
   .signatures-grid-2 {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-top: 6px;
+    gap: 12px;
+    margin-top: 7px;
   }
   .signatures-grid-3 {
     display: grid;
     grid-template-columns: 1fr 1.15fr 1fr;
-    gap: 10px;
-    margin-top: 6px;
+    gap: 12px;
+    margin-top: 7px;
   }
   .sig-box {
     text-align: center;
     background: #f8fafc;
     border: 1.3px solid #cbd5e1;
     border-radius: 6px;
-    padding: 7px 9px 6px 9px;
+    padding: 8px 10px 7px 10px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -280,10 +290,10 @@ export const getCourtReportBaseStyles = (): string => `
     font-weight: 900;
     color: #003366;
     text-transform: uppercase;
-    line-height: 1.2;
+    line-height: 1.35;
     border-bottom: 1.2px solid #e2e8f0;
-    padding-bottom: 3px;
-    margin-bottom: 4px;
+    padding-bottom: 4px;
+    margin-bottom: 5px;
   }
   .sig-title-sub {
     font-size: 8px;
@@ -291,24 +301,26 @@ export const getCourtReportBaseStyles = (): string => `
     color: #475569;
     text-transform: uppercase;
     display: block;
-    margin-top: 1px;
+    margin-top: 2px;
+    line-height: 1.3;
   }
   .company-audit-box {
     border: 1.8px solid #003366;
     background: #f8fafc;
     border-radius: 6px;
-    padding: 7px 11px 6px 11px;
-    margin-top: 5px;
+    padding: 8px 12px 7px 12px;
+    margin-top: 6px;
   }
   .audit-table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 5px;
+    margin-bottom: 6px;
   }
   .audit-table td {
-    padding: 3.5px 5px;
+    padding: 4.5px 6px;
     font-size: 9.5px;
     vertical-align: middle;
+    line-height: 1.4;
   }
   .audit-cell-label {
     font-weight: 800;
@@ -316,24 +328,27 @@ export const getCourtReportBaseStyles = (): string => `
     width: 32%;
     text-transform: uppercase;
     font-size: 8.5px;
+    line-height: 1.35;
   }
   .audit-cell-val {
-    border-bottom: 1.3px dotted #64748b;
+    border-bottom: 1.2px dotted #64748b;
     font-family: monospace;
     font-weight: 900;
     color: #0f172a;
     width: 18%;
     font-size: 10.5px;
+    padding-bottom: 2px;
+    line-height: 1.4;
   }
   .audit-status-row {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 4px 8px;
+    gap: 12px;
+    padding: 5px 10px;
     background: #ffffff;
     border: 1.2px solid #cbd5e1;
     border-radius: 5px;
-    margin-bottom: 5px;
+    margin-bottom: 6px;
   }
   .audit-tag {
     font-size: 8.5px;
@@ -345,18 +360,18 @@ export const getCourtReportBaseStyles = (): string => `
   .audit-sig-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-top: 3px;
+    gap: 12px;
+    margin-top: 4px;
   }
   .audit-sig-col {
     background: #ffffff;
     border: 1.2px solid #cbd5e1;
     border-radius: 5px;
-    padding: 6px 9px 5px 9px;
+    padding: 7px 10px 6px 10px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    min-height: 84px;
+    min-height: 86px;
   }
   .audit-sig-role {
     font-size: 9px;
@@ -364,43 +379,47 @@ export const getCourtReportBaseStyles = (): string => `
     color: #003366;
     text-transform: uppercase;
     border-bottom: 1px solid #e2e8f0;
-    padding-bottom: 2.5px;
-    margin-bottom: 3.5px;
+    padding-bottom: 3.5px;
+    margin-bottom: 4.5px;
     letter-spacing: 0.35px;
+    line-height: 1.3;
   }
   .audit-field-line {
     font-size: 8.5px;
     font-weight: 700;
     color: #475569;
-    margin-bottom: 2.5px;
-    line-height: 1.25;
+    margin-bottom: 3.5px;
+    line-height: 1.45;
   }
   .audit-sig-line {
     border-top: 1.3px solid #003366;
-    padding-top: 2.5px;
+    padding-top: 4.5px;
     font-size: 9px;
     font-weight: 900;
     color: #003366;
     text-transform: uppercase;
     text-align: center;
+    line-height: 1.35;
   }
   .audit-sig-caption {
     font-size: 7.5px;
     font-weight: 700;
     color: #64748b;
     text-align: center;
-    margin-top: 1.5px;
+    margin-top: 2px;
+    line-height: 1.3;
   }
   .mgmt-verify-table {
     width: 100%;
     font-size: 9px;
     border-collapse: collapse;
-    margin: 3px 0 4px 0;
+    margin: 4px 0 5px 0;
     text-align: left;
   }
   .mgmt-verify-table td {
-    padding: 2.5px 3px;
+    padding: 3.5px 4px;
     border: none;
+    line-height: 1.4;
   }
   .mgmt-field-label {
     color: #475569;
@@ -408,27 +427,31 @@ export const getCourtReportBaseStyles = (): string => `
     width: 52%;
     font-size: 8.5px;
     text-transform: uppercase;
+    line-height: 1.35;
   }
   .mgmt-field-line {
-    border-bottom: 1.3px dotted #64748b;
+    border-bottom: 1.2px dotted #64748b;
     font-weight: 900;
     font-family: monospace;
     font-size: 10px;
     color: #0f172a;
+    padding-bottom: 2px;
   }
   .sig-line {
     border-top: 1.3px solid #0f172a;
-    padding-top: 3.5px;
+    padding-top: 5px;
     font-size: 9.5px;
     font-weight: 800;
     text-transform: uppercase;
     color: #0f172a;
+    line-height: 1.35;
   }
   .sig-sub {
     font-size: 8px;
     color: #64748b;
-    margin-top: 1.5px;
+    margin-top: 2px;
     font-weight: 600;
+    line-height: 1.3;
   }
   .watermark {
     position: fixed;
@@ -588,16 +611,16 @@ export const renderPersonCourtClaimPage = (
                 <span style="font-weight: 800; color: #003366;">Company PAN: AAJCH7065C</span> • 
                 <span>Reg. Office: TC41/1030/14, 2nd Floor, Kanimangalam Tower, Valiyalukkal, Thrissur - 680027</span>
               </div>
-              <div class="doc-tag" style="margin-top: 3px;">CONSIGNMENT ADVANCE FINANCIAL STATEMENT & VERIFICATION FORM</div>
-              <div style="font-size: 8.5px; color: #003366; font-weight: 800; margin-top: 3px; line-height: 1.25;">
+              <div class="doc-tag" style="margin-top: 4px;">CONSIGNMENT ADVANCE FINANCIAL STATEMENT & VERIFICATION FORM</div>
+              <div style="font-size: 8.5px; color: #003366; font-weight: 800; margin-top: 4px; line-height: 1.35;">
                 TO: THE MANAGEMENT & LEGAL COUNSELS / ADVOCATES OF HIGHRICH ONLINE SHOPPE PVT. LTD. & BEFORE THE HON'BLE COURT
               </div>
             </td>
             <td style="vertical-align: top; text-align: right; width: 205px;">
               <div style="font-size: 8.5px; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.3px;">SETTLEMENT REF</div>
-              <div style="font-size: 16px; font-weight: 900; color: #003366; font-family: monospace; line-height: 1.1;">#${tokenDisplay}</div>
-              <div style="font-size: 8.5px; color: #475569; margin-top: 2px; font-weight: 700;">Date: ${dateStr}</div>
-              <div style="margin-top: 2px; display: inline-block; background: #003366; color: #ffffff; font-size: 9px; font-weight: 900; padding: 2.5px 8px; border-radius: 4px; letter-spacing: 0.35px;">
+              <div style="font-size: 16px; font-weight: 900; color: #003366; font-family: monospace; line-height: 1.2; margin-top: 2px;">#${tokenDisplay}</div>
+              <div style="font-size: 8.5px; color: #475569; margin-top: 3px; font-weight: 700;">Date: ${dateStr}</div>
+              <div style="margin-top: 3px; display: inline-block; background: #003366; color: #ffffff; font-size: 9px; font-weight: 900; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.35px;">
                 PAGE ${pageNum}/${totalPages}
               </div>
             </td>
@@ -720,7 +743,7 @@ export const renderPersonCourtClaimPage = (
             </div>
             <div>
               <span class="meta-label">Customer PAN & IFSC</span>
-              <span class="meta-val font-mono" style="font-size: 10.5px; color: #003366; font-weight: 800; line-height: 1.35;">PAN: ${panStr || 'N/A'}<br/>IFSC: ${settlementIfsc || 'Verified'}</span>
+              <span class="meta-val font-mono" style="font-size: 10.5px; color: #003366; font-weight: 800; line-height: 1.45;">PAN: ${panStr || 'N/A'}<br/>IFSC: ${settlementIfsc || 'Verified'}</span>
             </div>
           </div>
         </div>
@@ -728,21 +751,21 @@ export const renderPersonCourtClaimPage = (
         <!-- 5. Customer Declaration & Confirmation -->
         <div class="section-heading">5. Customer Declaration & Confirmation</div>
         <div class="declaration-box">
-          <div style="font-size: 9.5px; line-height: 1.45; color: #0f172a; font-weight: 600; text-align: justify;">
+          <div style="font-size: 9.5px; line-height: 1.55; color: #0f172a; font-weight: 600; text-align: justify;">
             “I hereby certify and declare that the financial figures and particulars stated in this statement are true, accurate, and correct to the best of my knowledge and records. The Consignment Advance paid, cumulative returns received, and the final net pending balance claimed herein are subject to verification and final reconciliation with the official corporate accounting books and bank ledgers of HIGHRICH ONLINE SHOPPE Pvt. Ltd. for filing and submission before the Hon'ble Court. In the event of ongoing legal proceedings, this statement and verification claim is submitted to facilitate disbursement and refund out of the excess interest / reserve funds deposited before the Hon'ble Court, subject to formal reconciliation by the Company and approval by the Hon'ble Court. I also affirm and submit that this form is submitted out of my own interest and with my full consent.”
           </div>
-          <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 6px; padding-top: 5px; border-top: 1.2px dashed #cbd5e1;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 8px; padding-top: 6px; border-top: 1.2px dashed #cbd5e1;">
             <div>
-              <span style="font-size: 8.5px; color: #059669; font-weight: 900; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 2.5px 7px; border-radius: 4px; display: inline-block;">
+              <span style="font-size: 8.5px; color: #059669; font-weight: 900; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 3px 8px; border-radius: 4px; display: inline-block;">
                 ✓ CONDITIONS CONFIRMED & VERIFIED
               </span>
-              <div style="font-size: 8.5px; color: #64748b; font-weight: 700; margin-top: 2px;">
+              <div style="font-size: 8.5px; color: #64748b; font-weight: 700; margin-top: 3px;">
                 Date: ${dateStr} • Place: ..............................
               </div>
             </div>
             <div style="text-align: right;">
-              <div style="font-size: 10px; font-weight: 900; color: #003366;">${memberName}</div>
-              <div style="font-size: 8px; color: #64748b; font-weight: 700;">(Signature of the Customer / Declarant)</div>
+              <div style="font-size: 10px; font-weight: 900; color: #003366; line-height: 1.35;">${memberName}</div>
+              <div style="font-size: 8px; color: #64748b; font-weight: 700; margin-top: 2px;">(Signature of the Customer / Declarant)</div>
             </div>
           </div>
         </div>

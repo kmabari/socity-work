@@ -82,24 +82,26 @@ export default function ProfileEditForm({ user, onSave, onCancel, isMandatory = 
 
   return (
     <div className="bg-white rounded-[24px] border border-slate-200/80 shadow-premium p-6 sm:p-8 max-w-lg w-full mx-auto space-y-6 text-slate-800 animate-in fade-in slide-in-from-bottom-4 duration-300 font-sans">
-      <div className="flex items-center gap-3">
-        {!isMandatory && (
+      <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
+        <div className="flex items-center gap-3">
           <Button 
-            variant="ghost" 
-            size="icon" 
+            type="button"
+            variant="outline" 
+            size="sm" 
             onClick={onCancel}
-            className="rounded-full w-9 h-9 border border-slate-200 text-slate-600 hover:bg-slate-50"
+            className="rounded-xl h-9 px-3 border-slate-300 text-slate-700 hover:bg-slate-100 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-4 h-4 text-slate-700" />
+            <span>തിരികെ (Back)</span>
           </Button>
-        )}
-        <div>
-          <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
-            {isMandatory ? 'പ്രൊഫൈൽ വിവരങ്ങൾ സ്ഥിരീകരിക്കുക' : 'Edit Profile'}
-          </h3>
-          <p className="text-[10px] text-amber-700 font-extrabold uppercase">
-            {isMandatory ? 'ആദ്യ തവണ വിവരങ്ങൾ ഉറപ്പുവരുത്തി കാർഡിലേക്ക് പ്രവേശിക്കുക (One-time profile confirmation)' : 'Update edit-permissible personal details'}
-          </p>
+          <div>
+            <h3 className="text-base sm:text-lg font-black text-slate-900 uppercase tracking-tight">
+              Edit Profile (പ്രൊഫൈൽ തിരുത്തുക)
+            </h3>
+            <p className="text-[10px] text-amber-700 font-extrabold uppercase">
+              Update Personal Details
+            </p>
+          </div>
         </div>
       </div>
 
@@ -347,22 +349,20 @@ export default function ProfileEditForm({ user, onSave, onCancel, isMandatory = 
         </div>
 
         <div className="flex gap-3 pt-2">
-          {!isMandatory && (
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={onCancel}
-              className="flex-1 h-12 rounded-xl border-slate-200 text-slate-700 font-bold uppercase text-xs tracking-wider"
-            >
-              Cancel
-            </Button>
-          )}
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={onCancel}
+            className="flex-1 h-12 rounded-xl border-slate-300 hover:bg-slate-100 text-slate-800 font-black uppercase text-xs tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+          >
+            <ArrowLeft className="w-4 h-4" /> തിരികെ (Back)
+          </Button>
           <Button 
             type="submit" 
             disabled={isSubmitting}
-            className={`h-12 rounded-xl bg-brand-magenta hover:bg-brand-magenta/95 text-slate-950 font-black uppercase text-xs tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer ${isMandatory ? 'w-full' : 'flex-1'}`}
+            className="flex-[1.5] h-12 rounded-xl bg-brand-magenta hover:bg-brand-magenta/90 text-slate-950 font-black uppercase text-xs tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-98 transition-all"
           >
-            <Save className="w-4 h-4" /> {isSubmitting ? 'Saving...' : (isMandatory ? 'വിവരങ്ങൾ സേവ് ചെയ്ത് കാർഡ് കാണുക (Save & View Card)' : 'Save Profile')}
+            <Save className="w-4 h-4" /> {isSubmitting ? 'Saving...' : 'Save Profile (സേവ് ചെയ്യുക)'}
           </Button>
         </div>
       </form>

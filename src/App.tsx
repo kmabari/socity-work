@@ -1929,6 +1929,27 @@ export default function App() {
       registrationDate: member.registrationDate ? (member.registrationDate.toDate ? member.registrationDate.toDate() : new Date(member.registrationDate)) : now
     } : m));
 
+    if (user && user.uid === uid) {
+      setUser(prev => prev ? {
+        ...prev,
+        ...updatePayload,
+        status: 'active',
+        isApproved: true,
+        renewalPending: false,
+        issueDate: now
+      } : prev);
+      try {
+        localStorage.setItem(`hcrs_cached_user_${uid}`, JSON.stringify({
+          ...user,
+          ...updatePayload,
+          status: 'active',
+          isApproved: true,
+          renewalPending: false,
+          issueDate: now
+        }));
+      } catch (e) {}
+    }
+
     try {
       let serverSuccess = false;
       try {
@@ -2349,58 +2370,123 @@ export default function App() {
         }
       }
 
-      // Optimistic update in React state
-      setMembers(prev => prev.map(m => m.uid === uid ? { ...m, ...finalData } : m));
+      // Sanitize data (remove undefined)
+      const cleanData: any = {};
+      Object.entries(finalData).forEach(([k, v]) => {
+        if (v !== undefined) {
+          cleanData[k] = v;
+        }
+      });
 
+      // Optimistic update in React state
+      setMembers(prev => prev.map(m => m.uid === uid ? { ...m, ...cleanData } : m));
+
+      // 1. Server API update (reliable backend fallback)
       try {
-        await updateDoc(doc(db, 'users', uid), finalData);
+        await fetch('/api/admin/update-member', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uid, data: cleanData, mobile: existingMember?.mobile || cleanData.mobile })
+        });
+      } catch (apiErr) {
+        console.warn("[handleUpdateMember API note]:", apiErr);
+      }
+
+      // 2. Client Firestore SDK update
+      try {
+        await setDoc(doc(db, 'users', uid), cleanData, { merge: true });
       } catch (fsErr) {
         console.warn("[handleUpdateMember Firestore note]:", fsErr);
       }
 
-      // Automatically generate a renewal receipt when renewal is approved
-      const isRenewalApproval = finalData.renewalPending === false && existingMember?.renewalPending === true;
+      // Automatically generate or update renewal receipt when renewal is approved
+      const isRenewalApproval = cleanData.renewalPending === false && existingMember?.renewalPending === true;
       if (isRenewalApproval && existingMember) {
         try {
           const serialNoStr = existingMember.serialNo ? String(existingMember.serialNo).padStart(4, '0') : '1000';
-          const randomId = Math.floor(1000 + Math.random() * 9000);
-          const receiptNo = `HCRS-REN-${serialNoStr}-${randomId}`;
           const paymentDateStr = existingMember.renewalPaymentDate || new Date().toISOString().split('T')[0];
           const renewalYear = existingMember.renewalPaymentDate ? new Date(existingMember.renewalPaymentDate).getFullYear() : new Date().getFullYear();
+          const targetTxId = existingMember.renewalTransactionId || existingMember.transactionId || '';
 
-          await addDoc(collection(db, 'users', uid, 'receipts'), {
-            receiptNo,
-            receiptType: 'Annual Renewal',
-            receiptLabel: 'Annual Renewal Receipt',
-            amount: 100,
-            status: 'Paid',
-            paymentDate: paymentDateStr,
-            createdAt: serverTimestamp(),
-            year: renewalYear
-          });
-          console.log(`Successfully generated automatic renewal receipt: ${receiptNo}`);
+          // Check if a receipt already exists in subcollection to avoid duplicate ₹100 receipts
+          const receiptsRef = collection(db, 'users', uid, 'receipts');
+          const existingSnap = await getDocs(receiptsRef);
+          
+          let pendingReceiptDoc: any = null;
+          let alreadyPaidThisYear = false;
+
+          for (const docSnap of existingSnap.docs) {
+            const data = docSnap.data();
+            const isRenewalType = data.receiptType === 'Annual Renewal' || data.receiptType === 'Membership Renewal';
+            const matchesYear = data.year === renewalYear || (data.paymentDate && new Date(data.paymentDate).getFullYear() === renewalYear);
+            const matchesTx = targetTxId && (data.transactionId === targetTxId || data.paymentId === targetTxId);
+
+            if (isRenewalType && (matchesYear || matchesTx || data.status === 'Pending Verification')) {
+              if (data.status === 'Pending Verification' || data.status === 'Pending') {
+                pendingReceiptDoc = docSnap;
+                break;
+              } else if (data.status === 'Paid') {
+                alreadyPaidThisYear = true;
+                break;
+              }
+            }
+          }
+
+          if (pendingReceiptDoc) {
+            // Update existing pending receipt to Paid
+            await setDoc(doc(db, 'users', uid, 'receipts', pendingReceiptDoc.id), {
+              status: 'Paid',
+              paymentStatus: 'Renewed',
+              receiptType: 'Annual Renewal',
+              receiptLabel: 'Annual Renewal Receipt',
+              amount: 100,
+              paymentDate: paymentDateStr,
+              year: renewalYear,
+              updatedAt: serverTimestamp()
+            }, { merge: true });
+            console.log(`Updated pending renewal receipt to Paid: ${pendingReceiptDoc.id}`);
+          } else if (!alreadyPaidThisYear) {
+            // Only add if no receipt exists for this renewal cycle
+            const randomId = Math.floor(1000 + Math.random() * 9000);
+            const receiptNo = `HCRS-REN-${serialNoStr}-${randomId}`;
+
+            await addDoc(receiptsRef, {
+              receiptNo,
+              receiptType: 'Annual Renewal',
+              receiptLabel: 'Annual Renewal Receipt',
+              amount: 100,
+              status: 'Paid',
+              paymentDate: paymentDateStr,
+              createdAt: serverTimestamp(),
+              year: renewalYear,
+              transactionId: targetTxId
+            });
+            console.log(`Successfully generated automatic renewal receipt: ${receiptNo}`);
+          } else {
+            console.log(`Renewal receipt for year ${renewalYear} already exists. Skipped duplicate creation.`);
+          }
         } catch (receiptErr) {
-          console.error("Non-blocking error: Failed to generate automatic renewal receipt:", receiptErr);
+          console.error("Non-blocking error: Failed to generate or update automatic renewal receipt:", receiptErr);
         }
       }
 
       // Optimistic state update:
       setMembers(prev => prev.map(m => m.uid === uid ? { 
         ...m, 
-        ...finalData,
-        issueDate: (finalData.issueDate === serverTimestamp()) ? new Date() : (finalData.issueDate || m.issueDate),
-        renewalDate: (finalData.renewalDate === serverTimestamp()) ? new Date() : (finalData.renewalDate || m.renewalDate)
+        ...cleanData,
+        issueDate: (cleanData.issueDate === serverTimestamp()) ? new Date() : (cleanData.issueDate || m.issueDate),
+        renewalDate: (cleanData.renewalDate === serverTimestamp()) ? new Date() : (cleanData.renewalDate || m.renewalDate)
       } : m));
 
       if (user && user.uid === uid) {
         setUser(prev => prev ? {
           ...prev,
-          ...finalData,
-          issueDate: (finalData.issueDate === serverTimestamp()) ? new Date() : (finalData.issueDate || prev.issueDate),
-          renewalDate: (finalData.renewalDate === serverTimestamp()) ? new Date() : (finalData.renewalDate || prev.renewalDate)
+          ...cleanData,
+          issueDate: (cleanData.issueDate === serverTimestamp()) ? new Date() : (cleanData.issueDate || prev.issueDate),
+          renewalDate: (cleanData.renewalDate === serverTimestamp()) ? new Date() : (cleanData.renewalDate || prev.renewalDate)
         } : prev);
         try {
-          localStorage.setItem(`hcrs_cached_user_${uid}`, JSON.stringify({ ...user, ...finalData }));
+          localStorage.setItem(`hcrs_cached_user_${uid}`, JSON.stringify({ ...user, ...cleanData }));
         } catch (e) {}
       }
 
@@ -2587,15 +2673,38 @@ export default function App() {
         finalData.constituencyCode = assemblyCode;
       }
 
-      // 1. Update user document with merge: true so it's 100% resilient
-      await setDoc(doc(db, 'users', user.uid), finalData, { merge: true });
+      // Sanitize data (remove undefined)
+      const cleanData: any = {};
+      Object.entries(finalData).forEach(([k, v]) => {
+        if (v !== undefined) {
+          cleanData[k] = v;
+        }
+      });
 
-      // 2. Also ensure current auth user document is synced if UID differs
-      if (auth.currentUser && auth.currentUser.uid !== user.uid) {
-        await setDoc(doc(db, 'users', auth.currentUser.uid), finalData, { merge: true }).catch(() => {});
+      // 1. Server API update (reliable backend fallback)
+      try {
+        await fetch('/api/update-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uid: user.uid, data: cleanData, mobile: user.mobile })
+        });
+      } catch (apiErr) {
+        console.warn("[handleSaveProfile API note]:", apiErr);
       }
 
-      // 3. Also synchronize to any duplicate/mobile matched records
+      // 2. Update user document with merge: true so it's 100% resilient
+      try {
+        await setDoc(doc(db, 'users', user.uid), cleanData, { merge: true });
+      } catch (fsErr) {
+        console.warn("[handleSaveProfile Firestore note]:", fsErr);
+      }
+
+      // 3. Also ensure current auth user document is synced if UID differs
+      if (auth.currentUser && auth.currentUser.uid !== user.uid) {
+        await setDoc(doc(db, 'users', auth.currentUser.uid), cleanData, { merge: true }).catch(() => {});
+      }
+
+      // 4. Also synchronize to any duplicate/mobile matched records
       if (user.mobile) {
         const cleanMob = String(user.mobile).replace(/\D/g, '').slice(-10);
         if (cleanMob.length === 10) {
@@ -2605,7 +2714,7 @@ export default function App() {
             for (const d of snapM.docs) {
               if (d.id !== user.uid && (!auth.currentUser || d.id !== auth.currentUser.uid)) {
                 await setDoc(doc(db, 'users', d.id), {
-                  ...finalData,
+                  ...cleanData,
                   mustCompleteProfile: false,
                   profileCompleted: true
                 }, { merge: true }).catch(() => {});
@@ -2617,14 +2726,14 @@ export default function App() {
       
       const updatedUser: UserProfile = {
         ...user,
-        ...finalData,
+        ...cleanData,
         mustCompleteProfile: false,
         profileCompleted: true
       };
       setUser(updatedUser);
       setMembers(prev => prev.map(m => (m.uid === user.uid || (user.mobile && m.mobile === user.mobile)) ? {
         ...m,
-        ...finalData,
+        ...cleanData,
         mustCompleteProfile: false,
         profileCompleted: true
       } : m));
@@ -3060,8 +3169,12 @@ export default function App() {
             <ProfileEditForm 
               user={user} 
               onSave={handleSaveProfile} 
-              onCancel={() => {}} 
-              isMandatory={true}
+              onCancel={() => {
+                currentViewRef.current = 'card';
+                setView('card');
+                setIsEditingProfile(false);
+              }} 
+              isMandatory={false}
             />
           </div>
         </div>
@@ -3090,7 +3203,7 @@ export default function App() {
                 user={user} 
                 onSave={handleSaveProfile} 
                 onCancel={() => setIsEditingProfile(false)} 
-                isMandatory={user.mustCompleteProfile === true || (!user.address || !user.gender || !user.dob || !user.bloodGroup)}
+                isMandatory={false}
               />
             </div>
           ) : (
@@ -3105,19 +3218,25 @@ export default function App() {
                   <div className="w-full">
                     {user.renewalPending ? (
                       <div className="flex flex-col items-center lg:items-start animate-in fade-in zoom-in duration-700">
-                        <div className="bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-500/50 px-6 py-2 rounded-full text-[10px] font-black mb-4 tracking-[0.2em] uppercase flex items-center gap-1.5 w-fit">
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-600 dark:text-amber-300" /> Verification Pending
+                        <div className="bg-amber-100 text-amber-950 border border-amber-400 px-5 py-1.5 rounded-full text-[11px] font-black mb-3 tracking-[0.15em] uppercase flex items-center gap-2 w-fit shadow-xs">
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-700" /> പുതുക്കൽ പരിശോധനയിൽ (Verification Pending)
                         </div>
-                        <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-none mb-2">Renewal <span className="text-amber-600 dark:text-[#ffd700] italic font-extrabold">Pending</span></h2>
-                        <p className="text-slate-700 dark:text-slate-200 text-[11px] font-black tracking-widest uppercase">Verification in Progress</p>
+                        <h2 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight leading-tight mb-1 flex flex-wrap items-center justify-center lg:justify-start gap-x-2">
+                          <span className="text-[#003366]">Renewal</span>
+                          <span className="text-amber-600 italic font-extrabold">Pending</span>
+                        </h2>
+                        <p className="text-slate-700 text-xs font-black tracking-wider uppercase">Highrich Community Revival Society</p>
                       </div>
                     ) : isExpired ? (
                       <div className="flex flex-col items-center lg:items-start animate-in fade-in zoom-in duration-700">
-                        <div className="bg-rose-100 dark:bg-rose-950/60 text-rose-900 dark:text-rose-300 border border-rose-500/50 px-6 py-2 rounded-full text-[10px] font-black mb-4 tracking-[0.2em] uppercase flex items-center gap-1.5 w-fit">
-                          <Clock className="w-3.5 h-3.5 animate-pulse text-rose-600 dark:text-rose-300" /> Expired (കാലാവധി കഴിഞ്ഞു)
+                        <div className="bg-rose-100 text-rose-950 border border-rose-400 px-5 py-1.5 rounded-full text-[11px] font-black mb-3 tracking-[0.15em] uppercase flex items-center gap-2 w-fit shadow-xs">
+                          <Clock className="w-3.5 h-3.5 animate-pulse text-rose-700" /> കാലാവധി കഴിഞ്ഞു (Expired)
                         </div>
-                        <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-none mb-2">Renewal <span className="text-amber-600 dark:text-[#ffd700] italic font-extrabold">Required</span></h2>
-                        <p className="text-slate-700 dark:text-slate-200 text-[11px] font-black tracking-widest uppercase">Highrich Community Revival Society</p>
+                        <h2 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight leading-tight mb-1 flex flex-wrap items-center justify-center lg:justify-start gap-x-2">
+                          <span className="text-[#003366]">Renewal</span>
+                          <span className="text-rose-600 italic font-extrabold">Required</span>
+                        </h2>
+                        <p className="text-slate-700 text-xs font-black tracking-wider uppercase">Highrich Community Revival Society</p>
                       </div>
                     ) : (user.status === 'active' || user.status === 'offline' || user.isAdmin || user.role === 'admin' || user.role === 'operator') ? (
                       <div className="flex flex-col items-center lg:items-start animate-in fade-in zoom-in duration-700">
@@ -3149,12 +3268,14 @@ export default function App() {
                             <Badge className="bg-brand-magenta text-slate-950 px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest">Congratulations!</Badge>
                           </div>
                         )}
-                        <div className="bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-500/50 px-6 py-2 rounded-full text-[10px] font-black mb-4 tracking-[0.2em] uppercase w-fit">
-                          Registration Success
+                        <div className="bg-amber-100 text-amber-950 border border-amber-400 px-5 py-1.5 rounded-full text-[11px] font-black mb-3 tracking-[0.15em] uppercase w-fit shadow-xs flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-amber-700" /> രജിസ്ട്രേഷൻ പരിശോധനയിൽ (Pending)
                         </div>
-                        <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-none mb-2">Membership <br/> <span className="text-amber-600 dark:text-[#ffd700] italic font-extrabold">In Progress</span></h2>
-                        <p className="text-amber-100 text-xs font-black leading-relaxed max-w-xs mt-2 bg-amber-500/20 p-3.5 rounded-2xl border border-amber-500/40">
-                          നിങ്ങളുടെ രജിസ്ട്രേഷൻ പൂർത്തിയായി. അഡ്മിൻ പേയ്മെന്റ് വെരിഫൈ ചെയ്തുകഴിഞ്ഞാൽ നിങ്ങളുടെ ഒഫീഷ്യൽ കാർഡ് ഇവിടെ ലഭിക്കുന്നതാണ്.
+                        <h2 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight leading-tight mb-1">
+                          Membership <span className="text-amber-600 italic font-extrabold">In Progress</span>
+                        </h2>
+                        <p className="text-slate-800 font-bold text-xs leading-relaxed max-w-xs mt-2 bg-amber-50 p-3.5 rounded-2xl border border-amber-300">
+                          നിങ്ങളുടെ രജിസ്ട്രേഷൻ പൂർത്തിയായി. അഡ്മിൻ പേയ്മെന്റ് വെരിഫൈ ചെയ്തുകഴിഞ്ഞാൽ നിങ്ങളുടെ ഒഫീഷ്യൽ കാർഡ് ഇവിടെ ലഭ്യമാകും.
                         </p>
                       </div>
                     )}
@@ -3163,53 +3284,57 @@ export default function App() {
                 {/* Urgent Actions: Registration Alert / Financial Info Registry Banner with Glass Line Light Effect */}
                 <div className="w-full">
                   {user.renewalPending ? (
-                    <InfinityBorderCard
-                      roundedClassName="rounded-[28px]"
-                      innerClassName="p-5 sm:p-6 text-center lg:text-left bg-amber-500/10 dark:bg-amber-950/20"
-                      speed={8}
-                    >
-                      <div className="h-10 w-10 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center mx-auto lg:mx-0 mb-3 text-amber-600 dark:text-amber-400">
-                        <Clock className="w-5 h-5 animate-pulse" />
+                    <div className="w-full bg-white dark:bg-slate-900 border-2 border-amber-400 dark:border-amber-500/60 rounded-2xl p-5 text-center lg:text-left shadow-md flex flex-col gap-3">
+                      <div className="flex items-center gap-3 justify-center lg:justify-start">
+                        <div className="h-11 w-11 rounded-xl bg-amber-100 dark:bg-amber-950/80 border border-amber-300 text-amber-800 dark:text-amber-300 flex items-center justify-center shrink-0 shadow-xs">
+                          <Clock className="w-5 h-5 animate-pulse" />
+                        </div>
+                        <div className="text-left">
+                          <h3 className="text-sm sm:text-base font-black text-slate-950 dark:text-white uppercase tracking-tight leading-tight">
+                            പുതുക്കൽ അപ്പ്രൂവലിനായി കാത്തിരിക്കുന്നു!
+                          </h3>
+                          <Badge className="bg-amber-400 text-slate-950 text-[9px] font-black uppercase px-2 py-0.5 tracking-wider mt-1">
+                            RENEWAL PENDING APPROVAL
+                          </Badge>
+                        </div>
                       </div>
-                      <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight leading-tight">
-                        പുതുക്കൽ അപ്പ്രൂവലിനായി കാത്തിരിക്കുന്നു!
-                      </h3>
-                      <p className="text-[10px] sm:text-[11px] font-black tracking-widest text-amber-700 dark:text-amber-400 uppercase mt-1">RENEWAL PENDING APPROVAL</p>
-                      <p className="text-slate-900 dark:text-slate-100 font-extrabold text-[13px] sm:text-[14px] leading-relaxed mt-3">
+                      <p className="text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm leading-relaxed border-t border-slate-200 dark:border-slate-800 pt-3 text-left">
                         താങ്കളുടെ ₹100 അതിവേഗ ഒഫീഷ്യൽ പുതുക്കൽ അടവ് പരിശോധിക്കുകയാണ്. ഇതുകഴിഞ്ഞാൽ ഫിനാൻഷ്യൽ ഇൻഫോ രജിസ്ട്രി ഫോം ഉടൻ ലഭ്യമാകും.
                       </p>
-                    </InfinityBorderCard>
+                    </div>
                   ) : user.status === 'pending' ? (
-                    <InfinityBorderCard
-                      roundedClassName="rounded-[28px]"
-                      innerClassName="p-5 sm:p-6 text-center lg:text-left bg-amber-500/10 dark:bg-amber-950/20"
-                      speed={8}
-                    >
-                      <div className="h-10 w-10 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center mx-auto lg:mx-0 mb-3 text-amber-600 dark:text-amber-400">
-                        <Clock className="w-5 h-5 animate-pulse" />
+                    <div className="w-full bg-white dark:bg-slate-900 border-2 border-amber-400 dark:border-amber-500/60 rounded-2xl p-5 text-center lg:text-left shadow-md flex flex-col gap-3">
+                      <div className="flex items-center gap-3 justify-center lg:justify-start">
+                        <div className="h-11 w-11 rounded-xl bg-amber-100 dark:bg-amber-950/80 border border-amber-300 text-amber-800 dark:text-amber-300 flex items-center justify-center shrink-0 shadow-xs">
+                          <Clock className="w-5 h-5 animate-pulse" />
+                        </div>
+                        <div className="text-left">
+                          <h3 className="text-sm sm:text-base font-black text-slate-950 dark:text-white uppercase tracking-tight leading-tight">
+                            അംഗത്വ അപ്പ്രൂവലിനായി കാത്തിരിക്കുന്നു!
+                          </h3>
+                          <Badge className="bg-amber-400 text-slate-950 text-[9px] font-black uppercase px-2 py-0.5 tracking-wider mt-1">
+                            MEMBERSHIP PENDING APPROVAL
+                          </Badge>
+                        </div>
                       </div>
-                      <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight leading-tight">
-                        അംഗത്വ അപ്പ്രൂവലിനായി കാത്തിരിക്കുന്നു!
-                      </h3>
-                      <p className="text-[10px] sm:text-[11px] font-black tracking-widest text-amber-700 dark:text-amber-400 uppercase mt-1">MEMBERSHIP PENDING APPROVAL</p>
-                      <p className="text-slate-900 dark:text-slate-100 font-extrabold text-[13px] sm:text-[14px] leading-relaxed mt-3">
+                      <p className="text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm leading-relaxed border-t border-slate-200 dark:border-slate-800 pt-3 text-left">
                         താങ്കളുടെ പുതിയ അംഗത്വ രജിസ്ട്രേഷൻ വിവരങ്ങളും പേയ്‌മെന്റും അഡ്മിൻ പാനലിൽ പരിശോധനയിലാണ്. വെരിഫിക്കേഷൻ പൂർത്തിയായാൽ ഇവിടെ കാർഡ് ആക്റ്റീവ് ആകുകയും വിവര രജിസ്ട്രി ഫോം ലഭ്യമാകുകയും ചെയ്യും.
                       </p>
-                    </InfinityBorderCard>
+                    </div>
                   ) : isExpired ? (
                     <InfinityBorderCard
                       roundedClassName="rounded-[28px]"
-                      innerClassName="p-5 sm:p-6 text-center lg:text-left bg-rose-500/10 dark:bg-rose-950/20"
+                      innerClassName="p-5 sm:p-6 text-center lg:text-left bg-white border-2 border-rose-200"
                       speed={7}
                     >
-                      <div className="h-10 w-10 rounded-full bg-rose-500/20 border border-rose-500/30 flex items-center justify-center mx-auto lg:mx-0 mb-3 text-rose-600 dark:text-rose-400">
-                        <AlertTriangle className="w-5 h-5 animate-bounce" />
+                      <div className="h-11 w-11 rounded-2xl bg-rose-100 border-2 border-rose-300 flex items-center justify-center mx-auto lg:mx-0 mb-3 text-rose-700 shadow-xs">
+                        <AlertTriangle className="w-6 h-6 animate-bounce" />
                       </div>
-                      <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight leading-none">
+                      <h3 className="text-base sm:text-lg font-black text-slate-950 uppercase tracking-tight leading-none">
                         അംഗത്വ കാലാവധി കഴിഞ്ഞിരിക്കുന്നു!
                       </h3>
-                      <p className="text-[10px] sm:text-[11px] font-black tracking-widest text-rose-700 dark:text-rose-400 uppercase mt-1">MEMBERSHIP EXPIRED</p>
-                      <p className="text-slate-900 dark:text-slate-100 font-extrabold text-[13px] sm:text-[14px] leading-relaxed mt-3">
+                      <p className="text-xs font-black tracking-widest text-rose-800 uppercase mt-1">MEMBERSHIP EXPIRED</p>
+                      <p className="text-slate-900 font-extrabold text-[13px] sm:text-[14px] leading-relaxed mt-3">
                         താങ്കളുടെ അംഗത്വം കാലാവധി കഴിഞ്ഞിരിക്കുന്നു. വിവര രജിസ്ട്രി ഫോം ഉപയോഗിക്കുന്നതിനും ഐഡി കാർഡ് പുതുക്കുന്നതിനും ₹100 അടയ്ക്കുക.
                       </p>
                       <Button 
@@ -3217,7 +3342,7 @@ export default function App() {
                           setPrefilledMobile(user.mobile);
                           setView('renewal');
                         }}
-                        className="w-full h-13 rounded-[18px] font-black bg-brand-magenta text-slate-950 shadow-md hover:bg-brand-magenta/95 hover:scale-[1.01] active:scale-95 transition-all mt-4 text-[11px] uppercase tracking-wider cursor-pointer border-b-4 border-[#9c7203]/55"
+                        className="w-full h-13 rounded-2xl font-black bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white shadow-md hover:scale-[1.01] active:scale-95 transition-all mt-4 text-xs uppercase tracking-wider cursor-pointer border-b-4 border-red-950"
                       >
                         അംഗത്വം പുതുക്കുക ₹100 (Renew Now)
                       </Button>
@@ -3429,7 +3554,7 @@ export default function App() {
                               title="Download PDF"
                             >
                               <Download className="w-3.5 h-3.5 text-white" />
-                              <span className="text-white font-black">ഡൗൺലോഡ്</span>
+                              <span className="text-white font-black">ഡൗൺലോഡ് (PDF)</span>
                             </Button>
                             <Button
                               size="sm"
@@ -3543,29 +3668,11 @@ export default function App() {
                             </div>
                           )}
 
-                          {/* Bottom Action Footer */}
-                          <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-1">
+                          {/* Bottom Information Footer */}
+                          <div className="pt-1">
                             <p className="text-[10px] text-slate-600 dark:text-slate-400 font-bold">
                               ✓ ഈ ഫോം തന്നെയാണ് അഡ്മിൻ പാനലിലും കോടതി സമർപ്പണത്തിനും ഔദ്യോഗികമായി ഉപയോഗിക്കുന്നത്.
                             </p>
-                            <div className="flex items-center gap-2 w-full sm:w-auto">
-                              <Button
-                                size="sm"
-                                onClick={() => printCourtComboReport(user, userSubmittedClaims)}
-                                className="flex-1 sm:flex-none h-10 px-4 bg-[#003366] hover:bg-[#002244] text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
-                              >
-                                <Printer className="w-4 h-4 text-white" />
-                                <span className="text-white font-black">പ്രിന്റ് (Print A4)</span>
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => downloadCourtComboPdf(user, userSubmittedClaims)}
-                                className="flex-1 sm:flex-none h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-md border border-emerald-500"
-                              >
-                                <Download className="w-4 h-4 text-white" />
-                                <span className="text-white font-black">ഡൗൺലോഡ് (PDF)</span>
-                              </Button>
-                            </div>
                           </div>
                         </div>
                       ) : (
@@ -3657,71 +3764,86 @@ export default function App() {
       )}
 
       {view === 'support' && user && (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 bg-white min-h-screen">
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 bg-slate-50 min-h-screen py-6 px-4 flex items-center justify-center">
           {user.status === 'pending' ? (
-            <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center max-w-md mx-auto space-y-6">
-              <div className="h-20 w-20 rounded-full bg-amber-100 border border-amber-500/30 flex items-center justify-center text-amber-500 shadow-lg animate-bounce">
-                <Clock className="w-10 h-10 animate-pulse" />
-              </div>
-              
-              <h2 className="text-2xl font-black text-slate-850 uppercase tracking-tight leading-none">
-                അംഗത്വ അപ്പ്രൂവലിനായി കാത്തിരിക്കുന്നു!
-              </h2>
-              <p className="text-[10px] font-black tracking-widest text-amber-600 uppercase mt-1">MEMBERSHIP PENDING APPROVAL</p>
+            <div className="w-full max-w-md mx-auto">
+              <div className="relative bg-white border-2 border-amber-300 p-6 sm:p-8 rounded-[36px] shadow-premium overflow-hidden before:content-[''] before:absolute before:inset-x-0 before:top-0 before:h-1.5 before:bg-gradient-to-r before:from-amber-500 before:via-yellow-400 before:to-amber-600 space-y-5 text-center">
+                <div className="h-16 w-16 rounded-2xl bg-amber-50 border-2 border-amber-300 flex items-center justify-center text-amber-600 shadow-sm mx-auto animate-bounce">
+                  <Clock className="w-8 h-8 animate-pulse" />
+                </div>
+                
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight leading-tight">
+                    അംഗത്വ അപ്പ്രൂവലിനായി കാത്തിരിക്കുന്നു!
+                  </h2>
+                  <p className="text-xs font-black tracking-widest text-amber-700 uppercase mt-1.5">
+                    MEMBERSHIP PENDING APPROVAL
+                  </p>
+                </div>
 
-              <div className="bg-amber-50/50 border border-amber-500/15 p-5 rounded-2xl text-slate-600 font-semibold text-xs leading-relaxed text-left space-y-3">
-                <p>
-                  പ്രിയ അംഗമേ, താങ്കളുടെ പുതിയ അംഗത്വം അഡ്മിൻ വെരിഫൈ ചെയ്ത് അപ്പ്രൂവ് ചെയ്യേണ്ടതുണ്ട്. <strong>അപ്പ്രൂവ് ചെയ്തതിന് ശേഷം മാത്രമേ വിവര രജിസ്ട്രി ഫോം ലഭ്യമാകൂ.</strong>
-                </p>
-                <p className="text-[10.5px] text-slate-500 font-bold leading-normal uppercase">
-                  Your registration is pending admin approval. Access to the Financial Info Registry portal will unlock once your account is active.
-                </p>
-              </div>
+                <div className="bg-amber-50 border-2 border-amber-200 p-4 sm:p-5 rounded-2xl text-slate-900 font-bold text-xs sm:text-sm leading-relaxed text-left space-y-2">
+                  <p className="text-amber-950">
+                    പ്രിയ അംഗമേ, താങ്കളുടെ പുതിയ അംഗത്വം അഡ്മിൻ വെരിഫൈ ചെയ്ത് അപ്പ്രൂവ് ചെയ്യേണ്ടതുണ്ട്.
+                  </p>
+                  <p className="text-slate-800 font-medium">
+                    അപ്പ്രൂവ് ചെയ്തതിന് ശേഷം മാത്രമേ <strong className="text-slate-950 font-black">Financial Info Registry ഫോം ലഭ്യമാകൂ.</strong>
+                  </p>
+                </div>
 
-              <div className="w-full pt-4">
-                <Button 
-                  variant="outline"
-                  onClick={() => setView('card')}
-                  className="w-full h-12 rounded-xl border-slate-250 text-xs uppercase text-slate-500 font-bold hover:bg-slate-50"
-                >
-                  തിരികെ ഐഡി കാർഡിലേക്ക് (Back to Card)
-                </Button>
+                <div className="w-full pt-2">
+                  <Button 
+                    variant="outline"
+                    onClick={() => setView('card')}
+                    className="w-full h-11 rounded-2xl border-2 border-slate-300 text-xs uppercase text-slate-750 font-black hover:bg-slate-100 cursor-pointer bg-white"
+                  >
+                    തിരികെ ഐഡി കാർഡിലേക്ക് (Back to Card)
+                  </Button>
+                </div>
               </div>
             </div>
           ) : isExpired ? (
-            <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center max-w-md mx-auto space-y-6">
-              <div className="h-20 w-20 rounded-full bg-rose-100 border border-brand-magenta/30 flex items-center justify-center text-brand-magenta shadow-lg animate-bounce">
-                <ShieldAlert className="w-10 h-10" />
-              </div>
-              
-              <h2 className="text-2xl font-black text-slate-850 uppercase tracking-tight leading-none">
-                വിവര രജിസ്ട്രി ബ്ലോക്ക് ചെയ്തിരിക്കുന്നു!
-              </h2>
-              <p className="text-[10px] font-black tracking-widest text-brand-magenta uppercase mt-1">ACCESS BLOCKED / RENEWAL REQUIRED</p>
+            <div className="w-full max-w-md mx-auto">
+              <div className="relative bg-white border-2 border-rose-300 p-6 sm:p-8 rounded-[36px] shadow-premium overflow-hidden before:content-[''] before:absolute before:inset-x-0 before:top-0 before:h-1.5 before:bg-gradient-to-r before:from-rose-600 before:via-amber-500 before:to-rose-600 space-y-5 text-center">
+                <div className="h-16 w-16 rounded-2xl bg-rose-50 border-2 border-rose-300 flex items-center justify-center text-rose-600 shadow-sm mx-auto animate-bounce">
+                  <ShieldAlert className="w-8 h-8" />
+                </div>
+                
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight leading-tight">
+                    വിവര രജിസ്ട്രി ബ്ലോക്ക് ചെയ്തിരിക്കുന്നു!
+                  </h2>
+                  <p className="text-xs font-black tracking-widest text-rose-700 uppercase mt-1.5">
+                    ACCESS BLOCKED / RENEWAL REQUIRED
+                  </p>
+                </div>
 
-              <div className="bg-rose-50/50 border border-brand-magenta/15 p-5 rounded-2xl text-slate-600 font-semibold text-xs leading-relaxed text-left space-y-3">
-                <p>
-                  പ്രിയ അംഗമേ, താങ്കളുടെ പ്ലാൻ കാലാവധി കഴിഞ്ഞിരിക്കുകയാണ്. സപ്പോർട്ട് വിവരങ്ങൾ നൽകുന്നതിനുള്ള <strong>Financial Info Registry ഫോം ലഭിക്കുന്നതിനായി താങ്കളുടെ മെമ്പർഷിപ്പ് പുതുക്കുക.</strong>
-                </p>
-              </div>
+                <div className="bg-rose-50 border-2 border-rose-200 p-4 sm:p-5 rounded-2xl text-slate-900 font-bold text-xs sm:text-sm leading-relaxed text-left space-y-2">
+                  <p className="text-rose-950">
+                    പ്രിയ അംഗമേ, താങ്കളുടെ പ്ലാൻ കാലാവധി കഴിഞ്ഞിരിക്കുകയാണ്.
+                  </p>
+                  <p className="text-slate-800 font-medium">
+                    സപ്പോർട്ട് വിവരങ്ങൾ നൽകുന്നതിനുള്ള <strong className="text-slate-950 font-black">Financial Info Registry ഫോം ലഭിക്കുന്നതിനായി താങ്കളുടെ മെമ്പർഷിപ്പ് പുതുക്കുക.</strong>
+                  </p>
+                </div>
 
-              <div className="w-full pt-4 space-y-3">
-                <Button 
-                  onClick={() => {
-                    setPrefilledMobile(user.mobile);
-                    setView('renewal');
-                  }}
-                  className="w-full h-13 rounded-xl bg-brand-magenta text-slate-950 font-black text-xs uppercase shadow-md hover:bg-brand-magenta/90"
-                >
-                  അംഗത്വം പുതുക്കുക ₹100 (Renew Now)
-                </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => setView('card')}
-                  className="w-full h-12 rounded-xl border-slate-250 text-xs uppercase text-slate-500 font-bold hover:bg-slate-50"
-                >
-                  തിരികെ ഐഡി കാർഡിലേക്ക് (Back to Card)
-                </Button>
+                <div className="w-full pt-2 space-y-3">
+                  <Button 
+                    onClick={() => {
+                      setPrefilledMobile(user.mobile);
+                      setView('renewal');
+                    }}
+                    className="w-full h-13 rounded-2xl bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white font-black text-xs sm:text-sm uppercase shadow-lg shadow-rose-600/20 cursor-pointer"
+                  >
+                    അംഗത്വം പുതുക്കുക ₹100 (Renew Now)
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => setView('card')}
+                    className="w-full h-11 rounded-2xl border-2 border-slate-300 text-xs uppercase text-slate-700 font-black hover:bg-slate-100 cursor-pointer bg-white"
+                  >
+                    തിരികെ ഐഡി കാർഡിലേക്ക് (Back to Card)
+                  </Button>
+                </div>
               </div>
             </div>
           ) : (

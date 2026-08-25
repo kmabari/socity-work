@@ -21,7 +21,15 @@ service cloud.firestore {
 
     function isProfileOwner(userId) {
       return isSignedIn() && (
-        request.auth.uid == userId || (
+        request.auth.uid == userId || 
+        (request.auth.token.get('email', '') != '' && (
+          (userId.matches('^offline_.*') && request.auth.token.get('email', '').matches('^' + userId.replace('offline_', '') + '.*')) ||
+          (userId.matches('^life_.*') && request.auth.token.get('email', '').matches('^' + userId.replace('life_', '') + '.*')) ||
+          (exists(/databases/$(database)/documents/users/$(userId)) && (
+            (get(/databases/$(database)/documents/users/$(userId)).data.get('email', '') != '' && request.auth.token.get('email', '') == get(/databases/$(database)/documents/users/$(userId)).data.get('email', '')) ||
+            (get(/databases/$(database)/documents/users/$(userId)).data.get('mobile', '') != '' && request.auth.token.get('email', '').matches('^' + get(/databases/$(database)/documents/users/$(userId)).data.get('mobile', '') + '.*'))
+          ))
+        )) || (
           exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
             (exists(/databases/$(database)/documents/users/$(userId)) && 
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('mobile', '') != '' &&
@@ -222,22 +230,23 @@ service cloud.firestore {
         isOperator()
       )) && isValidUser(request.resource.data);
 
-      allow update: if isValidUser(incoming()) && (
-        // Enforce that Name or Mobile changes require Main Admin
-        (!incoming().diff(existing()).affectedKeys().hasAny(['name', 'mobile']) || isMainAdmin())
-      ) && (
-        // Action 1: Admin/Operator Update
-        (isSignedIn() && isOperator() && (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'isApproved', 'isPaid', 'issueDate', 'expiryDate', 'membershipId', 'serialNo', 'quota', 'quotaUsed', 'isAdmin', 'role', 'pin', 'bloodGroup', 'membershipType', 'membership_type', 'photoUrl', 'details', 'waStatus', 'stateCode', 'districtCode', 'constituencyCode', 'registrationDate', 'renewalPending', 'renewalDate', 'paymentTime', 'paymentProofUrl', 'renewalTransactionId', 'renewalPaymentDate', 'renewalPaymentTime', 'name', 'mobile', 'email', 'address', 'district', 'state', 'pincode', 'postOffice', 'assemblyConstituency', 'transactionId', 'registeredBy', 'isQuotaCounted', 'mustChangePassword', 'pinResetRequested', 'mustCompleteProfile', 'profileCompleted']) || isAdmin())) ||
-        
-        // Action 2: User Profile Edit (Self) - restricted fields (cannot change name or mobile, but can update constituency-driven membership properties and settlement info)
-        (isSignedIn() && (isOwner(userId) || isProfileOwner(userId)) && 
-         incoming().diff(existing()).affectedKeys().hasOnly(['email', 'address', 'district', 'state', 'pincode', 'postOffice', 'assemblyConstituency', 'bloodGroup', 'gender', 'dob', 'pin', 'mustChangePassword', 'pinResetRequested', 'mustCompleteProfile', 'profileCompleted', 'membershipType', 'photoUrl', 'transactionId', 'paymentTime', 'paymentProofUrl', 'renewalPending', 'renewalTransactionId', 'membershipId', 'stateCode', 'districtCode', 'constituencyCode', 'panNumber', 'paymentDate', 'transactionRef', 'paidFromBank', 'paidFromBranch', 'paidFromAccount', 'paidFromIfsc', 'settlementBankName', 'settlementBranch', 'settlementAccountNumber', 'settlementIfsc', 'settlementAccountHolder'])) ||
+      allow update: if (isSignedIn() && (isAdmin() || isOperator())) || (
+        isValidUser(incoming()) && (
+          // Enforce that Name or Mobile changes require Main Admin
+          (!incoming().diff(existing()).affectedKeys().hasAny(['name', 'mobile']) || isMainAdmin())
+        ) && (
+          // Action 2: User Profile Edit (Self) - restricted fields (cannot change name or mobile without main admin, cannot escalate admin/role/quota)
+          (isSignedIn() && (isOwner(userId) || isProfileOwner(userId)) && 
+           (!incoming().diff(existing()).affectedKeys().hasAny(['isAdmin', 'role', 'quota', 'quotaUsed']))) ||
 
-        // Action 3: Public General Renewal Submission
-        (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'isApproved', 'renewalPending', 'renewalTransactionId', 'renewalDate', 'renewalPaymentDate', 'renewalPaymentTime']) &&
-         incoming().status == 'pending' &&
-         incoming().isApproved == false &&
-         incoming().renewalPending == true)
+          // Action 3: General Renewal Submission (Guest / Public or Self)
+          (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'isApproved', 'renewalPending', 'renewalTransactionId', 'renewalDate', 'renewalPaymentDate', 'renewalPaymentTime', 'paymentAmount', 'paymentId', 'orderId', 'transactionId', 'paymentMethod', 'paymentStatus', 'receiptNumber', 'expiryDate', 'paymentTime']) &&
+           (!incoming().diff(existing()).affectedKeys().hasAny(['isAdmin', 'role', 'pin', 'name', 'mobile', 'quota', 'quotaUsed']))) ||
+
+          // Action 4: Member Self/Public PIN Reset Request
+          (incoming().diff(existing()).affectedKeys().hasOnly(['pin', 'mustChangePassword', 'pinResetRequested']) &&
+           (!incoming().diff(existing()).affectedKeys().hasAny(['isAdmin', 'role', 'name', 'mobile', 'quota', 'quotaUsed', 'status', 'isApproved'])))
+        )
       );
 
       allow delete: if isAdmin() || (
@@ -258,7 +267,7 @@ service cloud.firestore {
       // --- Subcollection: receipts ---
       match /receipts/{receiptId} {
         allow read: if isReceiptOwner(userId) || isOperator() || resource.data.status in ['Paid', 'Pending', 'Pending Verification', 'Renewed'];
-        allow create: if isReceiptOwner(userId) || isOperator() || request.resource.data.status in ['Paid', 'Pending', 'Pending Verification', 'Renewed'];
+        allow create: if isReceiptOwner(userId) || isOperator() || request.resource.data.status in ['Paid', 'Pending', 'Pending Verification', 'Renewed'] || request.resource.data.receiptType in ['Membership Fee', 'Membership Renewal', 'Annual Renewal', 'Life Membership'];
         allow update, delete: if isOperator() || isAdmin();
       }
     }

@@ -347,30 +347,46 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-screen w-full flex flex-col items-center justify-start pt-4 sm:pt-8 pb-16 px-4 bg-gradient-to-br from-slate-50 via-white to-slate-100 selection:bg-[#1a2b5c]/10 relative overflow-x-hidden overflow-y-auto">
+      {/* Subtle Blue and Gold Accent Orbs */}
+      <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-[#1a2b5c]/5 blur-3xl pointer-events-none" />
+      <div className="absolute bottom-[-25%] right-[-10%] w-[600px] h-[600px] rounded-full bg-[#c9a227]/4 blur-3xl pointer-events-none" />
+
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="max-w-md w-full"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className="max-w-md w-full z-10"
       >
-        <div className="text-center mb-10">
-          <Logo className="mb-4 scale-125" />
-          <h2 className="text-3xl font-black text-white uppercase tracking-tight mt-6">{t('renewal_title', 'Membership Renewal')}</h2>
-          <p className="text-[#c9a227] text-[10px] font-black tracking-[0.2em] mt-1 uppercase">HIGHRICH COMMUNITY REVIVAL SOCIETY</p>
+        {/* Prominently Centered Brand Header */}
+        <div className="text-center mb-5 sm:mb-6">
+          <div className="inline-block p-3.5 sm:p-4 bg-white shadow-premium rounded-[28px] mb-3 border border-slate-200/80 transition-all hover:scale-105 duration-300">
+            <Logo className="scale-110 mx-auto" />
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">
+            {t('renewal_title', 'Membership Renewal')}
+          </h2>
+          <p className="text-xs font-black text-[#c9a227] mt-2 uppercase tracking-widest leading-none">
+            HIGHRICH COMMUNITY REVIVAL SOCIETY
+          </p>
         </div>
 
-        <Card className="border border-border/60 bg-card/80 backdrop-blur-xl shadow-2xl overflow-hidden rounded-[32px]">
+        {/* Card with Border and Brand Gradient Strip */}
+        <div className="relative bg-white border-2 border-slate-200 p-6 sm:p-8 rounded-[36px] shadow-premium overflow-hidden before:content-[''] before:absolute before:inset-x-0 before:top-0 before:h-1.5 before:bg-gradient-to-r before:from-[#1a2b5c] before:via-[#c9a227] before:to-[#233875] after:content-[''] after:absolute after:inset-x-0 after:bottom-0 after:h-1.5 after:bg-gradient-to-r after:from-[#233875] after:via-[#c9a227] after:to-[#1a2b5c]">
           {step === 'search' && (
-            <CardContent className="p-8 space-y-6">
+            <div className="space-y-6">
               <div className="space-y-2">
-                <label className="text-foreground/70 font-black uppercase text-[10px] tracking-widest ml-1">{t('renewal_search_label', 'Search ID or Mobile')}</label>
+                <label className="text-slate-900 font-black uppercase text-xs tracking-wider ml-1 flex items-center gap-1.5">
+                  <Search className="w-4 h-4 text-[#1a2b5c]" />
+                  <span>{t('renewal_search_label', 'Search ID or Mobile (ഐഡി അല്ലെങ്കിൽ ഫോൺ നമ്പർ)')}</span>
+                </label>
                 <div className="relative">
-                  <Search className="absolute left-4 top-4 w-5 h-5 text-foreground/30" />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                   <Input 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder={t('renewal_search_placeholder', "e.g. KL/MLP/KTK/1001 or mobile number")}
-                    className="pl-12 h-14 bg-white/5 border-border focus:border-brand-blue/50 transition-all rounded-[20px] font-bold text-lg"
+                    className="pl-12 h-13 bg-white border-2 border-slate-300 focus:border-[#1a2b5c] focus:ring-2 focus:ring-[#1a2b5c]/20 transition-all rounded-2xl font-bold text-sm text-slate-950 placeholder:text-slate-400 shadow-xs"
                   />
                 </div>
               </div>
@@ -378,58 +394,59 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
               <Button 
                 onClick={handleSearch} 
                 disabled={searching}
-                className="w-full h-16 rounded-[24px] text-lg font-black shadow-xl shadow-brand-blue/10 group bg-brand-blue text-white hover:bg-brand-blue/90"
+                className="w-full h-13 rounded-2xl text-xs sm:text-sm font-black shadow-lg shadow-[#1a2b5c]/20 group bg-gradient-to-r from-[#1a2b5c] to-[#233875] hover:from-[#0d1733] hover:to-[#1a2b5c] text-white flex items-center justify-center gap-2 cursor-pointer uppercase tracking-widest"
               >
-                {searching ? t('search_loading', 'Looking up...') : t('find_profile_btn', 'Find Profile')}
-                <ArrowRight className="ml-2 w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                {searching ? t('search_loading', 'Looking up...') : t('find_profile_btn', 'Find Profile (വിവരങ്ങൾ കണ്ടെത്തുക)')}
+                <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Button>
 
               <Button 
-                variant="ghost" 
+                variant="outline" 
                 onClick={onBack}
-                className="w-full h-12 rounded-[20px] text-foreground/40 font-black uppercase tracking-widest text-[10px] hover:text-brand-blue transition-all"
+                className="w-full h-11 rounded-2xl text-slate-700 hover:text-slate-950 font-black uppercase tracking-widest text-xs border-2 border-slate-300 bg-white hover:bg-slate-100 transition-all shadow-xs cursor-pointer flex items-center justify-center gap-2"
               >
-                <ArrowLeft className="mr-2 w-4 h-4" />
+                <ArrowLeft className="w-4 h-4 text-[#1a2b5c]" />
                 {t('return_home_btn', 'Return Home')}
               </Button>
-            </CardContent>
+            </div>
           )}
 
           {step === 'confirm' && foundMember && (
-            <CardContent className="p-8 space-y-8">
-              <div className="bg-brand-blue/5 border border-brand-blue/20 p-6 rounded-[28px] text-center">
-                <div className="w-16 h-16 bg-brand-magenta/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-brand-magenta/20">
-                  <Heart className="w-8 h-8 text-brand-magenta" />
+            <div className="space-y-6">
+              <div className="bg-slate-50 border-2 border-slate-200 p-5 sm:p-6 rounded-3xl text-center space-y-2 shadow-xs">
+                <div className="w-14 h-14 bg-[#1a2b5c]/10 rounded-full flex items-center justify-center mx-auto mb-2 border border-[#1a2b5c]/20">
+                  <Heart className="w-7 h-7 text-[#1a2b5c]" />
                 </div>
-                <h3 className="text-2xl font-black text-brand-blue uppercase tracking-tight truncate">{foundMember.name}</h3>
-                <p className="text-[10px] font-black text-foreground/40 tracking-[0.2em] mt-1">{foundMember.membershipId}</p>
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight truncate">{foundMember.name}</h3>
+                <p className="text-xs font-mono font-black text-[#1a2b5c] tracking-wider">{foundMember.membershipId}</p>
+                <p className="text-xs font-bold text-slate-600">{foundMember.mobile}</p>
               </div>
 
               {(() => {
                 const validity = getMemberValidityInfo(foundMember);
                 if (validity.hasActiveValidity) {
                   return (
-                    <div className="space-y-6">
-                      <div className="bg-amber-500/10 border border-amber-500/20 p-5 rounded-[24px] text-center space-y-3 shadow-md">
-                        <div className="w-12 h-12 bg-amber-500/15 rounded-full flex items-center justify-center mx-auto border border-amber-500/35">
-                          <ShieldCheck className="w-6 h-6 text-amber-500" />
+                    <div className="space-y-5">
+                      <div className="bg-amber-50 border-2 border-amber-300 p-5 rounded-3xl text-center space-y-3 shadow-xs">
+                        <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto border border-amber-300 text-amber-800">
+                          <ShieldCheck className="w-6 h-6" />
                         </div>
-                        <p className="text-sm font-black text-amber-600 leading-relaxed">
+                        <p className="text-xs sm:text-sm font-black text-amber-950 leading-relaxed">
                           {validity.message}
                         </p>
                       </div>
                       
-                      <div className="space-y-3 pt-2">
+                      <div className="space-y-3 pt-1">
                         <Button 
                           onClick={() => setStep('search')}
-                          className="w-full h-14 rounded-[20px] text-md font-black bg-brand-blue text-white hover:bg-brand-blue/90 shadow-xl shadow-brand-blue/10"
+                          className="w-full h-13 rounded-2xl text-xs sm:text-sm font-black bg-gradient-to-r from-[#1a2b5c] to-[#233875] text-white hover:from-[#0d1733] hover:to-[#1a2b5c] shadow-lg shadow-[#1a2b5c]/20 uppercase tracking-wider cursor-pointer"
                         >
                           {t('renewal_search_another', 'പകരം വേറെ ഐഡി തിരയുക (Search Another)')}
                         </Button>
                         <Button 
-                          variant="ghost" 
+                          variant="outline" 
                           onClick={onBack}
-                          className="w-full h-12 rounded-[20px] text-foreground/40 font-black uppercase tracking-widest text-[10px] hover:text-brand-blue transition-all"
+                          className="w-full h-11 rounded-2xl text-slate-700 hover:text-slate-950 font-black uppercase tracking-widest text-xs border-2 border-slate-300 bg-white hover:bg-slate-100 transition-all cursor-pointer"
                         >
                           {t('return_home_btn', 'Return Home')}
                         </Button>
@@ -440,31 +457,31 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
 
                 return (
                   <div className="space-y-4">
-                    <div className="flex justify-between items-center px-2">
-                      <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">{t('renewal_fee_label', 'Renewal Fee')}</span>
-                      <span className="text-xl font-black text-brand-blue">₹{renewalFee}</span>
+                    <div className="flex justify-between items-center px-4 py-3 bg-slate-50 rounded-2xl border-2 border-slate-200">
+                      <span className="text-xs font-black text-slate-700 uppercase tracking-wider">{t('renewal_fee_label', 'Renewal Fee')}</span>
+                      <span className="text-2xl font-black text-[#1a2b5c]">₹{renewalFee}</span>
                     </div>
                     <Button 
                       onClick={() => setStep('payment')}
-                      className="w-full h-16 rounded-[24px] text-lg font-black shadow-xl shadow-brand-blue/10 bg-brand-blue text-white hover:bg-brand-blue/90 cursor-pointer"
+                      className="w-full h-13 rounded-2xl text-xs sm:text-sm font-black shadow-lg shadow-[#1a2b5c]/20 bg-gradient-to-r from-[#1a2b5c] to-[#233875] hover:from-[#0d1733] hover:to-[#1a2b5c] text-white uppercase tracking-widest cursor-pointer"
                     >
                       {t('reg_proceed_to_payment', 'Proceed to Payment')} (₹{renewalFee})
                     </Button>
                     <Button 
-                      variant="ghost" 
+                      variant="outline" 
                       onClick={() => setStep('search')}
-                      className="w-full h-12 rounded-[20px] text-foreground/40 font-black uppercase tracking-widest text-[10px] hover:text-brand-blue transition-all cursor-pointer"
+                      className="w-full h-11 rounded-2xl text-slate-700 hover:text-slate-950 font-black uppercase tracking-widest text-xs border-2 border-slate-300 bg-white hover:bg-slate-100 transition-all cursor-pointer"
                     >
                       {t('renewal_not_you', 'Not you? Search again')}
                     </Button>
                   </div>
                 );
               })()}
-            </CardContent>
+            </div>
           )}
 
           {step === 'payment' && (
-            <CardContent className="p-6 sm:p-8 space-y-6">
+            <div className="space-y-6">
               {/* PAYMENT METHOD SELECTION (When both are enabled) */}
               {razorpayEnabled && qrCodePaymentEnabled && (
                 <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1.5 rounded-2xl border-2 border-slate-200">
@@ -651,17 +668,17 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
 
               <div className="pt-2">
                 <Button 
-                  variant="ghost" 
+                  variant="outline" 
                   onClick={() => setStep('confirm')}
-                  className="w-full h-12 rounded-2xl text-slate-400 hover:text-slate-600 font-black uppercase tracking-widest text-[10px] hover:bg-slate-50 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="w-full h-11 rounded-2xl text-slate-700 hover:text-slate-950 font-black uppercase tracking-widest text-xs border-2 border-slate-300 bg-white hover:bg-slate-100 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  <ArrowLeft className="w-4 h-4" />
+                  <ArrowLeft className="w-4 h-4 text-[#1a2b5c]" />
                   {t('reg_go_back_btn', 'Go Back / വിവരങ്ങൾ തിരുത്തുക')}
                 </Button>
               </div>
-            </CardContent>
+            </div>
           )}
-        </Card>
+        </div>
       </motion.div>
     </div>
   );

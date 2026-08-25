@@ -2650,38 +2650,54 @@ export default function LandingPage({
 
                     {/* Accurate Status Display */}
                     {claimUserStatus === 'pending' && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-[6px] p-4 space-y-1 text-slate-800 font-normal text-xs leading-relaxed">
-                        <div className="flex items-center gap-1.5 text-amber-900 font-bold uppercase text-[10px] tracking-wider">
-                          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                      <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-4 space-y-1.5 text-left">
+                        <div className="flex items-center gap-1.5 text-amber-950 font-black uppercase text-xs tracking-wider">
+                          <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
                           അംഗത്വ അപ്പ്രൂവലിനായി കാത്തിരിക്കുന്നു (Pending Approval)
                         </div>
-                        <p className="text-slate-600 font-normal">
+                        <p className="text-slate-800 font-medium text-xs leading-relaxed">
                           നിങ്ങളുടെ പുതിയ മെമ്പർഷിപ്പ് രജിസ്ട്രേഷൻ അഡ്മിൻ പാനലിൽ വെരിഫിക്കേഷനിലാണ്. അഡ്മിൻ അപ്പ്രൂവ് ചെയ്തതിന് ശേഷം മാത്രമേ ക്ലെയിം വിവരങ്ങൾ സമർപ്പിക്കാൻ സാധിക്കുകയുള്ളൂ.
                         </p>
                       </div>
                     )}
 
                     {claimUserStatus === 'renewal_pending' && (
-                      <div className="bg-orange-50 border border-orange-255 rounded-[6px] p-4 space-y-1 text-slate-800 font-normal text-xs leading-relaxed">
-                        <div className="flex items-center gap-1.5 text-orange-900 font-bold uppercase text-[10px] tracking-wider">
-                          <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse shrink-0" />
+                      <div className="bg-orange-50 border-2 border-orange-300 rounded-xl p-4 space-y-1.5 text-left">
+                        <div className="flex items-center gap-1.5 text-orange-950 font-black uppercase text-xs tracking-wider">
+                          <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse shrink-0" />
                           റിന്യൂവൽ അപ്പ്രൂവലിനായി കാത്തിരിക്കുന്നു (Renewal Pending)
                         </div>
-                        <p className="text-slate-600 font-normal">
+                        <p className="text-slate-800 font-medium text-xs leading-relaxed">
                           നിങ്ങൾ സബ്മിറ്റ് ചെയ്ത ₹100 റിന്യൂവൽ പേയ്മെന്റ് വെരിഫൈ ചെയ്യാൻ ബാക്കിയാണ്. അഡ്മിൻ ഇത് അപ്പ്രൂവ് ചെയ്തയുടൻ ക്ലെയിം പോർട്ടലിൽ പ്രവേശിക്കാൻ സാധിക്കും.
                         </p>
                       </div>
                     )}
 
                     {claimUserStatus === 'expired' && (
-                      <div className="bg-rose-50 border border-rose-200 rounded-[6px] p-4 space-y-1 text-slate-800 font-normal text-xs leading-relaxed">
-                        <div className="flex items-center gap-1.5 text-rose-800 font-bold uppercase text-[10px] tracking-wider">
-                          <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0 animate-pulse" />
+                      <div className="bg-rose-50 border-2 border-rose-300 rounded-xl p-4 space-y-2 text-left">
+                        <div className="flex items-center gap-1.5 text-rose-950 font-black uppercase text-xs tracking-wider">
+                          <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-pulse shrink-0" />
                           മെമ്പർഷിപ്പ് കാലാവധി കഴിഞ്ഞിരിക്കുന്നു (Membership Expired)
                         </div>
-                        <p className="text-slate-600 font-normal">
+                        <p className="text-slate-800 font-medium text-xs leading-relaxed">
                           നിങ്ങളുടെ മെമ്പർഷിപ്പ് കാലാവധി അവസാനിച്ചിരിക്കുന്നു. ക്ലെയിം വിവരങ്ങൾ രേഖപ്പെടുത്താൻ ആദ്യം ലോഗിൻ ചെയ്ത് ₹100 അടച്ചു അംഗത്വം പുതുക്കേണ്ടതുണ്ട്.
                         </p>
+                        <div className="pt-2">
+                          <Button
+                            type="button"
+                            onClick={() => {
+                              setStage('landing');
+                              if (onRenewWithMobile) {
+                                onRenewWithMobile(claimMobile);
+                              } else {
+                                onRenew();
+                              }
+                            }}
+                            className="w-full h-11 rounded-xl bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white font-black text-xs uppercase shadow-md cursor-pointer"
+                          >
+                            അംഗത്വം പുതുക്കുക ₹100 (Renew Now)
+                          </Button>
+                        </div>
                       </div>
                     )}
 

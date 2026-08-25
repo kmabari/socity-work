@@ -8,6 +8,7 @@ import {
   ChevronLeft, 
   Save, 
   AlertTriangle, 
+  AlertCircle,
   CheckCircle2, 
   Clock, 
   IndianRupee,
@@ -225,6 +226,8 @@ const FormFieldBox = ({
   children,
   hint,
   formLang = 'bilingual',
+  error,
+  id,
 }: {
   label: string;
   badge?: string;
@@ -237,18 +240,27 @@ const FormFieldBox = ({
   children: React.ReactNode;
   hint?: string;
   formLang?: string;
+  error?: string;
+  id?: string;
 }) => {
   return (
-    <div className={`group space-y-2 bg-slate-50/90 hover:bg-white border-2 border-slate-300 hover:border-indigo-400 focus-within:border-brand-blue focus-within:bg-white focus-within:ring-4 focus-within:ring-brand-blue/10 transition-all rounded-2xl p-3 sm:p-3.5 shadow-xs flex flex-col justify-between ${className}`}>
+    <div 
+      id={id}
+      className={`group space-y-2 bg-slate-50/90 hover:bg-white border-2 ${
+        error 
+          ? 'border-rose-500 bg-rose-50/30 ring-2 ring-rose-400/50 shadow-rose-200' 
+          : 'border-slate-300 hover:border-indigo-400 focus-within:border-brand-blue focus-within:bg-white focus-within:ring-4 focus-within:ring-brand-blue/10'
+      } transition-all rounded-2xl p-3 sm:p-3.5 shadow-xs flex flex-col justify-between ${className}`}
+    >
       <div className="space-y-1">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           {/* Colored Button/Pill Label */}
-          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-black tracking-wide shadow-2xs ${themeStyles[theme] || themeStyles.blue}`}>
+          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-black tracking-wide shadow-2xs ${error ? 'bg-rose-700 text-white' : (themeStyles[theme] || themeStyles.blue)}`}>
             {icon && <span className="text-xs shrink-0">{icon}</span>}
             <span className="leading-tight">{label}</span>
           </div>
           {required && (
-            <span className="text-[9px] font-black text-rose-700 bg-rose-100 border border-rose-200 px-2 py-0.5 rounded-md shrink-0 uppercase tracking-wider">
+            <span className={`text-[9px] font-black ${error ? 'text-white bg-rose-600 animate-pulse' : 'text-rose-700 bg-rose-100 border border-rose-200'} px-2 py-0.5 rounded-md shrink-0 uppercase tracking-wider`}>
               {formLang === 'english' ? 'Required *' : 'നിർബന്ധം *'}
             </span>
           )}
@@ -268,6 +280,73 @@ const FormFieldBox = ({
         )}
       </div>
       <div className="pt-0.5">{children}</div>
+      {error && (
+        <div className="flex items-center gap-1.5 text-xs font-black text-rose-700 bg-rose-100/90 border border-rose-300 px-2.5 py-1.5 rounded-xl animate-in fade-in duration-200 mt-1">
+          <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-600 animate-pulse" />
+          <span>{error}</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Prominent Missing Fields Interactive Banner
+const MissingFieldsBanner = ({ 
+  missing, 
+  title = "ശ്രദ്ധിക്കുക: ഫോമിൽ താഴെ പറയുന്ന നിർബന്ധ കോളങ്ങൾ വിട്ടുപോയിരിക്കുന്നു (Missing Required Fields)",
+  onFocusField
+}: { 
+  missing: Array<{ id: string; key: string; label: string }>; 
+  title?: string;
+  onFocusField?: (id: string) => void;
+}) => {
+  if (missing.length === 0) return null;
+  return (
+    <div className="bg-gradient-to-br from-rose-50 via-red-50 to-amber-50 border-2 border-rose-500 rounded-3xl p-4 sm:p-5 shadow-lg space-y-3 animate-in fade-in zoom-in-95 duration-300">
+      <div className="flex items-center gap-2.5 text-rose-700">
+        <div className="w-8 h-8 rounded-xl bg-rose-600 text-white flex items-center justify-center font-black shrink-0 shadow-sm animate-bounce">
+          <AlertTriangle className="w-5 h-5 text-amber-200" />
+        </div>
+        <div>
+          <h4 className="text-xs sm:text-sm font-black uppercase tracking-tight text-rose-950">
+            {title}
+          </h4>
+          <p className="text-[11px] font-bold text-rose-900 mt-0.5">
+            ക്ലെയിം ഫോം വിജയകരമായി സമർപ്പിക്കാൻ താഴെ പറയുന്ന {missing.length} വിവരങ്ങൾ പൂരിപ്പിക്കുക (പൂരിപ്പിക്കാൻ ഓരോന്നിലും ക്ലിക്ക് ചെയ്യുക):
+          </p>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+        {missing.map((item, idx) => (
+          <button
+            type="button"
+            key={idx}
+            onClick={() => {
+              if (onFocusField) {
+                onFocusField(item.id);
+              } else {
+                const el = document.getElementById(item.id);
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  const inp = el.querySelector('input, select, textarea') as HTMLElement;
+                  if (inp) inp.focus();
+                }
+              }
+            }}
+            className="text-left bg-white/95 hover:bg-rose-100 border-2 border-rose-300 hover:border-rose-600 rounded-2xl p-2.5 text-xs font-black text-rose-900 flex items-center justify-between gap-2 shadow-2xs transition-all cursor-pointer group"
+          >
+            <span className="flex items-center gap-2 min-w-0">
+              <span className="w-5 h-5 rounded-full bg-rose-600 text-white text-[11px] flex items-center justify-center font-bold shrink-0 shadow-xs">
+                {idx + 1}
+              </span>
+              <span className="truncate">{item.label}</span>
+            </span>
+            <span className="text-[10px] text-brand-blue font-extrabold uppercase shrink-0 bg-blue-50 px-2 py-0.5 rounded-lg group-hover:bg-brand-blue group-hover:text-white transition-colors">
+              പൂരിപ്പിക്കുക ➔
+            </span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 };
@@ -291,6 +370,30 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
   const [selectedStatementIdx, setSelectedStatementIdx] = useState<number>(-1);
   const [newlyAssignedTokens, setNewlyAssignedTokens] = useState<Record<string, string>>({});
   
+  // Validation error state tracking
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [missingFieldsSummary, setMissingFieldsSummary] = useState<Array<{ id: string; key: string; label: string }>>([]);
+
+  const clearFieldError = (key: string) => {
+    if (validationErrors[key]) {
+      setValidationErrors(prev => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }
+    setMissingFieldsSummary(prev => prev.filter(item => item.key !== key));
+  };
+
+  const scrollToField = (fieldId: string) => {
+    const el = document.getElementById(fieldId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const inp = el.querySelector('input, select, textarea') as HTMLElement;
+      if (inp) inp.focus();
+    }
+  };
+
   // Edit mode toggles for individual claimants (when true, reveals the form for editing)
   const [editingSelf, setEditingSelf] = useState(false);
   const [editingSpouse, setEditingSpouse] = useState(false);
@@ -1372,72 +1475,104 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
     }
 
     // 1. Mandatory validation for Self Claim (Name, Mobile, PAN)
+    const errs: Record<string, string> = {};
+    const missing: Array<{ id: string; key: string; label: string }> = [];
+
     if (shouldProcessSelf) {
       const sName = (customerName || selfName || user?.name || '').trim();
       const sMobile = (customerMobile || user?.mobile || '').trim().replace(/\D/g, '');
       const sPan = (customerPan || user?.panNumber || user?.pan || '').trim().toUpperCase();
 
       if (!sName) {
-        toast.error('ദയവായി അപേക്ഷകന്റെ പേര് നൽകുക. (Please enter Applicant Name)');
-        return;
+        errs['customerName'] = 'അപേക്ഷകന്റെ പേര് നിർബന്ധമാണ് (Applicant Name is required)';
+        missing.push({ id: 'field-customerName', key: 'customerName', label: '1. അപേക്ഷകന്റെ പേര് (Applicant Name)' });
       }
       if (sMobile.length < 10) {
-        toast.error('ദയവായി അപേക്ഷകന്റെ 10 അക്ക മൊബൈൽ നമ്പർ നൽകുക. (Please enter 10-digit Mobile Number)');
-        return;
+        errs['customerMobile'] = '10 അക്ക രജിസ്റ്റേർഡ് മൊബൈൽ നമ്പർ നൽകുക (10-digit Mobile is required)';
+        missing.push({ id: 'field-customerMobile', key: 'customerMobile', label: '1. രജിസ്റ്റേർഡ് മൊബൈൽ നമ്പർ (10-digit Mobile)' });
       }
       if (!sPan || sPan.length < 10) {
-        toast.error('ദയവായി അപേക്ഷകന്റെ 10 അക്ക പാൻ കാർഡ് നമ്പർ (PAN) നൽകുക. (Please enter 10-character PAN Card Number)');
-        return;
+        errs['customerPan'] = '10 അക്ക പാൻ കാർഡ് നമ്പർ രേഖപ്പെടുത്തുക - ഉദാ: ABCDE1234F';
+        missing.push({ id: 'field-customerPan', key: 'customerPan', label: '1. പാൻ കാർഡ് നമ്പർ (PAN Card Number)' });
       }
     }
 
     // 2. Mandatory validation for Spouse Claim (Name, Mobile, PAN)
     if (shouldProcessSpouse) {
-      if (!spouseName.trim() || !spouseRelation) {
-        toast.error('ദയവായി ഭാര്യ / ഭർത്താവിന്റെ പേരും ബന്ധവും രേഖപ്പെടുത്തുക. (Please enter Spouse Name & Relation)');
-        return;
+      if (!spouseRelation) {
+        errs['spouseRelation'] = 'ബന്ധം തിരഞ്ഞെടുക്കുക (ഭാര്യ അല്ലെങ്കിൽ ഭർത്താവ്)';
+        missing.push({ id: 'field-spouseRelation', key: 'spouseRelation', label: '2. ഭാര്യ / ഭർത്താവ് ബന്ധം (Spouse Relation)' });
+      }
+      if (!spouseName.trim()) {
+        errs['spouseName'] = 'ഭാര്യ / ഭർത്താവിന്റെ പേര് രേഖപ്പെടുത്തുക (Spouse Name is required)';
+        missing.push({ id: 'field-spouseName', key: 'spouseName', label: '2. ഭാര്യ / ഭർത്താവിന്റെ പേര് (Spouse Name)' });
       }
       if (spouseMobile.trim().replace(/\D/g, '').length < 10) {
-        toast.error('ദയവായി ഭാര്യ / ഭർത്താവിന്റെ 10 അക്ക മൊബൈൽ നമ്പർ രേഖപ്പെടുത്തുക. (Please enter Spouse 10-digit Mobile Number)');
-        return;
+        errs['spouseMobile'] = 'ഭാര്യ / ഭർത്താവിന്റെ 10 അക്ക മൊബൈൽ നമ്പർ നൽകുക';
+        missing.push({ id: 'field-spouseMobile', key: 'spouseMobile', label: '2. ഭാര്യ / ഭർത്താവിന്റെ മൊബൈൽ നമ്പർ (Spouse Mobile)' });
       }
       if (!spousePan.trim() || spousePan.trim().length < 10) {
-        toast.error('ദയവായി ഭാര്യ / ഭർത്താവിന്റെ 10 അക്ക പാൻ കാർഡ് നമ്പർ (PAN) നൽകുക. (Please enter Spouse 10-character PAN Card Number)');
-        return;
+        errs['spousePan'] = 'ഭാര്യ / ഭർത്താവിന്റെ 10 അക്ക പാൻ കാർഡ് നമ്പർ നൽകുക';
+        missing.push({ id: 'field-spousePan', key: 'spousePan', label: '2. ഭാര്യ / ഭർത്താവിന്റെ പാൻ കാർഡ് നമ്പർ (Spouse PAN)' });
       }
     }
 
     // 3. Mandatory validation for Parent Claim (Name, Mobile, PAN)
     if (shouldProcessParent) {
-      if (!parentName.trim() || !parentRelation) {
-        toast.error('ദയവായി മാതാവ് / പിതാവിന്റെ പേരും ബന്ധവും രേഖപ്പെടുത്തുക. (Please enter Parent Name & Relation)');
-        return;
+      if (!parentRelation) {
+        errs['parentRelation'] = 'ബന്ധം തിരഞ്ഞെടുക്കുക (മാതാവ് അല്ലെങ്കിൽ പിതാവ്)';
+        missing.push({ id: 'field-parentRelation', key: 'parentRelation', label: '3. മാതാവ് / പിതാവ് ബന്ധം (Parent Relation)' });
+      }
+      if (!parentName.trim()) {
+        errs['parentName'] = 'മാതാവ് / പിതാവിന്റെ പേര് രേഖപ്പെടുത്തുക (Parent Name is required)';
+        missing.push({ id: 'field-parentName', key: 'parentName', label: '3. മാതാവ് / പിതാവിന്റെ പേര് (Parent Name)' });
       }
       if (parentMobile.trim().replace(/\D/g, '').length < 10) {
-        toast.error('ദയവായി മാതാവ് / പിതാവിന്റെ 10 അക്ക മൊബൈൽ നമ്പർ രേഖപ്പെടുത്തുക. (Please enter Parent 10-digit Mobile Number)');
-        return;
+        errs['parentMobile'] = 'മാതാവ് / പിതാവിന്റെ 10 അക്ക മൊബൈൽ നമ്പർ നൽകുക';
+        missing.push({ id: 'field-parentMobile', key: 'parentMobile', label: '3. മാതാവ് / പിതാവിന്റെ മൊബൈൽ നമ്പർ (Parent Mobile)' });
       }
       if (!parentPan.trim() || parentPan.trim().length < 10) {
-        toast.error('ദയവായി മാതാവ് / പിതാവിന്റെ 10 അക്ക പാൻ കാർഡ് നമ്പർ (PAN) നൽകുക. (Please enter Parent 10-character PAN Card Number)');
-        return;
+        errs['parentPan'] = 'മാതാവ് / പിതാവിന്റെ 10 അക്ക പാൻ കാർഡ് നമ്പർ നൽകുക';
+        missing.push({ id: 'field-parentPan', key: 'parentPan', label: '3. മാതാവ് / പിതാവിന്റെ പാൻ കാർഡ് നമ്പർ (Parent PAN)' });
       }
     }
 
     // 4. Mandatory validation for Child Claim (Name, Mobile, PAN)
     if (shouldProcessChild) {
-      if (!childName.trim() || !childRelation) {
-        toast.error('ദയവായി മകൻ / മകളുടെ പേരും ബന്ധവും രേഖപ്പെടുത്തുക. (Please enter Child Name & Relation)');
-        return;
+      if (!childRelation) {
+        errs['childRelation'] = 'ബന്ധം തിരഞ്ഞെടുക്കുക (മകൻ അല്ലെങ്കിൽ മകൾ)';
+        missing.push({ id: 'field-childRelation', key: 'childRelation', label: '4. മകൻ / മകൾ ബന്ധം (Child Relation)' });
+      }
+      if (!childName.trim()) {
+        errs['childName'] = 'മകൻ / മകളുടെ പേര് രേഖപ്പെടുത്തുക (Child Name is required)';
+        missing.push({ id: 'field-childName', key: 'childName', label: '4. മകൻ / മകളുടെ പേര് (Child Name)' });
       }
       if (childMobile.trim().replace(/\D/g, '').length < 10) {
-        toast.error('ദയവായി മകൻ / മകളുടെ 10 അക്ക മൊബൈൽ നമ്പർ രേഖപ്പെടുത്തുക. (Please enter Child 10-digit Mobile Number)');
-        return;
+        errs['childMobile'] = 'മകൻ / മകളുടെ 10 അക്ക മൊബൈൽ നമ്പർ നൽകുക';
+        missing.push({ id: 'field-childMobile', key: 'childMobile', label: '4. മകൻ / മകളുടെ മൊബൈൽ നമ്പർ (Child Mobile)' });
       }
       if (!childPan.trim() || childPan.trim().length < 10) {
-        toast.error('ദയവായി മകൻ / മകളുടെ 10 അക്ക പാൻ കാർഡ് നമ്പർ (PAN) നൽകുക. (Please enter Child 10-character PAN Card Number)');
-        return;
+        errs['childPan'] = 'മകൻ / മകളുടെ 10 അക്ക പാൻ കാർഡ് നമ്പർ നൽകുക';
+        missing.push({ id: 'field-childPan', key: 'childPan', label: '4. മകൻ / മകളുടെ പാൻ കാർഡ് നമ്പർ (Child PAN)' });
       }
     }
+
+    // Check if any mandatory fields are missing
+    if (missing.length > 0) {
+      setValidationErrors(errs);
+      setMissingFieldsSummary(missing);
+      scrollToField(missing[0].id);
+      const firstMissingLabels = missing.slice(0, 3).map(m => m.label).join(', ');
+      const extraCount = missing.length > 3 ? ` കൂടാതെ ${missing.length - 3} എണ്ണം കൂടി` : '';
+      toast.error(`വിട്ടുപോയ ${missing.length} കോളങ്ങൾ പൂരിപ്പിക്കുക: ${firstMissingLabels}${extraCount}`, {
+        duration: 7000
+      });
+      return;
+    }
+
+    // Clear validation errors if valid
+    setValidationErrors({});
+    setMissingFieldsSummary([]);
 
     try {
       setLoading(true);
@@ -1581,6 +1716,38 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
 
       let currentTokenOffset = 0;
 
+      const saveClaimRecord = async (claimData: any, existingId?: string) => {
+        try {
+          if (existingId) {
+            await setDoc(doc(db, 'claims', existingId), claimData, { merge: true });
+            return existingId;
+          } else {
+            const ref = await addDoc(collection(db, 'claims'), claimData);
+            return ref.id;
+          }
+        } catch (clientErr) {
+          console.warn("Client Firestore write failed, attempting server fallback API:", clientErr);
+          try {
+            const res = await fetch('/api/submit-claim', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                claim: claimData,
+                claimId: existingId,
+                userMobile: customerMobile || user.mobile,
+                uid: user.uid
+              })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data?.error || 'Server submission failed');
+            return data.id || existingId || 'ok';
+          } catch (serverErr) {
+            console.error("Server API fallback also failed:", serverErr);
+            throw clientErr;
+          }
+        }
+      };
+
       // 1. Submit or Update Self Claim
       if (shouldProcessSelf) {
         let tokenVal = selfClaim?.tokenNo || selfClaim?.serialNo;
@@ -1625,11 +1792,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           tokenNo: tokenVal,
           serialNo: tokenVal,
         };
-        if (selfClaim?.id) {
-          await setDoc(doc(db, 'claims', selfClaim.id), newSelfClaim, { merge: true });
-        } else {
-          await addDoc(collection(db, 'claims'), newSelfClaim);
-        }
+        await saveClaimRecord(newSelfClaim, selfClaim?.id);
       }
 
       // 2. Submit or Update Spouse Claim (ഭാര്യ / ഭർത്താവ്)
@@ -1689,11 +1852,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           tokenNo: tokenVal,
           serialNo: tokenVal,
         };
-        if (spouseClaim?.id) {
-          await setDoc(doc(db, 'claims', spouseClaim.id), newSpouseClaim, { merge: true });
-        } else {
-          await addDoc(collection(db, 'claims'), newSpouseClaim);
-        }
+        await saveClaimRecord(newSpouseClaim, spouseClaim?.id);
       }
 
       // 3. Submit or Update Parent Claim (അമ്മ / അച്ഛൻ)
@@ -1753,11 +1912,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           tokenNo: tokenVal,
           serialNo: tokenVal,
         };
-        if (parentClaim?.id) {
-          await setDoc(doc(db, 'claims', parentClaim.id), newParentClaim, { merge: true });
-        } else {
-          await addDoc(collection(db, 'claims'), newParentClaim);
-        }
+        await saveClaimRecord(newParentClaim, parentClaim?.id);
       }
 
       // 4. Submit or Update Child Claim (മകൻ / മകൾ)
@@ -1817,11 +1972,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           tokenNo: tokenVal,
           serialNo: tokenVal,
         };
-        if (childClaim?.id) {
-          await setDoc(doc(db, 'claims', childClaim.id), newChildClaim, { merge: true });
-        } else {
-          await addDoc(collection(db, 'claims'), newChildClaim);
-        }
+        await saveClaimRecord(newChildClaim, childClaim?.id);
       }
 
       if (shouldProcessSelf) setEditingSelf(false);
@@ -2601,6 +2752,9 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           </div>
         </div>
 
+        {/* MISSING FIELDS ERROR BANNER */}
+        <MissingFieldsBanner missing={missingFieldsSummary} onFocusField={scrollToField} />
+
         {/* SUBMITTED CARD OR FULL FORM: 1. APPLICANT CLAIM FORM (SELF / PRIMARY) */}
         {hasSelf && !editingSelf && (
           <div className="border-2 border-emerald-400/80 bg-gradient-to-br from-emerald-50/90 via-white to-amber-50/40 rounded-3xl shadow-lg p-5 sm:p-6 space-y-4">
@@ -2724,33 +2878,43 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Applicant Name Column */}
               <FormFieldBox 
+                id="field-customerName"
                 label={tLabel('Applicant Name (Customer Name) *', 'അപേക്ഷകന്റെ പേര് *')}
                 icon="👤"
                 theme="blue"
                 required
+                error={validationErrors['customerName']}
               >
                 <Input 
                   value={customerName} 
-                  onChange={(e) => setCustomerName(e.target.value)} 
+                  onChange={(e) => {
+                    setCustomerName(e.target.value);
+                    clearFieldError('customerName');
+                  }} 
                   placeholder={tPlaceholder('Full Name as per records', 'രേഖകളിലുള്ള മുഴുവൻ പേര്')}
-                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-brand-blue text-xs sm:text-sm text-slate-900 shadow-2xs"
+                  className={`h-10 border ${validationErrors['customerName'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-brand-blue text-xs sm:text-sm text-slate-900 shadow-2xs`}
                 />
               </FormFieldBox>
 
               {/* Registered Mobile Number Column */}
               <FormFieldBox 
+                id="field-customerMobile"
                 label={tLabel('Registered Mobile Number *', 'രജിസ്റ്റേർഡ് മൊബൈൽ നമ്പർ *')}
                 icon="📱"
                 theme="blue"
                 required
+                error={validationErrors['customerMobile']}
               >
                 <Input 
                   value={customerMobile} 
-                  onChange={(e) => setCustomerMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                  onChange={(e) => {
+                    setCustomerMobile(e.target.value.replace(/\D/g, '').slice(0, 10));
+                    clearFieldError('customerMobile');
+                  }} 
                   placeholder={tPlaceholder('10-digit Mobile Number', '10 അക്ക മൊബൈൽ നമ്പർ')}
                   type="tel"
                   maxLength={10}
-                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-brand-blue text-xs sm:text-sm text-slate-900 font-mono shadow-2xs"
+                  className={`h-10 border ${validationErrors['customerMobile'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-brand-blue text-xs sm:text-sm text-slate-900 font-mono shadow-2xs`}
                 />
               </FormFieldBox>
 
@@ -2828,18 +2992,23 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
 
               {/* PAN Card Column */}
               <FormFieldBox 
+                id="field-customerPan"
                 label={tLabel('PAN Card Number *', 'പാൻ കാർഡ് നമ്പർ *')}
                 icon="💳"
                 theme="purple"
                 required
+                error={validationErrors['customerPan']}
                 className="md:col-span-2"
               >
                 <Input 
                   value={customerPan} 
-                  onChange={(e) => setCustomerPan(e.target.value.toUpperCase())} 
+                  onChange={(e) => {
+                    setCustomerPan(e.target.value.toUpperCase());
+                    clearFieldError('customerPan');
+                  }} 
                   placeholder={tPlaceholder('e.g. ABCDE1234F', 'പാൻ നമ്പർ നൽകുക (ഉദാ: ABCDE1234F)')}
                   maxLength={10}
-                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-purple-600 text-xs sm:text-sm text-slate-900 font-mono uppercase shadow-2xs"
+                  className={`h-10 border ${validationErrors['customerPan'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-purple-600 text-xs sm:text-sm text-slate-900 font-mono uppercase shadow-2xs`}
                 />
               </FormFieldBox>
             </div>
@@ -3275,37 +3444,40 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           {renderFutureAndConditionsBlock('self')}
 
           {/* INLINE SUBMIT BUTTON FOR FORM 1 */}
-          <div className="pt-4 border-t-2 border-amber-300/80 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 p-4 sm:p-5 rounded-b-3xl">
-            <div className="text-xs font-bold text-slate-800 space-y-0.5">
-              <div className="font-black text-amber-950 flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                {t('Applicant Form Completed', 'അപേക്ഷകന്റെ ഫോം പൂർത്തിയായി')}
+          <div className="space-y-4">
+            <MissingFieldsBanner missing={missingFieldsSummary} onFocusField={scrollToField} />
+            <div className="pt-4 border-t-2 border-amber-300/80 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 p-4 sm:p-5 rounded-b-3xl">
+              <div className="text-xs font-bold text-slate-800 space-y-0.5">
+                <div className="font-black text-amber-950 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  {t('Applicant Form Completed', 'അപേക്ഷകന്റെ ഫോം പൂർത്തിയായി')}
+                </div>
+                <p className="text-[11px] text-slate-600">
+                  {t('Click below to submit this claim form immediately and get official token.', 'ഈ ക്ലെയിം ഫോം സമർപ്പിക്കാനും ഔദ്യോഗിക ടോക്കൺ നമ്പർ നേടാനും താഴെയുള്ള ബട്ടൺ അമർത്തുക.')}
+                </p>
               </div>
-              <p className="text-[11px] text-slate-600">
-                {t('Click below to submit this claim form immediately and get official token.', 'ഈ ക്ലെയിം ഫോം സമർപ്പിക്കാനും ഔദ്യോഗിക ടോക്കൺ നമ്പർ നേടാനും താഴെയുള്ള ബട്ടൺ അമർത്തുക.')}
-              </p>
+              <Button
+                type="button"
+                disabled={loading}
+                onClick={() => handleSubmit('Self')}
+                className="w-full sm:w-auto h-12 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 hover:shadow-xl transition-all cursor-pointer shrink-0"
+              >
+                    {loading ? (
+                      <span className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 animate-spin" /> {t('Saving Details...', 'വിവരങ്ങൾ സേവ് ചെയ്യുന്നു...')}
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <CheckCircle2 className="w-5 h-5 text-amber-200" />
+                        {editingSelf ? t('Update Form 1 Details', 'ഫോം 1 അപ്ഡേറ്റ് ചെയ്യുക') : t('Submit Claim Form', 'ഫോം സബ്മിറ്റ് ചെയ്യുക')}
+                        <ArrowRight className="w-4 h-4" />
+                      </span>
+                    )}
+                  </Button>
+                </div>
+              </div>
             </div>
-            <Button
-              type="button"
-              disabled={loading}
-              onClick={() => handleSubmit('Self')}
-              className="w-full sm:w-auto h-12 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 hover:shadow-xl transition-all cursor-pointer shrink-0"
-            >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 animate-spin" /> {t('Saving Details...', 'വിവരങ്ങൾ സേവ് ചെയ്യുന്നു...')}
-                </span>
-              ) : (
-                <span className="flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-amber-200" />
-                  {editingSelf ? t('Update Form 1 Details', 'ഫോം 1 അപ്ഡേറ്റ് ചെയ്യുക') : t('Submit Claim Form', 'ഫോം സബ്മിറ്റ് ചെയ്യുക')}
-                  <ArrowRight className="w-4 h-4" />
-                </span>
-              )}
-            </Button>
-          </div>
-        </div>
-        )}
+          )}
 
         {/* SECTION DIVIDER: FAMILY MEMBERS CLAIMS (OPTIONAL - MAX 4 PERSONS IN TOTAL) */}
         <div className="bg-gradient-to-r from-pink-50 via-slate-50 to-indigo-50 border border-slate-200 rounded-3xl p-5 sm:p-6 space-y-2.5">
@@ -3516,51 +3688,66 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                 {/* Spouse Personal Details Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormFieldBox
+                    id="field-spouseName"
                     label={tLabel('Spouse Full Name *', 'ഭാര്യ / ഭർത്താവിന്റെ മുഴുവൻ പേര് *')}
                     icon="👤"
                     badge={t('Required', 'നിർബന്ധം')}
                     badgeType="required"
                     theme="rose"
+                    error={validationErrors['spouseName']}
                   >
                     <Input 
                       value={spouseName} 
-                      onChange={(e) => setSpouseName(e.target.value)} 
+                      onChange={(e) => {
+                        setSpouseName(e.target.value);
+                        clearFieldError('spouseName');
+                      }} 
                       placeholder={tPlaceholder('Enter Full Name', 'മുഴുവൻ പേര് നൽകുക')}
-                      className="h-11 border-2 border-rose-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 shadow-xs focus:border-rose-500"
+                      className={`h-11 border-2 ${validationErrors['spouseName'] ? 'border-rose-500 bg-rose-50/50' : 'border-rose-200'} rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 shadow-xs focus:border-rose-500`}
                     />
                   </FormFieldBox>
 
                   <FormFieldBox
+                    id="field-spouseMobile"
                     label={tLabel('Spouse Mobile Number *', 'ഭാര്യ / ഭർത്താവിന്റെ മൊബൈൽ നമ്പർ *')}
                     icon="📱"
                     badge={t('Required', 'നിർബന്ധം')}
                     badgeType="required"
                     theme="rose"
+                    error={validationErrors['spouseMobile']}
                   >
                     <Input 
                       value={spouseMobile} 
-                      onChange={(e) => setSpouseMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                      onChange={(e) => {
+                        setSpouseMobile(e.target.value.replace(/\D/g, '').slice(0, 10));
+                        clearFieldError('spouseMobile');
+                      }} 
                       placeholder={tPlaceholder('10-digit Mobile Number', '10 അക്ക മൊബൈൽ നമ്പർ നൽകുക')}
                       type="tel"
                       maxLength={10}
-                      className="h-11 border-2 border-rose-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono shadow-xs focus:border-rose-500"
+                      className={`h-11 border-2 ${validationErrors['spouseMobile'] ? 'border-rose-500 bg-rose-50/50' : 'border-rose-200'} rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono shadow-xs focus:border-rose-500`}
                     />
                   </FormFieldBox>
 
                   {/* Spouse PAN Card Number (Mandatory) */}
                   <FormFieldBox
+                    id="field-spousePan"
                     label={tLabel('Spouse PAN Card Number *', 'ഭാര്യ / ഭർത്താവിന്റെ പാൻ കാർഡ് നമ്പർ *')}
                     icon="💳"
                     badge={t('Required', 'നിർബന്ധം')}
                     badgeType="required"
                     theme="purple"
+                    error={validationErrors['spousePan']}
                   >
                     <Input 
                       value={spousePan} 
-                      onChange={(e) => setSpousePan(e.target.value.toUpperCase())} 
+                      onChange={(e) => {
+                        setSpousePan(e.target.value.toUpperCase());
+                        clearFieldError('spousePan');
+                      }} 
                       placeholder={tPlaceholder('e.g. ABCDE1234F', 'പാൻ കാർഡ് നമ്പർ (ഉദാ: ABCDE1234F)')}
                       maxLength={10}
-                      className="h-11 border-2 border-purple-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono uppercase shadow-xs focus:border-purple-500"
+                      className={`h-11 border-2 ${validationErrors['spousePan'] ? 'border-rose-500 bg-rose-50/50' : 'border-purple-200'} rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono uppercase shadow-xs focus:border-purple-500`}
                     />
                   </FormFieldBox>
 
@@ -4093,22 +4280,24 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                 {(hasSelf && !editingSelf) && renderFutureAndConditionsBlock('spouse')}
 
                 {/* INLINE SUBMIT BUTTON FOR SPOUSE FORM */}
-                <div className="pt-4 border-t-2 border-amber-300/80 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 p-4 sm:p-5 rounded-b-3xl">
-                  <div className="text-xs font-bold text-slate-800 space-y-0.5">
-                    <div className="font-black text-amber-950 flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      {t('Spouse Form Completed', 'ഭാര്യ / ഭർത്താവിന്റെ ഫോം പൂർത്തിയായി')}
+                <div className="space-y-4">
+                  <MissingFieldsBanner missing={missingFieldsSummary} onFocusField={scrollToField} />
+                  <div className="pt-4 border-t-2 border-amber-300/80 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 p-4 sm:p-5 rounded-b-3xl">
+                    <div className="text-xs font-bold text-slate-800 space-y-0.5">
+                      <div className="font-black text-amber-950 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        {t('Spouse Form Completed', 'ഭാര്യ / ഭർത്താവിന്റെ ഫോം പൂർത്തിയായി')}
+                      </div>
+                      <p className="text-[11px] text-slate-600">
+                        {t('Click below to submit claim form with spouse details.', 'ഭാര്യ / ഭർത്താവിന്റെ വിവരങ്ങളോടെ ക്ലെയിം ഫോം സമർപ്പിക്കാൻ താഴെയുള്ള ബട്ടൺ അമർത്തുക.')}
+                      </p>
                     </div>
-                    <p className="text-[11px] text-slate-600">
-                      {t('Click below to submit claim form with spouse details.', 'ഭാര്യ / ഭർത്താവിന്റെ വിവരങ്ങളോടെ ക്ലെയിം ഫോം സമർപ്പിക്കാൻ താഴെയുള്ള ബട്ടൺ അമർത്തുക.')}
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    disabled={loading}
-                    onClick={() => handleSubmit('Spouse')}
-                    className="w-full sm:w-auto h-12 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 hover:shadow-xl transition-all cursor-pointer shrink-0"
-                  >
+                    <Button
+                      type="button"
+                      disabled={loading}
+                      onClick={() => handleSubmit('Spouse')}
+                      className="w-full sm:w-auto h-12 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 hover:shadow-xl transition-all cursor-pointer shrink-0"
+                    >
                     {loading ? (
                       <span className="flex items-center gap-2">
                         <Clock className="w-4 h-4 animate-spin" /> {t('Saving Details...', 'വിവരങ്ങൾ സേവ് ചെയ്യുന്നു...')}
@@ -4122,7 +4311,8 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                     )}
                   </Button>
                 </div>
-              </motion.div>
+              </div>
+            </motion.div>
             )}
           </CardContent>
           )}
@@ -4320,51 +4510,66 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                 {/* Parent Personal Details Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormFieldBox
+                    id="field-parentName"
                     label={tLabel('Parent Full Name *', 'മാതാവ് / പിതാവിന്റെ മുഴുവൻ പേര് *')}
                     icon="👤"
                     badge={t('Required', 'നിർബന്ധം')}
                     badgeType="required"
                     theme="amber"
+                    error={validationErrors['parentName']}
                   >
                     <Input 
                       value={parentName} 
-                      onChange={(e) => setParentName(e.target.value)} 
+                      onChange={(e) => {
+                        setParentName(e.target.value);
+                        clearFieldError('parentName');
+                      }} 
                       placeholder={tPlaceholder('Enter Full Name', 'മുഴുവൻ പേര് നൽകുക')}
-                      className="h-11 border-2 border-amber-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 shadow-xs focus:border-amber-500"
+                      className={`h-11 border-2 ${validationErrors['parentName'] ? 'border-rose-500 bg-rose-50/50' : 'border-amber-200'} rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 shadow-xs focus:border-amber-500`}
                     />
                   </FormFieldBox>
 
                   <FormFieldBox
+                    id="field-parentMobile"
                     label={tLabel('Parent Mobile Number *', 'മാതാവ് / പിതാവിന്റെ മൊബൈൽ നമ്പർ *')}
                     icon="📱"
                     badge={t('Required', 'നിർബന്ധം')}
                     badgeType="required"
                     theme="amber"
+                    error={validationErrors['parentMobile']}
                   >
                     <Input 
                       value={parentMobile} 
-                      onChange={(e) => setParentMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                      onChange={(e) => {
+                        setParentMobile(e.target.value.replace(/\D/g, '').slice(0, 10));
+                        clearFieldError('parentMobile');
+                      }} 
                       placeholder={tPlaceholder('10-digit Mobile Number', '10 അക്ക മൊബൈൽ നമ്പർ നൽകുക')}
                       type="tel"
                       maxLength={10}
-                      className="h-11 border-2 border-amber-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono shadow-xs focus:border-amber-500"
+                      className={`h-11 border-2 ${validationErrors['parentMobile'] ? 'border-rose-500 bg-rose-50/50' : 'border-amber-200'} rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono shadow-xs focus:border-amber-500`}
                     />
                   </FormFieldBox>
 
                   {/* Parent PAN Card Number (Mandatory) */}
                   <FormFieldBox
+                    id="field-parentPan"
                     label={tLabel('Parent PAN Card Number *', 'മാതാവ് / പിതാവിന്റെ പാൻ കാർഡ് നമ്പർ *')}
                     icon="💳"
                     badge={t('Required', 'നിർബന്ധം')}
                     badgeType="required"
                     theme="purple"
+                    error={validationErrors['parentPan']}
                   >
                     <Input 
                       value={parentPan} 
-                      onChange={(e) => setParentPan(e.target.value.toUpperCase())} 
+                      onChange={(e) => {
+                        setParentPan(e.target.value.toUpperCase());
+                        clearFieldError('parentPan');
+                      }} 
                       placeholder={tPlaceholder('e.g. ABCDE1234F', 'പാൻ കാർഡ് നമ്പർ (ഉദാ: ABCDE1234F)')}
                       maxLength={10}
-                      className="h-11 border-2 border-purple-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono uppercase shadow-xs focus:border-purple-500"
+                      className={`h-11 border-2 ${validationErrors['parentPan'] ? 'border-rose-500 bg-rose-50/50' : 'border-purple-200'} rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono uppercase shadow-xs focus:border-purple-500`}
                     />
                   </FormFieldBox>
 
@@ -4897,22 +5102,24 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                 {(hasSelf && !editingSelf && hasSpouse && !editingSpouse) && renderFutureAndConditionsBlock('parent')}
 
                 {/* INLINE SUBMIT BUTTON FOR PARENT FORM */}
-                <div className="pt-4 border-t-2 border-amber-300/80 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 p-4 sm:p-5 rounded-b-3xl">
-                  <div className="text-xs font-bold text-slate-800 space-y-0.5">
-                    <div className="font-black text-amber-950 flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      {t('Parent Form Completed', 'മാതാവ് / പിതാവിന്റെ ഫോം പൂർത്തിയായി')}
+                <div className="space-y-4">
+                  <MissingFieldsBanner missing={missingFieldsSummary} onFocusField={scrollToField} />
+                  <div className="pt-4 border-t-2 border-amber-300/80 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 p-4 sm:p-5 rounded-b-3xl">
+                    <div className="text-xs font-bold text-slate-800 space-y-0.5">
+                      <div className="font-black text-amber-950 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        {t('Parent Form Completed', 'മാതാവ് / പിതാവിന്റെ ഫോം പൂർത്തിയായി')}
+                      </div>
+                      <p className="text-[11px] text-slate-600">
+                        {t('Click below to submit claim form with parent details.', 'മാതാവ് / പിതാവിന്റെ വിവരങ്ങളോടെ ക്ലെയിം ഫോം സമർപ്പിക്കാൻ താഴെയുള്ള ബട്ടൺ അമർത്തുക.')}
+                      </p>
                     </div>
-                    <p className="text-[11px] text-slate-600">
-                      {t('Click below to submit claim form with parent details.', 'മാതാവ് / പിതാവിന്റെ വിവരങ്ങളോടെ ക്ലെയിം ഫോം സമർപ്പിക്കാൻ താഴെയുള്ള ബട്ടൺ അമർത്തുക.')}
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    disabled={loading}
-                    onClick={() => handleSubmit('Parent')}
-                    className="w-full sm:w-auto h-12 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 hover:shadow-xl transition-all cursor-pointer shrink-0"
-                  >
+                    <Button
+                      type="button"
+                      disabled={loading}
+                      onClick={() => handleSubmit('Parent')}
+                      className="w-full sm:w-auto h-12 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 hover:shadow-xl transition-all cursor-pointer shrink-0"
+                    >
                     {loading ? (
                       <span className="flex items-center gap-2">
                         <Clock className="w-4 h-4 animate-spin" /> {t('Saving Details...', 'വിവരങ്ങൾ സേവ് ചെയ്യുന്നു...')}
@@ -4926,7 +5133,8 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                     )}
                   </Button>
                 </div>
-              </motion.div>
+              </div>
+            </motion.div>
             )}
           </CardContent>
           )}
@@ -5124,51 +5332,66 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                 {/* Child Personal Details Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormFieldBox
+                    id="field-childName"
                     label={tLabel('Child Full Name *', 'മകൻ / മകളുടെ മുഴുവൻ പേര് *')}
                     icon="👤"
                     badge={t('Required', 'നിർബന്ധം')}
                     badgeType="required"
                     theme="amber"
+                    error={validationErrors['childName']}
                   >
                     <Input 
                       value={childName} 
-                      onChange={(e) => setChildName(e.target.value)} 
+                      onChange={(e) => {
+                        setChildName(e.target.value);
+                        clearFieldError('childName');
+                      }} 
                       placeholder={tPlaceholder('Enter Full Name', 'മുഴുവൻ പേര് നൽകുക')}
-                      className="h-11 border-2 border-amber-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 shadow-xs focus:border-amber-500"
+                      className={`h-11 border-2 ${validationErrors['childName'] ? 'border-rose-500 bg-rose-50/50' : 'border-amber-200'} rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 shadow-xs focus:border-amber-500`}
                     />
                   </FormFieldBox>
 
                   <FormFieldBox
+                    id="field-childMobile"
                     label={tLabel('Child Mobile Number *', 'മകൻ / മകളുടെ മൊബൈൽ നമ്പർ *')}
                     icon="📱"
                     badge={t('Required', 'നിർബന്ധം')}
                     badgeType="required"
                     theme="amber"
+                    error={validationErrors['childMobile']}
                   >
                     <Input 
                       value={childMobile} 
-                      onChange={(e) => setChildMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                      onChange={(e) => {
+                        setChildMobile(e.target.value.replace(/\D/g, '').slice(0, 10));
+                        clearFieldError('childMobile');
+                      }} 
                       placeholder={tPlaceholder('10-digit Mobile Number', '10 അക്ക മൊബൈൽ നമ്പർ നൽകുക')}
                       type="tel"
                       maxLength={10}
-                      className="h-11 border-2 border-amber-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono shadow-xs focus:border-amber-500"
+                      className={`h-11 border-2 ${validationErrors['childMobile'] ? 'border-rose-500 bg-rose-50/50' : 'border-amber-200'} rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono shadow-xs focus:border-amber-500`}
                     />
                   </FormFieldBox>
 
                   {/* Child PAN Card Number (Mandatory) */}
                   <FormFieldBox
+                    id="field-childPan"
                     label={tLabel('Child PAN Card Number *', 'മകൻ / മകളുടെ പാൻ കാർഡ് നമ്പർ *')}
                     icon="💳"
                     badge={t('Required', 'നിർബന്ധം')}
                     badgeType="required"
                     theme="purple"
+                    error={validationErrors['childPan']}
                   >
                     <Input 
                       value={childPan} 
-                      onChange={(e) => setChildPan(e.target.value.toUpperCase())} 
+                      onChange={(e) => {
+                        setChildPan(e.target.value.toUpperCase());
+                        clearFieldError('childPan');
+                      }} 
                       placeholder={tPlaceholder('e.g. ABCDE1234F', 'പാൻ കാർഡ് നമ്പർ (ഉദാ: ABCDE1234F)')}
                       maxLength={10}
-                      className="h-11 border-2 border-purple-200 rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono uppercase shadow-xs focus:border-purple-500"
+                      className={`h-11 border-2 ${validationErrors['childPan'] ? 'border-rose-500 bg-rose-50/50' : 'border-purple-200'} rounded-xl font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono uppercase shadow-xs focus:border-purple-500`}
                     />
                   </FormFieldBox>
 
@@ -5701,22 +5924,24 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                 {(hasSelf && !editingSelf && hasSpouse && !editingSpouse && hasParent && !editingParent) && renderFutureAndConditionsBlock('child')}
 
                 {/* INLINE SUBMIT BUTTON FOR CHILD FORM */}
-                <div className="pt-4 border-t-2 border-amber-300/80 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 p-4 sm:p-5 rounded-b-3xl">
-                  <div className="text-xs font-bold text-slate-800 space-y-0.5">
-                    <div className="font-black text-amber-950 flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      {t('Child Form Completed', 'മകൻ / മകളുടെ ഫോം പൂർത്തിയായി')}
+                <div className="space-y-4">
+                  <MissingFieldsBanner missing={missingFieldsSummary} onFocusField={scrollToField} />
+                  <div className="pt-4 border-t-2 border-amber-300/80 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 p-4 sm:p-5 rounded-b-3xl">
+                    <div className="text-xs font-bold text-slate-800 space-y-0.5">
+                      <div className="font-black text-amber-950 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        {t('Child Form Completed', 'മകൻ / മകളുടെ ഫോം പൂർത്തിയായി')}
+                      </div>
+                      <p className="text-[11px] text-slate-600">
+                        {t('Click below to submit claim form with child details.', 'മകൻ / മകളുടെ വിവരങ്ങളോടെ ക്ലെയിം ഫോം സമർപ്പിക്കാൻ താഴെയുള്ള ബട്ടൺ അമർത്തുക.')}
+                      </p>
                     </div>
-                    <p className="text-[11px] text-slate-600">
-                      {t('Click below to submit claim form with child details.', 'മകൻ / മകളുടെ വിവരങ്ങളോടെ ക്ലെയിം ഫോം സമർപ്പിക്കാൻ താഴെയുള്ള ബട്ടൺ അമർത്തുക.')}
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    disabled={loading}
-                    onClick={() => handleSubmit('Child')}
-                    className="w-full sm:w-auto h-12 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 hover:shadow-xl transition-all cursor-pointer shrink-0"
-                  >
+                    <Button
+                      type="button"
+                      disabled={loading}
+                      onClick={() => handleSubmit('Child')}
+                      className="w-full sm:w-auto h-12 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 hover:shadow-xl transition-all cursor-pointer shrink-0"
+                    >
                     {loading ? (
                       <span className="flex items-center gap-2">
                         <Clock className="w-4 h-4 animate-spin" /> {t('Saving Details...', 'വിവരങ്ങൾ സേവ് ചെയ്യുന്നു...')}
@@ -5730,7 +5955,8 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                     )}
                   </Button>
                 </div>
-              </motion.div>
+              </div>
+            </motion.div>
             )}
           </CardContent>
           )}
