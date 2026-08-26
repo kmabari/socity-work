@@ -435,11 +435,11 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
   const [parentSerialNo, setParentSerialNo] = useState('');
   // Parent Bank & PAN & Address details
   const [parentPan, setParentPan] = useState('');
-  const [parentAddress, setParentAddress] = useState(user?.address || '');
-  const [parentDistrict, setParentDistrict] = useState(user?.district || '');
-  const [parentConstituency, setParentConstituency] = useState(user?.assemblyConstituency || user?.constituency || '');
-  const [parentPostOffice, setParentPostOffice] = useState(user?.postOffice || '');
-  const [parentPincode, setParentPincode] = useState(user?.pincode || '');
+  const [parentAddress, setParentAddress] = useState((user as any)?.houseName || (user as any)?.house || user?.address || (user as any)?.residentialAddress || (user as any)?.userAddress || '');
+  const [parentDistrict, setParentDistrict] = useState(user?.district || (user as any)?.userDistrict || '');
+  const [parentConstituency, setParentConstituency] = useState(user?.assemblyConstituency || user?.constituency || (user as any)?.assembly || (user as any)?.mandalam || '');
+  const [parentPostOffice, setParentPostOffice] = useState(user?.postOffice || (user as any)?.po || '');
+  const [parentPincode, setParentPincode] = useState(user?.pincode || (user as any)?.pin || (user as any)?.postalCode || '');
   const [parentSettlementAccountHolder, setParentSettlementAccountHolder] = useState('');
   const [parentSettlementBankName, setParentSettlementBankName] = useState('');
   const [parentSettlementBranch, setParentSettlementBranch] = useState('');
@@ -471,11 +471,11 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
   const [childSerialNo, setChildSerialNo] = useState('');
   // Child Bank & PAN & Address details
   const [childPan, setChildPan] = useState('');
-  const [childAddress, setChildAddress] = useState(user?.address || '');
-  const [childDistrict, setChildDistrict] = useState(user?.district || '');
-  const [childConstituency, setChildConstituency] = useState(user?.assemblyConstituency || user?.constituency || '');
-  const [childPostOffice, setChildPostOffice] = useState(user?.postOffice || '');
-  const [childPincode, setChildPincode] = useState(user?.pincode || '');
+  const [childAddress, setChildAddress] = useState((user as any)?.houseName || (user as any)?.house || user?.address || (user as any)?.residentialAddress || (user as any)?.userAddress || '');
+  const [childDistrict, setChildDistrict] = useState(user?.district || (user as any)?.userDistrict || '');
+  const [childConstituency, setChildConstituency] = useState(user?.assemblyConstituency || user?.constituency || (user as any)?.assembly || (user as any)?.mandalam || '');
+  const [childPostOffice, setChildPostOffice] = useState(user?.postOffice || (user as any)?.po || '');
+  const [childPincode, setChildPincode] = useState(user?.pincode || (user as any)?.pin || (user as any)?.postalCode || '');
   const [childSettlementAccountHolder, setChildSettlementAccountHolder] = useState('');
   const [childSettlementBankName, setChildSettlementBankName] = useState('');
   const [childSettlementBranch, setChildSettlementBranch] = useState('');
@@ -507,11 +507,11 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
   const [spouseSerialNo, setSpouseSerialNo] = useState('');
   // Spouse Bank & PAN & Address details
   const [spousePan, setSpousePan] = useState('');
-  const [spouseAddress, setSpouseAddress] = useState(user?.address || '');
-  const [spouseDistrict, setSpouseDistrict] = useState(user?.district || '');
-  const [spouseConstituency, setSpouseConstituency] = useState(user?.assemblyConstituency || user?.constituency || '');
-  const [spousePostOffice, setSpousePostOffice] = useState(user?.postOffice || '');
-  const [spousePincode, setSpousePincode] = useState(user?.pincode || '');
+  const [spouseAddress, setSpouseAddress] = useState((user as any)?.houseName || (user as any)?.house || user?.address || (user as any)?.residentialAddress || (user as any)?.userAddress || '');
+  const [spouseDistrict, setSpouseDistrict] = useState(user?.district || (user as any)?.userDistrict || '');
+  const [spouseConstituency, setSpouseConstituency] = useState(user?.assemblyConstituency || user?.constituency || (user as any)?.assembly || (user as any)?.mandalam || '');
+  const [spousePostOffice, setSpousePostOffice] = useState(user?.postOffice || (user as any)?.po || '');
+  const [spousePincode, setSpousePincode] = useState(user?.pincode || (user as any)?.pin || (user as any)?.postalCode || '');
   const [spouseSettlementAccountHolder, setSpouseSettlementAccountHolder] = useState('');
   const [spouseSettlementBankName, setSpouseSettlementBankName] = useState('');
   const [spouseSettlementBranch, setSpouseSettlementBranch] = useState('');
@@ -532,12 +532,12 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
   // Customer / Declarant Profile Inputs for Customer Settlement Form
   const [customerName, setCustomerName] = useState(user?.name || '');
   const [customerMobile, setCustomerMobile] = useState(user?.mobile || '');
-  const [customerAddress, setCustomerAddress] = useState(user?.address || user?.residentialAddress || user?.userAddress || '');
-  const [customerDistrict, setCustomerDistrict] = useState(user?.district || user?.userDistrict || '');
-  const [customerConstituency, setCustomerConstituency] = useState(user?.assemblyConstituency || user?.constituency || user?.assembly || user?.mandalam || '');
-  const [customerPostOffice, setCustomerPostOffice] = useState(user?.postOffice || user?.po || '');
-  const [customerPincode, setCustomerPincode] = useState(user?.pincode || user?.pin || user?.postalCode || '');
-  const [customerPan, setCustomerPan] = useState(user?.panNumber || user?.pan || '');
+  const [customerAddress, setCustomerAddress] = useState((user as any)?.houseName || (user as any)?.house || user?.address || (user as any)?.residentialAddress || (user as any)?.userAddress || '');
+  const [customerDistrict, setCustomerDistrict] = useState(user?.district || (user as any)?.userDistrict || '');
+  const [customerConstituency, setCustomerConstituency] = useState(user?.assemblyConstituency || user?.constituency || (user as any)?.assembly || (user as any)?.mandalam || '');
+  const [customerPostOffice, setCustomerPostOffice] = useState(user?.postOffice || (user as any)?.po || '');
+  const [customerPincode, setCustomerPincode] = useState(user?.pincode || (user as any)?.pin || (user as any)?.postalCode || '');
+  const [customerPan, setCustomerPan] = useState(user?.panNumber || (user as any)?.pan || '');
 
   // Auto-sync Main Member's Address changes into Family Members (Spouse, Parent, Child)
   const handleCustomerAddressChange = (val: string) => {
@@ -645,7 +645,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
       if (user.name && !customerName) setCustomerName(user.name);
       if (user.mobile && !customerMobile) setCustomerMobile(user.mobile);
       
-      const uAddr = user.address || user.residentialAddress || user.userAddress || '';
+      const uAddr = (user as any).houseName || (user as any).house || user.address || (user as any).residentialAddress || (user as any).userAddress || '';
       if (uAddr) {
         if (!customerAddress) setCustomerAddress(uAddr);
         if (!spouseAddress) setSpouseAddress(uAddr);
@@ -653,7 +653,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
         if (!childAddress) setChildAddress(uAddr);
       }
       
-      const uDist = user.district || user.userDistrict || '';
+      const uDist = user.district || (user as any).userDistrict || '';
       if (uDist) {
         if (!customerDistrict) setCustomerDistrict(uDist);
         if (!spouseDistrict) setSpouseDistrict(uDist);
@@ -661,7 +661,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
         if (!childDistrict) setChildDistrict(uDist);
       }
       
-      const cConsti = user.assemblyConstituency || user.constituency || user.assembly || user.mandalam || '';
+      const cConsti = user.assemblyConstituency || user.constituency || (user as any).assembly || (user as any).mandalam || '';
       if (cConsti) {
         if (!customerConstituency) setCustomerConstituency(cConsti);
         if (!spouseConstituency) setSpouseConstituency(cConsti);
@@ -669,7 +669,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
         if (!childConstituency) setChildConstituency(cConsti);
       }
       
-      const uPO = user.postOffice || user.po || '';
+      const uPO = user.postOffice || (user as any).po || '';
       if (uPO) {
         if (!customerPostOffice) setCustomerPostOffice(uPO);
         if (!spousePostOffice) setSpousePostOffice(uPO);
@@ -677,7 +677,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
         if (!childPostOffice) setChildPostOffice(uPO);
       }
       
-      const uPin = user.pincode || user.pin || user.postalCode || '';
+      const uPin = user.pincode || (user as any).pin || (user as any).postalCode || '';
       if (uPin) {
         if (!customerPincode) setCustomerPincode(uPin);
         if (!spousePincode) setSpousePincode(uPin);
@@ -685,37 +685,53 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
         if (!childPincode) setChildPincode(uPin);
       }
       
-      if ((user.panNumber || user.pan) && !customerPan) setCustomerPan(user.panNumber || user.pan);
+      if (((user as any).panNumber || (user as any).pan) && !customerPan) setCustomerPan((user as any).panNumber || (user as any).pan);
+      if (user.sponsorName && !selfSponsorName) {
+        setSelfSponsorName(user.sponsorName);
+        if (!spouseSponsorName) setSpouseSponsorName(user.sponsorName);
+        if (!parentSponsorName) setParentSponsorName(user.sponsorName);
+        if (!childSponsorName) setChildSponsorName(user.sponsorName);
+      }
+      if (user.sponsorMobile && !selfSponsorMobile) {
+        const cln = user.sponsorMobile.replace(/\D/g, '').slice(0, 10);
+        setSelfSponsorMobile(cln);
+        if (!spouseSponsorMobile) setSpouseSponsorMobile(cln);
+        if (!parentSponsorMobile) setParentSponsorMobile(cln);
+        if (!childSponsorMobile) setChildSponsorMobile(cln);
+      }
+      if (user.highrichId && !selfHighrichId) {
+        setSelfHighrichId(user.highrichId);
+      }
       if (user.paymentDate && !paymentDate) setPaymentDate(user.paymentDate);
-      if ((user.transactionId || user.transactionRef) && !transactionRef) {
-        setTransactionRef(user.transactionId || user.transactionRef);
+      if (((user as any).transactionId || (user as any).transactionRef) && !transactionRef) {
+        setTransactionRef((user as any).transactionId || (user as any).transactionRef);
       }
-      if ((user.paidFromBank || user.bankName) && !paidFromBank) {
-        setPaidFromBank(user.paidFromBank || user.bankName);
+      if (((user as any).paidFromBank || (user as any).bankName) && !paidFromBank) {
+        setPaidFromBank((user as any).paidFromBank || (user as any).bankName);
       }
-      if ((user.paidFromBranch || user.branch) && !paidFromBranch) {
-        setPaidFromBranch(user.paidFromBranch || user.branch);
+      if (((user as any).paidFromBranch || (user as any).branch) && !paidFromBranch) {
+        setPaidFromBranch((user as any).paidFromBranch || (user as any).branch);
       }
-      if ((user.paidFromAccount || user.accountNumber) && !paidFromAccount) {
-        setPaidFromAccount(user.paidFromAccount || user.accountNumber);
+      if (((user as any).paidFromAccount || (user as any).accountNumber) && !paidFromAccount) {
+        setPaidFromAccount((user as any).paidFromAccount || (user as any).accountNumber);
       }
-      if ((user.paidFromIfsc || user.ifscCode) && !paidFromIfsc) {
-        setPaidFromIfsc(user.paidFromIfsc || user.ifscCode);
+      if (((user as any).paidFromIfsc || (user as any).ifscCode) && !paidFromIfsc) {
+        setPaidFromIfsc((user as any).paidFromIfsc || (user as any).ifscCode);
       }
-      if ((user.settlementAccountHolder || user.name) && !settlementAccountHolder) {
-        setSettlementAccountHolder(user.settlementAccountHolder || user.name);
+      if (((user as any).settlementAccountHolder || user.name) && !settlementAccountHolder) {
+        setSettlementAccountHolder((user as any).settlementAccountHolder || user.name);
       }
-      if ((user.settlementBankName || user.bankName) && !settlementBankName) {
-        setSettlementBankName(user.settlementBankName || user.bankName);
+      if (((user as any).settlementBankName || (user as any).bankName) && !settlementBankName) {
+        setSettlementBankName((user as any).settlementBankName || (user as any).bankName);
       }
-      if ((user.settlementBranch || user.branch) && !settlementBranch) {
-        setSettlementBranch(user.settlementBranch || user.branch);
+      if (((user as any).settlementBranch || (user as any).branch) && !settlementBranch) {
+        setSettlementBranch((user as any).settlementBranch || (user as any).branch);
       }
-      if ((user.settlementAccountNumber || user.accountNumber) && !settlementAccountNumber) {
-        setSettlementAccountNumber(user.settlementAccountNumber || user.accountNumber);
+      if (((user as any).settlementAccountNumber || (user as any).accountNumber) && !settlementAccountNumber) {
+        setSettlementAccountNumber((user as any).settlementAccountNumber || (user as any).accountNumber);
       }
-      if ((user.settlementIfsc || user.ifscCode) && !settlementIfsc) {
-        setSettlementIfsc(user.settlementIfsc || user.ifscCode);
+      if (((user as any).settlementIfsc || (user as any).ifscCode) && !settlementIfsc) {
+        setSettlementIfsc((user as any).settlementIfsc || (user as any).ifscCode);
       }
     }
   }, [user]);
@@ -734,11 +750,11 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
 
   // Active continuous auto-sync from Main Applicant to secondary forms (Spouse, Parent, Child)
   useEffect(() => {
-    const mainAddr = customerAddress || user?.address || user?.residentialAddress || user?.userAddress || selfClaim?.userAddress || selfClaim?.address || '';
-    const mainDist = customerDistrict || user?.district || user?.userDistrict || selfClaim?.userDistrict || selfClaim?.district || '';
-    const mainConsti = customerConstituency || user?.assemblyConstituency || user?.constituency || user?.assembly || user?.mandalam || selfClaim?.userConstituency || selfClaim?.constituency || '';
-    const mainPO = customerPostOffice || user?.postOffice || user?.po || selfClaim?.postOffice || '';
-    const mainPin = customerPincode || user?.pincode || user?.pin || selfClaim?.pincode || '';
+    const mainAddr = customerAddress || (user as any)?.houseName || (user as any)?.house || user?.address || (user as any)?.residentialAddress || (user as any)?.userAddress || selfClaim?.userAddress || selfClaim?.address || selfClaim?.houseName || '';
+    const mainDist = customerDistrict || user?.district || (user as any)?.userDistrict || selfClaim?.userDistrict || selfClaim?.district || '';
+    const mainConsti = customerConstituency || user?.assemblyConstituency || user?.constituency || (user as any)?.assembly || (user as any)?.mandalam || selfClaim?.userConstituency || selfClaim?.constituency || '';
+    const mainPO = customerPostOffice || user?.postOffice || (user as any)?.po || selfClaim?.postOffice || '';
+    const mainPin = customerPincode || user?.pincode || (user as any)?.pin || selfClaim?.pincode || '';
 
     if (mainAddr) {
       if (!spouseAddress) setSpouseAddress(mainAddr);
@@ -1714,17 +1730,34 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
         }
       };
 
+      const effectiveMainAddress = customerAddress || (user as any)?.houseName || (user as any)?.house || user.address || (user as any)?.residentialAddress || (user as any)?.userAddress || '';
+      const effectiveMainDistrict = customerDistrict || user.district || (user as any)?.userDistrict || '';
+      const effectiveMainConstituency = customerConstituency || user.assemblyConstituency || user.constituency || (user as any)?.assembly || (user as any)?.mandalam || '';
+      const effectiveMainPostOffice = customerPostOffice || user.postOffice || (user as any)?.po || '';
+      const effectiveMainPincode = customerPincode || user.pincode || (user as any)?.pin || (user as any)?.postalCode || '';
+      const effectiveMainPan = customerPan || (user as any)?.panNumber || (user as any)?.pan || '';
+
       const commonData = {
         uid: user.uid,
         membershipId: user.membershipId || 'PENDING',
         userName: customerName || user.name || '',
         userMobile: customerMobile || user.mobile || '',
-        userDistrict: customerDistrict || user.district || '',
-        userAddress: customerAddress || user.address || '',
-        userConstituency: customerConstituency || user.assemblyConstituency || user.constituency || '',
-        postOffice: customerPostOffice || user.postOffice || '',
-        pincode: customerPincode || user.pincode || '',
-        panNumber: customerPan || user.panNumber || user.pan || '',
+        userDistrict: effectiveMainDistrict,
+        district: effectiveMainDistrict,
+        userAddress: effectiveMainAddress,
+        address: effectiveMainAddress,
+        houseName: effectiveMainAddress,
+        residentialAddress: effectiveMainAddress,
+        userConstituency: effectiveMainConstituency,
+        constituency: effectiveMainConstituency,
+        assemblyConstituency: effectiveMainConstituency,
+        postOffice: effectiveMainPostOffice,
+        po: effectiveMainPostOffice,
+        pincode: effectiveMainPincode,
+        pin: effectiveMainPincode,
+        postalCode: effectiveMainPincode,
+        panNumber: effectiveMainPan,
+        pan: effectiveMainPan,
         userEmail: user.email || '',
         userBloodGroup: user.bloodGroup || '',
         paidFromBank: paidFromBank || user.paidFromBank || user.bankName || '',
@@ -1733,6 +1766,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
         paidFromIfsc: paidFromIfsc || user.paidFromIfsc || user.ifscCode || '',
         paymentDate: paymentDate || user.paymentDate || '',
         transactionRef: transactionRef || user.transactionId || user.transactionRef || '',
+        transactionId: transactionRef || user.transactionId || user.transactionRef || '',
         settlementBankName: settlementBankName || user.settlementBankName || user.bankName || '',
         settlementBranch: settlementBranch || user.settlementBranch || user.branch || '',
         settlementAccountNumber: settlementAccountNumber || user.settlementAccountNumber || user.accountNumber || '',
@@ -1753,12 +1787,21 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           await updateDoc(doc(db, 'users', user.uid), {
             name: customerName || user.name || '',
             mobile: customerMobile || user.mobile || '',
-            address: customerAddress || user.address || '',
-            district: customerDistrict || user.district || '',
-            assemblyConstituency: customerConstituency || user.assemblyConstituency || '',
-            postOffice: customerPostOffice || user.postOffice || '',
-            pincode: customerPincode || user.pincode || '',
-            panNumber: customerPan || '',
+            address: effectiveMainAddress,
+            residentialAddress: effectiveMainAddress,
+            userAddress: effectiveMainAddress,
+            houseName: effectiveMainAddress,
+            district: effectiveMainDistrict,
+            userDistrict: effectiveMainDistrict,
+            assemblyConstituency: effectiveMainConstituency,
+            constituency: effectiveMainConstituency,
+            userConstituency: effectiveMainConstituency,
+            postOffice: effectiveMainPostOffice,
+            po: effectiveMainPostOffice,
+            pincode: effectiveMainPincode,
+            pin: effectiveMainPincode,
+            panNumber: effectiveMainPan,
+            pan: effectiveMainPan,
             paymentDate: paymentDate || user.paymentDate || '',
             transactionId: transactionRef || user.transactionId || '',
             transactionRef: transactionRef || user.transactionRef || '',
@@ -1916,6 +1959,13 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
         const relType = spouseRelation || 'Spouse';
         assignedTokens[relType] = tokenVal;
         const ownSpouseMob = spouseMobile.trim();
+        const effectiveSpouseAddr = spouseAddress || effectiveMainAddress;
+        const effectiveSpouseDist = spouseDistrict || effectiveMainDistrict;
+        const effectiveSpouseConsti = spouseConstituency || effectiveMainConstituency;
+        const effectiveSpousePO = spousePostOffice || effectiveMainPostOffice;
+        const effectiveSpousePin = spousePincode || effectiveMainPincode;
+        const effectiveSpousePan = spousePan || effectiveMainPan;
+
         const newSpouseClaim = {
           ...commonData,
           userMobile: customerMobile || user.mobile || '',
@@ -1928,15 +1978,22 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           relation: spouseRelation,
           relationLabel: spouseRelation === 'Wife' ? 'ഭാര്യ (Wife)' : 'ഭർത്താവ് (Husband)',
           userName: spouseName,
-          userAddress: spouseAddress || customerAddress || user.address || '',
-          address: spouseAddress || customerAddress || user.address || '',
-          userDistrict: spouseDistrict || customerDistrict || user.district || '',
-          district: spouseDistrict || customerDistrict || user.district || '',
-          userConstituency: spouseConstituency || customerConstituency || user.assemblyConstituency || user.constituency || '',
-          constituency: spouseConstituency || customerConstituency || user.assemblyConstituency || user.constituency || '',
-          postOffice: spousePostOffice || customerPostOffice || user.postOffice || '',
-          pincode: spousePincode || customerPincode || user.pincode || '',
-          panNumber: spousePan || customerPan || user.panNumber || user.pan || '',
+          userAddress: effectiveSpouseAddr,
+          address: effectiveSpouseAddr,
+          houseName: effectiveSpouseAddr,
+          residentialAddress: effectiveSpouseAddr,
+          userDistrict: effectiveSpouseDist,
+          district: effectiveSpouseDist,
+          userConstituency: effectiveSpouseConsti,
+          constituency: effectiveSpouseConsti,
+          assemblyConstituency: effectiveSpouseConsti,
+          postOffice: effectiveSpousePO,
+          po: effectiveSpousePO,
+          pincode: effectiveSpousePin,
+          pin: effectiveSpousePin,
+          postalCode: effectiveSpousePin,
+          panNumber: effectiveSpousePan,
+          pan: effectiveSpousePan,
           settlementAccountNumber: spouseSettlementAccountNumber || settlementAccountNumber || user.settlementAccountNumber || user.accountNumber || '',
           settlementBankName: spouseSettlementBankName || settlementBankName || user.settlementBankName || user.bankName || '',
           settlementBranch: spouseSettlementBranch || settlementBranch || user.settlementBranch || user.branch || '',
@@ -1950,8 +2007,8 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           transactionRef: spouseTransactionRef || transactionRef || user.transactionId || user.transactionRef || '',
           transactionId: spouseTransactionRef || transactionRef || user.transactionId || user.transactionRef || '',
           highrichId: spouseHighrichId,
-          sponsorName: spouseSponsorName.trim(),
-          sponsorMobile: spouseSponsorMobile.trim(),
+          sponsorName: (spouseSponsorName || selfSponsorName).trim(),
+          sponsorMobile: (spouseSponsorMobile || selfSponsorMobile).trim(),
           categories: spouseCategories,
           otherCategory: spouseOtherCategory,
           categoryDetails: spouseCategoryDetails,
@@ -1976,6 +2033,13 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
         const relType = parentRelation || 'Parent';
         assignedTokens[relType] = tokenVal;
         const ownParentMob = parentMobile.trim();
+        const effectiveParentAddr = parentAddress || effectiveMainAddress;
+        const effectiveParentDist = parentDistrict || effectiveMainDistrict;
+        const effectiveParentConsti = parentConstituency || effectiveMainConstituency;
+        const effectiveParentPO = parentPostOffice || effectiveMainPostOffice;
+        const effectiveParentPin = parentPincode || effectiveMainPincode;
+        const effectiveParentPan = parentPan || effectiveMainPan;
+
         const newParentClaim = {
           ...commonData,
           userMobile: customerMobile || user.mobile || '',
@@ -1988,15 +2052,22 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           relation: parentRelation,
           relationLabel: parentRelation === 'Mother' ? 'അമ്മ (Mother)' : 'അച്ഛൻ (Father)',
           userName: parentName,
-          userAddress: parentAddress || customerAddress || user.address || '',
-          address: parentAddress || customerAddress || user.address || '',
-          userDistrict: parentDistrict || customerDistrict || user.district || '',
-          district: parentDistrict || customerDistrict || user.district || '',
-          userConstituency: parentConstituency || customerConstituency || user.assemblyConstituency || user.constituency || '',
-          constituency: parentConstituency || customerConstituency || user.assemblyConstituency || user.constituency || '',
-          postOffice: parentPostOffice || customerPostOffice || user.postOffice || '',
-          pincode: parentPincode || customerPincode || user.pincode || '',
-          panNumber: parentPan || customerPan || user.panNumber || user.pan || '',
+          userAddress: effectiveParentAddr,
+          address: effectiveParentAddr,
+          houseName: effectiveParentAddr,
+          residentialAddress: effectiveParentAddr,
+          userDistrict: effectiveParentDist,
+          district: effectiveParentDist,
+          userConstituency: effectiveParentConsti,
+          constituency: effectiveParentConsti,
+          assemblyConstituency: effectiveParentConsti,
+          postOffice: effectiveParentPO,
+          po: effectiveParentPO,
+          pincode: effectiveParentPin,
+          pin: effectiveParentPin,
+          postalCode: effectiveParentPin,
+          panNumber: effectiveParentPan,
+          pan: effectiveParentPan,
           settlementAccountNumber: parentSettlementAccountNumber || settlementAccountNumber || user.settlementAccountNumber || user.accountNumber || '',
           settlementBankName: parentSettlementBankName || settlementBankName || user.settlementBankName || user.bankName || '',
           settlementBranch: parentSettlementBranch || settlementBranch || user.settlementBranch || user.branch || '',
@@ -2010,8 +2081,8 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           transactionRef: parentTransactionRef || transactionRef || user.transactionId || user.transactionRef || '',
           transactionId: parentTransactionRef || transactionRef || user.transactionId || user.transactionRef || '',
           highrichId: parentHighrichId,
-          sponsorName: parentSponsorName.trim(),
-          sponsorMobile: parentSponsorMobile.trim(),
+          sponsorName: (parentSponsorName || selfSponsorName).trim(),
+          sponsorMobile: (parentSponsorMobile || selfSponsorMobile).trim(),
           categories: parentCategories,
           otherCategory: parentOtherCategory,
           categoryDetails: parentCategoryDetails,
@@ -2036,6 +2107,13 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
         const relType = childRelation || 'Child';
         assignedTokens[relType] = tokenVal;
         const ownChildMob = childMobile.trim();
+        const effectiveChildAddr = childAddress || effectiveMainAddress;
+        const effectiveChildDist = childDistrict || effectiveMainDistrict;
+        const effectiveChildConsti = childConstituency || effectiveMainConstituency;
+        const effectiveChildPO = childPostOffice || effectiveMainPostOffice;
+        const effectiveChildPin = childPincode || effectiveMainPincode;
+        const effectiveChildPan = childPan || effectiveMainPan;
+
         const newChildClaim = {
           ...commonData,
           userMobile: customerMobile || user.mobile || '',
@@ -2048,15 +2126,22 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           relation: childRelation,
           relationLabel: childRelation === 'Son' ? 'മകൻ (Son)' : 'മകൾ (Daughter)',
           userName: childName,
-          userAddress: childAddress || customerAddress || user.address || '',
-          address: childAddress || customerAddress || user.address || '',
-          userDistrict: childDistrict || customerDistrict || user.district || '',
-          district: childDistrict || customerDistrict || user.district || '',
-          userConstituency: childConstituency || customerConstituency || user.assemblyConstituency || user.constituency || '',
-          constituency: childConstituency || customerConstituency || user.assemblyConstituency || user.constituency || '',
-          postOffice: childPostOffice || customerPostOffice || user.postOffice || '',
-          pincode: childPincode || customerPincode || user.pincode || '',
-          panNumber: childPan || customerPan || user.panNumber || user.pan || '',
+          userAddress: effectiveChildAddr,
+          address: effectiveChildAddr,
+          houseName: effectiveChildAddr,
+          residentialAddress: effectiveChildAddr,
+          userDistrict: effectiveChildDist,
+          district: effectiveChildDist,
+          userConstituency: effectiveChildConsti,
+          constituency: effectiveChildConsti,
+          assemblyConstituency: effectiveChildConsti,
+          postOffice: effectiveChildPO,
+          po: effectiveChildPO,
+          pincode: effectiveChildPin,
+          pin: effectiveChildPin,
+          postalCode: effectiveChildPin,
+          panNumber: effectiveChildPan,
+          pan: effectiveChildPan,
           settlementAccountNumber: childSettlementAccountNumber || settlementAccountNumber || user.settlementAccountNumber || user.accountNumber || '',
           settlementBankName: childSettlementBankName || settlementBankName || user.settlementBankName || user.bankName || '',
           settlementBranch: childSettlementBranch || settlementBranch || user.settlementBranch || user.branch || '',
@@ -2070,8 +2155,8 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           transactionRef: childTransactionRef || transactionRef || user.transactionId || user.transactionRef || '',
           transactionId: childTransactionRef || transactionRef || user.transactionId || user.transactionRef || '',
           highrichId: childHighrichId,
-          sponsorName: childSponsorName.trim(),
-          sponsorMobile: childSponsorMobile.trim(),
+          sponsorName: (childSponsorName || selfSponsorName).trim(),
+          sponsorMobile: (childSponsorMobile || selfSponsorMobile).trim(),
           categories: childCategories,
           otherCategory: childOtherCategory,
           categoryDetails: childCategoryDetails,
