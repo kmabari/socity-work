@@ -254,6 +254,71 @@ export const staticTranslations: TranslationDictionary = {
     en: "Invalid mobile number or password. Please try again or contact Admin.",
     hi: "अमान्य मोबाइल नंबर या पासवर्ड। कृपया पुनः प्रयास करें या एडमिन से संपर्क करें।"
   },
+  "quick_login_badge": {
+    ml: "മെമ്പർ ലോഗിൻ • Member Sign In",
+    en: "Member Sign In Portal",
+    hi: "सदस्य साइन इन पोर्टल"
+  },
+  "quick_login_title": {
+    ml: "നിലവിലുള്ള അംഗങ്ങൾക്ക് ലോഗിൻ ചെയ്യാം",
+    en: "Member Direct Sign In",
+    hi: "मौजूदा सदस्य साइन इन करें"
+  },
+  "quick_login_desc": {
+    ml: "രജിസ്റ്റർ ചെയ്ത മൊബൈൽ നമ്പറും പാസ്‌വേഡും നൽകി നിങ്ങളുടെ പ്രൊഫൈലിലേക്ക് പ്രവേശിക്കുക.",
+    en: "Enter your registered mobile number and PIN to access your membership profile.",
+    hi: "अपने सदस्यता प्रोफ़ाइल तक पहुँचने के लिए अपना पंजीकृत मोबाइल नंबर और पिन दर्ज करें।"
+  },
+  "quick_login_mobile_label": {
+    ml: "മൊബൈൽ നമ്പർ (Mobile)",
+    en: "Mobile Number",
+    hi: "मोबाइल नंबर"
+  },
+  "quick_login_mobile_placeholder": {
+    ml: "10 അക്ക മൊബൈൽ നമ്പർ",
+    en: "10-digit mobile number",
+    hi: "10 अंकों का मोबाइल नंबर"
+  },
+  "quick_login_pin_label": {
+    ml: "പാസ്‌വേഡ് / PIN (Password)",
+    en: "Password / PIN",
+    hi: "पासवर्ड / पिन"
+  },
+  "quick_login_pin_placeholder": {
+    ml: "Default: 123456",
+    en: "Default: 123456",
+    hi: "डिफ़ॉल्ट: 123456"
+  },
+  "quick_login_default_pin": {
+    ml: "ഡിഫോൾട്ട് PIN",
+    en: "Default PIN",
+    hi: "डिफ़ॉल्ट पिन"
+  },
+  "quick_login_forgot_pin": {
+    ml: "പാസ്‌വേഡ് മറന്നോ?",
+    en: "Forgot Password?",
+    hi: "पासवर्ड भूल गए?"
+  },
+  "quick_login_submit_btn": {
+    ml: "സൈൻ ഇൻ ചെയ്യുക (Sign In)",
+    en: "Sign In",
+    hi: "साइन इन करें"
+  },
+  "quick_login_submitting": {
+    ml: "ലോഗിൻ ചെയ്യുന്നു...",
+    en: "Signing in...",
+    hi: "लॉगिन हो रहा है..."
+  },
+  "quick_login_err_mobile": {
+    ml: "ദയവായി സാധുവായ 10 അക്ക മൊബൈൽ നമ്പർ നൽകുക.",
+    en: "Please enter a valid 10-digit mobile number.",
+    hi: "कृपया एक वैध 10 अंकों का मोबाइल नंबर दर्ज करें।"
+  },
+  "quick_login_err_failed": {
+    ml: "ലോഗിൻ പരാജയപ്പെട്ടു. വിവരങ്ങൾ പരിശോധിക്കുക.",
+    en: "Sign in failed. Please verify your credentials.",
+    hi: "साइन इन विफल रहा। कृपया अपने विवरण की पुष्टि करें।"
+  },
 
   // Financial Registry / Claim Form
   "claim_registry_title": {
@@ -416,6 +481,21 @@ export const staticTranslations: TranslationDictionary = {
   },
   
   // Action Bento Grid Cards
+  "unified_services_badge": {
+    ml: "പ്രധാന അംഗത്വ സേവനങ്ങൾ • Key Services",
+    en: "Key Membership & Financial Services",
+    hi: "मुख्य सदस्यता और वित्तीय सेवाएँ"
+  },
+  "unified_services_title": {
+    ml: "അംഗത്വ, കാർഡ് പുതുക്കൽ & സാമ്പത്തിക വിവര പോർട്ടൽ",
+    en: "Membership, Renewal & Settlement Portals",
+    hi: "सदस्यता, नवीनीकरण और सेटलमेंट पोर्टल"
+  },
+  "unified_services_desc": {
+    ml: "പുതിയ അംഗത്വം എടുക്കാനും, നിലവിലെ കാർഡ് പുതുക്കാനും, സാമ്പത്തിക ക്ലെയിം/സെറ്റിൽമെന്റ് വിവരങ്ങൾ സമർപ്പിക്കാനും താഴെയുള്ള സേവനങ്ങൾ ഉപയോഗിക്കുക.",
+    en: "Select a service below for New Registration, Annual Card Renewal, or Financial Settlement Data Submission.",
+    hi: "नया पंजीकरण, वार्षिक कार्ड नवीनीकरण या वित्तीय निपटान डेटा जमा करने के लिए नीचे दी गई सेवा का चयन करें।"
+  },
   "card_new_membership_title": {
     ml: "പുതിയ അംഗത്വം (New Membership)",
     en: "New Membership",

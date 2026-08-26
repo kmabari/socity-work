@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import QRCode from 'qrcode';
 import { db } from '../lib/firebase';
@@ -50,7 +50,12 @@ import {
   Network,
   UserCheck,
   Pause,
-  Play
+  Play,
+  LogIn,
+  EyeOff,
+  Lock,
+  Layers,
+  FileSpreadsheet
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -245,6 +250,42 @@ export default function LandingPage({
   const [claimResult, setClaimResult] = useState<'found' | 'not_found' | 'registered' | null>(null);
   const [claimUserStatus, setClaimUserStatus] = useState<'active' | 'pending' | 'renewal_pending' | 'expired'>('active');
   const [userHasSubmittedClaim, setUserHasSubmittedClaim] = useState(false);
+
+  // States for Quick Member Direct Sign-In on Home Page
+  const [quickLoginMobile, setQuickLoginMobile] = useState('');
+  const [quickLoginPin, setQuickLoginPin] = useState('');
+  const [showQuickPin, setShowQuickPin] = useState(false);
+  const [isQuickLoggingIn, setIsQuickLoggingIn] = useState(false);
+  const [quickLoginError, setQuickLoginError] = useState<string | null>(null);
+
+  const handleQuickLoginSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleanMobile = quickLoginMobile.trim().replace(/\D/g, '');
+    if (!cleanMobile || cleanMobile.length < 10) {
+      const errMsg = t('quick_login_err_mobile', 'Please enter a valid 10-digit mobile number.');
+      setQuickLoginError(errMsg);
+      toast.error(errMsg);
+      return;
+    }
+    const pin = quickLoginPin.trim() || '123456';
+    setQuickLoginError(null);
+    setIsQuickLoggingIn(true);
+    try {
+      if (onLoginDirect) {
+        const res = await onLoginDirect(cleanMobile, pin);
+        if (res && typeof res === 'object' && res.success === false) {
+          setQuickLoginError(res.error || t('quick_login_err_failed', 'Sign in failed. Please verify your credentials.'));
+        }
+      } else {
+        onLoginClick();
+      }
+    } catch (err: any) {
+      console.error("Quick login error:", err);
+      setQuickLoginError(err.message || t('quick_login_err_failed', 'Sign in failed. Please verify your credentials.'));
+    } finally {
+      setIsQuickLoggingIn(false);
+    }
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -549,137 +590,295 @@ export default function LandingPage({
           >
             {/* Quick Actions Section - Immediately after HCRS Introduction/Core Pillars */}
             <section className="space-y-8 max-w-6xl mx-auto pt-2" id="quick-actions">
+              {/* Quick Actions Header */}
               <div className="text-center space-y-3 font-sans">
                 <div className="inline-flex items-center gap-2 bg-[#c9a227]/10 text-[#1a2b5c] px-4 py-2 rounded-full border border-[#c9a227]/25 shadow-xs max-w-full flex-wrap justify-center">
                   <Zap className="w-4 h-4 text-[#c9a227] shrink-0 stroke-[2.5]" />
-                  <span className="font-black text-xs uppercase tracking-wider leading-snug break-words text-center">Quick Actions • പ്രധാന സേവനങ്ങൾ</span>
+                  <span className="font-black text-xs uppercase tracking-wider leading-snug break-words text-center">
+                    {lang === 'ml' ? 'പ്രധാന സേവനങ്ങൾ • Quick Actions' : (lang === 'hi' ? 'त्वरित सेवाएँ • Quick Actions' : 'Quick Actions • Member Services')}
+                  </span>
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-black text-[#1a2b5c] uppercase tracking-tight px-2 leading-tight">
-                  HCRS <span className="text-[#c9a227]">Quick Actions</span>
+                  HCRS <span className="text-[#c9a227]">{lang === 'ml' ? 'പ്രധാന സേവനങ്ങൾ' : (lang === 'hi' ? 'त्वरित सेवाएँ' : 'Quick Actions')}</span>
                 </h2>
                 <p className="text-slate-600 font-normal text-xs md:text-sm max-w-xl mx-auto">
-                  Access key membership services, renewal facilities, and verified member information portals with a single click.
+                  {lang === 'ml' 
+                    ? 'മെമ്പർഷിപ്പ് രജിസ്ട്രേഷൻ, കാർഡ് പുതുക്കൽ, സാമ്പത്തിക വിവര ശേഖരണം തുടങ്ങിയ പ്രധാന സേവനങ്ങൾ ഒറ്റ ക്ലിക്കിൽ.' 
+                    : (lang === 'hi'
+                      ? 'एक क्लिक में सदस्यता पंजीकरण, कार्ड नवीनीकरण और सदस्य जानकारी पोर्टल तक पहुँचें।'
+                      : 'Access key membership services, renewal facilities, and verified member information portals with a single click.')}
                 </p>
               </div>
 
-              {/* Primary Action Bento Grid with Continuous Multi-Color Glass Border Line */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-                {/* Enrollment Card */}
+              {/* Member Direct Sign-In Card - Glass Portal / Smart Card Aesthetic */}
+              <div className="max-w-4xl mx-auto">
                 <InfinityBorderCard
                   roundedClassName="rounded-2xl sm:rounded-3xl"
-                  innerClassName="p-6 sm:p-8 md:p-10 min-h-[380px] sm:min-h-[420px] text-center"
-                  className="hover:-translate-y-1.5 transition-transform duration-300"
-                  speed={9}
+                  innerClassName="p-0 text-left bg-gradient-to-br from-[#0c1836] via-[#12234e] to-[#0a1530] text-white shadow-2xl relative overflow-hidden"
+                  speed={7}
+                  className="shadow-projected"
                 >
-                  <div className="flex flex-col items-center gap-4 sm:gap-6 w-full">
-                    <div className="bg-[#c9a227]/10 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-[#c9a227] group-hover:scale-105 transition-transform shadow-sm border border-[#c9a227]/20 shrink-0">
-                      <UserPlus className="w-7 h-7 sm:w-8 sm:h-8 stroke-[2]" />
-                    </div>
-                    <div className="w-full flex flex-col items-center">
-                      <h2 className="text-lg sm:text-xl font-extrabold text-[#1a2b5c] tracking-tight uppercase font-heading leading-tight">
-                        {t('card_new_membership_title', 'New Membership')}
-                      </h2>
-                      <span className="inline-flex mt-2.5 sm:mt-3 bg-[#c9a227]/10 text-[#c9a227] border border-[#c9a227]/20 font-extrabold text-[10px] sm:text-[11px] tracking-wider uppercase px-3.5 sm:px-4 py-1 rounded-full shadow-xs">
-                        {t('card_new_membership_badge', 'ന്യൂ മെമ്പർഷിപ്പ് • ₹200')}
-                      </span>
-                      <p className="text-slate-600 font-normal text-xs sm:text-sm mt-3 sm:mt-4 leading-relaxed max-w-[280px]">
-                        {t('card_new_membership_desc', 'Register as an official active member to gain community credentials.')}
-                      </p>
-                    </div>
-                  </div>
-                  <Button 
-                    onClick={() => setStage('guidelines')}
-                    className="w-full mt-6 sm:mt-8 h-12 rounded-xl text-xs font-bold bg-[#1a2b5c] text-white hover:bg-[#233875] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-premium hover:-translate-y-0.5 duration-200 cursor-pointer"
-                  >
-                    <span>{t('card_new_membership_btn', 'Register Now')}</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </InfinityBorderCard>
+                  {/* Glassmorphism ambient glow accents */}
+                  <div className="absolute -top-20 -right-20 w-64 h-64 bg-[#c9a227]/20 rounded-full blur-3xl pointer-events-none" />
+                  <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-blue-500/15 rounded-full blur-3xl pointer-events-none" />
+                  <div className="absolute inset-0 bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
 
-                {/* Renewal Card */}
-                <InfinityBorderCard
-                  roundedClassName="rounded-2xl sm:rounded-3xl"
-                  innerClassName="p-6 sm:p-8 md:p-10 min-h-[380px] sm:min-h-[420px] text-center"
-                  className="hover:-translate-y-1.5 transition-transform duration-300"
-                  speed={8}
-                >
-                  <div className="flex flex-col items-center gap-4 sm:gap-6 w-full">
-                    <div className="bg-[#1a2b5c]/8 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-[#1a2b5c] group-hover:scale-105 transition-transform shadow-sm border border-[#1a2b5c]/15 shrink-0">
-                      <RefreshCw className="w-7 h-7 sm:w-8 sm:h-8 stroke-[2]" />
-                    </div>
-                    <div className="w-full flex flex-col items-center">
-                      <h2 className="text-lg sm:text-xl font-extrabold text-[#1a2b5c] tracking-tight uppercase font-heading leading-tight">
-                        {t('card_renew_membership_title', 'Renew card')}
-                      </h2>
-                      <span className="inline-flex mt-2.5 sm:mt-3 bg-[#1a2b5c]/8 text-[#1a2b5c] border border-[#1a2b5c]/15 font-extrabold text-[10px] sm:text-[11px] tracking-wider uppercase px-3.5 sm:px-4 py-1 rounded-full shadow-xs">
-                        {t('card_renew_membership_badge', 'അംഗത്വം പുതുക്കൽ • ₹100')}
-                      </span>
-                      <p className="text-slate-600 font-normal text-xs sm:text-sm mt-3 sm:mt-4 leading-relaxed max-w-[280px]">
-                        {t('card_renew_membership_desc', 'Renew your existing membership card easily with quick online processing.')}
-                      </p>
-                    </div>
-                  </div>
-                  <Button 
-                    onClick={onRenew}
-                    className="w-full mt-6 sm:mt-8 h-12 rounded-xl text-xs font-bold bg-[#1a2b5c] text-white hover:bg-[#233875] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-premium hover:-translate-y-0.5 duration-200 cursor-pointer"
-                  >
-                    <span>{t('card_renew_membership_btn', 'Renew Card Now')}</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </InfinityBorderCard>
+                  <div className="relative z-10 p-5 sm:p-7 md:p-8">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                      {/* Left: Card Identity & Description */}
+                      <div className="space-y-3 lg:max-w-xs shrink-0">
+                        <div className="inline-flex items-center gap-2 bg-gradient-to-r from-[#c9a227]/20 to-[#c9a227]/10 text-[#f5d77f] px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-wider border border-[#c9a227]/30 backdrop-blur-md shadow-xs">
+                          <UserCheck className="w-3.5 h-3.5 text-[#f5d77f] stroke-[2.5]" />
+                          <span>{t('quick_login_badge', 'Member Sign In Portal')}</span>
+                        </div>
+                        <h3 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tight font-heading leading-snug">
+                          {t('quick_login_title', 'Member Direct Sign In')}
+                        </h3>
+                        <p className="text-slate-300 text-xs sm:text-sm font-normal leading-relaxed">
+                          {t('quick_login_desc', 'Enter your registered mobile number and PIN to access your membership profile.')}
+                        </p>
+                        <div className="hidden sm:flex items-center gap-2 text-[11px] text-slate-400 font-mono tracking-wide pt-1">
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span>Encrypted Member Portal • HCRS</span>
+                        </div>
+                      </div>
 
-                {/* Information Registry / Settlement Form Card */}
-                <InfinityBorderCard
-                  roundedClassName="rounded-2xl sm:rounded-3xl"
-                  innerClassName="p-6 sm:p-8 md:p-10 min-h-[380px] sm:min-h-[420px] text-center"
-                  className="hover:-translate-y-1.5 transition-transform duration-300"
-                  speed={8.5}
-                >
-                  <div className="flex flex-col items-center gap-4 sm:gap-6 w-full">
-                    <div className="bg-[#c9a227]/10 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-[#c9a227] group-hover:scale-105 transition-transform shadow-sm border border-[#c9a227]/20 shrink-0">
-                      <Info className="w-7 h-7 sm:w-8 sm:h-8 stroke-[2]" />
-                    </div>
-                    <div className="w-full flex flex-col items-center">
-                      <h2 className="text-lg sm:text-xl font-extrabold text-[#1a2b5c] tracking-tight uppercase font-heading leading-tight">
-                        {t('card_registry_title', 'Settlement Form')}
-                      </h2>
-                      <span className="inline-flex mt-2.5 sm:mt-3 bg-[#c9a227]/10 text-[#c9a227] border border-[#c9a227]/20 font-extrabold text-[10px] sm:text-[11px] tracking-wider uppercase px-3.5 sm:px-4 py-1 rounded-full shadow-xs">
-                        {t('card_registry_badge', 'വെരിഫൈഡ് വിവര ശേഖരണം')}
-                      </span>
-                      <p className="text-slate-600 font-normal text-xs sm:text-sm mt-3 sm:mt-4 leading-relaxed max-w-[280px]">
-                        {t('card_registry_desc', 'This portal is designed to collect and verify financial information from members for planning, coordination, and support purposes.')}
-                      </p>
+                      {/* Right: Glassmorphism Quick Login Form */}
+                      <form onSubmit={handleQuickLoginSubmit} className="flex-1 w-full space-y-3.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {/* Mobile Number Input */}
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                              <Phone className="w-3 h-3 text-[#c9a227]" />
+                              <span>{t('quick_login_mobile_label', 'Mobile Number')}</span>
+                            </label>
+                            <div className="relative">
+                              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-amber-400/90 font-black text-xs">
+                                +91
+                              </div>
+                              <Input
+                                type="tel"
+                                inputMode="numeric"
+                                maxLength={10}
+                                value={quickLoginMobile}
+                                onChange={(e) => {
+                                  const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                  setQuickLoginMobile(val);
+                                  if (quickLoginError) setQuickLoginError(null);
+                                }}
+                                placeholder={t('quick_login_mobile_placeholder', '10-digit mobile number')}
+                                className="pl-12 h-11 sm:h-12 rounded-xl bg-white/10 hover:bg-white/15 focus:bg-white/20 border-white/20 text-white placeholder:text-slate-400 text-sm font-bold focus:border-[#c9a227] focus:ring-2 focus:ring-[#c9a227]/30 transition-all backdrop-blur-md"
+                                autoComplete="tel"
+                              />
+                            </div>
+                          </div>
+
+                          {/* PIN / Password Input */}
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                              <Lock className="w-3 h-3 text-[#c9a227]" />
+                              <span>{t('quick_login_pin_label', 'Password / PIN')}</span>
+                            </label>
+                            <div className="relative">
+                              <Input
+                                type={showQuickPin ? 'text' : 'password'}
+                                value={quickLoginPin}
+                                onChange={(e) => {
+                                  setQuickLoginPin(e.target.value);
+                                  if (quickLoginError) setQuickLoginError(null);
+                                }}
+                                placeholder={t('quick_login_pin_placeholder', 'Default: 123456')}
+                                className="pr-10 h-11 sm:h-12 rounded-xl bg-white/10 hover:bg-white/15 focus:bg-white/20 border-white/20 text-white placeholder:text-slate-400 text-sm font-bold focus:border-[#c9a227] focus:ring-2 focus:ring-[#c9a227]/30 transition-all backdrop-blur-md"
+                                autoComplete="current-password"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowQuickPin(!showQuickPin)}
+                                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-300 hover:text-white cursor-pointer transition-colors"
+                                tabIndex={-1}
+                                aria-label="Toggle password visibility"
+                              >
+                                {showQuickPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4 text-slate-300" />}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {quickLoginError && (
+                          <div className="text-xs font-bold text-red-200 bg-red-950/70 border border-red-500/50 rounded-xl p-3 flex items-center gap-2 animate-in fade-in backdrop-blur-md">
+                            <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+                            <span>{quickLoginError}</span>
+                          </div>
+                        )}
+
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
+                          <div className="flex items-center gap-2 text-[11px] font-medium text-slate-300 order-2 sm:order-1 flex-wrap">
+                            <span className="bg-white/10 px-2.5 py-0.5 rounded-full border border-white/10">
+                              {t('quick_login_default_pin', 'Default PIN')}: <strong className="text-[#f5d77f] font-bold">123456</strong>
+                            </span>
+                            <span>•</span>
+                            <button
+                              type="button"
+                              onClick={onLoginClick}
+                              className="text-[#f5d77f] hover:text-white hover:underline font-bold cursor-pointer transition-colors"
+                            >
+                              {t('quick_login_forgot_pin', 'Forgot Password?')}
+                            </button>
+                          </div>
+
+                          <Button
+                            type="submit"
+                            disabled={isQuickLoggingIn}
+                            className="w-full sm:w-auto h-11 sm:h-12 px-7 rounded-xl font-black text-xs uppercase tracking-widest bg-gradient-to-r from-[#c9a227] via-[#d4ad2b] to-[#c9a227] hover:brightness-110 text-[#0c1836] shadow-lg shadow-[#c9a227]/25 hover:shadow-[#c9a227]/40 transition-all flex items-center justify-center gap-2 order-1 sm:order-2 shrink-0 cursor-pointer border border-[#f5d77f]/40"
+                          >
+                            {isQuickLoggingIn ? (
+                              <>
+                                <RefreshCw className="w-4 h-4 animate-spin" />
+                                <span>{t('quick_login_submitting', 'Signing in...')}</span>
+                              </>
+                            ) : (
+                              <>
+                                <LogIn className="w-4 h-4 stroke-[2.5]" />
+                                <span>{t('quick_login_submit_btn', 'Sign In')}</span>
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </form>
                     </div>
                   </div>
-                  <Button 
-                    onClick={() => {
-                      setClaimMobile('');
-                      setClaimResult(null);
-                      setStage('claim_check');
-                    }}
-                    className="w-full mt-6 sm:mt-8 h-12 rounded-xl text-xs font-bold bg-[#c9a227] text-white hover:bg-[#ab851c] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-premium hover:-translate-y-0.5 duration-200 cursor-pointer"
-                  >
-                    <span>{t('card_registry_btn', 'Settlement Form')}</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
                 </InfinityBorderCard>
               </div>
 
-              {/* Micro Access Card - Sign In / Profile with Glass Line */}
-              <div className="max-w-sm mx-auto mt-4">
+              {/* Unified Key Services Glass Card (New Membership, Renewal, Finance/Settlement in 1 Glass Card) */}
+              <div className="max-w-6xl mx-auto">
                 <InfinityBorderCard
-                  roundedClassName="rounded-2xl"
-                  innerClassName="p-6 sm:p-7 text-center"
-                  speed={7.5}
+                  roundedClassName="rounded-2xl sm:rounded-3xl"
+                  innerClassName="p-5 sm:p-7 md:p-8 text-left bg-gradient-to-br from-white/95 via-slate-50/90 to-white/95 backdrop-blur-xl shadow-xl relative overflow-hidden border border-slate-100"
+                  speed={8}
+                  className="shadow-projected"
                 >
-                  <span className="text-[10px] text-slate-500 font-extrabold uppercase tracking-widest mb-3">Official Logins & Profile</span>
-                  <Button 
-                    onClick={onLoginClick}
-                    className="w-full h-12 rounded-xl font-bold text-white bg-[#1a2b5c] hover:bg-[#233875] shadow-premium transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-2 group hover:-translate-y-0.5 duration-200 cursor-pointer"
-                  >
-                    <span>Sign In to Portal</span>
-                    <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                  </Button>
+                  {/* Glassmorphism ambient glow accents */}
+                  <div className="absolute -top-24 -right-24 w-80 h-80 bg-[#c9a227]/10 rounded-full blur-3xl pointer-events-none" />
+                  <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-[#1a2b5c]/10 rounded-full blur-3xl pointer-events-none" />
+                  
+                  <div className="relative z-10 space-y-6">
+                    {/* Header inside the unified card */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/80">
+                      <div className="space-y-1">
+                        <div className="inline-flex items-center gap-2 bg-[#1a2b5c]/8 text-[#1a2b5c] px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-wider border border-[#1a2b5c]/15">
+                          <Layers className="w-3.5 h-3.5 text-[#1a2b5c] stroke-[2.5]" />
+                          <span>{t('unified_services_badge', 'Key Membership & Financial Services')}</span>
+                        </div>
+                        <h3 className="text-xl sm:text-2xl font-black text-[#1a2b5c] uppercase tracking-tight font-heading">
+                          {t('unified_services_title', 'Membership, Renewal & Settlement Portals')}
+                        </h3>
+                      </div>
+                      <p className="text-slate-600 text-xs sm:text-sm font-normal max-w-md">
+                        {t('unified_services_desc', 'Select a service below for New Registration, Annual Card Renewal, or Financial Settlement Data Submission.')}
+                      </p>
+                    </div>
+
+                    {/* 3 Services Inside One Unified Card */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                      {/* Service 1: New Membership */}
+                      <div className="group relative flex flex-col justify-between p-5 sm:p-6 rounded-2xl bg-gradient-to-b from-white/90 to-slate-50/80 border border-slate-200/70 hover:border-[#c9a227]/50 shadow-sm hover:shadow-md transition-all duration-300 backdrop-blur-md">
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="bg-[#c9a227]/15 w-12 h-12 rounded-xl flex items-center justify-center text-[#c9a227] group-hover:scale-105 transition-transform shadow-xs border border-[#c9a227]/30">
+                              <UserPlus className="w-6 h-6 stroke-[2.2]" />
+                            </div>
+                            <span className="inline-flex bg-[#c9a227]/15 text-[#917112] border border-[#c9a227]/30 font-black text-[10px] sm:text-[11px] tracking-wider uppercase px-3 py-1 rounded-full shadow-2xs">
+                              {t('card_new_membership_badge', 'New Membership • ₹200')}
+                            </span>
+                          </div>
+
+                          <div className="space-y-2">
+                            <h4 className="text-base sm:text-lg font-black text-[#1a2b5c] tracking-tight uppercase font-heading leading-snug">
+                              {t('card_new_membership_title', 'New Membership')}
+                            </h4>
+                            <p className="text-slate-600 text-xs sm:text-sm font-normal leading-relaxed">
+                              {t('card_new_membership_desc', 'Register as an official active member to gain community credentials and benefits.')}
+                            </p>
+                          </div>
+                        </div>
+
+                        <Button 
+                          onClick={() => setStage('guidelines')}
+                          className="w-full mt-6 h-11 sm:h-12 rounded-xl text-xs font-black bg-[#1a2b5c] hover:bg-[#233875] text-white transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-md hover:shadow-lg cursor-pointer"
+                        >
+                          <span>{t('card_new_membership_btn', 'Register Now')}</span>
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </div>
+
+                      {/* Service 2: Card Renewal */}
+                      <div className="group relative flex flex-col justify-between p-5 sm:p-6 rounded-2xl bg-gradient-to-b from-white/90 to-slate-50/80 border border-slate-200/70 hover:border-[#1a2b5c]/40 shadow-sm hover:shadow-md transition-all duration-300 backdrop-blur-md">
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="bg-[#1a2b5c]/10 w-12 h-12 rounded-xl flex items-center justify-center text-[#1a2b5c] group-hover:scale-105 transition-transform shadow-xs border border-[#1a2b5c]/20">
+                              <RefreshCw className="w-6 h-6 stroke-[2.2]" />
+                            </div>
+                            <span className="inline-flex bg-[#1a2b5c]/10 text-[#1a2b5c] border border-[#1a2b5c]/20 font-black text-[10px] sm:text-[11px] tracking-wider uppercase px-3 py-1 rounded-full shadow-2xs">
+                              {t('card_renew_membership_badge', 'Membership Renewal • ₹100')}
+                            </span>
+                          </div>
+
+                          <div className="space-y-2">
+                            <h4 className="text-base sm:text-lg font-black text-[#1a2b5c] tracking-tight uppercase font-heading leading-snug">
+                              {t('card_renew_membership_title', 'Renew card')}
+                            </h4>
+                            <p className="text-slate-600 text-xs sm:text-sm font-normal leading-relaxed">
+                              {t('card_renew_membership_desc', 'Renew your existing membership card easily with quick online processing.')}
+                            </p>
+                          </div>
+                        </div>
+
+                        <Button 
+                          onClick={onRenew}
+                          className="w-full mt-6 h-11 sm:h-12 rounded-xl text-xs font-black bg-[#1a2b5c] hover:bg-[#233875] text-white transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-md hover:shadow-lg cursor-pointer"
+                        >
+                          <span>{t('card_renew_membership_btn', 'Renew Card Now')}</span>
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </div>
+
+                      {/* Service 3: Finance / Settlement Form */}
+                      <div className="group relative flex flex-col justify-between p-5 sm:p-6 rounded-2xl bg-gradient-to-b from-white/90 to-slate-50/80 border border-slate-200/70 hover:border-[#c9a227]/50 shadow-sm hover:shadow-md transition-all duration-300 backdrop-blur-md">
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="bg-[#c9a227]/15 w-12 h-12 rounded-xl flex items-center justify-center text-[#c9a227] group-hover:scale-105 transition-transform shadow-xs border border-[#c9a227]/30">
+                              <FileSpreadsheet className="w-6 h-6 stroke-[2.2]" />
+                            </div>
+                            <span className="inline-flex bg-[#c9a227]/15 text-[#917112] border border-[#c9a227]/30 font-black text-[10px] sm:text-[11px] tracking-wider uppercase px-3 py-1 rounded-full shadow-2xs">
+                              {t('card_registry_badge', 'Verified Information Collection')}
+                            </span>
+                          </div>
+
+                          <div className="space-y-2">
+                            <h4 className="text-base sm:text-lg font-black text-[#1a2b5c] tracking-tight uppercase font-heading leading-snug">
+                              {t('card_registry_title', 'Settlement Form')}
+                            </h4>
+                            <p className="text-slate-600 text-xs sm:text-sm font-normal leading-relaxed">
+                              {t('card_registry_desc', 'This portal is designed to collect and verify financial information from members for planning, coordination, and support purposes.')}
+                            </p>
+                          </div>
+                        </div>
+
+                        <Button 
+                          onClick={() => {
+                            setClaimMobile('');
+                            setClaimResult(null);
+                            setStage('claim_check');
+                          }}
+                          className="w-full mt-6 h-11 sm:h-12 rounded-xl text-xs font-black bg-gradient-to-r from-[#c9a227] via-[#d4ad2b] to-[#c9a227] hover:brightness-105 text-[#0c1836] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-md hover:shadow-lg cursor-pointer border border-[#f5d77f]/40"
+                        >
+                          <span>{t('card_registry_btn', 'Settlement Form')}</span>
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 </InfinityBorderCard>
               </div>
             </section>
