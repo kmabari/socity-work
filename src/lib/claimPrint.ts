@@ -112,7 +112,7 @@ export const getCourtReportBaseStyles = (): string => `
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 3mm 3mm;
+    padding: 4.5mm 6.5mm;
     overflow: hidden;
     position: relative;
     background: #ffffff;
@@ -124,9 +124,9 @@ export const getCourtReportBaseStyles = (): string => `
   }
   .header-table {
     width: 100%;
-    border-bottom: 2.5px solid #003366;
-    padding-bottom: 8px;
-    margin-bottom: 8px;
+    border-bottom: 2px solid #003366;
+    padding-bottom: 6px;
+    margin-bottom: 6px;
   }
   .org-title {
     font-size: 19px;
@@ -612,9 +612,6 @@ export const renderPersonCourtClaimPage = (
                 <span>Reg. Office: TC41/1030/14, 2nd Floor, Kanimangalam Tower, Valiyalukkal, Thrissur - 680027</span>
               </div>
               <div class="doc-tag" style="margin-top: 4px;">CONSIGNMENT ADVANCE FINANCIAL STATEMENT & VERIFICATION FORM</div>
-              <div style="font-size: 8.5px; color: #003366; font-weight: 800; margin-top: 4px; line-height: 1.35;">
-                TO: THE MANAGEMENT & LEGAL COUNSELS / ADVOCATES OF HIGHRICH ONLINE SHOPPE PVT. LTD. & BEFORE THE HON'BLE COURT
-              </div>
             </td>
             <td style="vertical-align: top; text-align: right; width: 205px;">
               <div style="font-size: 8.5px; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.3px;">SETTLEMENT REF</div>
@@ -626,6 +623,11 @@ export const renderPersonCourtClaimPage = (
             </td>
           </tr>
         </table>
+
+        <!-- Target Authority / Management Line (Cleanly positioned below divider) -->
+        <div style="font-size: 8.5px; color: #003366; font-weight: 800; margin-top: 4px; margin-bottom: 6px; padding: 3px 8px; background: #f1f5f9; border-left: 3px solid #003366; border-radius: 3px; line-height: 1.4;">
+          TO: THE MANAGEMENT & LEGAL COUNSELS / ADVOCATES OF HIGHRICH ONLINE SHOPPE PVT. LTD. & BEFORE THE HON'BLE COURT
+        </div>
 
         <!-- 1. Customer & Declarant Information -->
         <div class="section-heading">1. Customer & Declarant Information</div>
@@ -875,9 +877,6 @@ export const renderPersonFullAdminClaimPage = (
                 <span>Reg. Office: TC41/1030/14, 2nd Floor, Kanimangalam Tower, Valiyalukkal, Thrissur - 680027</span>
               </div>
               <div class="doc-tag" style="background: #003366; margin-top: 4px;">CONSIGNMENT ADVANCE FINANCIAL STATEMENT & VERIFICATION RECORD</div>
-              <div style="font-size: 8.5px; color: #003366; font-weight: 800; margin-top: 3px; line-height: 1.25;">
-                TO: THE MANAGEMENT & LEGAL COUNSELS / ADVOCATES OF HIGHRICH ONLINE SHOPPE PVT. LTD. & BEFORE THE HON'BLE COURT
-              </div>
             </td>
             <td style="vertical-align: top; text-align: right; width: 195px;">
               <div style="font-size: 8px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px;">ADMIN REF</div>
@@ -889,6 +888,11 @@ export const renderPersonFullAdminClaimPage = (
             </td>
           </tr>
         </table>
+
+        <!-- Target Authority / Management Line (Cleanly positioned below divider) -->
+        <div style="font-size: 8.5px; color: #003366; font-weight: 800; margin-top: 4px; margin-bottom: 6px; padding: 3px 8px; background: #f1f5f9; border-left: 3px solid #003366; border-radius: 3px; line-height: 1.4;">
+          TO: THE MANAGEMENT & LEGAL COUNSELS / ADVOCATES OF HIGHRICH ONLINE SHOPPE PVT. LTD. & BEFORE THE HON'BLE COURT
+        </div>
 
         <!-- Member & Administrative Profile -->
         <div class="section-heading">1. Member Profile & Relationship</div>
@@ -1157,18 +1161,19 @@ export const getCourtComboHtml = (primaryMember: any, memberClaims: any[]): stri
     <style>
       ${getCourtReportBaseStyles()}
       body {
-        padding: 16px 12px;
-        background: #f8fafc;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 24px;
+        margin: 0;
+        padding: 12px 8px;
+        background: #f1f5f9;
+        display: block;
+        min-width: 100%;
+        box-sizing: border-box;
       }
       .page-container {
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.1), 0 2px 6px -1px rgba(0, 0, 0, 0.06);
         border: 1.5px solid #cbd5e1;
         background: #ffffff;
-        margin-bottom: 24px;
+        margin: 0 auto 20px auto;
+        max-width: 210mm;
       }
       @media print {
         body {
@@ -1178,7 +1183,8 @@ export const getCourtComboHtml = (primaryMember: any, memberClaims: any[]): stri
         .page-container {
           box-shadow: none;
           border: none;
-          margin-bottom: 0;
+          margin: 0;
+          max-width: 100%;
         }
       }
     </style>
@@ -1206,16 +1212,19 @@ export const getSingleCourtClaimHtml = (primaryMember: any, claim: any, pageNum:
     <style>
       ${getCourtReportBaseStyles()}
       body {
-        padding: 16px 12px;
-        background: #f8fafc;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
+        margin: 0;
+        padding: 12px 8px;
+        background: #f1f5f9;
+        display: block;
+        min-width: 100%;
+        box-sizing: border-box;
       }
       .page-container {
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.1), 0 2px 6px -1px rgba(0, 0, 0, 0.06);
         border: 1.5px solid #cbd5e1;
         background: #ffffff;
+        margin: 0 auto;
+        max-width: 210mm;
       }
       @media print {
         body {
@@ -1225,6 +1234,8 @@ export const getSingleCourtClaimHtml = (primaryMember: any, claim: any, pageNum:
         .page-container {
           box-shadow: none;
           border: none;
+          margin: 0;
+          max-width: 100%;
         }
       }
     </style>

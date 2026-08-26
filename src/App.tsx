@@ -3545,9 +3545,9 @@ export default function App() {
                             <FileText className="w-5 h-5" />
                           </div>
                           <div>
-                            <h4 className="text-xs sm:text-sm font-black uppercase tracking-tight text-white flex items-center gap-2">
-                              കൺസൈൻമെന്റ് അഡ്വാൻസ് റീഫണ്ട് ഫോം
-                              <Badge className="bg-amber-400 text-slate-950 text-[9px] font-black uppercase px-2 py-0.5 tracking-wider">
+                            <h4 className="text-xs sm:text-sm font-black uppercase tracking-tight text-white flex flex-wrap items-center gap-1.5 sm:gap-2">
+                              <span>കൺസൈൻമെന്റ് അഡ്വാൻസ് റീഫണ്ട് ഫോം</span>
+                              <Badge className="bg-amber-400 text-slate-950 text-[9px] font-black uppercase px-2 py-0.5 tracking-wider whitespace-nowrap">
                                 {userSubmittedClaims.length > 0 ? `കോർട്ട് റെക്കോർഡ് (${userSubmittedClaims.length} പേജ്)` : 'ഔദ്യോഗിക ഫോം'}
                               </Badge>
                             </h4>

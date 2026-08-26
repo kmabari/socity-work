@@ -2834,7 +2834,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-between pb-4 border-b-2 border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 p-4 sm:p-5 rounded-t-3xl gap-3">
+          <div className="flex flex-wrap items-center justify-between pb-4 border-b-2 border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent p-4 sm:p-5 rounded-2xl gap-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-amber-300">
                 👑 1
@@ -3576,7 +3576,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-between pb-4 border-b-2 border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 p-4 sm:p-5 rounded-t-3xl gap-3">
+          <div className="flex flex-wrap items-center justify-between pb-4 border-b-2 border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent p-4 sm:p-5 rounded-2xl gap-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-amber-300">
                 👑 2
@@ -4398,7 +4398,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-between pb-4 border-b-2 border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 p-4 sm:p-5 rounded-t-3xl gap-3">
+          <div className="flex flex-wrap items-center justify-between pb-4 border-b-2 border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent p-4 sm:p-5 rounded-2xl gap-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-amber-300">
                 👑 3
@@ -5220,7 +5220,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-between pb-4 border-b-2 border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 p-4 sm:p-5 rounded-t-3xl gap-3">
+          <div className="flex flex-wrap items-center justify-between pb-4 border-b-2 border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent p-4 sm:p-5 rounded-2xl gap-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-amber-300">
                 👑 4

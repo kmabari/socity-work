@@ -1051,16 +1051,16 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
               {/* 1. TOP PRIORITY: SCREENSHOT MODE BUTTON */}
               <Button 
                 onClick={() => setIsScreenshotMode(true)}
-                className="w-full min-h-[56px] h-auto py-2.5 px-3 sm:px-4 font-black rounded-2xl shadow-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 hover:from-amber-500 hover:to-yellow-600 text-slate-950 flex items-center justify-start gap-2.5 sm:gap-3 transition-transform active:scale-95 border-2 border-amber-300 cursor-pointer text-left"
+                className="w-full min-h-[56px] h-auto py-2.5 px-3 sm:px-4 font-black rounded-2xl shadow-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 hover:from-amber-500 hover:to-yellow-600 text-slate-950 flex items-center justify-start gap-2.5 sm:gap-3 transition-transform active:scale-95 border-2 border-amber-300 cursor-pointer text-left overflow-hidden"
               >
                 <div className="p-2 rounded-xl bg-slate-950 text-amber-400 shrink-0 shadow-sm flex items-center justify-center">
                   <Camera className="w-5 h-5" />
                 </div>
-                <div className="flex flex-col items-start leading-tight flex-1 min-w-0">
-                  <span className="text-xs sm:text-sm font-black uppercase tracking-normal sm:tracking-wider text-slate-950 leading-tight">
+                <div className="flex flex-col items-start leading-tight flex-1 min-w-0 pr-1">
+                  <span className="text-[11.5px] sm:text-sm font-black uppercase tracking-normal text-slate-950 leading-snug break-words">
                     സ്ക്രീൻഷോട്ട് എടുക്കുക (Screenshot Mode)
                   </span>
-                  <span className="text-[10px] sm:text-[11.5px] font-bold text-slate-900 font-sans opacity-95 leading-snug mt-0.5 break-words">
+                  <span className="text-[9.5px] sm:text-[11px] font-bold text-slate-900 font-sans opacity-95 leading-tight mt-0.5 break-words">
                     വ്യക്തമായ സ്ക്രീൻഷോട്ട് എടുക്കാൻ ഇവിടെ അമർത്തുക
                   </span>
                 </div>
