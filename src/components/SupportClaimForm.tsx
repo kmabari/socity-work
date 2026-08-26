@@ -2647,7 +2647,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
   }
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 relative pb-28">
+    <div className="flex flex-col min-h-screen w-full bg-slate-50 relative pb-28 overflow-x-hidden">
       {/* Header */}
       <div className="p-4 sm:p-5 border-b flex items-center justify-between sticky top-0 bg-white/90 backdrop-blur-xl z-25 shadow-sm">
         <div className="flex items-center gap-3">
@@ -3446,7 +3446,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           {/* INLINE SUBMIT BUTTON FOR FORM 1 */}
           <div className="space-y-4">
             <MissingFieldsBanner missing={missingFieldsSummary} onFocusField={scrollToField} />
-            <div className="pt-4 border-t-2 border-amber-300/80 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 p-4 sm:p-5 rounded-b-3xl">
+            <div className="pt-4 border-t-2 border-amber-300/80 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 p-4 sm:p-5 rounded-2xl border border-amber-300/60">
               <div className="text-xs font-bold text-slate-800 space-y-0.5">
                 <div className="font-black text-amber-950 flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
@@ -4282,7 +4282,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                 {/* INLINE SUBMIT BUTTON FOR SPOUSE FORM */}
                 <div className="space-y-4">
                   <MissingFieldsBanner missing={missingFieldsSummary} onFocusField={scrollToField} />
-                  <div className="pt-4 border-t-2 border-amber-300/80 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 p-4 sm:p-5 rounded-b-3xl">
+                  <div className="pt-4 border-t-2 border-amber-300/80 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 p-4 sm:p-5 rounded-2xl border border-amber-300/60">
                     <div className="text-xs font-bold text-slate-800 space-y-0.5">
                       <div className="font-black text-amber-950 flex items-center gap-1.5">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
@@ -5104,7 +5104,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                 {/* INLINE SUBMIT BUTTON FOR PARENT FORM */}
                 <div className="space-y-4">
                   <MissingFieldsBanner missing={missingFieldsSummary} onFocusField={scrollToField} />
-                  <div className="pt-4 border-t-2 border-amber-300/80 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 p-4 sm:p-5 rounded-b-3xl">
+                  <div className="pt-4 border-t-2 border-amber-300/80 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 p-4 sm:p-5 rounded-2xl border border-amber-300/60">
                     <div className="text-xs font-bold text-slate-800 space-y-0.5">
                       <div className="font-black text-amber-950 flex items-center gap-1.5">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
@@ -5926,7 +5926,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                 {/* INLINE SUBMIT BUTTON FOR CHILD FORM */}
                 <div className="space-y-4">
                   <MissingFieldsBanner missing={missingFieldsSummary} onFocusField={scrollToField} />
-                  <div className="pt-4 border-t-2 border-amber-300/80 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 p-4 sm:p-5 rounded-b-3xl">
+                  <div className="pt-4 border-t-2 border-amber-300/80 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 p-4 sm:p-5 rounded-2xl border border-amber-300/60">
                     <div className="text-xs font-bold text-slate-800 space-y-0.5">
                       <div className="font-black text-amber-950 flex items-center gap-1.5">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />

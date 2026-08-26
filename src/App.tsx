@@ -3786,97 +3786,103 @@ export default function App() {
       )}
 
       {view === 'support' && user && (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 bg-slate-50 min-h-screen py-6 px-4 flex items-center justify-center">
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 bg-slate-50 min-h-screen w-full">
           {user.status === 'pending' ? (
-            <div className="w-full max-w-md mx-auto">
-              <div className="relative bg-white border-2 border-amber-300 p-6 sm:p-8 rounded-[36px] shadow-premium overflow-hidden before:content-[''] before:absolute before:inset-x-0 before:top-0 before:h-1.5 before:bg-gradient-to-r before:from-amber-500 before:via-yellow-400 before:to-amber-600 space-y-5 text-center">
-                <div className="h-16 w-16 rounded-2xl bg-amber-50 border-2 border-amber-300 flex items-center justify-center text-amber-600 shadow-sm mx-auto animate-bounce">
-                  <Clock className="w-8 h-8 animate-pulse" />
-                </div>
-                
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight leading-tight">
-                    അംഗത്വ അപ്പ്രൂവലിനായി കാത്തിരിക്കുന്നു!
-                  </h2>
-                  <p className="text-xs font-black tracking-widest text-amber-700 uppercase mt-1.5">
-                    MEMBERSHIP PENDING APPROVAL
-                  </p>
-                </div>
+            <div className="min-h-screen py-6 px-4 flex items-center justify-center">
+              <div className="w-full max-w-md mx-auto">
+                <div className="relative bg-white border-2 border-amber-300 p-6 sm:p-8 rounded-[36px] shadow-premium overflow-hidden before:content-[''] before:absolute before:inset-x-0 before:top-0 before:h-1.5 before:bg-gradient-to-r before:from-amber-500 before:via-yellow-400 before:to-amber-600 space-y-5 text-center">
+                  <div className="h-16 w-16 rounded-2xl bg-amber-50 border-2 border-amber-300 flex items-center justify-center text-amber-600 shadow-sm mx-auto animate-bounce">
+                    <Clock className="w-8 h-8 animate-pulse" />
+                  </div>
+                  
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight leading-tight">
+                      അംഗത്വ അപ്പ്രൂവലിനായി കാത്തിരിക്കുന്നു!
+                    </h2>
+                    <p className="text-xs font-black tracking-widest text-amber-700 uppercase mt-1.5">
+                      MEMBERSHIP PENDING APPROVAL
+                    </p>
+                  </div>
 
-                <div className="bg-amber-50 border-2 border-amber-200 p-4 sm:p-5 rounded-2xl text-slate-900 font-bold text-xs sm:text-sm leading-relaxed text-left space-y-2">
-                  <p className="text-amber-950">
-                    പ്രിയ അംഗമേ, താങ്കളുടെ പുതിയ അംഗത്വം അഡ്മിൻ വെരിഫൈ ചെയ്ത് അപ്പ്രൂവ് ചെയ്യേണ്ടതുണ്ട്.
-                  </p>
-                  <p className="text-slate-800 font-medium">
-                    അപ്പ്രൂവ് ചെയ്തതിന് ശേഷം മാത്രമേ <strong className="text-slate-950 font-black">Financial Info Registry ഫോം ലഭ്യമാകൂ.</strong>
-                  </p>
-                </div>
+                  <div className="bg-amber-50 border-2 border-amber-200 p-4 sm:p-5 rounded-2xl text-slate-900 font-bold text-xs sm:text-sm leading-relaxed text-left space-y-2">
+                    <p className="text-amber-950">
+                      പ്രിയ അംഗമേ, താങ്കളുടെ പുതിയ അംഗത്വം അഡ്മിൻ വെരിഫൈ ചെയ്ത് അപ്പ്രൂവ് ചെയ്യേണ്ടതുണ്ട്.
+                    </p>
+                    <p className="text-slate-800 font-medium">
+                      അപ്പ്രൂവ് ചെയ്തതിന് ശേഷം മാത്രമേ <strong className="text-slate-950 font-black">Financial Info Registry ഫോം ലഭ്യമാകൂ.</strong>
+                    </p>
+                  </div>
 
-                <div className="w-full pt-2">
-                  <Button 
-                    variant="outline"
-                    onClick={() => setView('card')}
-                    className="w-full h-11 rounded-2xl border-2 border-slate-300 text-xs uppercase text-slate-750 font-black hover:bg-slate-100 cursor-pointer bg-white"
-                  >
-                    തിരികെ ഐഡി കാർഡിലേക്ക് (Back to Card)
-                  </Button>
+                  <div className="w-full pt-2">
+                    <Button 
+                      variant="outline"
+                      onClick={() => setView('card')}
+                      className="w-full h-11 rounded-2xl border-2 border-slate-300 text-xs uppercase text-slate-750 font-black hover:bg-slate-100 cursor-pointer bg-white"
+                    >
+                      തിരികെ ഐഡി കാർഡിലേക്ക് (Back to Card)
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
           ) : isExpired ? (
-            <div className="w-full max-w-md mx-auto">
-              <div className="relative bg-white border-2 border-rose-300 p-6 sm:p-8 rounded-[36px] shadow-premium overflow-hidden before:content-[''] before:absolute before:inset-x-0 before:top-0 before:h-1.5 before:bg-gradient-to-r before:from-rose-600 before:via-amber-500 before:to-rose-600 space-y-5 text-center">
-                <div className="h-16 w-16 rounded-2xl bg-rose-50 border-2 border-rose-300 flex items-center justify-center text-rose-600 shadow-sm mx-auto animate-bounce">
-                  <ShieldAlert className="w-8 h-8" />
-                </div>
-                
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight leading-tight">
-                    വിവര രജിസ്ട്രി ബ്ലോക്ക് ചെയ്തിരിക്കുന്നു!
-                  </h2>
-                  <p className="text-xs font-black tracking-widest text-rose-700 uppercase mt-1.5">
-                    ACCESS BLOCKED / RENEWAL REQUIRED
-                  </p>
-                </div>
+            <div className="min-h-screen py-6 px-4 flex items-center justify-center">
+              <div className="w-full max-w-md mx-auto">
+                <div className="relative bg-white border-2 border-rose-300 p-6 sm:p-8 rounded-[36px] shadow-premium overflow-hidden before:content-[''] before:absolute before:inset-x-0 before:top-0 before:h-1.5 before:bg-gradient-to-r before:from-rose-600 before:via-amber-500 before:to-rose-600 space-y-5 text-center">
+                  <div className="h-16 w-16 rounded-2xl bg-rose-50 border-2 border-rose-300 flex items-center justify-center text-rose-600 shadow-sm mx-auto animate-bounce">
+                    <ShieldAlert className="w-8 h-8" />
+                  </div>
+                  
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight leading-tight">
+                      വിവര രജിസ്ട്രി ബ്ലോക്ക് ചെയ്തിരിക്കുന്നു!
+                    </h2>
+                    <p className="text-xs font-black tracking-widest text-rose-700 uppercase mt-1.5">
+                      ACCESS BLOCKED / RENEWAL REQUIRED
+                    </p>
+                  </div>
 
-                <div className="bg-rose-50 border-2 border-rose-200 p-4 sm:p-5 rounded-2xl text-slate-900 font-bold text-xs sm:text-sm leading-relaxed text-left space-y-2">
-                  <p className="text-rose-950">
-                    പ്രിയ അംഗമേ, താങ്കളുടെ പ്ലാൻ കാലാവധി കഴിഞ്ഞിരിക്കുകയാണ്.
-                  </p>
-                  <p className="text-slate-800 font-medium">
-                    സപ്പോർട്ട് വിവരങ്ങൾ നൽകുന്നതിനുള്ള <strong className="text-slate-950 font-black">Financial Info Registry ഫോം ലഭിക്കുന്നതിനായി താങ്കളുടെ മെമ്പർഷിപ്പ് പുതുക്കുക.</strong>
-                  </p>
-                </div>
+                  <div className="bg-rose-50 border-2 border-rose-200 p-4 sm:p-5 rounded-2xl text-slate-900 font-bold text-xs sm:text-sm leading-relaxed text-left space-y-2">
+                    <p className="text-rose-950">
+                      പ്രിയ അംഗമേ, താങ്കളുടെ പ്ലാൻ കാലാവധി കഴിഞ്ഞിരിക്കുകയാണ്.
+                    </p>
+                    <p className="text-slate-800 font-medium">
+                      സപ്പോർട്ട് വിവരങ്ങൾ നൽകുന്നതിനുള്ള <strong className="text-slate-950 font-black">Financial Info Registry ഫോം ലഭിക്കുന്നതിനായി താങ്കളുടെ മെമ്പർഷിപ്പ് പുതുക്കുക.</strong>
+                    </p>
+                  </div>
 
-                <div className="w-full pt-2 space-y-3">
-                  <Button 
-                    onClick={() => {
-                      setPrefilledMobile(user.mobile);
-                      setView('renewal');
-                    }}
-                    className="w-full h-13 rounded-2xl bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white font-black text-xs sm:text-sm uppercase shadow-lg shadow-rose-600/20 cursor-pointer"
-                  >
-                    അംഗത്വം പുതുക്കുക ₹100 (Renew Now)
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    onClick={() => setView('card')}
-                    className="w-full h-11 rounded-2xl border-2 border-slate-300 text-xs uppercase text-slate-700 font-black hover:bg-slate-100 cursor-pointer bg-white"
-                  >
-                    തിരികെ ഐഡി കാർഡിലേക്ക് (Back to Card)
-                  </Button>
+                  <div className="w-full pt-2 space-y-3">
+                    <Button 
+                      onClick={() => {
+                        setPrefilledMobile(user.mobile);
+                        setView('renewal');
+                      }}
+                      className="w-full h-13 rounded-2xl bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white font-black text-xs sm:text-sm uppercase shadow-lg shadow-rose-600/20 cursor-pointer"
+                    >
+                      അംഗത്വം പുതുക്കുക ₹100 (Renew Now)
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      onClick={() => setView('card')}
+                      className="w-full h-11 rounded-2xl border-2 border-slate-300 text-xs uppercase text-slate-700 font-black hover:bg-slate-100 cursor-pointer bg-white"
+                    >
+                      തിരികെ ഐഡി കാർഡിലേക്ക് (Back to Card)
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
           ) : (
-            <SupportClaimForm 
-              user={user} 
-              onClose={() => setView('card')}
-              onBack={() => setView('card')} 
-              onSubmitSuccess={() => {
-                setView('card');
-              }}
-            />
+            <div className="w-full min-h-screen">
+              <SupportClaimForm 
+                user={user} 
+                onClose={() => setView('card')}
+                onBack={() => setView('card')} 
+                onSubmitSuccess={() => {
+                  setView('card');
+                }}
+              />
+            </div>
           )}
         </div>
       )}
