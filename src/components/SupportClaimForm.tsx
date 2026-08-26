@@ -1307,33 +1307,144 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
     }
   };
 
+  // Effective claimant summaries (handles both database-submitted claims and active form inputs)
+  const effectiveSelfTotals = useMemo(() => {
+    if (hasSelf && !editingSelf && selfClaim) {
+      const paid = Number(selfClaim.totalPaid) || 0;
+      const rec = Number(selfClaim.totalReceived) || 0;
+      const pending = Number(selfClaim.totalPending !== undefined ? selfClaim.totalPending : (paid - rec)) || 0;
+      return { 
+        active: true, 
+        isSubmitted: true,
+        paid, 
+        rec, 
+        pending, 
+        name: selfClaim.userName || selfName || user?.name || 'Self', 
+        relation: 'Self' 
+      };
+    }
+    if (selfSelected || editingSelf) {
+      return { 
+        active: true, 
+        isSubmitted: false,
+        paid: selfTotalPaid, 
+        rec: selfTotalReceived, 
+        pending: selfTotalPending, 
+        name: selfName || customerName || user?.name || 'Self', 
+        relation: 'Self' 
+      };
+    }
+    return { active: false, isSubmitted: false, paid: 0, rec: 0, pending: 0, name: '', relation: 'Self' };
+  }, [hasSelf, editingSelf, selfClaim, selfSelected, selfTotalPaid, selfTotalReceived, selfTotalPending, selfName, customerName, user]);
+
+  const effectiveSpouseTotals = useMemo(() => {
+    if (hasSpouse && !editingSpouse && spouseClaim) {
+      const paid = Number(spouseClaim.totalPaid) || 0;
+      const rec = Number(spouseClaim.totalReceived) || 0;
+      const pending = Number(spouseClaim.totalPending !== undefined ? spouseClaim.totalPending : (paid - rec)) || 0;
+      return { 
+        active: true, 
+        isSubmitted: true,
+        paid, 
+        rec, 
+        pending, 
+        name: spouseClaim.userName || spouseName || 'Spouse', 
+        relation: spouseClaim.relation || spouseRelation || 'Spouse' 
+      };
+    }
+    if (spouseSelected || editingSpouse) {
+      return { 
+        active: true, 
+        isSubmitted: false,
+        paid: spouseTotalPaid, 
+        rec: spouseTotalReceived, 
+        pending: spouseTotalPending, 
+        name: spouseName || 'Spouse', 
+        relation: spouseRelation || 'Spouse' 
+      };
+    }
+    return { active: false, isSubmitted: false, paid: 0, rec: 0, pending: 0, name: '', relation: 'Spouse' };
+  }, [hasSpouse, editingSpouse, spouseClaim, spouseSelected, spouseTotalPaid, spouseTotalReceived, spouseTotalPending, spouseName, spouseRelation]);
+
+  const effectiveParentTotals = useMemo(() => {
+    if (hasParent && !editingParent && parentClaim) {
+      const paid = Number(parentClaim.totalPaid) || 0;
+      const rec = Number(parentClaim.totalReceived) || 0;
+      const pending = Number(parentClaim.totalPending !== undefined ? parentClaim.totalPending : (paid - rec)) || 0;
+      return { 
+        active: true, 
+        isSubmitted: true,
+        paid, 
+        rec, 
+        pending, 
+        name: parentClaim.userName || parentName || 'Parent', 
+        relation: parentClaim.relation || parentRelation || 'Parent' 
+      };
+    }
+    if (parentSelected || editingParent) {
+      return { 
+        active: true, 
+        isSubmitted: false,
+        paid: parentTotalPaid, 
+        rec: parentTotalReceived, 
+        pending: parentTotalPending, 
+        name: parentName || 'Parent', 
+        relation: parentRelation || 'Parent' 
+      };
+    }
+    return { active: false, isSubmitted: false, paid: 0, rec: 0, pending: 0, name: '', relation: 'Parent' };
+  }, [hasParent, editingParent, parentClaim, parentSelected, parentTotalPaid, parentTotalReceived, parentTotalPending, parentName, parentRelation]);
+
+  const effectiveChildTotals = useMemo(() => {
+    if (hasChild && !editingChild && childClaim) {
+      const paid = Number(childClaim.totalPaid) || 0;
+      const rec = Number(childClaim.totalReceived) || 0;
+      const pending = Number(childClaim.totalPending !== undefined ? childClaim.totalPending : (paid - rec)) || 0;
+      return { 
+        active: true, 
+        isSubmitted: true,
+        paid, 
+        rec, 
+        pending, 
+        name: childClaim.userName || childName || 'Child', 
+        relation: childClaim.relation || childRelation || 'Child' 
+      };
+    }
+    if (childSelected || editingChild) {
+      return { 
+        active: true, 
+        isSubmitted: false,
+        paid: childTotalPaid, 
+        rec: childTotalReceived, 
+        pending: childTotalPending, 
+        name: childName || 'Child', 
+        relation: childRelation || 'Child' 
+      };
+    }
+    return { active: false, isSubmitted: false, paid: 0, rec: 0, pending: 0, name: '', relation: 'Child' };
+  }, [hasChild, editingChild, childClaim, childSelected, childTotalPaid, childTotalReceived, childTotalPending, childName, childRelation]);
+
   // Combined Totals for visual feedback
   const combinedTotalPaid = useMemo(() => {
-    let t = 0;
-    if (selfSelected) t += selfTotalPaid;
-    if (parentSelected) t += parentTotalPaid;
-    if (childSelected) t += childTotalPaid;
-    if (spouseSelected) t += spouseTotalPaid;
-    return t;
-  }, [selfSelected, selfTotalPaid, parentSelected, parentTotalPaid, childSelected, childTotalPaid, spouseSelected, spouseTotalPaid]);
+    return (effectiveSelfTotals.active ? effectiveSelfTotals.paid : 0) +
+           (effectiveSpouseTotals.active ? effectiveSpouseTotals.paid : 0) +
+           (effectiveParentTotals.active ? effectiveParentTotals.paid : 0) +
+           (effectiveChildTotals.active ? effectiveChildTotals.paid : 0);
+  }, [effectiveSelfTotals, effectiveSpouseTotals, effectiveParentTotals, effectiveChildTotals]);
 
   const combinedTotalReceived = useMemo(() => {
-    let t = 0;
-    if (selfSelected) t += selfTotalReceived;
-    if (parentSelected) t += parentTotalReceived;
-    if (childSelected) t += childTotalReceived;
-    if (spouseSelected) t += spouseTotalReceived;
-    return t;
-  }, [selfSelected, selfTotalReceived, parentSelected, parentTotalReceived, childSelected, childTotalReceived, spouseSelected, spouseTotalReceived]);
+    return (effectiveSelfTotals.active ? effectiveSelfTotals.rec : 0) +
+           (effectiveSpouseTotals.active ? effectiveSpouseTotals.rec : 0) +
+           (effectiveParentTotals.active ? effectiveParentTotals.rec : 0) +
+           (effectiveChildTotals.active ? effectiveChildTotals.rec : 0);
+  }, [effectiveSelfTotals, effectiveSpouseTotals, effectiveParentTotals, effectiveChildTotals]);
 
   const combinedTotalPending = useMemo(() => {
-    let t = 0;
-    if (selfSelected) t += selfTotalPending;
-    if (parentSelected) t += parentTotalPending;
-    if (childSelected) t += childTotalPending;
-    if (spouseSelected) t += spouseTotalPending;
-    return t;
-  }, [selfSelected, selfTotalPending, parentSelected, parentTotalPending, childSelected, childTotalPending, spouseSelected, spouseTotalPending]);
+    return (effectiveSelfTotals.active ? effectiveSelfTotals.pending : 0) +
+           (effectiveSpouseTotals.active ? effectiveSpouseTotals.pending : 0) +
+           (effectiveParentTotals.active ? effectiveParentTotals.pending : 0) +
+           (effectiveChildTotals.active ? effectiveChildTotals.pending : 0);
+  }, [effectiveSelfTotals, effectiveSpouseTotals, effectiveParentTotals, effectiveChildTotals]);
 
   const isEmergency = hardshipStatus.some(h => ['bank', 'crisis', 'medical'].includes(h));
 
@@ -5979,59 +6090,87 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
               {t('Individual Claimants Breakdown:', 'വ്യക്തിഗത തുകകൾ:')}
             </p>
             <div className="grid grid-cols-1 gap-2 pt-1">
-              {selfSelected && (
+              {effectiveSelfTotals.active && (
                 <div className="flex justify-between items-center bg-white/5 rounded-xl px-3 py-2 border border-white/5">
                   <div>
-                    <span className="text-[10px] font-black text-brand-magenta uppercase">
-                      {t('Self', 'സ്വന്തം')}
-                    </span>
-                    <span className="text-xs font-bold text-slate-200 block truncate max-w-[200px]">{selfName || user?.name}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-black text-brand-magenta uppercase">
+                        {t('1. Self', '1. സ്വന്തം')}
+                      </span>
+                      {effectiveSelfTotals.isSubmitted && (
+                        <span className="text-[8px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.2 rounded border border-emerald-400/30">
+                          {t('Submitted', 'സമർപ്പിച്ചു')}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs font-bold text-slate-200 block truncate max-w-[200px]">{effectiveSelfTotals.name}</span>
                   </div>
                   <div className="text-right">
                     <span className="text-[8px] opacity-45 block">Pending</span>
-                    <span className="text-sm font-black text-white">₹{selfTotalPending.toLocaleString('en-IN')}</span>
+                    <span className="text-sm font-black text-white">₹{effectiveSelfTotals.pending.toLocaleString('en-IN')}</span>
                   </div>
                 </div>
               )}
-              {parentSelected && (
+              {effectiveSpouseTotals.active && (
                 <div className="flex justify-between items-center bg-white/5 rounded-xl px-3 py-2 border border-white/5">
                   <div>
-                    <span className="text-[10px] font-black text-brand-magenta uppercase">
-                      {parentRelation === 'Mother' ? t('Mother', 'അമ്മ') : parentRelation === 'Father' ? t('Father', 'അച്ഛൻ') : t('Parent', 'മാതാവ്/പിതാവ്')}
-                    </span>
-                    <span className="text-xs font-bold text-slate-200 block truncate max-w-[200px]">{parentName}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-black text-brand-magenta uppercase">
+                        2. {effectiveSpouseTotals.relation === 'Wife' ? t('Wife', 'ഭാര്യ') : effectiveSpouseTotals.relation === 'Husband' ? t('Husband', 'ഭർത്താവ്') : t('Spouse', 'ഭാര്യ/ഭർത്താവ്')}
+                      </span>
+                      {effectiveSpouseTotals.isSubmitted && (
+                        <span className="text-[8px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.2 rounded border border-emerald-400/30">
+                          {t('Submitted', 'സമർപ്പിച്ചു')}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs font-bold text-slate-200 block truncate max-w-[200px]">{effectiveSpouseTotals.name}</span>
                   </div>
                   <div className="text-right">
                     <span className="text-[8px] opacity-45 block">Pending</span>
-                    <span className="text-sm font-black text-white">₹{parentTotalPending.toLocaleString('en-IN')}</span>
+                    <span className="text-sm font-black text-white">₹{effectiveSpouseTotals.pending.toLocaleString('en-IN')}</span>
                   </div>
                 </div>
               )}
-              {childSelected && (
+              {effectiveParentTotals.active && (
                 <div className="flex justify-between items-center bg-white/5 rounded-xl px-3 py-2 border border-white/5">
                   <div>
-                    <span className="text-[10px] font-black text-brand-magenta uppercase">
-                      {childRelation === 'Son' ? t('Son', 'മകൻ') : childRelation === 'Daughter' ? t('Daughter', 'മകൾ') : t('Child', 'മകൻ/മകൾ')}
-                    </span>
-                    <span className="text-xs font-bold text-slate-200 block truncate max-w-[200px]">{childName}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-black text-brand-magenta uppercase">
+                        3. {effectiveParentTotals.relation === 'Mother' ? t('Mother', 'അമ്മ') : effectiveParentTotals.relation === 'Father' ? t('Father', 'അച്ഛൻ') : t('Parent', 'മാതാവ്/പിതാവ്')}
+                      </span>
+                      {effectiveParentTotals.isSubmitted && (
+                        <span className="text-[8px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.2 rounded border border-emerald-400/30">
+                          {t('Submitted', 'സമർപ്പിച്ചു')}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs font-bold text-slate-200 block truncate max-w-[200px]">{effectiveParentTotals.name}</span>
                   </div>
                   <div className="text-right">
                     <span className="text-[8px] opacity-45 block">Pending</span>
-                    <span className="text-sm font-black text-white">₹{childTotalPending.toLocaleString('en-IN')}</span>
+                    <span className="text-sm font-black text-white">₹{effectiveParentTotals.pending.toLocaleString('en-IN')}</span>
                   </div>
                 </div>
               )}
-              {spouseSelected && (
+              {effectiveChildTotals.active && (
                 <div className="flex justify-between items-center bg-white/5 rounded-xl px-3 py-2 border border-white/5">
                   <div>
-                    <span className="text-[10px] font-black text-brand-magenta uppercase">
-                      {spouseRelation === 'Wife' ? t('Wife', 'ഭാര്യ') : spouseRelation === 'Husband' ? t('Husband', 'ഭർത്താവ്') : t('Spouse', 'ഭാര്യ/ഭർത്താവ്')}
-                    </span>
-                    <span className="text-xs font-bold text-slate-200 block truncate max-w-[200px]">{spouseName}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-black text-brand-magenta uppercase">
+                        4. {effectiveChildTotals.relation === 'Son' ? t('Son', 'മകൻ') : effectiveChildTotals.relation === 'Daughter' ? t('Daughter', 'മകൾ') : t('Child', 'മകൻ/മകൾ')}
+                      </span>
+                      {effectiveChildTotals.isSubmitted && (
+                        <span className="text-[8px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.2 rounded border border-emerald-400/30">
+                          {t('Submitted', 'സമർപ്പിച്ചു')}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs font-bold text-slate-200 block truncate max-w-[200px]">{effectiveChildTotals.name}</span>
                   </div>
                   <div className="text-right">
                     <span className="text-[8px] opacity-45 block">Pending</span>
-                    <span className="text-sm font-black text-white">₹{spouseTotalPending.toLocaleString('en-IN')}</span>
+                    <span className="text-sm font-black text-white">₹{effectiveChildTotals.pending.toLocaleString('en-IN')}</span>
                   </div>
                 </div>
               )}

@@ -1083,10 +1083,58 @@ export const printCourtClaimReport = (claim: any, memberProfile?: any) => {
       <head>
         <meta charset="UTF-8">
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
         <title>Consignment Advance Statement - #${tokenDisplay} - ${name}</title>
         <style>
           ${getCourtReportBaseStyles()}
+          html, body {
+            margin: 0;
+            padding: 0;
+            background: #f1f5f9;
+            width: 100%;
+            overflow-x: hidden;
+          }
+          .page-scaler-wrapper {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            box-sizing: border-box;
+            margin: 0 0 16px 0;
+            padding: 8px 0;
+          }
+          .page-container {
+            width: 760px;
+            min-width: 760px;
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.1), 0 2px 6px -1px rgba(0, 0, 0, 0.06);
+            border: 1.5px solid #cbd5e1;
+            background: #ffffff;
+            margin: 0 auto;
+            transform-origin: top center;
+            flex-shrink: 0;
+          }
+          @media print {
+            html, body {
+              padding: 0 !important;
+              background: #ffffff !important;
+              overflow: visible !important;
+            }
+            .page-scaler-wrapper {
+              display: block !important;
+              height: auto !important;
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+            .page-container {
+              width: 100% !important;
+              min-width: 0 !important;
+              transform: none !important;
+              box-shadow: none !important;
+              border: none !important;
+              margin: 0 !important;
+              max-width: 100% !important;
+            }
+          }
         </style>
       </head>
       <body>
@@ -1102,7 +1150,9 @@ export const printCourtClaimReport = (claim: any, memberProfile?: any) => {
           </div>
         </div>
         <div class="watermark">MEMBER FINANCIAL REGISTRY</div>
-        ${renderPersonCourtClaimPage(claim, memberProfile, 1, 1)}
+        <div class="page-scaler-wrapper">
+          ${renderPersonCourtClaimPage(claim, memberProfile, 1, 1)}
+        </div>
 
         <script>
           function shareViaWeb() {
@@ -1124,11 +1174,54 @@ export const printCourtClaimReport = (claim: any, memberProfile?: any) => {
             }
           }
 
+          function autoFitDocument() {
+            var baseWidth = 760;
+            var clientWidth = document.documentElement.clientWidth || window.innerWidth;
+            var wrappers = document.querySelectorAll('.page-scaler-wrapper');
+            var pages = document.querySelectorAll('.page-container');
+            
+            if (clientWidth < 776) {
+              var padding = 12;
+              var availableWidth = Math.max(280, clientWidth - padding);
+              var scale = Math.min(1, availableWidth / baseWidth);
+              
+              for (var i = 0; i < wrappers.length; i++) {
+                var wrapper = wrappers[i];
+                var page = pages[i];
+                if (!page || !wrapper) continue;
+                
+                page.style.transform = 'scale(' + scale + ')';
+                page.style.transformOrigin = 'top center';
+                var pageHeight = page.offsetHeight || 1080;
+                var scaledHeight = pageHeight * scale;
+                wrapper.style.height = (scaledHeight + 10) + 'px';
+              }
+            } else {
+              for (var i = 0; i < wrappers.length; i++) {
+                var wrapper = wrappers[i];
+                var page = pages[i];
+                if (!page || !wrapper) continue;
+                
+                page.style.transform = 'none';
+                wrapper.style.height = 'auto';
+              }
+            }
+          }
+          window.addEventListener('load', autoFitDocument);
+          window.addEventListener('resize', autoFitDocument);
+          if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            autoFitDocument();
+            setTimeout(autoFitDocument, 50);
+            setTimeout(autoFitDocument, 200);
+          } else {
+            document.addEventListener('DOMContentLoaded', autoFitDocument);
+          }
+
           // Auto-prompt print after DOM renders
           window.addEventListener('DOMContentLoaded', function() {
             setTimeout(function() {
               window.print();
-            }, 350);
+            }, 450);
           });
         </script>
       </body>
@@ -1157,34 +1250,55 @@ export const getCourtComboHtml = (primaryMember: any, memberClaims: any[]): stri
   <head>
     <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
     <style>
       ${getCourtReportBaseStyles()}
-      body {
+      html, body {
         margin: 0;
-        padding: 12px 8px;
+        padding: 0;
         background: #f1f5f9;
-        display: block;
-        min-width: 100%;
+        width: 100%;
+        overflow-x: hidden;
+      }
+      .page-scaler-wrapper {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
         box-sizing: border-box;
+        margin: 0 0 16px 0;
+        padding: 8px 0;
       }
       .page-container {
+        width: 760px;
+        min-width: 760px;
         box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.1), 0 2px 6px -1px rgba(0, 0, 0, 0.06);
         border: 1.5px solid #cbd5e1;
         background: #ffffff;
-        margin: 0 auto 20px auto;
-        max-width: 210mm;
+        margin: 0 auto;
+        transform-origin: top center;
+        flex-shrink: 0;
       }
       @media print {
-        body {
-          padding: 0;
-          background: #ffffff;
+        html, body {
+          padding: 0 !important;
+          background: #ffffff !important;
+          overflow: visible !important;
+        }
+        .page-scaler-wrapper {
+          display: block !important;
+          height: auto !important;
+          margin: 0 !important;
+          padding: 0 !important;
         }
         .page-container {
-          box-shadow: none;
-          border: none;
-          margin: 0;
-          max-width: 100%;
+          width: 100% !important;
+          min-width: 0 !important;
+          transform: none !important;
+          box-shadow: none !important;
+          border: none !important;
+          margin: 0 !important;
+          max-width: 100% !important;
         }
       }
     </style>
@@ -1192,8 +1306,55 @@ export const getCourtComboHtml = (primaryMember: any, memberClaims: any[]): stri
   <body>
     <div class="watermark">CONSIGNMENT ADVANCE STATEMENT</div>
     ${cleanClaims.map((claim, idx) => {
-      return renderPersonCourtClaimPage(claim, primaryMember, idx + 1, totalCount);
+      return `<div class="page-scaler-wrapper">
+        ${renderPersonCourtClaimPage(claim, primaryMember, idx + 1, totalCount)}
+      </div>`;
     }).join('')}
+
+    <script>
+      function autoFitDocument() {
+        var baseWidth = 760;
+        var clientWidth = document.documentElement.clientWidth || window.innerWidth;
+        var wrappers = document.querySelectorAll('.page-scaler-wrapper');
+        var pages = document.querySelectorAll('.page-container');
+        
+        if (clientWidth < 776) {
+          var padding = 12;
+          var availableWidth = Math.max(280, clientWidth - padding);
+          var scale = Math.min(1, availableWidth / baseWidth);
+          
+          for (var i = 0; i < wrappers.length; i++) {
+            var wrapper = wrappers[i];
+            var page = pages[i];
+            if (!page || !wrapper) continue;
+            
+            page.style.transform = 'scale(' + scale + ')';
+            page.style.transformOrigin = 'top center';
+            var pageHeight = page.offsetHeight || 1080;
+            var scaledHeight = pageHeight * scale;
+            wrapper.style.height = (scaledHeight + 10) + 'px';
+          }
+        } else {
+          for (var i = 0; i < wrappers.length; i++) {
+            var wrapper = wrappers[i];
+            var page = pages[i];
+            if (!page || !wrapper) continue;
+            
+            page.style.transform = 'none';
+            wrapper.style.height = 'auto';
+          }
+        }
+      }
+      window.addEventListener('load', autoFitDocument);
+      window.addEventListener('resize', autoFitDocument);
+      if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        autoFitDocument();
+        setTimeout(autoFitDocument, 50);
+        setTimeout(autoFitDocument, 200);
+      } else {
+        document.addEventListener('DOMContentLoaded', autoFitDocument);
+      }
+    </script>
   </body>
 </html>`;
 };
@@ -1208,41 +1369,109 @@ export const getSingleCourtClaimHtml = (primaryMember: any, claim: any, pageNum:
   <head>
     <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
     <style>
       ${getCourtReportBaseStyles()}
-      body {
+      html, body {
         margin: 0;
-        padding: 12px 8px;
+        padding: 0;
         background: #f1f5f9;
-        display: block;
-        min-width: 100%;
+        width: 100%;
+        overflow-x: hidden;
+      }
+      .page-scaler-wrapper {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
         box-sizing: border-box;
+        margin: 0 0 16px 0;
+        padding: 8px 0;
       }
       .page-container {
+        width: 760px;
+        min-width: 760px;
         box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.1), 0 2px 6px -1px rgba(0, 0, 0, 0.06);
         border: 1.5px solid #cbd5e1;
         background: #ffffff;
         margin: 0 auto;
-        max-width: 210mm;
+        transform-origin: top center;
+        flex-shrink: 0;
       }
       @media print {
-        body {
-          padding: 0;
-          background: #ffffff;
+        html, body {
+          padding: 0 !important;
+          background: #ffffff !important;
+          overflow: visible !important;
+        }
+        .page-scaler-wrapper {
+          display: block !important;
+          height: auto !important;
+          margin: 0 !important;
+          padding: 0 !important;
         }
         .page-container {
-          box-shadow: none;
-          border: none;
-          margin: 0;
-          max-width: 100%;
+          width: 100% !important;
+          min-width: 0 !important;
+          transform: none !important;
+          box-shadow: none !important;
+          border: none !important;
+          margin: 0 !important;
+          max-width: 100% !important;
         }
       }
     </style>
   </head>
   <body>
     <div class="watermark">CONSIGNMENT ADVANCE STATEMENT</div>
-    ${renderPersonCourtClaimPage(claim, primaryMember, pageNum, totalPages)}
+    <div class="page-scaler-wrapper">
+      ${renderPersonCourtClaimPage(claim, primaryMember, pageNum, totalPages)}
+    </div>
+
+    <script>
+      function autoFitDocument() {
+        var baseWidth = 760;
+        var clientWidth = document.documentElement.clientWidth || window.innerWidth;
+        var wrappers = document.querySelectorAll('.page-scaler-wrapper');
+        var pages = document.querySelectorAll('.page-container');
+        
+        if (clientWidth < 776) {
+          var padding = 12;
+          var availableWidth = Math.max(280, clientWidth - padding);
+          var scale = Math.min(1, availableWidth / baseWidth);
+          
+          for (var i = 0; i < wrappers.length; i++) {
+            var wrapper = wrappers[i];
+            var page = pages[i];
+            if (!page || !wrapper) continue;
+            
+            page.style.transform = 'scale(' + scale + ')';
+            page.style.transformOrigin = 'top center';
+            var pageHeight = page.offsetHeight || 1080;
+            var scaledHeight = pageHeight * scale;
+            wrapper.style.height = (scaledHeight + 10) + 'px';
+          }
+        } else {
+          for (var i = 0; i < wrappers.length; i++) {
+            var wrapper = wrappers[i];
+            var page = pages[i];
+            if (!page || !wrapper) continue;
+            
+            page.style.transform = 'none';
+            wrapper.style.height = 'auto';
+          }
+        }
+      }
+      window.addEventListener('load', autoFitDocument);
+      window.addEventListener('resize', autoFitDocument);
+      if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        autoFitDocument();
+        setTimeout(autoFitDocument, 50);
+        setTimeout(autoFitDocument, 200);
+      } else {
+        document.addEventListener('DOMContentLoaded', autoFitDocument);
+      }
+    </script>
   </body>
 </html>`;
 };
@@ -1282,10 +1511,58 @@ export const printCourtComboReport = (primaryMember: any, memberClaims: any[]) =
       <head>
         <meta charset="UTF-8">
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
         <title>Consignment Advance Statement (${totalCount} Pages) - ${primeName}</title>
         <style>
           ${getCourtReportBaseStyles()}
+          html, body {
+            margin: 0;
+            padding: 0;
+            background: #f1f5f9;
+            width: 100%;
+            overflow-x: hidden;
+          }
+          .page-scaler-wrapper {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            box-sizing: border-box;
+            margin: 0 0 16px 0;
+            padding: 8px 0;
+          }
+          .page-container {
+            width: 760px;
+            min-width: 760px;
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.1), 0 2px 6px -1px rgba(0, 0, 0, 0.06);
+            border: 1.5px solid #cbd5e1;
+            background: #ffffff;
+            margin: 0 auto;
+            transform-origin: top center;
+            flex-shrink: 0;
+          }
+          @media print {
+            html, body {
+              padding: 0 !important;
+              background: #ffffff !important;
+              overflow: visible !important;
+            }
+            .page-scaler-wrapper {
+              display: block !important;
+              height: auto !important;
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+            .page-container {
+              width: 100% !important;
+              min-width: 0 !important;
+              transform: none !important;
+              box-shadow: none !important;
+              border: none !important;
+              margin: 0 !important;
+              max-width: 100% !important;
+            }
+          }
         </style>
       </head>
       <body>
@@ -1302,7 +1579,9 @@ export const printCourtComboReport = (primaryMember: any, memberClaims: any[]) =
         </div>
         <div class="watermark">MEMBER FINANCIAL REGISTRY</div>
         ${cleanClaims.map((claim, idx) => {
-          return renderPersonCourtClaimPage(claim, primaryMember, idx + 1, totalCount);
+          return `<div class="page-scaler-wrapper">
+            ${renderPersonCourtClaimPage(claim, primaryMember, idx + 1, totalCount)}
+          </div>`;
         }).join('')}
 
         <script>
@@ -1324,10 +1603,53 @@ export const printCourtComboReport = (primaryMember: any, memberClaims: any[]) =
             }
           }
 
+          function autoFitDocument() {
+            var baseWidth = 760;
+            var clientWidth = document.documentElement.clientWidth || window.innerWidth;
+            var wrappers = document.querySelectorAll('.page-scaler-wrapper');
+            var pages = document.querySelectorAll('.page-container');
+            
+            if (clientWidth < 776) {
+              var padding = 12;
+              var availableWidth = Math.max(280, clientWidth - padding);
+              var scale = Math.min(1, availableWidth / baseWidth);
+              
+              for (var i = 0; i < wrappers.length; i++) {
+                var wrapper = wrappers[i];
+                var page = pages[i];
+                if (!page || !wrapper) continue;
+                
+                page.style.transform = 'scale(' + scale + ')';
+                page.style.transformOrigin = 'top center';
+                var pageHeight = page.offsetHeight || 1080;
+                var scaledHeight = pageHeight * scale;
+                wrapper.style.height = (scaledHeight + 10) + 'px';
+              }
+            } else {
+              for (var i = 0; i < wrappers.length; i++) {
+                var wrapper = wrappers[i];
+                var page = pages[i];
+                if (!page || !wrapper) continue;
+                
+                page.style.transform = 'none';
+                wrapper.style.height = 'auto';
+              }
+            }
+          }
+          window.addEventListener('load', autoFitDocument);
+          window.addEventListener('resize', autoFitDocument);
+          if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            autoFitDocument();
+            setTimeout(autoFitDocument, 50);
+            setTimeout(autoFitDocument, 200);
+          } else {
+            document.addEventListener('DOMContentLoaded', autoFitDocument);
+          }
+
           window.addEventListener('DOMContentLoaded', function() {
             setTimeout(function() {
               window.print();
-            }, 350);
+            }, 450);
           });
         </script>
       </body>
