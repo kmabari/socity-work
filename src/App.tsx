@@ -21,7 +21,7 @@ import { DISTRICTS, CONSTITUENCIES, LOGO_URL, FALLBACK_LOGO_URL, getDistrictCode
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { auth, db, storage, handleFirestoreError, OperationType, secondaryAuth } from './lib/firebase';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, signInWithPopup, updatePassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, signInWithPopup, signInWithRedirect, getRedirectResult, updatePassword } from 'firebase/auth';
 import { Clock, LogOut, Camera, ShieldCheck, RefreshCw, Users, ShieldAlert, ArrowRight, Eye, EyeOff, Pencil, Trash2, MoreVertical, Receipt, Mail, Smartphone, Search, MapPin, Plus, CheckCircle2, AlertTriangle, Info, Printer, Download, Share2, FileText, MessageCircle } from 'lucide-react';
 import { setDoc, doc, updateDoc, deleteDoc, collection, onSnapshot, query, getDoc, getDocs, runTransaction, serverTimestamp, where, increment, limit, addDoc, writeBatch } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -435,6 +435,22 @@ export default function App() {
 
   const [isGoogleLoggingIn, setIsGoogleLoggingIn] = useState(false);
 
+  // Handle Google Auth redirect result on page load (essential for mobile browsers)
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result && result.user) {
+          console.log("Google redirect sign-in successful:", result.user.email);
+          toast.success(`Signed in with Google as ${result.user.email}`);
+        }
+      })
+      .catch((error) => {
+        if (error && error.code !== 'auth/null-user') {
+          console.warn("Google redirect sign-in warning:", error?.code, error?.message);
+        }
+      });
+  }, []);
+
   const handleGoogleLogin = async () => {
     if (isGoogleLoggingIn) return;
     setIsGoogleLoggingIn(true);
@@ -456,14 +472,20 @@ export default function App() {
           { 
             id: loadingToast,
             duration: 15000, 
-            description: `പരിഹാരം: 1) Firebase Console -> Authentication -> Settings -> Authorized Domains-ൽ "${currentHost}" ആഡ് ചെയ്യുക. അല്ലെങ്കിൽ 2) നിങ്ങളുടെ ഇമെയിലും (${user?.email || 'kmabarikiyafoods@gmail.com'}) പാസ്‌വേഡും നേരിട്ട് നൽകി ലോഗിൻ ചെയ്യുക.`
+            description: `പരിഹാരം: 1) Firebase Console -> Authentication -> Settings -> Authorized Domains-ൽ "${currentHost}" ആഡ് ചെയ്യുക. അല്ലെങ്കിൽ 2) നിങ്ങളുടെ മൊബൈൽ നമ്പറും പാസ്‌വേഡും നൽകി ലോഗിൻ ചെയ്യുക.`
           }
         );
       } else if (error?.code === 'auth/popup-blocked' || error?.message?.includes('popup-blocked')) {
-        toast.error('Browser Popup തടയപ്പെട്ടു. ദയവായി ബ്രൗസറിൽ Popup അനുമതി നൽകുക, അല്ലെങ്കിൽ Email & Password ഉപയോഗിച്ച് ലോഗിൻ ചെയ്യുക.', { id: loadingToast, duration: 8000 });
+        try {
+          toast.info('Redirecting to Google Login...', { id: loadingToast });
+          await signInWithRedirect(auth, googleProvider);
+          return;
+        } catch (redirErr) {
+          toast.error('Browser Popup തടയപ്പെട്ടു. ദയവായി മൊബൈൽ നമ്പറും പാസ്‌വേഡും ഉപയോഗിച്ച് ലോഗിൻ ചെയ്യുക.', { id: loadingToast, duration: 8000 });
+        }
       } else {
-        const errorMsg = error?.message || 'Google sign-in failed. Please use Email & Password.';
-        toast.error(`ഗൂഗിൾ ലോഗിൻ പരാജയപ്പെട്ടു (${error?.code || 'Error'}). ദയവായി നിങ്ങളുടെ ഇമെയിലും പാസ്‌വേഡും ഉപയോഗിച്ച് ലോഗിൻ ചെയ്യുക.`, { id: loadingToast, duration: 8000, description: errorMsg });
+        const errorMsg = error?.message || 'Google sign-in failed. Please use Mobile Number & Password.';
+        toast.error(`ഗൂഗിൾ ലോഗിൻ പരാജയപ്പെട്ടു (${error?.code || 'Error'}). ദയവായി നിങ്ങളുടെ മൊബൈൽ നമ്പറും പാസ്‌വേഡും ഉപയോഗിച്ച് ലോഗിൻ ചെയ്യുക.`, { id: loadingToast, duration: 8000, description: errorMsg });
       }
     } finally {
       setIsGoogleLoggingIn(false);
