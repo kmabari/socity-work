@@ -27,7 +27,12 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [settings, setSettings] = useState<OrgSettings>(defaultSettings);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(() => {
+    if (typeof window !== 'undefined' && member?.uid) {
+      return localStorage.getItem(`local_card_photo_${member.uid}`) || member.photoUrl || null;
+    }
+    return member?.photoUrl || null;
+  });
   const [isScreenshotMode, setIsScreenshotMode] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -199,30 +204,33 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
     frame();
   }, [showCelebration]);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-       toast.error("Please select an image file");
+       toast.error("ദയവായി ഒരു ഫോട്ടോ തിരഞ്ഞെടുക്കുക (Please select an image file)");
        return;
     }
     
-    const initialUrl = URL.createObjectURL(file);
-    setPreviewUrl(initialUrl);
-
-    try {
-      const compressed = await compressImage(file, 600, 600, 0.7);
-      const compressedUrl = URL.createObjectURL(compressed);
-      setPreviewUrl(compressedUrl);
-      
-      if (onUpdatePhoto) {
-        const compressedFile = new File([compressed], file.name, { type: 'image/jpeg' });
-        onUpdatePhoto(compressedFile);
+    // Instantly load image purely from local file into state & localStorage
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      if (dataUrl) {
+        setPreviewUrl(dataUrl);
+        if (member?.uid) {
+          try {
+            localStorage.setItem(`local_card_photo_${member.uid}`, dataUrl);
+          } catch (err) {
+            console.warn("LocalStorage photo cache quota exceeded, preview active:", err);
+          }
+        }
+        toast.success("ഫോട്ടോ കാർഡിൽ ചേർത്തു! കാർഡിന്റെ സ്ക്രീൻഷോട്ട് എടുക്കാം.", { duration: 4000 });
       }
-    } catch (err) {
-      console.error("Compression failed:", err);
-      if (onUpdatePhoto) onUpdatePhoto(file);
-    }
+    };
+    reader.readAsDataURL(file);
+    // Reset file input value so selecting the same or another file always triggers onChange
+    e.target.value = '';
   };
 
   const triggerBlobDownload = (blob: Blob, filename: string) => {

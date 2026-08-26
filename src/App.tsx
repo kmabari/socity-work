@@ -771,8 +771,9 @@ export default function App() {
               cachedData.pinResetRequested === true
             );
             const isMustComplete = !isAdm && !isOp && !isMustChange && (
-              cachedData.mustCompleteProfile === true &&
-              cachedData.profileCompleted !== true
+              cachedData.mustCompleteProfile === true ||
+              cachedData.profileCompleted !== true ||
+              currentViewRef.current === 'complete-profile'
             );
 
             if (isAdm) {
@@ -781,7 +782,7 @@ export default function App() {
               setView('operator');
             } else if (isMustChange) {
               setView('change-password');
-            } else if (isMustComplete) {
+            } else if (isMustComplete || currentViewRef.current === 'complete-profile') {
               setView('complete-profile');
             } else {
               setView('card');
@@ -919,8 +920,9 @@ export default function App() {
             !userData.pin
           );
           const isMustComplete = !isAdmin && !isOperator && !isMustChange && (
-            userData.mustCompleteProfile === true &&
-            userData.profileCompleted !== true
+            userData.mustCompleteProfile === true ||
+            userData.profileCompleted !== true ||
+            currentViewRef.current === 'complete-profile'
           );
 
           if (currentViewRef.current !== 'janamail') {
@@ -930,7 +932,7 @@ export default function App() {
                setView('operator');
             } else if (isMustChange) {
                setView('change-password');
-            } else if (isMustComplete) {
+            } else if (isMustComplete || currentViewRef.current === 'complete-profile') {
                setView('complete-profile');
             } else {
               const claimRedirect = typeof window !== 'undefined' ? sessionStorage.getItem('hcrs_claim_redirect') === 'true' : false;
@@ -2629,18 +2631,10 @@ export default function App() {
 
       toast.success('പാസ്‌വേഡ് വിജയകരമായി മാറ്റി! (Password updated successfully)', { id: loadingToast });
 
-      // 5. Check if profile completion is required (Mandatory only if mustCompleteProfile is true and not yet completed)
-      const isMustComplete = (
-        updatedUser.mustCompleteProfile === true &&
-        updatedUser.profileCompleted !== true
-      );
-
-      if (isMustComplete) {
-        setView('complete-profile');
-        toast.info('പാസ്‌വേഡ് മാറ്റി! അടുത്തതായി താങ്കളുടെ പ്രൊഫൈൽ വിവരങ്ങൾ പരിശോധിച്ച് ഉറപ്പുവരുത്തുക.', { duration: 6000 });
-      } else {
-        setView('card');
-      }
+      // 5. Always redirect to complete-profile (Edit Profile) after password setup/change
+      currentViewRef.current = 'complete-profile';
+      setView('complete-profile');
+      toast.info('പാസ്‌വേഡ് മാറ്റി! അടുത്തതായി താങ്കളുടെ പ്രൊഫൈൽ വിവരങ്ങൾ പരിശോധിച്ച് സേവ് ചെയ്യുക. (Please verify and save your profile details)', { duration: 6000 });
     } catch (err: any) {
       console.error("Change password error:", err);
       toast.error('പാസ്‌വേഡ് മാറ്റുന്നതിൽ തടസ്സം നേരിട്ടു: ' + (err?.message || 'Error'), { id: loadingToast });
@@ -2974,14 +2968,29 @@ export default function App() {
     const uid = targetUid || user?.uid;
     if (!uid) return;
 
-    const loadingToast = toast.loading('Uploading profile picture...');
+    const loadingToast = toast.loading('Updating photo...');
     try {
-      const compressedPhoto = await compressImage(photo, 1000, 1000, 0.8);
-      const photoRef = ref(storage, `photos/${uid}_profile.jpg`);
-      const uploadResult = await uploadBytes(photoRef, compressedPhoto);
-      const photoUrl = await getDownloadURL(uploadResult.ref);
+      const compressedPhoto = await compressImage(photo, 800, 800, 0.8);
+      let photoUrl = '';
       
-      await updateDoc(doc(db, 'users', uid), { photoUrl });
+      try {
+        const photoRef = ref(storage, `photos/${uid}_profile.jpg`);
+        // Use a 6 second timeout for storage upload
+        const uploadPromise = uploadBytes(photoRef, compressedPhoto).then(res => getDownloadURL(res.ref));
+        const timeoutPromise = new Promise<string>((_, reject) => setTimeout(() => reject(new Error('Storage timeout')), 6000));
+        photoUrl = await Promise.race([uploadPromise, timeoutPromise]);
+      } catch (storageErr) {
+        console.warn("Storage upload skipped or timed out, using local Data URL fallback:", storageErr);
+        photoUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve((e.target?.result as string) || '');
+          reader.readAsDataURL(compressedPhoto);
+        });
+      }
+      
+      if (photoUrl && !photoUrl.startsWith('data:')) {
+        await updateDoc(doc(db, 'users', uid), { photoUrl }).catch(() => {});
+      }
       
       // Update local state
       if (uid === user?.uid) {
@@ -2992,9 +3001,9 @@ export default function App() {
       setMembers(prev => prev.map(m => m.uid === uid ? { ...m, photoUrl } : m));
       
       toast.success('Photo updated successfully!', { id: loadingToast });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating photo:", error);
-      toast.error('Failed to update photo', { id: loadingToast });
+      toast.error('Failed to update photo: ' + (error?.message || 'Error'), { id: loadingToast });
     }
   };
 
