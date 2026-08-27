@@ -1167,6 +1167,15 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           }
         }
 
+        const anyClaimWithPref = docsList.find(c => c.futurePreference);
+        if (anyClaimWithPref?.futurePreference) {
+          setFuturePreference(prev => prev || anyClaimWithPref.futurePreference);
+        }
+        const anyClaimWithHardship = docsList.find(c => Array.isArray(c.hardshipStatus) && c.hardshipStatus.length > 0);
+        if (anyClaimWithHardship?.hardshipStatus) {
+          setHardshipStatus(prev => prev.length === 0 ? anyClaimWithHardship.hardshipStatus : prev);
+        }
+
         if (hasSelfDb && hasParentDb && hasChildDb && hasSpouseDb) {
           setAlreadySubmitted(true);
         } else {
@@ -2444,7 +2453,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
       <div className="flex flex-col min-h-screen w-full bg-slate-100 overflow-x-hidden">
         {/* Responsive Sticky Header */}
         <div className="p-3 sm:p-4 bg-gradient-to-r from-slate-900 via-[#003366] to-[#002244] text-white sticky top-0 z-30 shadow-md w-full">
-          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <div className="flex items-center justify-between sm:justify-start gap-2.5 min-w-0">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-amber-300 shrink-0 border border-white/15">
@@ -2532,7 +2541,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
 
         {/* Page Switcher Subbar */}
         <div className="px-3 sm:px-4 py-2.5 bg-white border-b border-slate-200 shadow-xs w-full">
-          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+          <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
             <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-thin py-0.5 max-w-full">
               <button
                 type="button"
@@ -2582,8 +2591,8 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
         </div>
 
         {/* Live Document Frame */}
-        <div className="flex-1 p-2.5 sm:p-4 md:p-6 max-w-5xl mx-auto w-full flex flex-col min-w-0">
-          <div className="flex-1 w-full min-h-[600px] sm:min-h-[750px] md:min-h-[850px] rounded-2xl overflow-hidden border-2 border-slate-300 bg-white shadow-lg relative">
+        <div className="flex-1 py-4 sm:py-6 px-3 sm:px-4 max-w-5xl mx-auto w-full flex flex-col min-w-0">
+          <div className="flex-1 w-full min-h-[520px] sm:min-h-[750px] md:min-h-[850px] rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-300 bg-white shadow-xl relative">
             <iframe
               srcDoc={
                 selectedStatementIdx === -1
@@ -2591,7 +2600,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                   : getSingleCourtClaimHtml(combinedUserForPrint, submittedClaims[selectedStatementIdx], selectedStatementIdx + 1, submittedClaims.length)
               }
               title="Consignment Advance Court Statement"
-              className="w-full h-full min-h-[600px] sm:min-h-[750px] md:min-h-[850px] border-0 bg-white block"
+              className="w-full h-full min-h-[520px] sm:min-h-[750px] md:min-h-[850px] border-0 bg-white block"
             />
           </div>
 
@@ -2651,7 +2660,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
     const remainingSlots = 4 - totalFilledNow;
 
     return (
-      <div className="p-6 text-center space-y-6 max-w-md mx-auto flex flex-col justify-start min-h-screen my-auto pb-24 overflow-y-auto">
+      <div className="p-4 sm:p-6 text-center space-y-6 max-w-md w-full mx-auto flex flex-col justify-start min-h-screen my-auto pb-24 overflow-y-auto">
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2 border border-green-300 shadow-md">
           <CheckCircle2 className="w-8 h-8 text-green-600 animate-bounce" />
         </div>
@@ -2678,11 +2687,11 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
               const { name: pName, relationLabel } = getPersonDetails(rel);
               
               return (
-                <div key={rel} className="flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-500">
+                <div key={rel} className="flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-500 w-full">
                   {/* Beautiful 3D PVC Style Premium Token Card */}
                   <div 
                     id={`token-card-${rel}`}
-                    className="w-[340px] h-[525px] rounded-[24px] text-white relative overflow-hidden font-sans border-[6px] border-slate-700 flex flex-col justify-between shrink-0 select-none shadow-[15px_20px_35px_rgba(0,0,0,0.85)] bg-gradient-to-br from-[#121b2b] via-[#090f19] to-[#02050b] p-5 pt-6"
+                    className="w-full max-w-[340px] h-[525px] rounded-[24px] text-white relative overflow-hidden font-sans border-[6px] border-slate-700 flex flex-col justify-between shrink-0 select-none shadow-[15px_20px_35px_rgba(0,0,0,0.85)] bg-gradient-to-br from-[#121b2b] via-[#090f19] to-[#02050b] p-5 pt-6 mx-auto"
                   >
                     {/* Top gradient strip */}
                     <div className="bg-gradient-to-r from-[#FF1493] via-[#ec008c] to-[#990055] h-1.5 w-full absolute top-0 left-0 z-30" />
@@ -2769,7 +2778,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                   {/* High Quality Download trigger button */}
                   <Button 
                     onClick={() => downloadTokenCard(rel, token as string, pName)}
-                    className="w-[340px] h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all border border-emerald-400/20"
+                    className="w-full max-w-[340px] h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all border border-emerald-400/20 mx-auto"
                   >
                     <Download className="w-4 h-4 text-white animate-bounce" />
                     <span>സീരിയൽ നമ്പർ കാർഡ് സേവ് ചെയ്യുക</span>

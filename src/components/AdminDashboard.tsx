@@ -5293,9 +5293,15 @@ export default function AdminDashboard({
                             'Total Paid': c.totalPaid,
                             'Total Received': c.totalReceived,
                             'Balance Pending': c.totalPending,
-                            'Preference': c.futurePreference === 'settlement' ? 'Prefer settlement and closure after receiving balance' : 
-                                         c.futurePreference === 'wait' ? 'Willing to wait if company continues and grows' : 
-                                         c.futurePreference === 'continue' ? 'Ready to continue based on future plans' : (c.futurePreference || 'N/A'),
+                            'Preference': c.futurePreference === 'settlement' ? 'ബാക്കി തുക ലഭിച്ച ശേഷം സെറ്റിൽമെന്റും അക്കൗണ്ട് ക്ലോസ് ചെയ്യലും (Settlement & Closure)' : 
+                                         c.futurePreference === 'wait' ? '1/4 ഭാഗം ലഭിച്ചാൽ കാത്തിരിക്കാം (Wait if 1/4th Balance Received)' : 
+                                         c.futurePreference === 'continue' ? 'കമ്പനിയുമായി തുടർന്നു പോകാൻ തയ്യാറാണ് (Continue with Company)' : (c.futurePreference || 'N/A'),
+                            'Hardship Factors': Array.isArray(c.hardshipStatus) && c.hardshipStatus.length > 0 ? c.hardshipStatus.map((h: string) => 
+                              h === 'bank' ? 'ബാങ്ക് ജപ്തി ഭീഷണി (Bank Seizure)' :
+                              h === 'crisis' ? 'സാമ്പത്തിക പ്രതിസന്ധി (Financial Crisis)' :
+                              h === 'medical' ? 'ചികിത്സാ അത്യാഹിതം (Medical Emergency)' :
+                              h === 'none' ? 'അടിയന്തിര പ്രാധാന്യമില്ല (No Emergency)' : h
+                            ).join(', ') : (c.hardshipStatus || 'None'),
                             'Priority': c.priorityStatus,
                             'Date': formatClaimDate(c.createdAt)
                           })));
@@ -6341,6 +6347,36 @@ service cloud.firestore {
                                 ))}
                               </div>
                             )}
+
+                            {/* Future Preference & Hardship Info */}
+                            {(claim.futurePreference || (Array.isArray(claim.hardshipStatus) && claim.hardshipStatus.length > 0)) && (
+                              <div className="pt-2 mt-2 border-t border-slate-100 space-y-1.5 text-[10px]">
+                                {claim.futurePreference && (
+                                  <div className="flex items-start gap-1.5 bg-blue-50/50 p-2 rounded-xl border border-blue-100/60">
+                                    <span className="font-extrabold text-[8.5px] uppercase tracking-wider text-brand-blue shrink-0">ഭാവിയിലെ തീരുമാനം:</span>
+                                    <span className="text-slate-700 font-semibold leading-tight">
+                                      {claim.futurePreference === 'settlement' ? 'സെറ്റിൽമെന്റും അക്കൗണ്ട് ക്ലോസ് ചെയ്യലും (Settlement & Closure)' :
+                                       claim.futurePreference === 'wait' ? '1/4 ഭാഗം ലഭിച്ചാൽ കാത്തിരിക്കാം (Willing to wait if 1/4th given)' :
+                                       claim.futurePreference === 'continue' ? 'കമ്പനിയുമായി തുടർന്നു പോകാൻ തയ്യാറാണ് (Continue with Company)' : claim.futurePreference}
+                                    </span>
+                                  </div>
+                                )}
+                                {Array.isArray(claim.hardshipStatus) && claim.hardshipStatus.length > 0 && (
+                                  <div className="flex items-start gap-1.5 flex-wrap">
+                                    <span className="font-extrabold text-[8.5px] uppercase tracking-wider text-slate-400 py-0.5">ഇപ്പോഴത്തെ അവസ്ഥ:</span>
+                                    <div className="flex flex-wrap gap-1">
+                                      {claim.hardshipStatus.map((h: string) => (
+                                        <Badge key={h} className="bg-red-50 text-red-700 border border-red-200 font-bold text-[8.5px] px-2 py-0.5 rounded">
+                                          {h === 'bank' ? 'ബാങ്ക് ജപ്തി ഭീഷണി (Bank Seizure)' :
+                                           h === 'crisis' ? 'സാമ്പത്തിക പ്രതിസന്ധി (Financial Crisis)' :
+                                           h === 'medical' ? 'ചികിത്സാ അത്യാഹിതം (Medical Emergency)' : 'അടിയന്തിര പ്രാധാന്യമില്ല (None)'}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -7360,22 +7396,47 @@ service cloud.firestore {
                   )}
 
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-3">
-                       <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Future Preference</h4>
-                       <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 italic text-xs font-bold text-slate-700">
-                          "{selectedClaim.futurePreference === 'settlement' ? 'Prefer settlement and closure after receiving balance' : 
-                            selectedClaim.futurePreference === 'wait' ? 'Willing to wait if company continues and grows' : 
-                            'Ready to continue with company based on future plans'}"
+                    <div className="space-y-3 bg-blue-50/40 p-4 rounded-2xl border border-blue-100">
+                       <h4 className="text-[10px] font-black text-brand-blue uppercase tracking-[0.2em]">
+                          ഭാവിയിലെ തീരുമാനങ്ങൾ (Future Preference)
+                       </h4>
+                       <div className="text-xs font-bold text-slate-800 leading-relaxed bg-white p-3 rounded-xl border border-blue-100 shadow-2xs">
+                          {selectedClaim.futurePreference === 'settlement' ? (
+                            <span>
+                              ബാക്കി തുക ലഭിച്ച ശേഷം സെറ്റിൽമെന്റും അക്കൗണ്ട് ക്ലോസ് ചെയ്യാനും ഞാൻ താല്പര്യപ്പെടുന്നു. 
+                              <span className="block text-[10px] font-semibold text-slate-500 mt-1">(Prefer settlement and closure after receiving balance)</span>
+                            </span>
+                          ) : selectedClaim.futurePreference === 'wait' ? (
+                            <span>
+                              കമ്പനി തുടർന്നു പ്രവർത്തിക്കുകയാണെങ്കിൽ, തരാനുള്ള ബാലൻസ് തുകയുടെ നാലിൽ ഒരു ഭാഗം ലഭിച്ചാൽ എനിക്ക് കാത്തിരിക്കാൻ സാധിക്കും. 
+                              <span className="block text-[10px] font-semibold text-slate-500 mt-1">(Willing to wait if company continues and grows, provided 1/4th balance received)</span>
+                            </span>
+                          ) : selectedClaim.futurePreference === 'continue' ? (
+                            <span>
+                              കമ്പനിയുടെ ബിസിനസ് പ്ലാനിൽ പറഞ്ഞതുപോലെ ഭാവി പ്ലാനുകൾക്കും പുതിയ പ്രൊജക്ടുകൾക്കും ഒപ്പം ചേർന്നും കമ്പനിയുമായി തുടർന്നു പോകാൻ ഞാൻ തയ്യാറാണ്.
+                              <span className="block text-[10px] font-semibold text-slate-500 mt-1">(Ready to continue based on future plans & commitments)</span>
+                            </span>
+                          ) : (
+                            <span className="text-slate-600 italic">{selectedClaim.futurePreference || 'രേഖപ്പെടുത്തിയിട്ടില്ല (Not specified)'}</span>
+                          )}
                        </div>
                     </div>
-                    <div className="space-y-3">
-                       <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Hardship Declaration</h4>
+                    <div className="space-y-3 bg-red-50/40 p-4 rounded-2xl border border-red-100">
+                       <h4 className="text-[10px] font-black text-red-700 uppercase tracking-[0.2em]">
+                          ആളുടെ ഇപ്പോഴത്തെ അവസ്ഥ (Hardship Factors)
+                       </h4>
                        <div className="flex flex-wrap gap-2 text-xs">
-                          {selectedClaim.hardshipStatus?.map((h: string) => (
-                             <Badge key={h} className="bg-red-100 text-red-700 border-red-200 font-black text-[9px] px-3 py-1 rounded-lg">
-                                {h === 'bank' ? 'BANK SEIZURE' : h === 'crisis' ? 'FINANCIAL CRISIS' : h === 'medical' ? 'MEDICAL EMERGENCY' : 'NONE'}
-                             </Badge>
-                          ))}
+                          {Array.isArray(selectedClaim.hardshipStatus) && selectedClaim.hardshipStatus.length > 0 ? (
+                            selectedClaim.hardshipStatus.map((h: string) => (
+                               <Badge key={h} className="bg-white text-red-700 border border-red-200 font-black text-[10px] px-3 py-1.5 rounded-xl shadow-2xs">
+                                  {h === 'bank' ? '🏦 ബാങ്ക് ജപ്തി ഭീഷണി (Bank Seizure)' : 
+                                   h === 'crisis' ? '⚠️ സാമ്പത്തിക പ്രതിസന്ധി (Financial Crisis)' : 
+                                   h === 'medical' ? '🏥 ചികിത്സാ അത്യാഹിതം (Medical Emergency)' : 'അടിയന്തിര പ്രാധാന്യമില്ല (None)'}
+                               </Badge>
+                            ))
+                          ) : (
+                            <span className="text-xs text-slate-400 font-semibold italic">പ്രതിസന്ധികൾ രേഖപ്പെടുത്തിയിട്ടില്ല (None specified)</span>
+                          )}
                        </div>
                     </div>
                  </div>
@@ -7574,15 +7635,24 @@ service cloud.firestore {
 
                 {/* Future Preference */}
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black text-slate-500 uppercase">Future Preference (തുടർവിഷയം മുൻഗണന)</Label>
+                  <Label className="text-[10px] font-black text-slate-500 uppercase">ഭാവിയിലെ തീരുമാനങ്ങൾ (Future Preference)</Label>
                   <Select value={editClaimFuturePreference} onValueChange={setEditClaimFuturePreference}>
-                     <SelectTrigger className="w-full h-11 border bg-white rounded-xl text-xs font-bold text-slate-700">
-                        <SelectValue placeholder="Select preference" />
+                     <SelectTrigger className="w-full min-h-[44px] h-auto py-2 border bg-white rounded-xl text-xs font-bold text-slate-700 text-left">
+                        <SelectValue placeholder="മുൻഗണന തിരഞ്ഞെടുക്കുക / Select preference" />
                      </SelectTrigger>
                      <SelectContent>
-                        <SelectItem value="settlement" className="text-xs">Prefer settlement and closure after receiving balance</SelectItem>
-                        <SelectItem value="wait" className="text-xs">Willing to wait if company continues and grows</SelectItem>
-                        <SelectItem value="continue" className="text-xs">Ready to continue with company based on future plans</SelectItem>
+                        <SelectItem value="settlement" className="text-xs py-2">
+                          <span className="font-bold text-slate-800">ബാക്കി തുക ലഭിച്ച ശേഷം സെറ്റിൽമെന്റും അക്കൗണ്ട് ക്ലോസ് ചെയ്യലും</span>
+                          <span className="block text-[10px] text-slate-500 font-normal">(Prefer settlement and closure after receiving balance)</span>
+                        </SelectItem>
+                        <SelectItem value="wait" className="text-xs py-2">
+                          <span className="font-bold text-slate-800">1/4 ഭാഗം ലഭിച്ചാൽ കാത്തിരിക്കാൻ സാധിക്കും</span>
+                          <span className="block text-[10px] text-slate-500 font-normal">(Willing to wait if company continues, provided 1/4th received)</span>
+                        </SelectItem>
+                        <SelectItem value="continue" className="text-xs py-2">
+                          <span className="font-bold text-slate-800">കമ്പനിയുമായി തുടർന്നു പോകാൻ തയ്യാറാണ്</span>
+                          <span className="block text-[10px] text-slate-500 font-normal">(Ready to continue based on future plans & commitments)</span>
+                        </SelectItem>
                      </SelectContent>
                   </Select>
                 </div>
@@ -7600,15 +7670,15 @@ service cloud.firestore {
 
                 {/* Hardship declaration */}
                 <div className="space-y-2">
-                   <Label className="text-[10px] font-black text-slate-500 uppercase">Hardship Declarations (അടിയന്തര പ്രതിസന്ധികൾ)</Label>
+                   <Label className="text-[10px] font-black text-slate-500 uppercase">ആളുടെ ഇപ്പോഴത്തെ അവസ്ഥ (Hardship Declarations)</Label>
                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-bold">
                       {[
-                        { id: 'bank', label: 'Bank seizure pressure' },
-                        { id: 'crisis', label: 'Financial crisis' },
-                        { id: 'medical', label: 'Medical emergency' },
-                        { id: 'none', label: 'No emergency' }
+                        { id: 'bank', ml: 'ബാങ്ക് ജപ്തി ഭീഷണി നേരിടുന്നു', en: 'Bank seizure pressure' },
+                        { id: 'crisis', ml: 'ഗുരുതരമായ സാമ്പത്തിക പ്രതിസന്ധി', en: 'Financial crisis' },
+                        { id: 'medical', ml: 'ചികിത്സാ ആവശ്യങ്ങൾ / അത്യാഹിതങ്ങൾ', en: 'Medical emergency' },
+                        { id: 'none', ml: 'അടിയന്തിര പ്രാധാന്യമില്ല', en: 'No emergency' }
                       ].map(h => (
-                        <div key={h.id} className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <div key={h.id} className="flex items-start gap-2.5 p-3 bg-slate-50 rounded-xl border border-slate-100 hover:bg-slate-100/70 transition-colors">
                           <Checkbox 
                             id={`admin-edit-claim-hardship-${h.id}`}
                             checked={editClaimHardshipStatus.includes(h.id)} 
@@ -7623,9 +7693,11 @@ service cloud.firestore {
                                 setEditClaimHardshipStatus(prev => prev.filter(x => x !== h.id));
                               }
                             }} 
+                            className="mt-0.5"
                           />
-                          <Label htmlFor={`admin-edit-claim-hardship-${h.id}`} className="text-xs font-bold text-slate-650 truncate cursor-pointer select-none">
-                            {h.label}
+                          <Label htmlFor={`admin-edit-claim-hardship-${h.id}`} className="text-xs font-bold text-slate-700 cursor-pointer select-none leading-snug">
+                            <span className="block">{h.ml}</span>
+                            <span className="text-[10px] font-medium text-slate-400">({h.en})</span>
                           </Label>
                         </div>
                       ))}

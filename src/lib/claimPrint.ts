@@ -1306,12 +1306,12 @@ export const getCourtComboHtml = (primaryMember: any, memberClaims: any[]): stri
     <script>
       function autoFitDocument() {
         var baseWidth = 760;
-        var clientWidth = document.documentElement.clientWidth || window.innerWidth;
+        var clientWidth = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth || 360;
         var wrappers = document.querySelectorAll('.page-scaler-wrapper');
         var pages = document.querySelectorAll('.page-container');
         
         if (clientWidth < 776) {
-          var padding = 16;
+          var padding = 4;
           var availableWidth = Math.max(280, clientWidth - padding);
           var scale = Math.min(1, availableWidth / baseWidth);
           
@@ -1324,9 +1324,11 @@ export const getCourtComboHtml = (primaryMember: any, memberClaims: any[]): stri
             page.style.transformOrigin = 'top center';
             var pageHeight = page.offsetHeight || 1080;
             var scaledHeight = pageHeight * scale;
-            wrapper.style.height = (scaledHeight + 10) + 'px';
+            wrapper.style.height = (scaledHeight + 8) + 'px';
             wrapper.style.overflow = 'hidden';
             wrapper.style.width = '100%';
+            wrapper.style.display = 'flex';
+            wrapper.style.justifyContent = 'center';
           }
         } else {
           for (var i = 0; i < wrappers.length; i++) {
@@ -1432,12 +1434,12 @@ export const getSingleCourtClaimHtml = (primaryMember: any, claim: any, pageNum:
     <script>
       function autoFitDocument() {
         var baseWidth = 760;
-        var clientWidth = document.documentElement.clientWidth || window.innerWidth;
+        var clientWidth = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth || 360;
         var wrappers = document.querySelectorAll('.page-scaler-wrapper');
         var pages = document.querySelectorAll('.page-container');
         
         if (clientWidth < 776) {
-          var padding = 16;
+          var padding = 4;
           var availableWidth = Math.max(280, clientWidth - padding);
           var scale = Math.min(1, availableWidth / baseWidth);
           
@@ -1450,9 +1452,11 @@ export const getSingleCourtClaimHtml = (primaryMember: any, claim: any, pageNum:
             page.style.transformOrigin = 'top center';
             var pageHeight = page.offsetHeight || 1080;
             var scaledHeight = pageHeight * scale;
-            wrapper.style.height = (scaledHeight + 10) + 'px';
+            wrapper.style.height = (scaledHeight + 8) + 'px';
             wrapper.style.overflow = 'hidden';
             wrapper.style.width = '100%';
+            wrapper.style.display = 'flex';
+            wrapper.style.justifyContent = 'center';
           }
         } else {
           for (var i = 0; i < wrappers.length; i++) {
