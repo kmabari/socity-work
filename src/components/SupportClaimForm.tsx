@@ -2912,51 +2912,53 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
   return (
     <div className="flex flex-col min-h-screen w-full bg-slate-50 relative pb-28 overflow-x-hidden">
       {/* Header */}
-      <div className="p-4 sm:p-5 border-b flex items-center justify-between sticky top-0 bg-white/90 backdrop-blur-xl z-25 shadow-sm">
-        <div className="flex items-center gap-3">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={handleExitToDashboard}
-            className="h-9 px-2.5 rounded-xl text-slate-700 hover:text-slate-950 hover:bg-slate-100 flex items-center gap-1.5 cursor-pointer font-bold shrink-0 border border-slate-200"
-            title="Back to Dashboard"
-          >
-            <ArrowLeft className="w-4 h-4 text-slate-700" />
-            <span className="hidden sm:inline text-xs font-black">ഡാഷ്‌ബോർഡ്</span>
-          </Button>
-          <div className="w-9 h-9 rounded-xl bg-brand-blue/10 flex items-center justify-center text-brand-blue shrink-0">
-            <Users className="w-4.5 h-4.5 text-brand-blue" />
-          </div>
-          <div>
-            <h3 className="text-xs font-black text-brand-blue uppercase tracking-tight">Member Financial Information Registry</h3>
-            <p className="text-[9px] font-extrabold text-slate-600 uppercase tracking-widest">Register up to 3 direct family members</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {submittedClaims.length > 0 && (
+      <div className="p-3 sm:p-4 border-b sticky top-0 bg-white/90 backdrop-blur-xl z-25 shadow-sm w-full">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-3 w-full">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <Button
+              type="button"
+              variant="ghost"
               size="sm"
-              onClick={() => setFormMode('statement')}
-              className="h-8 px-3 rounded-lg bg-[#003366] hover:bg-[#002244] text-white text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-xs cursor-pointer"
+              onClick={handleExitToDashboard}
+              className="h-9 px-2.5 rounded-xl text-slate-700 hover:text-slate-950 hover:bg-slate-100 flex items-center gap-1.5 cursor-pointer font-bold shrink-0 border border-slate-200"
+              title="Back to Dashboard"
             >
-              <FileText className="w-3.5 h-3.5 text-amber-300" />
-              <span>യഥാർത്ഥ ഫോം കാണുക ({submittedClaims.length})</span>
+              <ArrowLeft className="w-4 h-4 text-slate-700" />
+              <span className="hidden sm:inline text-xs font-black">ഡാഷ്‌ബോർഡ്</span>
             </Button>
-          )}
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={handleExitToDashboard} 
-            className="rounded-xl w-8 h-8 p-0 font-black text-slate-500 hover:text-slate-900 hover:bg-slate-100 cursor-pointer"
-            title="Close / Back to Dashboard"
-          >
-            ✕
-          </Button>
+            <div className="w-9 h-9 rounded-xl bg-brand-blue/10 flex items-center justify-center text-brand-blue shrink-0">
+              <Users className="w-4.5 h-4.5 text-brand-blue" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-xs font-black text-brand-blue uppercase tracking-tight truncate">Member Financial Information Registry</h3>
+              <p className="text-[9px] font-extrabold text-slate-600 uppercase tracking-widest truncate">Register up to 3 direct family members</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {submittedClaims.length > 0 && (
+              <Button
+                size="sm"
+                onClick={() => setFormMode('statement')}
+                className="h-8 px-2.5 sm:px-3 rounded-lg bg-[#003366] hover:bg-[#002244] text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-xs cursor-pointer whitespace-nowrap"
+              >
+                <FileText className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                <span>യഥാർത്ഥ ഫോം കാണുക ({submittedClaims.length})</span>
+              </Button>
+            )}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleExitToDashboard} 
+              className="rounded-xl w-8 h-8 p-0 font-black text-slate-500 hover:text-slate-900 hover:bg-slate-100 cursor-pointer"
+              title="Close / Back to Dashboard"
+            >
+              ✕
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-8 max-w-2xl mx-auto w-full">
+      <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 sm:py-6 space-y-8 max-w-5xl mx-auto w-full">
         
         {/* Form Language Selector Bar */}
         <div className="bg-white rounded-2xl p-3 border-2 border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -6238,15 +6240,17 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
       </div>
 
       {/* STICKY BOTTOM ACTIONS */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-2xl border-t border-slate-200 z-20 max-w-2xl mx-auto rounded-t-3xl shadow-xl flex items-center justify-center gap-3">
-        <Button
-          type="button"
-          onClick={handleExitToDashboard}
-          className="h-12 w-full rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg cursor-pointer transition-all active:scale-[0.99]"
-        >
-          <LayoutDashboard className="w-4 h-4 text-amber-400" />
-          <span>{t('Back to Dashboard / ID Card', 'തിരികെ ഡാഷ്‌ബോർഡിലേക്ക് / ഐഡി കാർഡ്')}</span>
-        </Button>
+      <div className="fixed bottom-0 left-0 right-0 p-3 sm:p-4 bg-white/95 backdrop-blur-2xl border-t border-slate-200 z-20 shadow-xl">
+        <div className="max-w-5xl mx-auto flex items-center justify-center gap-3 w-full">
+          <Button
+            type="button"
+            onClick={handleExitToDashboard}
+            className="h-12 w-full rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg cursor-pointer transition-all active:scale-[0.99]"
+          >
+            <LayoutDashboard className="w-4 h-4 text-amber-400" />
+            <span>{t('Back to Dashboard / ID Card', 'തിരികെ ഡാഷ്‌ബോർഡിലേക്ക് / ഐഡി കാർഡ്')}</span>
+          </Button>
+        </div>
       </div>
     </div>
   );
