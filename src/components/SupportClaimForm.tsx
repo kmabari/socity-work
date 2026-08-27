@@ -44,7 +44,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, query, where, getDocs, deleteDoc, doc, serverTimestamp, updateDoc, runTransaction, setDoc } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, deleteDoc, doc, serverTimestamp, updateDoc, runTransaction, setDoc, limit } from 'firebase/firestore';
 import { subscribeToOrgSettings, OrgSettings, defaultSettings } from '@/src/lib/cms';
 import { printCourtComboReport, printCourtClaimReport, shareCourtComboPdf, downloadCourtComboPdf, getCourtComboHtml, getSingleCourtClaimHtml } from '../lib/claimPrint';
 import { sendWAClaimMessage } from '../lib/whatsapp';
@@ -1861,6 +1861,21 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
       const prefix = isRed ? 'R' : isOrange ? 'O' : 'G';
 
       if (claimsToSubmitCount > 0) {
+        // Auto-check: if all claims were deleted from database, ensure system counter resets to 0 so next claim starts from 1
+        try {
+          const sampleClaimsSnap = await getDocs(query(collection(db, 'claims'), limit(1)));
+          if (sampleClaimsSnap.empty) {
+            await setDoc(doc(db, 'system', 'totals'), {
+              redClaimsCounter: 0,
+              orangeClaimsCounter: 0,
+              greenClaimsCounter: 0,
+              claimsCounter: 0
+            }, { merge: true });
+          }
+        } catch (checkErr) {
+          console.warn("Claims pre-check notice:", checkErr);
+        }
+
         const systemTotalsRef = doc(db, 'system', 'totals');
         await runTransaction(db, async (transaction) => {
           const sysDoc = await transaction.get(systemTotalsRef);

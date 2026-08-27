@@ -18,7 +18,10 @@ import {
   printCourtComboReport, 
   printFullAdminClaimReport, 
   printFullAdminComboReport,
-  printMemberComboReport
+  printMemberComboReport,
+  getHardshipList,
+  getHardshipDetail,
+  getFuturePreferenceDetail
 } from '../lib/claimPrint';
 import { 
   Crown,
@@ -91,7 +94,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { onSnapshot, collection, query, orderBy, serverTimestamp, doc, deleteDoc, updateDoc, setDoc } from 'firebase/firestore';
+import { onSnapshot, collection, query, orderBy, serverTimestamp, doc, deleteDoc, updateDoc, setDoc, getDocs } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from '@/src/lib/imageUtils';
@@ -895,6 +898,74 @@ export default function AdminDashboard({
       membershipId: selectedClaim.membershipId || ''
     };
   }, [selectedClaim, members]);
+
+  const handleSyncClaimsCounter = async () => {
+    const tId = toast.loading('ക്ലെയിം സീരിയൽ കൗണ്ടർ പരിശോധിക്കുന്നു...');
+    try {
+      // 1. Check local Firestore snapshot
+      const claimsSnap = await getDocs(collection(db, 'claims'));
+      let maxSerial = 0;
+      let maxRed = 0;
+      let maxOrange = 0;
+      let maxGreen = 0;
+
+      claimsSnap.docs.forEach(d => {
+        const data = d.data();
+        const num = typeof data.serialNo === 'number' ? data.serialNo : parseInt(String(data.serialNo || data.tokenNo || '').replace(/\D/g, ''), 10);
+        if (!isNaN(num) && num > maxSerial) maxSerial = num;
+        const tok = String(data.tokenNo || data.serialNo || '');
+        if (tok.startsWith('R-')) {
+          const rNum = parseInt(tok.replace('R-', ''), 10);
+          if (!isNaN(rNum) && rNum > maxRed) maxRed = rNum;
+        } else if (tok.startsWith('O-')) {
+          const oNum = parseInt(tok.replace('O-', ''), 10);
+          if (!isNaN(oNum) && oNum > maxOrange) maxOrange = oNum;
+        } else if (tok.startsWith('G-')) {
+          const gNum = parseInt(tok.replace('G-', ''), 10);
+          if (!isNaN(gNum) && gNum > maxGreen) maxGreen = gNum;
+        }
+      });
+
+      const systemTotalsRef = doc(db, 'system', 'totals');
+      if (claimsSnap.empty) {
+        await setDoc(systemTotalsRef, {
+          claimsCounter: 0,
+          redClaimsCounter: 0,
+          orangeClaimsCounter: 0,
+          greenClaimsCounter: 0
+        }, { merge: true });
+        
+        // Also call server API endpoint to sync
+        fetch('/api/admin/reset-claims-counter', { method: 'POST' }).catch(() => {});
+
+        toast.success('ക്ലെയിം കൗണ്ടർ വിജയകരമായി 0-ലേക്ക് റീസെറ്റ് ചെയ്തു! ഇനി വരുന്ന ക്ലെയിമുകൾ 1 മുതൽ ആരംഭിക്കും.', { id: tId });
+      } else {
+        await setDoc(systemTotalsRef, {
+          claimsCounter: Math.max(claimsSnap.size, maxSerial),
+          redClaimsCounter: maxRed,
+          orangeClaimsCounter: maxOrange,
+          greenClaimsCounter: maxGreen
+        }, { merge: true });
+
+        // Also call server API endpoint to sync
+        fetch('/api/admin/reset-claims-counter', { method: 'POST' }).catch(() => {});
+
+        toast.success(`കൗണ്ടർ സിങ്ക് ചെയ്തു (ആകെ ക്ലെയിമുകൾ: ${claimsSnap.size}, അവസാന നമ്പർ: ${maxSerial}). അടുത്ത ക്ലെയിം ${maxSerial + 1} ആയിരിക്കും.`, { id: tId });
+      }
+    } catch (err: any) {
+      console.error("Error syncing claims counter:", err);
+      // Fallback via server API
+      try {
+        const sRes = await fetch('/api/admin/reset-claims-counter', { method: 'POST' });
+        const sData = await sRes.json();
+        if (sData?.success) {
+          toast.success(`കൗണ്ടർ വിജയകരമായി സിങ്ക് ചെയ്തു! (Next starting: ${sData.nextStartingNumber})`, { id: tId });
+          return;
+        }
+      } catch (sErr) {}
+      toast.error('കൗണ്ടർ സിങ്ക് ചെയ്യുന്നതിൽ പരാജയം: ' + err.message, { id: tId });
+    }
+  };
 
   const handleDeleteClick = (id: string) => {
     setDeletingMemberId(id);
@@ -5296,12 +5367,7 @@ export default function AdminDashboard({
                             'Preference': c.futurePreference === 'settlement' ? 'ബാക്കി തുക ലഭിച്ച ശേഷം സെറ്റിൽമെന്റും അക്കൗണ്ട് ക്ലോസ് ചെയ്യലും (Settlement & Closure)' : 
                                          c.futurePreference === 'wait' ? '1/4 ഭാഗം ലഭിച്ചാൽ കാത്തിരിക്കാം (Wait if 1/4th Balance Received)' : 
                                          c.futurePreference === 'continue' ? 'കമ്പനിയുമായി തുടർന്നു പോകാൻ തയ്യാറാണ് (Continue with Company)' : (c.futurePreference || 'N/A'),
-                            'Hardship Factors': Array.isArray(c.hardshipStatus) && c.hardshipStatus.length > 0 ? c.hardshipStatus.map((h: string) => 
-                              h === 'bank' ? 'ബാങ്ക് ജപ്തി ഭീഷണി (Bank Seizure)' :
-                              h === 'crisis' ? 'സാമ്പത്തിക പ്രതിസന്ധി (Financial Crisis)' :
-                              h === 'medical' ? 'ചികിത്സാ അത്യാഹിതം (Medical Emergency)' :
-                              h === 'none' ? 'അടിയന്തിര പ്രാധാന്യമില്ല (No Emergency)' : h
-                            ).join(', ') : (c.hardshipStatus || 'None'),
+                            'Hardship Factors': Array.isArray(c.hardshipStatus) && c.hardshipStatus.length > 0 ? getHardshipList(c.hardshipStatus).map(h => `${h.fullMl} (${h.fullEn})`).join(' | ') : (c.hardshipStatus || 'None'),
                             'Priority': c.priorityStatus,
                             'Date': formatClaimDate(c.createdAt)
                           })));
@@ -5312,6 +5378,14 @@ export default function AdminDashboard({
                         className="h-11 px-6 rounded-xl bg-brand-magenta text-white font-black text-[10px] uppercase shadow-lg shadow-brand-magenta/20"
                       >
                          <Download className="w-4 h-4 mr-2" /> Export Excel
+                      </Button>
+
+                      <Button 
+                        onClick={handleSyncClaimsCounter}
+                        className="h-11 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] uppercase shadow-lg shadow-emerald-600/20"
+                        title="ക്ലെയിമുകൾ ഡിലീറ്റ് ചെയ്തിട്ടുണ്ടെങ്കിൽ കൗണ്ടർ 1-ൽ നിന്ന് പുനരാരംഭിക്കാൻ അല്ലെങ്കിൽ നിലവിലെ ക്ലെയിമുകളുമായി സിങ്ക് ചെയ്യാൻ ക്ലിക്ക് ചെയ്യുക"
+                      >
+                         <RefreshCw className="w-4 h-4 mr-2" /> Sync / Reset Serial (1-ലേക്ക്)
                       </Button>
 
                       <Button 
@@ -6364,12 +6438,11 @@ service cloud.firestore {
                                 {Array.isArray(claim.hardshipStatus) && claim.hardshipStatus.length > 0 && (
                                   <div className="flex items-start gap-1.5 flex-wrap">
                                     <span className="font-extrabold text-[8.5px] uppercase tracking-wider text-slate-400 py-0.5">ഇപ്പോഴത്തെ അവസ്ഥ:</span>
-                                    <div className="flex flex-wrap gap-1">
-                                      {claim.hardshipStatus.map((h: string) => (
-                                        <Badge key={h} className="bg-red-50 text-red-700 border border-red-200 font-bold text-[8.5px] px-2 py-0.5 rounded">
-                                          {h === 'bank' ? 'ബാങ്ക് ജപ്തി ഭീഷണി (Bank Seizure)' :
-                                           h === 'crisis' ? 'സാമ്പത്തിക പ്രതിസന്ധി (Financial Crisis)' :
-                                           h === 'medical' ? 'ചികിത്സാ അത്യാഹിതം (Medical Emergency)' : 'അടിയന്തിര പ്രാധാന്യമില്ല (None)'}
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {getHardshipList(claim.hardshipStatus).map((h) => (
+                                        <Badge key={h.id} className={`font-bold text-[8.5px] px-2 py-0.5 rounded shadow-2xs ${h.isEmergency ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-slate-50 text-slate-700 border border-slate-200'}`}>
+                                          <span>{h.icon} {h.fullMl}</span>
+                                          <span className="text-[7.5px] opacity-75 ml-1">({h.titleEn})</span>
                                         </Badge>
                                       ))}
                                     </div>
@@ -7422,20 +7495,34 @@ service cloud.firestore {
                        </div>
                     </div>
                     <div className="space-y-3 bg-red-50/40 p-4 rounded-2xl border border-red-100">
-                       <h4 className="text-[10px] font-black text-red-700 uppercase tracking-[0.2em]">
-                          ആളുടെ ഇപ്പോഴത്തെ അവസ്ഥ (Hardship Factors)
+                       <h4 className="text-[10px] font-black text-red-700 uppercase tracking-[0.2em] flex items-center justify-between">
+                          <span>ആളുടെ ഇപ്പോഴത്തെ അവസ്ഥ (Hardship Factors & Crisis Assessment)</span>
+                          {selectedClaim.isEmergency && (
+                            <Badge className="bg-red-600 text-white font-black text-[8px] px-2 py-0.5 border-none uppercase rounded-full">
+                              EMERGENCY PRIORITY
+                            </Badge>
+                          )}
                        </h4>
-                       <div className="flex flex-wrap gap-2 text-xs">
+                       <div className="flex flex-col gap-2 text-xs">
                           {Array.isArray(selectedClaim.hardshipStatus) && selectedClaim.hardshipStatus.length > 0 ? (
-                            selectedClaim.hardshipStatus.map((h: string) => (
-                               <Badge key={h} className="bg-white text-red-700 border border-red-200 font-black text-[10px] px-3 py-1.5 rounded-xl shadow-2xs">
-                                  {h === 'bank' ? '🏦 ബാങ്ക് ജപ്തി ഭീഷണി (Bank Seizure)' : 
-                                   h === 'crisis' ? '⚠️ സാമ്പത്തിക പ്രതിസന്ധി (Financial Crisis)' : 
-                                   h === 'medical' ? '🏥 ചികിത്സാ അത്യാഹിതം (Medical Emergency)' : 'അടിയന്തിര പ്രാധാന്യമില്ല (None)'}
-                               </Badge>
+                            getHardshipList(selectedClaim.hardshipStatus).map((h) => (
+                               <div key={h.id} className={`p-3 rounded-xl border flex items-start gap-3 shadow-2xs ${h.isEmergency ? 'bg-white border-red-200 text-red-950' : 'bg-white border-slate-200 text-slate-800'}`}>
+                                  <span className="text-xl shrink-0 mt-0.5">{h.icon}</span>
+                                  <div className="space-y-0.5 flex-1">
+                                    <p className="font-black text-xs leading-snug text-slate-900">{h.fullMl}</p>
+                                    <p className="text-[11px] text-slate-500 font-semibold leading-tight">{h.fullEn}</p>
+                                  </div>
+                                  {h.isEmergency && (
+                                    <Badge variant="outline" className="text-[9px] border-red-300 text-red-600 bg-red-50 shrink-0 font-bold px-2 py-0.5">
+                                      അടിയന്തിരം
+                                    </Badge>
+                                  )}
+                               </div>
                             ))
                           ) : (
-                            <span className="text-xs text-slate-400 font-semibold italic">പ്രതിസന്ധികൾ രേഖപ്പെടുത്തിയിട്ടില്ല (None specified)</span>
+                            <span className="text-xs text-slate-400 font-semibold italic bg-white p-3 rounded-xl border border-slate-100">
+                              പ്രതിസന്ധികൾ രേഖപ്പെടുത്തിയിട്ടില്ല (None specified)
+                            </span>
                           )}
                        </div>
                     </div>

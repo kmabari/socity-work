@@ -47,7 +47,14 @@ import {
   updateGalleryItem 
 } from '../lib/cms';
 import { DISTRICTS } from '../constants';
-import { normalizeImageUrl, isValidImageUrl } from '../lib/imageUrlUtils';
+import { 
+  normalizeImageUrl, 
+  isValidImageUrl, 
+  getProxiedImageUrl, 
+  resolveImageUrlAsync, 
+  getImageFallbackUrls,
+  extractDriveFileId
+} from '../lib/imageUrlUtils';
 
 interface GalleryManagementProps {
   user?: UserProfile | null;
@@ -94,6 +101,11 @@ export default function GalleryManagement({ user }: GalleryManagementProps) {
   const [urlDistrict, setUrlDistrict] = useState('state');
   const [urlImageValid, setUrlImageValid] = useState<boolean | null>(null);
   const [urlImageLoading, setUrlImageLoading] = useState(false);
+  const [urlPreviewSrc, setUrlPreviewSrc] = useState('');
+  const [urlUsingProxy, setUrlUsingProxy] = useState(false);
+  const [isResolvingUrl, setIsResolvingUrl] = useState(false);
+  const [urlFallbackIndex, setUrlFallbackIndex] = useState(0);
+  const [urlFallbacks, setUrlFallbacks] = useState<string[]>([]);
   const [savingDirectUrl, setSavingDirectUrl] = useState(false);
 
   // Queue of multiple files or external URLs to be uploaded
@@ -110,6 +122,8 @@ export default function GalleryManagement({ user }: GalleryManagementProps) {
   const [editCategory, setEditCategory] = useState('');
   const [editDistrict, setEditDistrict] = useState('');
   const [editUrl, setEditUrl] = useState('');
+  const [editPreviewSrc, setEditPreviewSrc] = useState('');
+  const [editUsingProxy, setEditUsingProxy] = useState(false);
   const [editUrlValid, setEditUrlValid] = useState<boolean | null>(true);
 
   // Identify state privileges
@@ -163,16 +177,88 @@ export default function GalleryManagement({ user }: GalleryManagementProps) {
     return () => unsubscribe();
   }, []);
 
-  // Handle URL change & pre-validation
+  // Handle URL change & pre-validation with multi-candidate fallback detection
   const handleUrlInputChange = (val: string) => {
     setUrlInput(val);
-    const clean = normalizeImageUrl(val);
+    const trimmed = val.trim();
+    if (!trimmed) {
+      setUrlPreviewSrc('');
+      setUrlFallbacks([]);
+      setUrlFallbackIndex(0);
+      setUrlUsingProxy(false);
+      setUrlImageLoading(false);
+      setUrlImageValid(null);
+      return;
+    }
+
+    const clean = normalizeImageUrl(trimmed);
+    const fallbacks = getImageFallbackUrls(trimmed);
+    setUrlFallbacks(fallbacks);
+    setUrlFallbackIndex(0);
+    setUrlPreviewSrc(fallbacks[0] || clean);
+    setUrlUsingProxy(false);
+
     if (isValidImageUrl(clean)) {
       setUrlImageLoading(true);
       setUrlImageValid(null);
+
+      // Auto-detect viewer/webpage URLs (e.g. ibb.co, postimg.cc, imgur without direct extension) and resolve asynchronously
+      if (
+        (trimmed.includes('ibb.co/') && !trimmed.includes('i.ibb.co/')) ||
+        (trimmed.includes('postimg.cc/') && !trimmed.includes('i.postimg.cc/')) ||
+        (trimmed.includes('postimages.org/')) ||
+        (trimmed.includes('imgur.com/') && !trimmed.includes('i.imgur.com/'))
+      ) {
+        setIsResolvingUrl(true);
+        resolveImageUrlAsync(trimmed).then(res => {
+          setIsResolvingUrl(false);
+          if (res.isPageResolved && res.resolvedUrl) {
+            setUrlPreviewSrc(res.resolvedUrl);
+            setUrlFallbacks([res.resolvedUrl, ...fallbacks]);
+            setUrlFallbackIndex(0);
+            setUrlImageLoading(true);
+            setUrlImageValid(null);
+            toast.success('Direct photo link extracted automatically!');
+          }
+        }).catch(() => {
+          setIsResolvingUrl(false);
+        });
+      }
     } else {
       setUrlImageLoading(false);
       setUrlImageValid(null);
+    }
+  };
+
+  // Manual trigger to resolve / auto-fix webpage or embed link
+  const handleManualResolveUrl = async () => {
+    if (!urlInput.trim()) {
+      toast.error('Please enter a URL first.');
+      return;
+    }
+    setIsResolvingUrl(true);
+    toast.loading('Detecting and resolving direct image link...', { id: 'resolve-toast' });
+    try {
+      const res = await resolveImageUrlAsync(urlInput.trim());
+      if (res.isPageResolved && res.resolvedUrl) {
+        setUrlPreviewSrc(res.resolvedUrl);
+        setUrlFallbacks(prev => [res.resolvedUrl, ...prev]);
+        setUrlFallbackIndex(0);
+        setUrlUsingProxy(false);
+        setUrlImageLoading(true);
+        setUrlImageValid(null);
+        toast.success('Successfully resolved direct image URL!', { id: 'resolve-toast' });
+      } else {
+        const fallbacks = getImageFallbackUrls(urlInput.trim());
+        setUrlFallbacks(fallbacks);
+        setUrlFallbackIndex(0);
+        setUrlPreviewSrc(fallbacks[0]);
+        toast.info('Direct image candidate updated. Testing live preview...', { id: 'resolve-toast' });
+      }
+    } catch (err: any) {
+      toast.error(`Resolution notice: ${err.message || err}`, { id: 'resolve-toast' });
+    } finally {
+      setIsResolvingUrl(false);
     }
   };
 
@@ -243,8 +329,8 @@ export default function GalleryManagement({ user }: GalleryManagementProps) {
   // Add external URL directly to the queue
   const addUrlToQueue = () => {
     const raw = urlInput.trim();
-    const cleanUrl = normalizeImageUrl(raw);
-    if (!isValidImageUrl(cleanUrl)) {
+    const finalUrl = urlPreviewSrc.trim() || normalizeImageUrl(raw);
+    if (!isValidImageUrl(finalUrl)) {
       toast.error('Please enter a valid image URL (e.g. https://... or direct link).');
       return;
     }
@@ -256,7 +342,7 @@ export default function GalleryManagement({ user }: GalleryManagementProps) {
     const defaultCat = urlCategory || (isSuperAdmin ? (categories[0] || 'Society Programs') : 'District Committee');
     const newQueueItem: QueuedFile = {
       id: Math.random().toString(36).substring(2, 9),
-      previewUrl: cleanUrl,
+      previewUrl: finalUrl,
       isExternalUrl: true,
       title: urlTitle.trim(),
       description: urlDescription.trim(),
@@ -269,14 +355,16 @@ export default function GalleryManagement({ user }: GalleryManagementProps) {
     setUrlInput('');
     setUrlTitle('');
     setUrlDescription('');
+    setUrlPreviewSrc('');
+    setUrlFallbacks([]);
     setUrlImageValid(null);
   };
 
   // Direct save of Image URL (1-click publish without going through batch upload)
   const handleDirectSaveUrl = async () => {
     const raw = urlInput.trim();
-    const cleanUrl = normalizeImageUrl(raw);
-    if (!isValidImageUrl(cleanUrl)) {
+    const finalUrl = urlPreviewSrc.trim() || normalizeImageUrl(raw);
+    if (!isValidImageUrl(finalUrl)) {
       toast.error('Please enter a valid image URL (e.g. https://... or direct link).');
       return;
     }
@@ -297,7 +385,7 @@ export default function GalleryManagement({ user }: GalleryManagementProps) {
       const finalDistrict = (!isSuperAdmin || urlDistrict === 'state') ? (isSuperAdmin ? '' : userDistrictCode) : urlDistrict;
 
       await addDoc(collection(db, 'gallery'), {
-        url: cleanUrl,
+        url: finalUrl,
         title: urlTitle.trim(),
         description: urlDescription.trim(),
         category: categoryToUse,
@@ -310,6 +398,8 @@ export default function GalleryManagement({ user }: GalleryManagementProps) {
       setUrlInput('');
       setUrlTitle('');
       setUrlDescription('');
+      setUrlPreviewSrc('');
+      setUrlFallbacks([]);
       setUrlImageValid(null);
     } catch (err) {
       console.error('Failed to save image URL', err);
@@ -489,7 +579,10 @@ export default function GalleryManagement({ user }: GalleryManagementProps) {
     setEditDescription(item.description || '');
     setEditCategory(item.category);
     setEditDistrict((item as any).district || 'state');
+    const clean = normalizeImageUrl(item.url || '');
     setEditUrl(item.url || '');
+    setEditPreviewSrc(clean);
+    setEditUsingProxy(false);
     setEditUrlValid(true);
   };
 
@@ -700,28 +793,45 @@ export default function GalleryManagement({ user }: GalleryManagementProps) {
                           <LinkIcon className="w-3.5 h-3.5 text-brand-magenta" />
                           Direct Image URL / Web Link <span className="text-red-500">*</span>
                         </label>
-                        <span className="text-[10px] text-slate-400 font-bold">Imgur, PostImages, Google Photos, Cloud CDN, etc.</span>
+                        <span className="text-[10px] text-slate-400 font-bold">ImgBB, PostImages, Google Drive, Imgur, Cloud CDN</span>
                       </div>
-                      <div className="relative">
-                        <Input
-                          type="url"
-                          placeholder="https://example.com/images/secretariat-dharna.jpg"
-                          value={urlInput}
-                          onChange={e => handleUrlInputChange(e.target.value)}
-                          className="h-12 rounded-xl bg-white border-2 border-slate-300 focus:border-brand-magenta pr-20 text-xs font-mono font-bold text-slate-900"
-                        />
-                        {urlInput && (
-                          <button
-                            type="button"
-                            onClick={() => { setUrlInput(''); setUrlImageValid(null); }}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        )}
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Input
+                            type="url"
+                            placeholder="https://i.ibb.co/example.jpg or https://ibb.co/xyz"
+                            value={urlInput}
+                            onChange={e => handleUrlInputChange(e.target.value)}
+                            className="h-12 rounded-xl bg-white border-2 border-slate-300 focus:border-brand-magenta pr-10 text-xs font-mono font-bold text-slate-900"
+                          />
+                          {urlInput && (
+                            <button
+                              type="button"
+                              onClick={() => { setUrlInput(''); setUrlPreviewSrc(''); setUrlFallbacks([]); setUrlImageValid(null); }}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleManualResolveUrl}
+                          disabled={isResolvingUrl || !urlInput.trim()}
+                          className="h-12 px-3.5 rounded-xl border-2 border-brand-magenta/30 hover:border-brand-magenta text-brand-magenta font-extrabold text-xs flex items-center gap-1.5 shrink-0 bg-brand-magenta/5 hover:bg-brand-magenta/10"
+                          title="Auto-detect direct photo link from web page"
+                        >
+                          {isResolvingUrl ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-4 h-4" />
+                          )}
+                          <span className="hidden sm:inline">Auto-Fix</span>
+                        </Button>
                       </div>
                       <p className="text-[11px] text-slate-500">
-                        Paste a direct URL to any image hosted online. The preview on the right will show the linked image in real time.
+                        വെബ് ലിങ്കുകൾ (ImgBB, Google Drive, PostImages മുതലായവ) നേരിട്ട് പേസ്റ്റ് ചെയ്യുക. സിസ്റ്റം ഓട്ടോമാറ്റിക്കായി ചിത്രം കണ്ടെത്തി തത്സമയം പ്രിവ്യൂ ചെയ്യും.
                       </p>
                     </div>
 
@@ -843,7 +953,7 @@ export default function GalleryManagement({ user }: GalleryManagementProps) {
                       )}
                       {urlImageValid === false && (
                         <span className="text-red-500 font-bold flex items-center gap-1 text-[11px] lowercase">
-                          <AlertCircle className="w-3.5 h-3.5" /> invalid url
+                          <AlertCircle className="w-3.5 h-3.5" /> preview issue
                         </span>
                       )}
                     </label>
@@ -852,7 +962,8 @@ export default function GalleryManagement({ user }: GalleryManagementProps) {
                       {urlInput.trim() ? (
                         <>
                           <img 
-                            src={normalizeImageUrl(urlInput)} 
+                            key={urlPreviewSrc}
+                            src={urlPreviewSrc || normalizeImageUrl(urlInput)} 
                             alt="URL Preview" 
                             className="w-full h-full object-cover"
                             referrerPolicy="no-referrer"
@@ -861,26 +972,78 @@ export default function GalleryManagement({ user }: GalleryManagementProps) {
                               setUrlImageLoading(false);
                             }}
                             onError={() => {
-                              setUrlImageValid(false);
-                              setUrlImageLoading(false);
+                              // Try next fallback in queue
+                              if (urlFallbacks.length > 0 && urlFallbackIndex + 1 < urlFallbacks.length) {
+                                const nextIndex = urlFallbackIndex + 1;
+                                setUrlFallbackIndex(nextIndex);
+                                setUrlPreviewSrc(urlFallbacks[nextIndex]);
+                                setUrlImageLoading(true);
+                              } else if (!urlUsingProxy) {
+                                const clean = urlPreviewSrc || normalizeImageUrl(urlInput);
+                                if (clean && !clean.includes('wsrv.nl')) {
+                                  setUrlUsingProxy(true);
+                                  setUrlPreviewSrc(getProxiedImageUrl(clean));
+                                  setUrlImageLoading(true);
+                                } else {
+                                  setUrlImageValid(false);
+                                  setUrlImageLoading(false);
+                                }
+                              } else {
+                                setUrlImageValid(false);
+                                setUrlImageLoading(false);
+                              }
                             }}
                           />
-                          {urlImageLoading && (
-                            <div className="absolute inset-0 bg-white/80 backdrop-blur-xs flex items-center justify-center">
-                              <Loader2 className="w-6 h-6 animate-spin text-brand-magenta" />
-                            </div>
-                          )}
-                          {urlImageValid === false && (
-                            <div className="absolute inset-0 bg-red-50/95 p-4 flex flex-col items-center justify-center text-center">
-                              <AlertCircle className="w-8 h-8 text-red-500 mb-2" />
-                              <p className="text-xs font-bold text-red-700">ചിത്രം ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല (Unable to load image)</p>
-                              <p className="text-[10px] text-slate-600 mt-1 max-w-[280px]">
-                                നേരിട്ടുള്ള ഇമേജ് ലിങ്ക് (Direct image link / .jpg, .png, .webp) അല്ലെങ്കിൽ Google Drive / Imgur / PostImages ലിങ്ക് നൽകുക.
+                          {(urlImageLoading || isResolvingUrl) && (
+                            <div className="absolute inset-0 bg-white/80 backdrop-blur-xs flex flex-col items-center justify-center gap-2">
+                              <Loader2 className="w-7 h-7 animate-spin text-brand-magenta" />
+                              <p className="text-[11px] font-bold text-slate-600">
+                                {isResolvingUrl ? 'ലിങ്ക് പരിശോധിക്കുന്നു...' : 'ചിത്രം ലോഡ് ചെയ്യുന്നു...'}
                               </p>
                             </div>
                           )}
+                          {urlImageValid === false && !urlImageLoading && !isResolvingUrl && (
+                            <div className="absolute inset-0 bg-slate-900/95 text-white p-4 flex flex-col items-center justify-center text-center overflow-y-auto">
+                              <AlertCircle className="w-7 h-7 text-amber-400 mb-1.5 shrink-0" />
+                              <p className="text-xs font-black text-white">തത്സമയ പ്രിവ്യൂ ലഭ്യമായില്ല</p>
+                              <p className="text-[10px] text-slate-300 mt-1 max-w-[260px] leading-relaxed">
+                                വെബ്സൈറ്റ് സുരക്ഷ കാരണം നേരിട്ട് കാണിക്കാൻ കഴിഞ്ഞില്ലെങ്കിലും സേവ് ചെയ്യാൻ സാധിക്കും.
+                              </p>
+                              
+                              <div className="flex flex-wrap gap-2 mt-3 justify-center">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => {
+                                    setUrlUsingProxy(true);
+                                    setUrlPreviewSrc(getProxiedImageUrl(urlInput.trim()));
+                                    setUrlImageLoading(true);
+                                    setUrlImageValid(null);
+                                  }}
+                                  className="h-8 text-[11px] font-bold bg-white/10 hover:bg-white/20 text-white rounded-lg px-2.5"
+                                >
+                                  <RefreshCw className="w-3 h-3 mr-1" /> Try Proxy
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={handleManualResolveUrl}
+                                  className="h-8 text-[11px] font-bold bg-brand-magenta hover:bg-brand-magenta/90 text-white rounded-lg px-2.5"
+                                >
+                                  <Sparkles className="w-3 h-3 mr-1" /> Auto-Fix Link
+                                </Button>
+                              </div>
+
+                              <div className="mt-3 text-[9px] text-slate-400 text-left bg-black/40 p-2 rounded-lg w-full space-y-0.5">
+                                <div>• <b>Google Drive</b>: ഷെയറിംഗ് 'Anyone with link' ആക്കുക.</div>
+                                <div>• <b>ImgBB / PostImages</b>: 'Auto-Fix Link' അമർത്തുക.</div>
+                                <div>• താഴെ നൽകിയ 'Save to Gallery Now' വഴി നേരിട്ട് സേവ് ചെയ്യാം.</div>
+                              </div>
+                            </div>
+                          )}
                           {/* Live Overlay Badges */}
-                          {urlImageValid === true && (
+                          {urlImageValid === true && !urlImageLoading && (
                             <div className="absolute top-3 left-3 flex flex-col gap-1 items-start pointer-events-none">
                               <Badge className="bg-slate-900/85 text-white backdrop-blur-md rounded-lg text-[9px] border-none uppercase">
                                 {urlCategory || 'Select Category'}
@@ -895,7 +1058,7 @@ export default function GalleryManagement({ user }: GalleryManagementProps) {
                         <div className="text-center p-6 space-y-2 text-slate-300">
                           <ImageIcon className="w-12 h-12 mx-auto stroke-1 text-slate-300" />
                           <p className="text-xs font-bold text-slate-500">ഇമേജ് URL നൽകിയാൽ തത്സമയം ഇവിടെ കാണാം</p>
-                          <p className="text-[10px] text-slate-400">Google Drive, Imgur, PostImages, Cloud CDN links supported</p>
+                          <p className="text-[10px] text-slate-400">ImgBB, Google Drive, PostImages, Cloud CDN links supported</p>
                         </div>
                       )}
                     </div>
@@ -957,10 +1120,17 @@ export default function GalleryManagement({ user }: GalleryManagementProps) {
                     {/* Thumbnail preview */}
                     <div className="w-20 h-20 rounded-xl relative overflow-hidden bg-white shrink-0 border border-slate-200">
                       <img 
-                        src={q.previewUrl} 
+                        src={normalizeImageUrl(q.previewUrl)} 
                         alt="Thumbnail" 
                         className="w-full h-full object-cover" 
                         referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          if (!target.dataset.retried) {
+                            target.dataset.retried = 'true';
+                            target.src = getProxiedImageUrl(q.previewUrl);
+                          }
+                        }}
                       />
                       {q.isExternalUrl && (
                         <div className="absolute bottom-1 left-1 bg-brand-magenta text-white p-0.5 rounded text-[8px] font-bold">
@@ -1129,10 +1299,17 @@ export default function GalleryManagement({ user }: GalleryManagementProps) {
                     {/* Image thumbnail frame */}
                     <div className="aspect-[4/3] overflow-hidden relative bg-slate-100">
                       <img 
-                        src={item.url} 
+                        src={normalizeImageUrl(item.url)} 
                         alt={item.title} 
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                         referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          if (!target.dataset.retried) {
+                            target.dataset.retried = 'true';
+                            target.src = getProxiedImageUrl(item.url);
+                          }
+                        }}
                       />
                       
                       {/* Floating badges */}
@@ -1260,7 +1437,11 @@ export default function GalleryManagement({ user }: GalleryManagementProps) {
                 <Input 
                   value={editUrl}
                   onChange={e => {
-                    setEditUrl(e.target.value);
+                    const val = e.target.value;
+                    setEditUrl(val);
+                    const clean = normalizeImageUrl(val);
+                    setEditPreviewSrc(clean);
+                    setEditUsingProxy(false);
                     setEditUrlValid(null);
                   }}
                   placeholder="https://example.com/image.jpg"
@@ -1271,12 +1452,20 @@ export default function GalleryManagement({ user }: GalleryManagementProps) {
                 {editUrl.trim() && (
                   <div className="w-full aspect-[16/9] rounded-xl overflow-hidden bg-slate-100 border-2 border-slate-200 relative flex items-center justify-center mt-2">
                     <img 
-                      src={normalizeImageUrl(editUrl.trim())} 
+                      src={editPreviewSrc || normalizeImageUrl(editUrl.trim())} 
                       alt="Edit Preview" 
                       className="w-full h-full object-cover" 
                       referrerPolicy="no-referrer"
                       onLoad={() => setEditUrlValid(true)}
-                      onError={() => setEditUrlValid(false)}
+                      onError={() => {
+                        const clean = normalizeImageUrl(editUrl.trim());
+                        if (!editUsingProxy && clean && !clean.includes('wsrv.nl')) {
+                          setEditUsingProxy(true);
+                          setEditPreviewSrc(getProxiedImageUrl(clean));
+                        } else {
+                          setEditUrlValid(false);
+                        }
+                      }}
                     />
                     {editUrlValid === false && (
                       <div className="absolute inset-0 bg-red-50/95 flex flex-col items-center justify-center p-3 text-center">

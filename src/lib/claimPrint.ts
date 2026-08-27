@@ -78,6 +78,105 @@ export const compareMobiles = (m1?: string | number, m2?: string | number): bool
   return last1 === last2;
 };
 
+export const HARDSHIP_OPTIONS_META: Record<string, {
+  id: string;
+  titleMl: string;
+  titleEn: string;
+  fullMl: string;
+  fullEn: string;
+  icon: string;
+  isEmergency: boolean;
+}> = {
+  bank: {
+    id: 'bank',
+    titleMl: 'ബാങ്ക് ജപ്തി ഭീഷണി',
+    titleEn: 'Bank Seizure Pressure',
+    fullMl: 'ബാങ്ക് ജപ്തി ഭീഷണി നേരിടുന്നു',
+    fullEn: 'Under bank loan seizure / revenue recovery pressure',
+    icon: '🏦',
+    isEmergency: true
+  },
+  crisis: {
+    id: 'crisis',
+    titleMl: 'ഗുരുതരമായ സാമ്പത്തിക പ്രതിസന്ധി',
+    titleEn: 'Severe Financial Crisis',
+    fullMl: 'ഗുരുതരമായ സാമ്പത്തിക പ്രതിസന്ധി നേരിടുന്നു',
+    fullEn: 'Serious financial crisis and acute distress',
+    icon: '⚠️',
+    isEmergency: true
+  },
+  medical: {
+    id: 'medical',
+    titleMl: 'ചികിത്സാ ആവശ്യങ്ങൾ / അത്യാഹിതം',
+    titleEn: 'Medical Emergency',
+    fullMl: 'ചികിത്സാ ആവശ്യങ്ങൾ / അത്യാഹിതങ്ങൾ നേരിടുന്നു',
+    fullEn: 'Medical emergency / critical ongoing treatment expenses',
+    icon: '🏥',
+    isEmergency: true
+  },
+  none: {
+    id: 'none',
+    titleMl: 'അടിയന്തിര പ്രാധാന്യമില്ല',
+    titleEn: 'No Emergency',
+    fullMl: 'അടിയന്തിര പ്രാധാന്യമില്ല',
+    fullEn: 'No urgent emergency situation',
+    icon: '✓',
+    isEmergency: false
+  }
+};
+
+export const getHardshipDetail = (id: string) => {
+  const key = (id || '').trim().toLowerCase();
+  if (HARDSHIP_OPTIONS_META[key]) {
+    return HARDSHIP_OPTIONS_META[key];
+  }
+  return {
+    id: key,
+    titleMl: key,
+    titleEn: key,
+    fullMl: key,
+    fullEn: key,
+    icon: '•',
+    isEmergency: false
+  };
+};
+
+export const getHardshipList = (hardshipStatus: string[] | string | undefined | null) => {
+  if (!hardshipStatus) return [];
+  const arr = Array.isArray(hardshipStatus) ? hardshipStatus : [hardshipStatus];
+  return arr.filter(Boolean).map(h => getHardshipDetail(h));
+};
+
+export const getFuturePreferenceDetail = (pref: string) => {
+  const p = (pref || '').trim().toLowerCase();
+  if (p === 'settlement') {
+    return {
+      ml: 'ബാക്കി തുക ലഭിച്ച ശേഷം സെറ്റിൽമെന്റും അക്കൗണ്ട് ക്ലോസ് ചെയ്യാനും ഞാൻ താല്പര്യപ്പെടുന്നു.',
+      en: 'Prefer settlement and closure after receiving the balance amount.',
+      short: 'സെറ്റിൽമെന്റും അക്കൗണ്ട് ക്ലോസ് ചെയ്യലും (Settlement & Closure)'
+    };
+  }
+  if (p === 'wait') {
+    return {
+      ml: 'കമ്പനി തുടർന്നു പ്രവർത്തിക്കുകയാണെങ്കിൽ, തരാനുള്ള ബാലൻസ് തുകയുടെ നാലിൽ ഒരു ഭാഗം ലഭിച്ചാൽ എനിക്ക് കാത്തിരിക്കാൻ സാധിക്കും.',
+      en: 'Willing to wait if company continues and grows, provided 1/4th balance received.',
+      short: '1/4 ഭാഗം ലഭിച്ചാൽ കാത്തിരിക്കാം (Willing to wait if 1/4th balance given)'
+    };
+  }
+  if (p === 'continue') {
+    return {
+      ml: 'കമ്പനിയുടെ ബിസിനസ് പ്ലാനിൽ പറഞ്ഞതുപോലെ ഭാവി പ്ലാനുകൾക്കും പുതിയ പ്രൊജക്ടുകൾക്കും ഒപ്പം ചേർന്നും കമ്പനിയുമായി തുടർന്നു പോകാൻ ഞാൻ തയ്യാറാണ്.',
+      en: 'Ready to continue based on future business plans & commitments.',
+      short: 'കമ്പനിയുമായി തുടർന്നു പോകാൻ തയ്യാറാണ് (Continue with Company)'
+    };
+  }
+  return {
+    ml: pref || 'രേഖപ്പെടുത്തിയിട്ടില്ല',
+    en: pref || 'Not specified',
+    short: pref || 'Not specified'
+  };
+};
+
 export const getCourtReportBaseStyles = (): string => `
   @import url('https://fonts.googleapis.com/css2?family=Manjari:wght@400;700&family=Noto+Sans+Malayalam:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&display=swap');
 
@@ -852,11 +951,8 @@ export const renderPersonFullAdminClaimPage = (
                      priorityLabel === 'RED' ? '#ef4444' :
                      priorityLabel === 'ORANGE' ? '#f97316' : '#16a34a';
 
-  const prefText = claim.futurePreference === 'settlement' ? 'Prefer settlement and closure after receiving balance' :
-                   claim.futurePreference === 'wait' ? 'Willing to wait if company continues and grows' :
-                   claim.futurePreference === 'continue' ? 'Ready to continue based on future plans' : (claim.futurePreference || 'N/A');
-
-  const hardshipText = Array.isArray(claim.hardshipStatus) ? claim.hardshipStatus.join(', ') : (claim.hardshipStatus || 'None');
+  const prefDetail = getFuturePreferenceDetail(claim.futurePreference);
+  const hardshipList = getHardshipList(claim.hardshipStatus);
 
   return `
     <div class="page-container">
@@ -969,24 +1065,51 @@ export const renderPersonFullAdminClaimPage = (
         </table>
 
         <!-- Admin Specific Fields: Priority, Hardship, Future Preference -->
-        <div class="section-heading">3. Administrative Assessment Details</div>
-        <div class="meta-box" style="border-color: #cbd5e1; background: #fff7ed;">
-          <div class="grid-2">
-            <div>
-              <span class="meta-label">Priority Status & Category</span>
-              <span class="meta-val" style="color: ${priorityBg}; font-size: 11.5px;">${priorityLabel} ${claim.isEmergency ? '• EMERGENCY PRIORITY' : ''}</span>
+        <div class="section-heading">3. Administrative Assessment Details (അഡ്മിൻ അസസ്സ്മെന്റ് വിവരങ്ങൾ)</div>
+        <div class="meta-box" style="border-color: #cbd5e1; background: #fffdf5; padding: 10px 14px;">
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div>
+                <span class="meta-label">Priority Status & Category</span>
+                <span class="meta-val" style="color: ${priorityBg}; font-size: 11.5px; font-weight: 900;">
+                  ${priorityLabel} ${claim.isEmergency ? '• EMERGENCY PRIORITY VERIFIED' : ''}
+                </span>
+              </div>
+              <div>
+                <span class="meta-label">Verified / Handled By</span>
+                <span class="meta-val" style="font-size: 11px;">${userProf?.registeredByName || userProf?.certAdminName || 'Portal Direct Submission'}</span>
+              </div>
             </div>
-            <div>
-              <span class="meta-label">Hardship Factors</span>
-              <span class="meta-val" style="font-size: 11px;">${hardshipText}</span>
+
+            <!-- All Selected Hardship & Crisis Factors with Full Details -->
+            <div style="border-top: 1px dashed #cbd5e1; padding-top: 6px;">
+              <span class="meta-label" style="margin-bottom: 4px; display: block;">
+                Selected Hardship & Crisis Factors (അപേക്ഷകൻ തിരഞ്ഞെടുത്ത പ്രതിസന്ധികൾ):
+              </span>
+              ${hardshipList.length > 0 ? `
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  ${hardshipList.map(h => `
+                    <div style="display: flex; align-items: flex-start; gap: 6px; background: ${h.isEmergency ? '#fef2f2' : '#f8fafc'}; border: 1px solid ${h.isEmergency ? '#fecaca' : '#e2e8f0'}; border-radius: 6px; padding: 4px 8px;">
+                      <span style="font-size: 12px; line-height: 1;">${h.icon}</span>
+                      <div style="font-size: 10px; line-height: 1.35;">
+                        <span style="font-weight: 800; color: ${h.isEmergency ? '#b91c1c' : '#334155'};">${h.fullMl}</span>
+                        <span style="color: #64748b; font-weight: 600; display: block; font-size: 9px;">(${h.fullEn})</span>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              ` : `
+                <div style="font-size: 10px; color: #64748b; font-style: italic;">പ്രതിസന്ധികൾ രേഖപ്പെടുത്തിയിട്ടില്ല (No specific hardship recorded)</div>
+              `}
             </div>
-            <div>
-              <span class="meta-label">Future Preference</span>
-              <span class="meta-val" style="font-size: 11px;">${prefText}</span>
-            </div>
-            <div>
-              <span class="meta-label">Verified By</span>
-              <span class="meta-val" style="font-size: 11px;">${userProf?.registeredByName || userProf?.certAdminName || 'Portal Submission'}</span>
+
+            <!-- Future Preference with Full Detail -->
+            <div style="border-top: 1px dashed #cbd5e1; padding-top: 6px;">
+              <span class="meta-label" style="margin-bottom: 2px; display: block;">Future Preference (ഭാവിയിലെ തീരുമാനം):</span>
+              <div style="font-size: 10.5px; font-weight: 700; color: #003366; line-height: 1.4;">
+                ${prefDetail.ml}
+                <div style="font-size: 9.5px; color: #64748b; font-weight: 600;">(${prefDetail.en})</div>
+              </div>
             </div>
           </div>
         </div>

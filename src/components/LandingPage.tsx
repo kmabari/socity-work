@@ -69,30 +69,10 @@ import { useI18n } from '../lib/i18n';
 import LanguageSwitcher from './LanguageSwitcher';
 import { InfinityBorderCard } from './InfinityBorderCard';
 import { InfinityBorderButton } from './InfinityBorderButton';
+import { normalizeImageUrl, getProxiedImageUrl } from '../lib/imageUrlUtils';
 
 export function extractDirectImageUrl(url: string | undefined): string {
-  if (!url) return '';
-  let val = url.trim();
-  
-  // Extract from HTML src matching src="..."
-  const srcMatch = val.match(/src=["']([^"']+)["']/i);
-  if (srcMatch && srcMatch[1]) {
-    return srcMatch[1].trim();
-  }
-  
-  // Extract from BBCode img matching [img]...[/img]
-  const bbcMatch = val.match(/\[img\]([^\[]+)\[\/img\]/i);
-  if (bbcMatch && bbcMatch[1]) {
-    return bbcMatch[1].trim();
-  }
-
-  // Extract from HTML href matching href="..."
-  const hrefMatch = val.match(/href=["']([^"']+)["']/i);
-  if (hrefMatch && hrefMatch[1] && hrefMatch[1].includes('i.ibb.co')) {
-    return hrefMatch[1].trim();
-  }
-  
-  return val;
+  return normalizeImageUrl(url);
 }
 
 interface LandingPageProps {
@@ -1647,10 +1627,17 @@ export default function LandingPage({
                               className="aspect-square bg-slate-100 border border-slate-200 rounded-[8px] overflow-hidden relative cursor-pointer group shadow-sm"
                             >
                               <img 
-                                src={img.url} 
+                                src={normalizeImageUrl(img.url)} 
                                 alt={img.title} 
                                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                                 referrerPolicy="no-referrer"
+                                onError={(e) => {
+                                  const target = e.currentTarget;
+                                  if (!target.dataset.retried) {
+                                    target.dataset.retried = 'true';
+                                    target.src = getProxiedImageUrl(img.url);
+                                  }
+                                }}
                               />
                               <div className="absolute inset-0 bg-[#222222]/40 opacity-0 group-hover:opacity-100 transition-opacity duration-350 flex items-end p-2.5 backdrop-blur-[1px]">
                                 <p className="text-[9px] font-bold text-white uppercase tracking-tight line-clamp-2 leading-tight">
@@ -2460,10 +2447,17 @@ export default function LandingPage({
                     >
                       <div className="w-full h-full rounded-[6px] overflow-hidden relative bg-slate-100">
                         <img 
-                          src={item.url} 
+                          src={normalizeImageUrl(item.url)} 
                           alt={item.title} 
                           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                           referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            if (!target.dataset.retried) {
+                              target.dataset.retried = 'true';
+                              target.src = getProxiedImageUrl(item.url);
+                            }
+                          }}
                         />
                         <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[1px]">
                           <div className="bg-white text-slate-900 px-4 py-2 rounded-[6px] shadow text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">

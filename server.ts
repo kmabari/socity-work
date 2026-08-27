@@ -712,6 +712,155 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
+  // API endpoint to automatically resolve and extract direct image URLs from webpages (e.g. ImgBB, PostImages, Google Drive, etc.)
+  app.all(["/api/resolve-image-url", "/resolve-image-url"], async (req, res) => {
+    const rawTarget = (req.query.url as string) || (req.body && req.body.url) || "";
+    if (!rawTarget || typeof rawTarget !== "string") {
+      return res.status(400).json({ error: "url query parameter or body is required." });
+    }
+
+    let url = rawTarget.trim();
+
+    // 1. Google Drive normalization
+    if (url.includes("drive.google.com") || url.includes("docs.google.com")) {
+      const driveMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (driveMatch && driveMatch[1]) {
+        const fileId = driveMatch[1];
+        return res.json({
+          success: true,
+          resolvedUrl: `https://lh3.googleusercontent.com/d/${fileId}`,
+          fallbackUrl: `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600`,
+          originalUrl: url,
+          type: "google-drive"
+        });
+      }
+    }
+
+    // 2. Direct image check
+    if (url.match(/\.(png|jpe?g|gif|webp|svg|bmp)(\?.*)?$/i) || url.includes("i.ibb.co") || url.includes("i.imgur.com") || url.includes("i.postimg.cc")) {
+      return res.json({
+        success: true,
+        resolvedUrl: url,
+        originalUrl: url,
+        type: "direct-image"
+      });
+    }
+
+    // 3. Imgur viewer -> direct
+    if (url.includes("imgur.com/") && !url.includes("i.imgur.com") && !url.includes("/a/") && !url.includes("/gallery/")) {
+      const match = url.match(/imgur\.com\/([a-zA-Z0-9]+)/);
+      if (match && match[1]) {
+        return res.json({
+          success: true,
+          resolvedUrl: `https://i.imgur.com/${match[1]}.jpg`,
+          originalUrl: url,
+          type: "imgur"
+        });
+      }
+    }
+
+    // 4. Dropbox viewer -> raw
+    if (url.includes("dropbox.com")) {
+      const rawUrl = url.replace(/dl=[01]/, "raw=1");
+      return res.json({
+        success: true,
+        resolvedUrl: rawUrl.includes("raw=1") ? rawUrl : (rawUrl + (rawUrl.includes("?") ? "&raw=1" : "?raw=1")),
+        originalUrl: url,
+        type: "dropbox"
+      });
+    }
+
+    // 5. Fetch webpage to extract OpenGraph / Twitter / High-res image tags
+    try {
+      const fetchController = new AbortController();
+      const timeoutId = setTimeout(() => fetchController.abort(), 6000);
+
+      const pageRes = await fetch(url, {
+        signal: fetchController.signal,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+        }
+      });
+      clearTimeout(timeoutId);
+
+      const contentType = pageRes.headers.get("content-type") || "";
+      if (contentType.startsWith("image/")) {
+        return res.json({
+          success: true,
+          resolvedUrl: url,
+          originalUrl: url,
+          type: "direct-content-type"
+        });
+      }
+
+      const html = await pageRes.text();
+
+      // Look for og:image, twitter:image, image_src, or specific viewers
+      const ogMatch = html.match(/<meta\s+[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) ||
+                      html.match(/<meta\s+[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i) ||
+                      html.match(/<meta\s+[^>]*name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i) ||
+                      html.match(/<link\s+[^>]*rel=["']image_src["'][^>]*href=["']([^"']+)["']/i);
+
+      if (ogMatch && ogMatch[1]) {
+        let extracted = ogMatch[1].trim();
+        if (extracted.startsWith("//")) extracted = "https:" + extracted;
+        else if (extracted.startsWith("/")) {
+          try {
+            const parsedOrigin = new URL(url).origin;
+            extracted = parsedOrigin + extracted;
+          } catch {
+            // keep extracted as is
+          }
+        }
+        return res.json({
+          success: true,
+          resolvedUrl: extracted,
+          originalUrl: url,
+          type: "extracted-opengraph"
+        });
+      }
+
+      // ImgBB specific viewer selector fallback
+      const ibbViewer = html.match(/id=["']image-viewer-image["'][^>]*src=["']([^"']+)["']/i);
+      if (ibbViewer && ibbViewer[1]) {
+        return res.json({
+          success: true,
+          resolvedUrl: ibbViewer[1].trim(),
+          originalUrl: url,
+          type: "extracted-ibb"
+        });
+      }
+
+      // PostImages main-image selector fallback
+      const postImgViewer = html.match(/id=["']main-image["'][^>]*src=["']([^"']+)["']/i);
+      if (postImgViewer && postImgViewer[1]) {
+        return res.json({
+          success: true,
+          resolvedUrl: postImgViewer[1].trim(),
+          originalUrl: url,
+          type: "extracted-postimg"
+        });
+      }
+
+      // If no tag found, return best guess or proxy
+      return res.json({
+        success: false,
+        resolvedUrl: url,
+        originalUrl: url,
+        message: "No embedded image metadata found on page"
+      });
+    } catch (fetchErr: any) {
+      console.warn("Failed to scrape webpage for image:", fetchErr.message);
+      return res.json({
+        success: false,
+        resolvedUrl: url,
+        originalUrl: url,
+        error: fetchErr.message
+      });
+    }
+  });
+
   let sheetsClient: any = null;
 
   function getGoogleSheetId(): string {
@@ -1979,6 +2128,101 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
+  app.post(["/api/admin/reset-claims-counter", "/admin/reset-claims-counter"], async (req, res) => {
+    try {
+      if (!dbAdmin) {
+        return res.status(500).json({ error: "Database not connected" });
+      }
+      const claimsSnap = await dbAdmin.collection('claims').get();
+      let maxSerial = 0;
+      let maxRed = 0;
+      let maxOrange = 0;
+      let maxGreen = 0;
+
+      claimsSnap.docs.forEach(d => {
+        const data = d.data();
+        const num = typeof data.serialNo === 'number' ? data.serialNo : parseInt(String(data.serialNo || data.tokenNo || '').replace(/\D/g, ''), 10);
+        if (!isNaN(num) && num > maxSerial) maxSerial = num;
+        const tok = String(data.tokenNo || data.serialNo || '');
+        if (tok.startsWith('R-')) {
+          const rNum = parseInt(tok.replace('R-', ''), 10);
+          if (!isNaN(rNum) && rNum > maxRed) maxRed = rNum;
+        } else if (tok.startsWith('O-')) {
+          const oNum = parseInt(tok.replace('O-', ''), 10);
+          if (!isNaN(oNum) && oNum > maxOrange) maxOrange = oNum;
+        } else if (tok.startsWith('G-')) {
+          const gNum = parseInt(tok.replace('G-', ''), 10);
+          if (!isNaN(gNum) && gNum > maxGreen) maxGreen = gNum;
+        }
+      });
+
+      const nextCounter = claimsSnap.empty ? 0 : Math.max(claimsSnap.size, maxSerial);
+      await dbAdmin.collection('system').doc('totals').set({
+        claimsCounter: nextCounter,
+        redClaimsCounter: maxRed,
+        orangeClaimsCounter: maxOrange,
+        greenClaimsCounter: maxGreen
+      }, { merge: true });
+
+      return res.json({ 
+        success: true, 
+        totalClaims: claimsSnap.size, 
+        nextStartingNumber: nextCounter + 1,
+        maxRed,
+        maxOrange,
+        maxGreen
+      });
+    } catch (err: any) {
+      console.error("Error resetting claims counter:", err);
+      return res.status(500).json({ error: err.message || "Failed to reset counter" });
+    }
+  });
+
+  async function syncClaimCounters() {
+    if (!dbAdmin) return;
+    try {
+      const claimsSnap = await dbAdmin.collection('claims').get();
+      if (claimsSnap.empty) {
+        console.log("[System Init] Claims collection is empty. Ensuring claims counters are reset to 0 so next claim starts at 1.");
+        await dbAdmin.collection('system').doc('totals').set({
+          claimsCounter: 0,
+          redClaimsCounter: 0,
+          orangeClaimsCounter: 0,
+          greenClaimsCounter: 0
+        }, { merge: true });
+      } else {
+        let maxSerial = 0;
+        let maxRed = 0;
+        let maxOrange = 0;
+        let maxGreen = 0;
+        claimsSnap.docs.forEach(d => {
+          const data = d.data();
+          const num = typeof data.serialNo === 'number' ? data.serialNo : parseInt(String(data.serialNo || data.tokenNo || '').replace(/\D/g, ''), 10);
+          if (!isNaN(num) && num > maxSerial) maxSerial = num;
+          const tok = String(data.tokenNo || data.serialNo || '');
+          if (tok.startsWith('R-')) {
+            const rNum = parseInt(tok.replace('R-', ''), 10);
+            if (!isNaN(rNum) && rNum > maxRed) maxRed = rNum;
+          } else if (tok.startsWith('O-')) {
+            const oNum = parseInt(tok.replace('O-', ''), 10);
+            if (!isNaN(oNum) && oNum > maxOrange) maxOrange = oNum;
+          } else if (tok.startsWith('G-')) {
+            const gNum = parseInt(tok.replace('G-', ''), 10);
+            if (!isNaN(gNum) && gNum > maxGreen) maxGreen = gNum;
+          }
+        });
+        await dbAdmin.collection('system').doc('totals').set({
+          claimsCounter: Math.max(claimsSnap.size, maxSerial),
+          redClaimsCounter: maxRed,
+          orangeClaimsCounter: maxOrange,
+          greenClaimsCounter: maxGreen
+        }, { merge: true });
+      }
+    } catch (err: any) {
+      console.warn("[System Init] Claims counter sync notice:", err?.message || err);
+    }
+  }
+
   // ============================================================================
   // RAZORPAY WEBHOOK ENDPOINT
   // Receives asynchronous payment updates (payment.captured, order.paid, payment.failed)
@@ -2126,6 +2370,7 @@ async function startServer() {
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://0.0.0.0:${PORT}`);
+    syncClaimCounters().catch(err => console.warn("[Startup claim sync warning]:", err));
   });
 }
 

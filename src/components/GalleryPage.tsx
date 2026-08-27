@@ -21,7 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { subscribeToGallery, GalleryItem } from '@/src/lib/cms';
 import { STATIC_GALLERY_IMAGES, DISTRICTS } from '../constants';
-import { normalizeImageUrl } from '../lib/imageUrlUtils';
+import { normalizeImageUrl, getProxiedImageUrl } from '../lib/imageUrlUtils';
 import Logo from '../Logo';
 
 interface GalleryPageProps {
@@ -344,6 +344,13 @@ export default function GalleryPage({ onBack, onLoginClick }: GalleryPageProps) 
                                   loading="lazy"
                                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-115"
                                   referrerPolicy="no-referrer"
+                                  onError={(e) => {
+                                    const target = e.currentTarget;
+                                    if (!target.dataset.retried) {
+                                      target.dataset.retried = 'true';
+                                      target.src = getProxiedImageUrl(item.url);
+                                    }
+                                  }}
                                 />
                                 
                                 {/* Overlay display detailed dates */}
@@ -486,6 +493,13 @@ export default function GalleryPage({ onBack, onLoginClick }: GalleryPageProps) 
                       isZoomed ? "scale-150 cursor-zoom-out" : "scale-100 cursor-zoom-in"
                     )}
                     referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      if (!target.dataset.retried) {
+                        target.dataset.retried = 'true';
+                        target.src = getProxiedImageUrl(activeItem.url);
+                      }
+                    }}
                    />
                  </motion.div>
 
@@ -526,7 +540,18 @@ export default function GalleryPage({ onBack, onLoginClick }: GalleryPageProps) 
                           selectedImageInfo.index === idx ? "border-brand-magenta scale-105 shadow-md shadow-brand-magenta/35" : "border-transparent opacity-45 hover:opacity-100"
                         )}
                        >
-                         <img src={normalizeImageUrl(item.url)} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                         <img 
+                           src={normalizeImageUrl(item.url)} 
+                           className="w-full h-full object-cover" 
+                           referrerPolicy="no-referrer"
+                           onError={(e) => {
+                             const target = e.currentTarget;
+                             if (!target.dataset.retried) {
+                               target.dataset.retried = 'true';
+                               target.src = getProxiedImageUrl(item.url);
+                             }
+                           }}
+                         />
                        </button>
                      ))}
                    </div>

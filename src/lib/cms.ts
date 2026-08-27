@@ -724,41 +724,7 @@ export function subscribeToCampaignTemplates(callback: (items: CampaignTemplate[
   });
 }
 
-/**
- * Normalizes any image URL (including ImgBB page links, Google Drive share links, Dropbox, etc.)
- * into a directly displayable raw image URL.
- */
-export function normalizeImageUrl(rawUrl?: string): string {
-  if (!rawUrl || typeof rawUrl !== 'string') return '';
-  const url = rawUrl.trim();
-  if (!url) return '';
-
-  // ImgBB page link -> Direct Image URL resolution
-  if (url.includes('ibb.co/N2jHFKdP')) {
-    return 'https://i.ibb.co/d42zfDwq/782447521-1074313911653476-2779143939229298450-n.gif';
-  }
-  if (url.includes('ibb.co/whWxd4FX')) {
-    return 'https://i.ibb.co/whWxd4FX/782447521-1074313911653476-2779143939229298450-n.gif';
-  }
-  if (url.includes('ibb.co/My4KQNbH') || url.includes('1000072034-removebg-preview-1')) {
-    return 'https://i.ibb.co/My4KQNbH/1000072034-removebg-preview-1.png';
-  }
-
-  // Google Drive Share link resolution
-  if (url.includes('drive.google.com/file/d/')) {
-    const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-    if (match && match[1]) {
-      return `https://drive.google.com/uc?export=view&id=${match[1]}`;
-    }
-  }
-
-  // Dropbox link resolution
-  if (url.includes('dropbox.com/') && url.includes('dl=0')) {
-    return url.replace('dl=0', 'raw=1');
-  }
-
-  return url;
-}
+export { normalizeImageUrl } from './imageUrlUtils';
 
 
 
