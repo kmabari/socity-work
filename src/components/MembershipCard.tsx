@@ -91,16 +91,10 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
     try {
       await new Promise(resolve => setTimeout(resolve, 350));
       // Focus on card element precisely
-      const canvas = await html2canvas(cardRef.current, { 
-        scale: 3, 
-        useCORS: true, 
-        backgroundColor: null,
-        scrollX: 0,
-        scrollY: 0,
-        windowWidth: 340,
-        windowHeight: 590,
-        onclone: html2canvasOklchOnClone
-      });
+      const canvas = await renderCardToCanvas(3);
+      if (!canvas) {
+        throw new Error('Canvas render returned null');
+      }
       const imgData = canvas.toDataURL('image/png');
       setGeneratedImage(imgData);
       
@@ -466,7 +460,10 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
     if (!cardRef.current) return;
     const loadingToast = toast.loading('Preparing print dialog...');
     try {
-      const canvas = await html2canvas(cardRef.current, { scale: 3, useCORS: true, backgroundColor: '#FFFFFF', onclone: html2canvasOklchOnClone });
+      const canvas = await renderCardToCanvas(3);
+      if (!canvas) {
+        throw new Error('Canvas render returned null');
+      }
       const imgData = canvas.toDataURL('image/png');
       
       const printWindow = window.open('', '_blank');
@@ -1054,96 +1051,30 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
         <div className="flex flex-col gap-4 w-full px-2 pb-24 shrink-0 transition-all font-sans">
           {(member.status === 'active' || member.isApproved || isAdmin) && (
             <div className="flex flex-col gap-3">
-              {/* 1. TOP PRIORITY: SCREENSHOT MODE BUTTON */}
-              <Button 
+              {/* ULTRA CRISP PREMIUM CRYSTAL GLASS UI BANNER */}
+              <div 
                 onClick={() => setIsScreenshotMode(true)}
-                className="w-full min-h-[56px] h-auto py-2.5 px-3 sm:px-4 font-black rounded-2xl shadow-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 hover:from-amber-500 hover:to-yellow-600 text-slate-950 flex items-center justify-start gap-2.5 sm:gap-3 transition-transform active:scale-95 border-2 border-amber-300 cursor-pointer text-left overflow-hidden"
+                className="w-full relative overflow-hidden rounded-2xl p-4 sm:p-5 backdrop-blur-2xl bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-[#002244]/95 border-2 border-amber-400/70 shadow-[0_12px_40px_rgba(0,0,0,0.4),0_0_25px_rgba(245,158,11,0.2)] hover:shadow-[0_16px_50px_rgba(245,158,11,0.35)] hover:border-amber-300 transition-all duration-300 cursor-pointer group active:scale-[0.98] select-none"
               >
-                <div className="p-2 rounded-xl bg-slate-950 text-amber-400 shrink-0 shadow-sm flex items-center justify-center">
-                  <Camera className="w-5 h-5" />
+                {/* Glossy glass reflection sheen */}
+                <div className="absolute -top-10 -left-10 w-full h-24 bg-gradient-to-b from-white/15 to-transparent -rotate-12 pointer-events-none" />
+                <div className="absolute top-0 right-0 w-36 h-36 bg-amber-400/20 rounded-full blur-3xl pointer-events-none group-hover:bg-amber-400/30 transition-all" />
+                <div className="absolute bottom-0 left-0 w-36 h-36 bg-blue-500/20 rounded-full blur-3xl pointer-events-none group-hover:bg-blue-500/30 transition-all" />
+
+                <div className="relative z-10 flex items-center gap-3.5 sm:gap-4">
+                  {/* Glowing Amber Glass Camera Badge */}
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-slate-950 flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/30 border-2 border-amber-200 group-hover:scale-105 group-hover:rotate-3 transition-transform duration-300">
+                    <Camera className="w-6 h-6 sm:w-7 sm:h-7 stroke-[2.2]" />
+                  </div>
+
+                  {/* Sharp High-Contrast Glass Text */}
+                  <div className="flex flex-col items-start flex-1 min-w-0 text-left">
+                    <h4 className="text-[14px] sm:text-[16px] font-black text-white leading-snug drop-shadow-md tracking-normal break-words">
+                      നിങ്ങളുടെ പ്രൊഫൈൽ ഫോട്ടോ ആഡ് ചെയ്തു സ്ക്രീൻ short എടുക്കുക
+                    </h4>
+                  </div>
                 </div>
-                <div className="flex flex-col items-start leading-tight flex-1 min-w-0 pr-1">
-                  <span className="text-[11.5px] sm:text-sm font-black uppercase tracking-normal text-slate-950 leading-snug break-words">
-                    സ്ക്രീൻഷോട്ട് എടുക്കുക (Screenshot Mode)
-                  </span>
-                  <span className="text-[9.5px] sm:text-[11px] font-bold text-slate-900 font-sans opacity-95 leading-tight mt-0.5 break-words">
-                    വ്യക്തമായ സ്ക്രീൻഷോട്ട് എടുക്കാൻ ഇവിടെ അമർത്തുക
-                  </span>
-                </div>
-              </Button>
-
-              {/* 2. COMPACT SECONDARY ACTION BUTTONS (Neatly Aligned) */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">
-                {/* 1. DOWNLOAD CARD IMAGE */}
-                <Button 
-                  onClick={downloadPNG}
-                  className="min-h-[42px] h-auto py-2 px-2 font-black rounded-xl text-[11px] sm:text-xs shadow-md bg-gradient-to-r from-blue-700 to-indigo-800 hover:from-blue-800 hover:to-indigo-900 text-white flex items-center justify-center gap-1.5 transition-transform active:scale-95 border border-blue-400/40 cursor-pointer text-center"
-                >
-                  <Download className="w-3.5 h-3.5 text-white shrink-0" />
-                  <span className="leading-tight text-white font-black">ഡൗൺലോഡ് (PNG)</span>
-                </Button>
-
-                {/* 2. SHARE VIA WHATSAPP */}
-                <Button 
-                  onClick={shareCardImage}
-                  className="min-h-[42px] h-auto py-2 px-2 font-black rounded-xl text-[11px] sm:text-xs shadow-md bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 flex items-center justify-center gap-1.5 transition-transform active:scale-95 border border-green-500 cursor-pointer text-center"
-                >
-                  <Share2 className="w-3.5 h-3.5 text-slate-950 shrink-0" />
-                  <span className="leading-tight font-black text-slate-950">ഷെയർ (Share)</span>
-                </Button>
-
-                {/* 3. DISTRICT CUSTOMER CARE */}
-                <Button 
-                  onClick={handleOpenCustomerCareWhatsApp}
-                  className="min-h-[42px] h-auto py-2 px-2 font-black rounded-xl text-[11px] sm:text-xs shadow-md bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-1.5 transition-transform active:scale-95 border border-emerald-400 cursor-pointer text-center"
-                >
-                  <MessageCircle className="w-3.5 h-3.5 text-white shrink-0" />
-                  <span className="leading-tight text-white font-black">കസ്റ്റമർ കെയർ</span>
-                </Button>
-
-                {/* 4. A4 PRINT PDF */}
-                <Button 
-                  onClick={downloadA4PDF}
-                  className="min-h-[42px] h-auto py-2 px-2 font-black rounded-xl text-[11px] sm:text-xs shadow-md bg-slate-900 hover:bg-slate-800 text-white flex items-center justify-center gap-1.5 transition-transform active:scale-95 border border-slate-600 cursor-pointer text-center"
-                >
-                  <Printer className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                  <span className="leading-tight text-white font-black">A4 PDF പ്രിന്റ്</span>
-                </Button>
               </div>
-
-              {/* 3. DOWNLOADED / GENERATED IMAGE PREVIEW (Mobile friendly long-press save) */}
-              {generatedImage && (
-                <div className="w-full bg-slate-900 border-2 border-emerald-500/80 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-center gap-3 text-white shadow-xl animate-in fade-in">
-                  <img 
-                    src={generatedImage} 
-                    alt="ID Card" 
-                    className="w-20 sm:w-24 h-auto rounded-lg shadow-md border border-white/20 shrink-0"
-                  />
-                  <div className="flex-1 text-center sm:text-left space-y-1">
-                    <p className="text-xs font-black text-emerald-400 flex items-center justify-center sm:justify-start gap-1">
-                      <ShieldCheck className="w-3.5 h-3.5" /> കാർഡ് ഇമേജ് തയാറാണ്
-                    </p>
-                    <p className="text-[11px] text-slate-300 font-medium">
-                      മൊബൈലിൽ ഗാലറിയിലേക്ക് സേവ് ചെയ്യാൻ ചിത്രത്തിൽ അമർത്തിപ്പിടിക്കുക (Long Press to Save Image).
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
-                    <Button
-                      onClick={() => triggerFileDownload(generatedImage, `HCRS_CARD_${member.name.trim().replace(/\s+/g, '_')}.png`)}
-                      className="flex-1 sm:flex-initial h-9 px-3 text-xs font-black bg-emerald-500 hover:bg-emerald-600 text-slate-950 rounded-xl cursor-pointer"
-                    >
-                      <Download className="w-3.5 h-3.5 mr-1" /> Save
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => setGeneratedImage(null)}
-                      className="h-9 px-2 text-xs font-bold text-slate-400 hover:text-white cursor-pointer"
-                    >
-                      ✕
-                    </Button>
-                  </div>
-                </div>
-              )}
             </div>
           )}
           {onLogout && (
