@@ -2468,11 +2468,11 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
       <div className="flex flex-col min-h-screen w-full bg-slate-100 overflow-x-hidden">
         {/* Responsive Sticky Header */}
         <div className="p-3 sm:p-4 bg-gradient-to-r from-slate-900 via-[#003366] to-[#002244] text-white sticky top-0 z-30 shadow-md w-full">
-          <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            <div className="flex items-center justify-between sm:justify-start gap-2.5 min-w-0">
+          <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+            <div className="flex items-center justify-between gap-2.5 min-w-0">
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-amber-300 shrink-0 border border-white/15">
-                  <FileText className="w-4.5 h-4.5" />
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/10 flex items-center justify-center text-amber-300 shrink-0 border border-white/15">
+                  <FileText className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
                 </div>
                 <div className="min-w-0">
                   <h3 className="text-xs sm:text-sm font-black uppercase tracking-tight text-white flex items-center gap-1.5 flex-wrap truncate">
@@ -2497,12 +2497,12 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
               </Button>
             </div>
 
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
               <Button
                 size="sm"
                 onClick={() => setFormMode('fill')}
                 variant="outline"
-                className="h-8 sm:h-9 px-2.5 sm:px-3 bg-white/10 hover:bg-white/20 border-white/20 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-sm cursor-pointer"
+                className="h-8 sm:h-9 px-2 sm:px-3 bg-white/10 hover:bg-white/20 border-white/20 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-sm cursor-pointer w-full sm:w-auto"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>ഫോം എഡിറ്റ്</span>
@@ -2511,7 +2511,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                 <Button
                   size="sm"
                   onClick={() => setFormMode('fill')}
-                  className="h-8 sm:h-9 px-2.5 sm:px-3 bg-amber-500 hover:bg-amber-600 text-slate-950 text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-sm cursor-pointer font-bold"
+                  className="h-8 sm:h-9 px-2 sm:px-3 bg-amber-500 hover:bg-amber-600 text-slate-950 text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-sm cursor-pointer font-bold w-full sm:w-auto"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>+ അംഗം ({4 - submittedClaims.length})</span>
@@ -2520,18 +2520,18 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
               <Button
                 size="sm"
                 onClick={() => printCourtComboReport(combinedUserForPrint, submittedClaims)}
-                className="h-8 sm:h-9 px-2.5 sm:px-3.5 bg-blue-500 hover:bg-blue-600 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-sm cursor-pointer border border-blue-300/40"
+                className="h-8 sm:h-9 px-2 sm:px-3.5 bg-blue-500 hover:bg-blue-600 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-sm cursor-pointer border border-blue-300/40 w-full sm:w-auto"
               >
                 <Printer className="w-3.5 h-3.5" />
-                <span>പ്രിന്റ്</span>
+                <span>പ്രിന്റ് (A4)</span>
               </Button>
               <Button
                 size="sm"
                 onClick={() => downloadCourtComboPdf(combinedUserForPrint, submittedClaims)}
-                className="h-8 sm:h-9 px-2.5 sm:px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-sm cursor-pointer border border-emerald-400/40"
+                className="h-8 sm:h-9 px-2 sm:px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-sm cursor-pointer border border-emerald-400/40 w-full sm:w-auto"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>PDF</span>
+                <span>PDF ഡൗൺലോഡ്</span>
               </Button>
               <Button
                 size="sm"
@@ -6116,141 +6116,6 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           )}
         </div>
         )}
-        {/* COMBINED TOTAL DISPLAY */}
-        <section className="bg-brand-blue rounded-3xl p-6 text-white space-y-6 shadow-xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
-          
-          <div className="flex items-center gap-2">
-            <LayoutDashboard className="w-5 h-5 text-brand-magenta" />
-            <h4 className="text-[10px] font-black uppercase tracking-wider opacity-60">
-              {t('Combined Totals', 'ആകെ തുക വിവരങ്ങൾ')}
-            </h4>
-          </div>
-
-          {/* Claimant-wise Breakdown List */}
-          <div className="space-y-2 border-b border-white/10 pb-4">
-            <p className="text-[9px] font-black opacity-55 uppercase tracking-wider text-pink-300">
-              {t('Individual Claimants Breakdown:', 'വ്യക്തിഗത തുകകൾ:')}
-            </p>
-            <div className="grid grid-cols-1 gap-2 pt-1">
-              {effectiveSelfTotals.active && (
-                <div className="flex justify-between items-center bg-white/5 rounded-xl px-3 py-2 border border-white/5">
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-black text-brand-magenta uppercase">
-                        {t('1. Self', '1. സ്വന്തം')}
-                      </span>
-                      {effectiveSelfTotals.isSubmitted && (
-                        <span className="text-[8px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.2 rounded border border-emerald-400/30">
-                          {t('Submitted', 'സമർപ്പിച്ചു')}
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-xs font-bold text-slate-200 block truncate max-w-[200px]">{effectiveSelfTotals.name}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[8px] opacity-45 block">Pending</span>
-                    <span className="text-sm font-black text-white">₹{effectiveSelfTotals.pending.toLocaleString('en-IN')}</span>
-                  </div>
-                </div>
-              )}
-              {effectiveSpouseTotals.active && (
-                <div className="flex justify-between items-center bg-white/5 rounded-xl px-3 py-2 border border-white/5">
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-black text-brand-magenta uppercase">
-                        2. {effectiveSpouseTotals.relation === 'Wife' ? t('Wife', 'ഭാര്യ') : effectiveSpouseTotals.relation === 'Husband' ? t('Husband', 'ഭർത്താവ്') : t('Spouse', 'ഭാര്യ/ഭർത്താവ്')}
-                      </span>
-                      {effectiveSpouseTotals.isSubmitted && (
-                        <span className="text-[8px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.2 rounded border border-emerald-400/30">
-                          {t('Submitted', 'സമർപ്പിച്ചു')}
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-xs font-bold text-slate-200 block truncate max-w-[200px]">{effectiveSpouseTotals.name}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[8px] opacity-45 block">Pending</span>
-                    <span className="text-sm font-black text-white">₹{effectiveSpouseTotals.pending.toLocaleString('en-IN')}</span>
-                  </div>
-                </div>
-              )}
-              {effectiveParentTotals.active && (
-                <div className="flex justify-between items-center bg-white/5 rounded-xl px-3 py-2 border border-white/5">
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-black text-brand-magenta uppercase">
-                        3. {effectiveParentTotals.relation === 'Mother' ? t('Mother', 'അമ്മ') : effectiveParentTotals.relation === 'Father' ? t('Father', 'അച്ഛൻ') : t('Parent', 'മാതാവ്/പിതാവ്')}
-                      </span>
-                      {effectiveParentTotals.isSubmitted && (
-                        <span className="text-[8px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.2 rounded border border-emerald-400/30">
-                          {t('Submitted', 'സമർപ്പിച്ചു')}
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-xs font-bold text-slate-200 block truncate max-w-[200px]">{effectiveParentTotals.name}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[8px] opacity-45 block">Pending</span>
-                    <span className="text-sm font-black text-white">₹{effectiveParentTotals.pending.toLocaleString('en-IN')}</span>
-                  </div>
-                </div>
-              )}
-              {effectiveChildTotals.active && (
-                <div className="flex justify-between items-center bg-white/5 rounded-xl px-3 py-2 border border-white/5">
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-black text-brand-magenta uppercase">
-                        4. {effectiveChildTotals.relation === 'Son' ? t('Son', 'മകൻ') : effectiveChildTotals.relation === 'Daughter' ? t('Daughter', 'മകൾ') : t('Child', 'മകൻ/മകൾ')}
-                      </span>
-                      {effectiveChildTotals.isSubmitted && (
-                        <span className="text-[8px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.2 rounded border border-emerald-400/30">
-                          {t('Submitted', 'സമർപ്പിച്ചു')}
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-xs font-bold text-slate-200 block truncate max-w-[200px]">{effectiveChildTotals.name}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[8px] opacity-45 block">Pending</span>
-                    <span className="text-sm font-black text-white">₹{effectiveChildTotals.pending.toLocaleString('en-IN')}</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4">
-            <div className="flex items-end justify-between border-b border-white/10 pb-3">
-               <div>
-                  <p className="text-[9px] font-bold opacity-50 uppercase tracking-widest text-white">
-                    {t('Combined Pending Claim', 'ആകെ മിച്ച ക്ലെയിം തുക')}
-                  </p>
-                  <p className="text-3xl font-black text-brand-magenta tracking-tight">
-                    ₹{combinedTotalPending.toLocaleString('en-IN')}
-                  </p>
-               </div>
-               <Badge className="bg-white/10 text-white border-0 text-[10px] py-1 mb-1">
-                 {t('Combined', 'ആകെ')}
-               </Badge>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 pb-1">
-               <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-                  <p className="text-[8px] font-bold opacity-50 uppercase tracking-wider mb-0.5">
-                    {t('Total Paid', 'ആകെ നൽകിയത്')}
-                  </p>
-                  <p className="text-base font-black text-white">₹{combinedTotalPaid.toLocaleString('en-IN')}</p>
-               </div>
-               <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-                  <p className="text-[8px] font-bold opacity-50 uppercase tracking-wider mb-0.5">
-                    {t('Total Received', 'ആകെ ലഭിച്ചത്')}
-                  </p>
-                  <p className="text-base font-black text-white">₹{combinedTotalReceived.toLocaleString('en-IN')}</p>
-               </div>
-            </div>
-          </div>
-        </section>
 
       </div>
 

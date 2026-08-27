@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { auth, db, storage, handleFirestoreError, OperationType, secondaryAuth } from './lib/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, signInWithPopup, signInWithRedirect, getRedirectResult, updatePassword } from 'firebase/auth';
-import { Clock, LogOut, Camera, ShieldCheck, RefreshCw, Users, ShieldAlert, ArrowRight, Eye, EyeOff, Pencil, Trash2, MoreVertical, Receipt, Mail, Smartphone, Search, MapPin, Plus, CheckCircle2, AlertTriangle, Info, Printer, Download, Share2, FileText, MessageCircle } from 'lucide-react';
+import { Clock, LogOut, Camera, ShieldCheck, RefreshCw, Users, ShieldAlert, ArrowRight, Eye, EyeOff, Pencil, Trash2, MoreVertical, Receipt, Mail, Smartphone, Search, MapPin, Plus, CheckCircle2, AlertTriangle, Info, Printer, Download, Share2, FileText, MessageCircle, LayoutDashboard } from 'lucide-react';
 import { setDoc, doc, updateDoc, deleteDoc, collection, onSnapshot, query, getDoc, getDocs, runTransaction, serverTimestamp, where, increment, limit, addDoc, writeBatch } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from './lib/imageUtils';
@@ -3482,6 +3482,14 @@ export default function App() {
                                 <FileText className="w-6 h-6 shrink-0 text-white" />
                                 <span className="text-base sm:text-lg font-black tracking-wider uppercase text-white">SETTLEMENT CLAIM FORM</span>
                               </Button>
+                              <Button
+                                onClick={() => setView('support')}
+                                variant="outline"
+                                className="w-full h-12 rounded-xl font-black border-2 border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20 text-red-700 dark:text-red-300 hover:bg-red-100 text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                              >
+                                <Eye className="w-4 h-4 text-red-600 shrink-0" />
+                                <span>നിലവിലെ ഫോം കാണുക / പൂരിപ്പിക്കുക</span>
+                              </Button>
                               <div className="text-center lg:text-left space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                                 <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-black border border-slate-200 dark:border-slate-700">
                                   <Info className="w-4 h-4 text-red-600 shrink-0" />
@@ -3496,7 +3504,7 @@ export default function App() {
                         } else if (submittedClaimsCount === 1) {
                           // Stage 1: 1 Claim Submitted -> Pure ORANGE (ഓറഞ്ച്) with Dark Text
                           return (
-                            <div className="rounded-3xl p-5 sm:p-6 text-center lg:text-left flex flex-col gap-4 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-800 shadow-md">
+                            <div className="rounded-3xl p-5 sm:p-6 text-center lg:text-left flex flex-col gap-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-800 shadow-md">
                               <Button 
                                 onClick={() => setView('support')}
                                 className="w-full h-14 rounded-2xl font-black bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-slate-950 shadow-md hover:scale-[1.01] active:scale-95 transition-all uppercase tracking-wider flex items-center justify-center gap-2.5 border-b-4 border-orange-800 cursor-pointer"
@@ -3504,13 +3512,26 @@ export default function App() {
                                 <FileText className="w-6 h-6 shrink-0 text-slate-950" />
                                 <span className="text-base sm:text-lg font-black tracking-wider uppercase text-slate-950">SETTLEMENT CLAIM FORM</span>
                               </Button>
+                              <Button
+                                onClick={() => {
+                                  if (userSubmittedClaims.length > 0) {
+                                    setIsPreviewingClaim(true);
+                                  } else {
+                                    setView('support');
+                                  }
+                                }}
+                                className="w-full h-12 rounded-xl font-black bg-[#003366] hover:bg-[#002244] text-white uppercase tracking-wider text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer border border-blue-400/30"
+                              >
+                                <Eye className="w-4 h-4 text-amber-300 shrink-0" />
+                                <span>നിലവിലെ ഫോം കാണുക (View Submitted Form)</span>
+                              </Button>
                               <div className="text-center lg:text-left space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                                 <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-black border border-slate-200 dark:border-slate-700">
                                   <ShieldCheck className="w-4 h-4 text-orange-600 shrink-0" />
                                   <span>1 ക്ലെയിം സമർപ്പിച്ചു (3 എണ്ണം ബാക്കി • 1/4 Complete)</span>
                                 </div>
                                 <p className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 leading-relaxed">
-                                  സ്വന്തം ക്ലെയിം രേഖപ്പെടുത്തിയിട്ടുണ്ട്. ബാക്കി കുടുംബാംഗങ്ങളുടെ (ഭാര്യ/ഭർത്താവ്, മാതാപിതാക്കൾ, മക്കൾ) ക്ലെയിം കൂടി ചേർക്കാൻ മുകളിൽ ക്ലിക്ക് ചെയ്യുക.
+                                  സ്വന്തം ക്ലെയിം രേഖപ്പെടുത്തിയിട്ടുണ്ട്. ബാക്കി കുടുംബാംഗങ്ങളുടെ ക്ലെയിം കൂടി ചേർക്കാൻ മുകളിൽ ക്ലിക്ക് ചെയ്യുക.
                                 </p>
                               </div>
                             </div>
@@ -3518,13 +3539,26 @@ export default function App() {
                         } else if (submittedClaimsCount === 2 || submittedClaimsCount === 3) {
                           // Stage 2: 2 or 3 Claims Submitted -> Pure YELLOW/AMBER (യെല്ലോ / മഞ്ഞ) with Dark Text
                           return (
-                            <div className="rounded-3xl p-5 sm:p-6 text-center lg:text-left flex flex-col gap-4 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-800 shadow-md">
+                            <div className="rounded-3xl p-5 sm:p-6 text-center lg:text-left flex flex-col gap-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-800 shadow-md">
                               <Button 
                                 onClick={() => setView('support')}
                                 className="w-full h-14 rounded-2xl font-black bg-amber-400 hover:bg-amber-500 active:bg-amber-600 text-slate-950 shadow-md hover:scale-[1.01] active:scale-95 transition-all uppercase tracking-wider flex items-center justify-center gap-2.5 border-b-4 border-amber-600 cursor-pointer"
                               >
                                 <FileText className="w-6 h-6 shrink-0 text-slate-950" />
                                 <span className="text-base sm:text-lg font-black tracking-wider uppercase text-slate-950">SETTLEMENT CLAIM FORM</span>
+                              </Button>
+                              <Button
+                                onClick={() => {
+                                  if (userSubmittedClaims.length > 0) {
+                                    setIsPreviewingClaim(true);
+                                  } else {
+                                    setView('support');
+                                  }
+                                }}
+                                className="w-full h-12 rounded-xl font-black bg-[#003366] hover:bg-[#002244] text-white uppercase tracking-wider text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer border border-blue-400/30"
+                              >
+                                <Eye className="w-4 h-4 text-amber-300 shrink-0" />
+                                <span>നിലവിലെ ഫോം കാണുക (View Submitted Form)</span>
                               </Button>
                               <div className="text-center lg:text-left space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                                 <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-black border border-slate-200 dark:border-slate-700">
@@ -3540,13 +3574,26 @@ export default function App() {
                         } else {
                           // Stage 3: 4 Claims Submitted -> Pure GREEN (പച്ച / Emerald) with White Text
                           return (
-                            <div className="rounded-3xl p-5 sm:p-6 text-center lg:text-left flex flex-col gap-4 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-800 shadow-md">
+                            <div className="rounded-3xl p-5 sm:p-6 text-center lg:text-left flex flex-col gap-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-800 shadow-md">
                               <Button 
                                 onClick={() => setView('support')}
                                 className="w-full h-14 rounded-2xl font-black bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-md hover:scale-[1.01] active:scale-95 transition-all uppercase tracking-wider flex items-center justify-center gap-2.5 border-b-4 border-emerald-900 cursor-pointer"
                               >
                                 <FileText className="w-6 h-6 shrink-0 text-white" />
                                 <span className="text-base sm:text-lg font-black tracking-wider uppercase text-white">SETTLEMENT CLAIM FORM</span>
+                              </Button>
+                              <Button
+                                onClick={() => {
+                                  if (userSubmittedClaims.length > 0) {
+                                    setIsPreviewingClaim(true);
+                                  } else {
+                                    setView('support');
+                                  }
+                                }}
+                                className="w-full h-12 rounded-xl font-black bg-[#003366] hover:bg-[#002244] text-white uppercase tracking-wider text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer border border-blue-400/30"
+                              >
+                                <Eye className="w-4 h-4 text-amber-300 shrink-0" />
+                                <span>നിലവിലെ ഫോം കാണുക (View Submitted Form)</span>
                               </Button>
                               <div className="text-center lg:text-left space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                                 <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs font-black border border-emerald-200 dark:border-emerald-800/60">
@@ -3637,19 +3684,19 @@ export default function App() {
                     {/* Consignment Advance Refund Form Section (Above Billing) */}
                     <div className="w-full bg-white dark:bg-slate-900 border-2 border-[#003366]/35 dark:border-blue-800/50 rounded-2xl shadow-md overflow-hidden">
                       {/* Card Header Bar */}
-                      <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-900 via-[#003366] to-[#002244] text-white flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
+                      <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-900 via-[#003366] to-[#002244] text-white flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
                           <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-amber-300 shrink-0 border border-white/15 shadow-inner">
                             <FileText className="w-5 h-5" />
                           </div>
-                          <div>
-                            <h4 className="text-xs sm:text-sm font-black uppercase tracking-tight text-white flex flex-wrap items-center gap-1.5 sm:gap-2">
+                          <div className="min-w-0">
+                            <h4 className="text-xs sm:text-sm font-black uppercase tracking-tight text-white flex flex-wrap items-center gap-1.5 sm:gap-2 truncate">
                               <span>കൺസൈൻമെന്റ് അഡ്വാൻസ് റീഫണ്ട് ഫോം</span>
-                              <Badge className="bg-amber-400 text-slate-950 text-[9px] font-black uppercase px-2 py-0.5 tracking-wider whitespace-nowrap">
+                              <Badge className="bg-amber-400 text-slate-950 text-[9px] font-black uppercase px-2 py-0.5 tracking-wider whitespace-nowrap shrink-0">
                                 {userSubmittedClaims.length > 0 ? `കോർട്ട് റെക്കോർഡ് (${userSubmittedClaims.length} പേജ്)` : 'ഔദ്യോഗിക ഫോം'}
                               </Badge>
                             </h4>
-                            <p className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">
+                            <p className="text-[10px] font-bold text-slate-300 uppercase tracking-wider truncate">
                               Consignment Advance Court & Admin Verified Statement
                             </p>
                           </div>
@@ -3657,11 +3704,11 @@ export default function App() {
 
                         {/* Action Buttons */}
                         {userSubmittedClaims.length > 0 && (
-                          <div className="flex items-center gap-2">
+                          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
                             <Button
                               size="sm"
                               onClick={() => printCourtComboReport(user, userSubmittedClaims)}
-                              className="h-9 px-3.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer border border-blue-300/40"
+                              className="h-9 px-2.5 sm:px-3.5 bg-blue-500 hover:bg-blue-600 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer border border-blue-300/40 w-full sm:w-auto"
                               title="Print A4 Copy / Save as PDF"
                             >
                               <Printer className="w-3.5 h-3.5" />
@@ -3670,7 +3717,7 @@ export default function App() {
                             <Button
                               size="sm"
                               onClick={() => downloadCourtComboPdf(user, userSubmittedClaims)}
-                              className="h-9 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer border border-emerald-400"
+                              className="h-9 px-2.5 sm:px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer border border-emerald-400 w-full sm:w-auto"
                               title="Download PDF"
                             >
                               <Download className="w-3.5 h-3.5 text-white" />
@@ -3680,11 +3727,11 @@ export default function App() {
                               size="sm"
                               onClick={() => setIsPreviewingClaim(true)}
                               variant="outline"
-                              className="h-9 px-3 border-white/20 bg-white/10 hover:bg-white/20 text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 cursor-pointer"
+                              className="col-span-2 sm:col-span-1 h-9 px-3 border-white/20 bg-white/10 hover:bg-white/20 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 cursor-pointer w-full sm:w-auto"
                               title="Full Screen View"
                             >
                               <Eye className="w-3.5 h-3.5 text-amber-300" />
-                              <span className="hidden sm:inline">ഫുൾ വ്യൂ</span>
+                              <span>ഫുൾ വ്യൂ</span>
                             </Button>
                           </div>
                         )}
@@ -3811,6 +3858,209 @@ export default function App() {
                       )}
                     </div>
 
+                    {/* COMBINED TOTALS & FINANCIAL SUMMARY CARD (മുഴുവൻ തുകയുടെയും വിവരങ്ങൾ) */}
+                    <div className="w-full bg-gradient-to-br from-[#002244] via-[#003366] to-slate-900 rounded-3xl p-5 sm:p-6 text-white space-y-5 shadow-xl relative overflow-hidden border border-white/10">
+                      <div className="absolute top-0 right-0 w-36 h-36 bg-amber-400/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl pointer-events-none" />
+                      
+                      {/* Section Header */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-2xl bg-amber-400/20 text-amber-300 border border-amber-400/30 flex items-center justify-center shrink-0 shadow-inner">
+                            <LayoutDashboard className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h3 className="text-sm sm:text-base font-black uppercase tracking-tight text-white flex items-center gap-2 flex-wrap">
+                              <span>മുഴുവൻ തുകയുടെയും വിവരങ്ങൾ</span>
+                              <Badge className="bg-amber-400 text-slate-950 text-[9px] font-black uppercase px-2 py-0.5 tracking-wider">
+                                {userSubmittedClaims.length} Claim{userSubmittedClaims.length > 1 ? 's' : ''}
+                              </Badge>
+                            </h3>
+                            <p className="text-[10px] sm:text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                              Combined Totals & Financial Statement Breakdown
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Top Action Buttons inside Totals Tab */}
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              if (userSubmittedClaims.length > 0) {
+                                setIsPreviewingClaim(true);
+                              } else {
+                                setView('support');
+                              }
+                            }}
+                            className="h-8 sm:h-9 px-3 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-sm cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>നിലവിലെ ഫോം കാണുക</span>
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => setView('support')}
+                            variant="outline"
+                            className="h-8 sm:h-9 px-3 border-white/20 bg-white/10 hover:bg-white/20 text-white font-black text-xs uppercase tracking-wider rounded-xl flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Pencil className="w-3.5 h-3.5 text-amber-300" />
+                            <span>എഡിറ്റ് / കൂടുതൽ ചേർക്കുക</span>
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* KPI Metric Summary Blocks */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="bg-white/10 backdrop-blur-xs rounded-2xl p-3.5 sm:p-4 border border-white/10 flex flex-col justify-between">
+                          <p className="text-[10px] font-black uppercase tracking-wider text-amber-300">
+                            ആകെ മിച്ച ക്ലെയിം തുക (Pending Claim)
+                          </p>
+                          <p className="text-2xl sm:text-3xl font-black text-amber-300 tracking-tight mt-1">
+                            ₹{userSubmittedClaims.reduce((s, c) => s + (Number(c.totalPending) || 0), 0).toLocaleString('en-IN')}
+                          </p>
+                          <span className="text-[9px] text-slate-300 font-bold mt-1">Net Balance Pending for Settlement</span>
+                        </div>
+
+                        <div className="bg-white/5 rounded-2xl p-3.5 sm:p-4 border border-white/5 flex flex-col justify-between">
+                          <p className="text-[10px] font-black uppercase tracking-wider text-slate-300">
+                            ആകെ നൽകിയ തുക (Total Deposited)
+                          </p>
+                          <p className="text-xl sm:text-2xl font-black text-white tracking-tight mt-1">
+                            ₹{userSubmittedClaims.reduce((s, c) => s + (Number(c.totalPaid) || 0), 0).toLocaleString('en-IN')}
+                          </p>
+                          <span className="text-[9px] text-slate-400 font-bold mt-1">All Verified Deposits / Advance</span>
+                        </div>
+
+                        <div className="bg-white/5 rounded-2xl p-3.5 sm:p-4 border border-white/5 flex flex-col justify-between">
+                          <p className="text-[10px] font-black uppercase tracking-wider text-slate-300">
+                            ആകെ ലഭിച്ച തുക (Total Received)
+                          </p>
+                          <p className="text-xl sm:text-2xl font-black text-emerald-300 tracking-tight mt-1">
+                            ₹{userSubmittedClaims.reduce((s, c) => s + (Number(c.totalReceived) || 0), 0).toLocaleString('en-IN')}
+                          </p>
+                          <span className="text-[9px] text-slate-400 font-bold mt-1">Total Refunds / Payouts Claimed</span>
+                        </div>
+                      </div>
+
+                      {/* Individual Claimants Detailed Breakdown List */}
+                      {userSubmittedClaims.length > 0 ? (
+                        <div className="space-y-2.5 pt-1">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[10px] font-black uppercase tracking-wider text-amber-300">
+                              വ്യക്തിഗത ക്ലെയിം വിവരങ്ങൾ ({userSubmittedClaims.length}/4 Claimants)
+                            </p>
+                            <span className="text-[9px] text-slate-300 font-bold">
+                              Serial Token & Breakdown
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 gap-2.5">
+                            {userSubmittedClaims.map((claim, idx) => {
+                              const name = claim.claimantName || claim.name || claim.personalDetails?.fullName || user.name || `അംഗം ${idx + 1}`;
+                              let rel = claim.relation || (idx === 0 ? 'Self' : `അംഗം ${idx + 1}`);
+                              let relMalayalam = rel;
+                              if (rel.toLowerCase() === 'self') relMalayalam = 'സ്വന്തം (Self)';
+                              else if (rel.toLowerCase() === 'wife') relMalayalam = 'ഭാര്യ (Wife)';
+                              else if (rel.toLowerCase() === 'husband') relMalayalam = 'ഭർത്താവ് (Husband)';
+                              else if (rel.toLowerCase() === 'spouse') relMalayalam = 'ഭാര്യ/ഭർത്താവ് (Spouse)';
+                              else if (rel.toLowerCase() === 'mother') relMalayalam = 'അമ്മ (Mother)';
+                              else if (rel.toLowerCase() === 'father') relMalayalam = 'അച്ഛൻ (Father)';
+                              else if (rel.toLowerCase() === 'parent') relMalayalam = 'മാതാവ്/പിതാവ് (Parent)';
+                              else if (rel.toLowerCase() === 'son') relMalayalam = 'മകൻ (Son)';
+                              else if (rel.toLowerCase() === 'daughter') relMalayalam = 'മകൾ (Daughter)';
+                              else if (rel.toLowerCase() === 'child') relMalayalam = 'മകൻ/മകൾ (Child)';
+
+                              const paid = Number(claim.totalPaid) || 0;
+                              const rec = Number(claim.totalReceived) || 0;
+                              const pend = Number(claim.totalPending) || 0;
+                              const serial = claim.serialNumber || `#${idx + 1}`;
+
+                              return (
+                                <div key={idx} className="bg-white/10 hover:bg-white/15 transition-colors rounded-2xl p-3.5 sm:p-4 border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    <div className="w-8 h-8 rounded-xl bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center shrink-0 shadow-sm">
+                                      {idx + 1}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <Badge className="bg-blue-500/30 text-blue-200 border border-blue-400/40 text-[9px] font-black uppercase px-2 py-0.5">
+                                          {relMalayalam}
+                                        </Badge>
+                                        <Badge className="bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[9px] font-mono font-black px-1.5 py-0.5">
+                                          {serial}
+                                        </Badge>
+                                        <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[9px] font-black uppercase px-1.5 py-0.5">
+                                          സമർപ്പിച്ചു ✓
+                                        </Badge>
+                                      </div>
+                                      <p className="text-xs sm:text-sm font-black text-white truncate mt-1">
+                                        {name}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-5 w-full sm:w-auto pt-2 sm:pt-0 border-t border-white/10 sm:border-t-0">
+                                    <div className="text-left sm:text-right">
+                                      <span className="text-[8px] sm:text-[9px] text-slate-300 font-bold block uppercase">നൽകിയത് / ലഭിച്ചത്</span>
+                                      <span className="text-xs font-mono font-bold text-slate-200">
+                                        ₹{paid.toLocaleString('en-IN')} / ₹{rec.toLocaleString('en-IN')}
+                                      </span>
+                                    </div>
+                                    <div className="text-right">
+                                      <span className="text-[8px] sm:text-[9px] text-amber-300 font-black block uppercase">മിച്ച ക്ലെയിം</span>
+                                      <span className="text-sm sm:text-base font-mono font-black text-amber-300">
+                                        ₹{pend.toLocaleString('en-IN')}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-4 bg-white/5 rounded-2xl text-center space-y-2 border border-white/5">
+                          <p className="text-xs font-bold text-slate-300">
+                            ക്ലെയിം വിവരങ്ങൾ സമർപ്പിച്ച ശേഷം ഓരോ വ്യക്തിയുടെയും ആകെ തുക വിവരങ്ങൾ ഇവിടെ പൂർണ്ണമായി ലഭ്യമാകും.
+                          </p>
+                          <Button
+                            size="sm"
+                            onClick={() => setView('support')}
+                            className="bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl px-4 py-2"
+                          >
+                            ഫോം പൂരിപ്പിക്കുക
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* Footer Actions inside the Totals Tab */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/10">
+                        <div className="text-[10px] text-slate-300 font-bold">
+                          ✓ അഡ്മിൻ പാനലിലും കോടതി സ്റ്റേറ്റ്‌മെന്റിലും ഉൾപ്പെടുത്തിയ തുക വിവരങ്ങൾ
+                        </div>
+                        {userSubmittedClaims.length > 0 && (
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => printCourtComboReport(user, userSubmittedClaims)}
+                              className="h-8 px-2.5 bg-blue-500 hover:bg-blue-600 text-white font-black text-[11px] uppercase tracking-wider rounded-lg flex items-center gap-1 cursor-pointer"
+                            >
+                              <Printer className="w-3 h-3" />
+                              <span>പ്രിന്റ്</span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => downloadCourtComboPdf(user, userSubmittedClaims)}
+                              className="h-8 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[11px] uppercase tracking-wider rounded-lg flex items-center gap-1 cursor-pointer"
+                            >
+                              <Download className="w-3 h-3" />
+                              <span>PDF</span>
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
                     {/* Billing & Payment Receipts */}
                     <PaymentReceipts user={user} />
                   </div>
@@ -3824,36 +4074,36 @@ export default function App() {
             <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center p-2 sm:p-4">
               <div className="bg-white dark:bg-slate-900 w-full max-w-5xl h-[94vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-slate-800">
                 {/* Modal Header */}
-                <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 bg-slate-900 text-white border-b border-slate-800 shrink-0">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-blue-600/30 flex items-center justify-center text-blue-400">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between px-3 sm:px-6 py-3 sm:py-3.5 bg-slate-900 text-white border-b border-slate-800 shrink-0 gap-2 sm:gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-blue-600/30 flex items-center justify-center text-blue-400 shrink-0">
                       <FileText className="w-4 h-4" />
                     </div>
-                    <div>
-                      <h3 className="text-sm font-black uppercase tracking-tight text-white flex items-center gap-2">
-                        കൺസൈൻമെന്റ് അഡ്വാൻസ് റീഫണ്ട് ഫോം
-                        <Badge className="bg-blue-600 text-white text-[9px] font-bold px-2 py-0.5 uppercase">
+                    <div className="min-w-0">
+                      <h3 className="text-xs sm:text-sm font-black uppercase tracking-tight text-white flex items-center gap-1.5 sm:gap-2 truncate">
+                        <span className="truncate">കൺസൈൻമെന്റ് അഡ്വാൻസ് റീഫണ്ട് ഫോം</span>
+                        <Badge className="bg-blue-600 text-white text-[9px] font-bold px-2 py-0.5 uppercase shrink-0">
                           {userSubmittedClaims.length} {userSubmittedClaims.length === 1 ? 'പേജ്' : 'പേജുകൾ'}
                         </Badge>
                       </h3>
-                      <p className="text-[10px] text-slate-400 font-semibold">
+                      <p className="text-[10px] text-slate-400 font-semibold truncate">
                         Official A4 Record • {user.name}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-end gap-1.5 sm:gap-2">
                     <Button
                       size="sm"
                       onClick={() => printCourtComboReport(user, userSubmittedClaims)}
-                      className="h-9 px-3.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      className="h-8 sm:h-9 px-2.5 sm:px-3.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm"
                     >
                       <Printer className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">പ്രിന്റ് / സേവ് PDF</span>
+                      <span>പ്രിന്റ് (A4)</span>
                     </Button>
                     <Button
                       size="sm"
                       onClick={() => downloadCourtComboPdf(user, userSubmittedClaims)}
-                      className="h-9 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm border border-emerald-500"
+                      className="h-8 sm:h-9 px-2.5 sm:px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm border border-emerald-500"
                     >
                       <Download className="w-3.5 h-3.5 text-white" />
                       <span className="text-white font-black">ഡൗൺലോഡ് (PDF)</span>
@@ -3862,7 +4112,7 @@ export default function App() {
                       size="sm"
                       variant="ghost"
                       onClick={() => setIsPreviewingClaim(false)}
-                      className="h-9 px-3 text-slate-400 hover:text-white hover:bg-slate-800 text-sm font-black rounded-xl cursor-pointer"
+                      className="h-8 sm:h-9 px-2.5 sm:px-3 text-slate-400 hover:text-white hover:bg-slate-800 text-sm font-black rounded-xl cursor-pointer"
                     >
                       ✕
                     </Button>
