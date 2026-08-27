@@ -1233,50 +1233,87 @@ export default function AdminDashboard({
 
   const handleApproveRenewal = async (member: UserProfile) => {
     if (approvingRenewalUid || approvedRenewalUids.includes(member.uid) || member.renewalPending === false) return;
+    const cleanMob = member.mobile ? String(member.mobile).replace(/\D/g, '') : '';
+
     setApprovingRenewalUid(member.uid);
-    setApprovedRenewalUids(prev => [...prev, member.uid]);
-    const loadingToast = toast.loading('റിന്യൂവൽ അപ്രൂവ് ചെയ്യുന്നു... (Approving renewal...)');
+    setApprovedRenewalUids(prev => {
+      const newUids = new Set(prev);
+      newUids.add(member.uid);
+      return Array.from(newUids);
+    });
+    const loadingToast = toast.loading(`റിന്യൂവൽ അപ്രൂവ് ചെയ്യുന്നു... (${member.name})`);
     
     const now = new Date();
     const expiry = new Date();
     expiry.setFullYear(now.getFullYear() + 1);
     const expiryStr = expiry.toLocaleDateString('en-IN');
 
+    // Safe ISO string helper
+    const getSafeIsoTime = (val: any) => {
+      try {
+        if (!val) return new Date().toISOString();
+        if (val.toDate && typeof val.toDate === 'function') return val.toDate().toISOString();
+        const d = new Date(val);
+        if (!isNaN(d.getTime())) return d.toISOString();
+      } catch (e) {}
+      return new Date().toISOString();
+    };
+
     try {
       try {
         await fetch('/api/admin/approve-renewal', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ uid: member.uid })
+          body: JSON.stringify({ uid: member.uid, mobile: cleanMob })
         });
       } catch (srvErr) {
         console.warn("[Renewal Approval API note]:", srvErr);
       }
 
+      const safeRegDate = member.registrationDate || now;
+      const safePaymentTime = getSafeIsoTime(member.renewalDate || (member as any).renewalPaymentDate || now);
+
       await onUpdate(member.uid, {
         status: 'active',
         isApproved: true,
         renewalPending: false,
-        issueDate: serverTimestamp(), // Update issue date on renewal approval
-        registrationDate: member.registrationDate || serverTimestamp(), // Preserve permanent original Joining Date, fallback if none
-        renewalDate: serverTimestamp(), // Store renewal date permanently
+        issueDate: now, // Update issue date on renewal approval
+        registrationDate: safeRegDate, // Preserve permanent original Joining Date, fallback if none
+        renewalDate: now, // Store renewal date permanently
         expiryDate: expiry,
-        paymentTime: member.renewalDate ? (member.renewalDate.toDate ? member.renewalDate.toDate().toISOString() : new Date(member.renewalDate).toISOString()) : new Date().toISOString()
+        paymentTime: safePaymentTime
       });
+
+      // Synchronize viewingMember if open
+      if (viewingMember && viewingMember.uid === member.uid) {
+        setViewingMember(prev => prev ? ({
+          ...prev,
+          status: 'active',
+          isApproved: true,
+          renewalPending: false,
+          issueDate: now,
+          renewalDate: now,
+          expiryDate: expiry
+        }) : null);
+      }
 
       // Automatically send WhatsApp renewal confirmation message
       try {
         if (orgSettings?.whatsappEnabled !== false && orgSettings?.whatsappRenewalEnabled !== false && orgSettings?.registrationMode !== 'bulk') {
           setTimeout(() => {
-            sendWARenewalMessage({
-              name: member.name,
-              mobile: member.mobile,
-              uid: member.uid,
-              membershipId: member.membershipId,
-              transactionId: (member as any).renewalTransactionId || (member as any).transactionId || '',
-              amount: 100,
-              expiryDate: expiryStr
-            });
+            try {
+              sendWARenewalMessage({
+                name: member.name,
+                mobile: member.mobile,
+                uid: member.uid,
+                membershipId: member.membershipId,
+                transactionId: (member as any).renewalTransactionId || (member as any).transactionId || '',
+                amount: 100,
+                expiryDate: expiryStr
+              });
+            } catch (innerWa) {
+              console.warn("sendWARenewalMessage call failed:", innerWa);
+            }
           }, 350);
         }
       } catch (waErr) {
@@ -1284,9 +1321,10 @@ export default function AdminDashboard({
       }
       
       toast.success(`റിന്യൂവൽ വിജയകരമായി അപ്രൂവ് ചെയ്തു! (${member.name})`, { id: loadingToast });
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Renewal approval catch:", error);
       setApprovedRenewalUids(prev => prev.filter(id => id !== member.uid));
-      toast.error('Renewal approval failed. Please try again.', { id: loadingToast });
+      toast.error(error?.message ? `Renewal approval note: ${error.message}` : 'Renewal approval failed. Please try again.', { id: loadingToast });
     } finally {
       setApprovingRenewalUid(null);
     }
@@ -1414,23 +1452,27 @@ export default function AdminDashboard({
     let active = 0;
     let pending = 0;
     let renewals = 0;
+    const approvedSet = new Set(approvedRenewalUids);
     
     for (const m of actualMembers) {
       const matchesDistrict = districtFilter === 'all' || m.district === districtFilter;
       if (!matchesDistrict) continue;
 
-      if (m.status === 'pending' && !m.renewalPending) {
+      const isApprovedRenewal = approvedSet.has(m.uid);
+      const isRenewalPending = !!m.renewalPending && !isApprovedRenewal;
+
+      if (m.status === 'pending' && !isRenewalPending) {
         pending++;
-      } else if (m.status === 'active' || m.renewalPending) {
+      } else if (m.status === 'active' || isRenewalPending || isApprovedRenewal) {
         active++;
         total++; // Verified active/renewal members only
       }
       
-      if (m.renewalPending) renewals++;
+      if (isRenewalPending) renewals++;
     }
 
     return { total, active, pending, renewals };
-  }, [actualMembers, districtFilter]);
+  }, [actualMembers, districtFilter, approvedRenewalUids]);
 
   const filteredMembers = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
@@ -6153,7 +6195,38 @@ service cloud.firestore {
                   </div>
                 </div>
 
-                {viewingMember.status === 'pending' && viewingMember.transactionId && (
+                {/* Renewal Payment Details if renewal is pending */}
+                {viewingMember.renewalPending && (
+                  <div className="bg-amber-50 border-2 border-amber-200 p-4 rounded-2xl space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-black text-sm text-amber-900 flex items-center gap-1.5 uppercase tracking-wide">
+                        <RefreshCw className="w-4 h-4 text-amber-600 animate-spin" />
+                        Renewal Request Details (റിന്യൂവൽ പേയ്മെന്റ് വിവരങ്ങൾ)
+                      </h4>
+                      <Badge className="bg-amber-500 text-white font-black text-[10px] uppercase">
+                        Pending Verification
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-1 text-xs">
+                      <div>
+                        <span className="text-[10px] text-amber-700/70 uppercase font-black block">Annual Renewal Fee</span>
+                        <span className="text-base font-black text-amber-900">₹100</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-amber-700/70 uppercase font-black block">Transaction / UPI Ref</span>
+                        <span className="font-mono font-bold text-amber-900">{(viewingMember as any).renewalTransactionId || (viewingMember as any).transactionId || 'N/A'}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-amber-700/70 uppercase font-black block">Payment Date / Time</span>
+                        <span className="font-bold text-amber-900">
+                          {(viewingMember as any).renewalPaymentDate || ''} {(viewingMember as any).renewalPaymentTime || ''}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {viewingMember.status === 'pending' && viewingMember.transactionId && !viewingMember.renewalPending && (
                   <div className="bg-orange-50 border border-orange-100 p-4 rounded-xl">
                     <h4 className="font-bold text-sm text-orange-800 mb-2">Payment Proof</h4>
                     <div className="flex flex-col md:flex-row gap-4">
@@ -6278,7 +6351,34 @@ service cloud.firestore {
                 <DialogFooter className="gap-3">
                   <Button variant="outline" onClick={() => setViewingMember(null)} className="font-bold flex-1 md:flex-none">Close</Button>
                   <Button variant="outline" onClick={() => { setViewingMember(null); setEditingMember(viewingMember); }} className="font-bold flex-1 md:flex-none">Edit Instead</Button>
-                  {viewingMember.status === 'pending' && (
+                  
+                  {viewingMember.renewalPending ? (
+                    <Button 
+                      disabled={approvingRenewalUid === viewingMember.uid || approvedRenewalUids.includes(viewingMember.uid)}
+                      onClick={async () => { 
+                        const currentMem = viewingMember;
+                        await handleApproveRenewal(currentMem); 
+                      }} 
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-black flex-1 md:flex-none flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                    >
+                      {approvingRenewalUid === viewingMember.uid ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>റിന്യൂവൽ അപ്രൂവ് ചെയ്യുന്നു...</span>
+                        </>
+                      ) : approvedRenewalUids.includes(viewingMember.uid) ? (
+                        <>
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>APPROVED ✅</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>Approve Renewal (റിന്യൂവൽ അപ്രൂവ് ചെയ്യുക)</span>
+                        </>
+                      )}
+                    </Button>
+                  ) : viewingMember.status === 'pending' ? (
                     <Button 
                       disabled={approvingUid === viewingMember.uid}
                       onClick={async () => { 
@@ -6300,7 +6400,8 @@ service cloud.firestore {
                         </>
                       )}
                     </Button>
-                  )}
+                  ) : null}
+
                   <Button variant="destructive" onClick={() => { setViewingMember(null); handleDeleteClick(viewingMember.uid); }} className="font-bold flex-1 md:flex-none">Delete Member</Button>
                 </DialogFooter>
               </div>

@@ -343,12 +343,12 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
                 {!isLoading && <ArrowRight className="ml-2 w-4 h-4 text-white group-hover:translate-x-0.5 transition-transform" />}
               </Button>
 
-              <div className="relative py-1">
+              <div className="relative py-2">
                 <div className="absolute inset-0 flex items-center">
                   <span className="w-full border-t border-slate-200" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase font-black tracking-widest text-slate-400">
-                  <span className="bg-white px-3 font-sans">OR</span>
+                  <span className="bg-white px-3 font-sans">അല്ലെങ്കിൽ / OR</span>
                 </div>
               </div>
 
@@ -357,16 +357,26 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
                 variant="outline"
                 disabled={isLoading}
                 onClick={onGoogleLogin}
-                className="w-full h-13 rounded-2xl text-xs sm:text-sm font-black border-2 border-slate-300 hover:bg-slate-50 transition-all hover:scale-[1.01] active:scale-100 uppercase tracking-widest flex items-center justify-center gap-3 text-slate-900 bg-white font-sans cursor-pointer shadow-xs"
+                className="w-full h-14 rounded-2xl text-xs sm:text-sm font-black border-2 border-blue-200 hover:border-blue-500 bg-blue-50/40 hover:bg-blue-50 transition-all hover:scale-[1.01] active:scale-100 uppercase tracking-wider flex items-center justify-center gap-3 text-slate-900 font-sans cursor-pointer shadow-sm"
               >
-                <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                   <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
                   <path d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22-.03-.62z" fill="#FBBC05"/>
                   <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
                 </svg>
-                Sign In with Google
+                <div className="flex flex-col items-start text-left leading-tight">
+                  <span className="font-extrabold text-xs sm:text-sm text-slate-900">Sign In with Google</span>
+                  <span className="text-[10px] text-blue-700 font-bold lowercase tracking-normal">അഡ്മിൻ & മെമ്പർ ഗൂഗിൾ ലോഗിൻ</span>
+                </div>
               </Button>
+
+              <div className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/80 flex items-start gap-2 text-left">
+                <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-[10px] text-amber-900 font-semibold leading-relaxed">
+                  <strong>അഡ്മിൻ ശ്രദ്ധിക്കുക:</strong> അഡ്മിൻ ഇമെയിൽ ഐഡി (<code className="text-amber-800 font-bold">kmabarikiyafoods@gmail.com</code> അല്ലെങ്കിൽ <code className="text-amber-800 font-bold">admin@hcrs.society</code>) ഉപയോഗിച്ച് Google Sign-In ചെയ്താൽ നേരിട്ട് അഡ്മിൻ പാനലിലേക്ക് പ്രവേശിക്കാം.
+                </p>
+              </div>
             </form>
           </Form>
         </div>

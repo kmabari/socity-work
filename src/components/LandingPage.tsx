@@ -100,6 +100,7 @@ interface LandingPageProps {
   onAccept: () => void;
   onRenew: () => void;
   onLoginClick: () => void;
+  onGoogleLogin?: () => void;
   onGalleryClick: () => void;
   onRenewWithMobile?: (mobile: string) => void;
   onRegisterWithMobile?: (mobile: string) => void;
@@ -112,6 +113,7 @@ export default function LandingPage({
   onAccept, 
   onRenew, 
   onLoginClick, 
+  onGoogleLogin,
   onGalleryClick, 
   onRenewWithMobile, 
   onRegisterWithMobile, 
@@ -385,6 +387,14 @@ export default function LandingPage({
             </button>
             <button onClick={() => document.getElementById('contact-us')?.scrollIntoView({ behavior: 'smooth' })} className="text-[11px] font-bold uppercase tracking-wider text-slate-600 hover:text-[#1a2b5c] transition-colors duration-200">
               {t('nav_contact', 'Contact')}
+            </button>
+            <button 
+              onClick={onGoogleLogin || onLoginClick} 
+              className="text-[11px] font-extrabold uppercase tracking-wider text-amber-700 hover:text-[#1a2b5c] transition-colors duration-200 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200/80 hover:bg-amber-100"
+              title="Admin Panel Google Login"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-[#c9a227]" />
+              <span>Admin Portal</span>
             </button>
           </div>
 
@@ -2548,11 +2558,18 @@ export default function LandingPage({
                     <Logo size="sm" className="h-[24px] w-auto border border-slate-200/30 p-0.5 rounded bg-white" />
                     <p className="font-bold">© {new Date().getFullYear()} HCRS Society. Public Registry Channel.</p>
                   </div>
-                  <div className="flex flex-wrap justify-center gap-4 font-bold uppercase tracking-wider text-[9px]">
+                  <div className="flex flex-wrap items-center justify-center gap-4 font-bold uppercase tracking-wider text-[9px]">
                     <a href="#privacy" className="hover:text-[#c9a227] transition-colors">Privacy Policy</a>
                     <a href="#terms" className="hover:text-[#c9a227] transition-colors">Terms & Conditions</a>
                     <a href="#refund" className="hover:text-[#c9a227] transition-colors">Refund Policy</a>
                     <a href="#contact" className="hover:text-[#c9a227] transition-colors">Contact Us</a>
+                    <button 
+                      onClick={onGoogleLogin || onLoginClick}
+                      className="text-amber-400 hover:text-amber-300 font-extrabold flex items-center gap-1 bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded border border-white/20 transition-all cursor-pointer"
+                    >
+                      <ShieldCheck className="w-3 h-3 text-amber-400" />
+                      <span>Admin Portal (Google Login)</span>
+                    </button>
                   </div>
                </div>
             </footer>

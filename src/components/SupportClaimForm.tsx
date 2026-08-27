@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import html2canvas from 'html2canvas';
-import { html2canvasOklchOnClone } from '../lib/imageUtils';
+import { html2canvasOklchOnClone, triggerFileDownload } from '../lib/imageUtils';
 import { 
   Building2, 
   ChevronRight, 
@@ -32,7 +32,8 @@ import {
   ShieldCheck,
   MessageCircle,
   Edit3,
-  Lock
+  Lock,
+  CreditCard
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1516,19 +1517,20 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
     let relationLabel = "";
     
     if (relKey === 'Self') {
-      name = selfName || user.name;
+      name = selfClaim?.userName || selfName || customerName || user.name;
       relationLabel = "സ്വന്തം (Self)";
-    } else if (relKey === 'Mother' || relKey === 'Father' || relKey === 'Parent' || relKey === parentRelation) {
-      name = parentName;
-      relationLabel = parentRelation === 'Mother' ? "അമ്മ (Mother)" : "അച്ഛൻ (Father)";
-    } else if (relKey === 'Son' || relKey === 'Daughter' || relKey === 'Child' || relKey === childRelation) {
-      name = childName;
-      relationLabel = childRelation === 'Son' ? "മകൻ (Son)" : "മകൾ (Daughter)";
-    } else if (relKey === 'Wife' || relKey === 'Husband' || relKey === 'Spouse' || relKey === spouseRelation) {
-      name = spouseName;
-      relationLabel = spouseRelation === 'Wife' ? "ഭാര്യ (Wife)" : "ഭർത്താവ് (Husband)";
+    } else if (relKey === 'Mother' || relKey === 'Father' || relKey === 'Parent' || relKey === parentRelation || parentClaim?.relation === relKey) {
+      name = parentClaim?.userName || parentName;
+      relationLabel = (parentClaim?.relation || parentRelation) === 'Mother' ? "അമ്മ (Mother)" : "അച്ഛൻ (Father)";
+    } else if (relKey === 'Son' || relKey === 'Daughter' || relKey === 'Child' || relKey === childRelation || childClaim?.relation === relKey) {
+      name = childClaim?.userName || childName;
+      relationLabel = (childClaim?.relation || childRelation) === 'Son' ? "മകൻ (Son)" : "മകൾ (Daughter)";
+    } else if (relKey === 'Wife' || relKey === 'Husband' || relKey === 'Spouse' || relKey === spouseRelation || spouseClaim?.relation === relKey) {
+      name = spouseClaim?.userName || spouseName;
+      relationLabel = (spouseClaim?.relation || spouseRelation) === 'Wife' ? "ഭാര്യ (Wife)" : "ഭർത്താവ് (Husband)";
     } else {
-      name = user.name;
+      const matchDoc = submittedClaims.find(c => c.relation === relKey);
+      name = matchDoc?.userName || user.name;
       relationLabel = relKey;
     }
     
@@ -1547,15 +1549,30 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
       const canvas = await html2canvas(cardElement, {
         scale: 3,
         useCORS: true,
+        allowTaint: true,
         backgroundColor: '#090D16',
-        onclone: html2canvasOklchOnClone
+        logging: false,
+        onclone: (clonedDoc) => {
+          html2canvasOklchOnClone(clonedDoc);
+          const clonedCard = clonedDoc.getElementById(`token-card-${relId}`);
+          if (clonedCard) {
+            clonedCard.style.contentVisibility = 'visible';
+            clonedCard.style.transform = 'none';
+          }
+        }
       });
       
       const imgData = canvas.toDataURL('image/png');
-      const link = document.createElement('a');
-      link.download = `Highrich_Serial_${tokenVal}_${personName.replace(/\s+/g, '_')}.png`;
-      link.href = imgData;
-      link.click();
+      const filename = `Highrich_Serial_${tokenVal}_${personName.replace(/\s+/g, '_')}.png`;
+      const downloaded = triggerFileDownload(imgData, filename);
+      if (!downloaded) {
+        const link = document.createElement('a');
+        link.download = filename;
+        link.href = imgData;
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => document.body.removeChild(link), 200);
+      }
       
       toast.success('സീരിയൽ കാർഡ് വിജയകരമായി ഗാലറിയിലേക്ക് സേവ് ചെയ്തിട്ടുണ്ട്! 📸', { id: loadingToast });
     } catch (error) {
@@ -1907,7 +1924,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
         let tokenVal = selfClaim?.tokenNo || selfClaim?.serialNo;
         if (!tokenVal) {
           currentTokenOffset++;
-          tokenVal = `${prefix}-${1000 + baseTokenNo + currentTokenOffset}`;
+          tokenVal = `${prefix}-${baseTokenNo + currentTokenOffset}`;
         }
         assignedTokens['Self'] = tokenVal;
         const newSelfClaim = {
@@ -1954,7 +1971,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
         let tokenVal = spouseClaim?.tokenNo || spouseClaim?.serialNo;
         if (!tokenVal) {
           currentTokenOffset++;
-          tokenVal = `${prefix}-${1000 + baseTokenNo + currentTokenOffset}`;
+          tokenVal = `${prefix}-${baseTokenNo + currentTokenOffset}`;
         }
         const relType = spouseRelation || 'Spouse';
         assignedTokens[relType] = tokenVal;
@@ -2028,7 +2045,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
         let tokenVal = parentClaim?.tokenNo || parentClaim?.serialNo;
         if (!tokenVal) {
           currentTokenOffset++;
-          tokenVal = `${prefix}-${1000 + baseTokenNo + currentTokenOffset}`;
+          tokenVal = `${prefix}-${baseTokenNo + currentTokenOffset}`;
         }
         const relType = parentRelation || 'Parent';
         assignedTokens[relType] = tokenVal;
@@ -2102,7 +2119,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
         let tokenVal = childClaim?.tokenNo || childClaim?.serialNo;
         if (!tokenVal) {
           currentTokenOffset++;
-          tokenVal = `${prefix}-${1000 + baseTokenNo + currentTokenOffset}`;
+          tokenVal = `${prefix}-${baseTokenNo + currentTokenOffset}`;
         }
         const relType = childRelation || 'Child';
         assignedTokens[relType] = tokenVal;
@@ -2177,7 +2194,33 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
       if (shouldProcessChild) setEditingChild(false);
       await checkExistingClaims();
 
-      setNewlyAssignedTokens(assignedTokens);
+      // Gather ALL tokens for all submitted members so Main applicant & family cards are always visible
+      const allTokensMap: Record<string, string> = { ...assignedTokens };
+      if (selfClaim?.tokenNo || selfClaim?.serialNo) {
+        if (!allTokensMap['Self']) {
+          allTokensMap['Self'] = String(selfClaim.tokenNo || selfClaim.serialNo);
+        }
+      }
+      if (spouseClaim?.tokenNo || spouseClaim?.serialNo) {
+        const key = spouseClaim.relation || 'Spouse';
+        if (!allTokensMap[key]) {
+          allTokensMap[key] = String(spouseClaim.tokenNo || spouseClaim.serialNo);
+        }
+      }
+      if (parentClaim?.tokenNo || parentClaim?.serialNo) {
+        const key = parentClaim.relation || 'Parent';
+        if (!allTokensMap[key]) {
+          allTokensMap[key] = String(parentClaim.tokenNo || parentClaim.serialNo);
+        }
+      }
+      if (childClaim?.tokenNo || childClaim?.serialNo) {
+        const key = childClaim.relation || 'Child';
+        if (!allTokensMap[key]) {
+          allTokensMap[key] = String(childClaim.tokenNo || childClaim.serialNo);
+        }
+      }
+
+      setNewlyAssignedTokens(allTokensMap);
 
       // Trigger automated WhatsApp notification to the member if enabled in settings
       try {
@@ -2398,133 +2441,149 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
   // Render Official Court Statement View
   if (formMode === 'statement' && submittedClaims.length > 0 && !completed) {
     return (
-      <div className="flex flex-col h-full bg-slate-100 min-h-screen">
-        {/* Sticky Header */}
-        <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-900 via-[#003366] to-[#002244] text-white flex flex-wrap items-center justify-between gap-3 sticky top-0 z-30 shadow-md">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-amber-300 shrink-0 border border-white/15">
-              <FileText className="w-5 h-5" />
+      <div className="flex flex-col min-h-screen w-full bg-slate-100 overflow-x-hidden">
+        {/* Responsive Sticky Header */}
+        <div className="p-3 sm:p-4 bg-gradient-to-r from-slate-900 via-[#003366] to-[#002244] text-white sticky top-0 z-30 shadow-md w-full">
+          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div className="flex items-center justify-between sm:justify-start gap-2.5 min-w-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-amber-300 shrink-0 border border-white/15">
+                  <FileText className="w-4.5 h-4.5" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-xs sm:text-sm font-black uppercase tracking-tight text-white flex items-center gap-1.5 flex-wrap truncate">
+                    <span className="truncate">Financial Information</span>
+                    <Badge className="bg-amber-400 text-slate-950 text-[9px] font-black uppercase px-2 py-0.5 tracking-wider shrink-0">
+                      {submittedClaims.length} Page{submittedClaims.length > 1 ? 's' : ''}
+                    </Badge>
+                  </h3>
+                  <p className="text-[10px] font-bold text-slate-300 uppercase tracking-wider truncate">
+                    HIGHRICH • {user.name}
+                  </p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleExitToDashboard}
+                className="sm:hidden h-8 w-8 p-0 text-slate-300 hover:text-white hover:bg-white/10 text-sm font-black rounded-lg shrink-0 cursor-pointer"
+                title="Close"
+              >
+                ✕
+              </Button>
             </div>
-            <div>
-              <h3 className="text-xs sm:text-sm font-black uppercase tracking-tight text-white flex items-center gap-2">
-                Member Financial Information Registry
-                <Badge className="bg-amber-400 text-slate-950 text-[9px] font-black uppercase px-2 py-0.5 tracking-wider">
-                  Official Statement Record ({submittedClaims.length} Page{submittedClaims.length > 1 ? 's' : ''})
-                </Badge>
-              </h3>
-              <p className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">
-                HIGHRICH ONLINE SHOPPE Pvt. Ltd. • {user.name}
-              </p>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              onClick={() => setFormMode('fill')}
-              variant="outline"
-              className="h-9 px-3 bg-white/10 hover:bg-white/20 border-white/20 text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-sm cursor-pointer"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>ഫോം എഡിറ്റ് ചെയ്യുക (Back to Form)</span>
-            </Button>
-            {submittedClaims.length < 4 && (
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               <Button
                 size="sm"
                 onClick={() => setFormMode('fill')}
-                className="h-9 px-3 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-sm cursor-pointer font-bold"
+                variant="outline"
+                className="h-8 sm:h-9 px-2.5 sm:px-3 bg-white/10 hover:bg-white/20 border-white/20 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-sm cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>കുടുംബാംഗത്തെ ചേർക്കുക ({4 - submittedClaims.length} ബാക്കി)</span>
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>ഫോം എഡിറ്റ്</span>
               </Button>
-            )}
-            <Button
-              size="sm"
-              onClick={() => printCourtComboReport(combinedUserForPrint, submittedClaims)}
-              className="h-9 px-3.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-sm cursor-pointer border border-blue-300/40"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>പ്രിന്റ് (A4)</span>
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => downloadCourtComboPdf(combinedUserForPrint, submittedClaims)}
-              className="h-9 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-sm cursor-pointer border border-emerald-400/40"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>PDF</span>
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleExitToDashboard}
-              className="h-9 px-3 bg-slate-800 hover:bg-slate-700 text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-sm cursor-pointer border border-white/20"
-            >
-              <LayoutDashboard className="w-3.5 h-3.5 text-amber-400" />
-              <span>ഡാഷ്‌ബോർഡ്</span>
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={handleExitToDashboard}
-              className="h-9 px-3 text-slate-300 hover:text-white hover:bg-white/10 text-sm font-black rounded-xl cursor-pointer"
-            >
-              ✕
-            </Button>
+              {submittedClaims.length < 4 && (
+                <Button
+                  size="sm"
+                  onClick={() => setFormMode('fill')}
+                  className="h-8 sm:h-9 px-2.5 sm:px-3 bg-amber-500 hover:bg-amber-600 text-slate-950 text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-sm cursor-pointer font-bold"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ അംഗം ({4 - submittedClaims.length})</span>
+                </Button>
+              )}
+              <Button
+                size="sm"
+                onClick={() => printCourtComboReport(combinedUserForPrint, submittedClaims)}
+                className="h-8 sm:h-9 px-2.5 sm:px-3.5 bg-blue-500 hover:bg-blue-600 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-sm cursor-pointer border border-blue-300/40"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>പ്രിന്റ്</span>
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => downloadCourtComboPdf(combinedUserForPrint, submittedClaims)}
+                className="h-8 sm:h-9 px-2.5 sm:px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-sm cursor-pointer border border-emerald-400/40"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>PDF</span>
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleExitToDashboard}
+                className="hidden sm:flex h-9 px-3 bg-slate-800 hover:bg-slate-700 text-white text-xs font-black uppercase tracking-wider rounded-xl items-center gap-1.5 shadow-sm cursor-pointer border border-white/20"
+              >
+                <LayoutDashboard className="w-3.5 h-3.5 text-amber-400" />
+                <span>ഡാഷ്‌ബോർഡ്</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleExitToDashboard}
+                className="hidden sm:flex h-9 px-2.5 text-slate-300 hover:text-white hover:bg-white/10 text-sm font-black rounded-xl cursor-pointer"
+                title="Close"
+              >
+                ✕
+              </Button>
+            </div>
           </div>
         </div>
 
         {/* Page Switcher Subbar */}
-        <div className="px-4 py-2.5 bg-white border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 shadow-xs">
-          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-thin">
-            <button
-              type="button"
-              onClick={() => setSelectedStatementIdx(-1)}
-              className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-                selectedStatementIdx === -1
-                  ? 'bg-[#003366] text-white shadow-sm'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              എല്ലാ പേജുകളും ഒരുമിച്ച് ({submittedClaims.length} പേജ്)
-            </button>
-            {submittedClaims.map((claim, idx) => {
-              const relMalayalam = 
-                claim.relation === 'Self' ? 'സ്വന്തം' :
-                claim.relation === 'Mother' ? 'അമ്മ' :
-                claim.relation === 'Father' ? 'അച്ഛൻ' :
-                claim.relation === 'Son' ? 'മകൻ' :
-                claim.relation === 'Daughter' ? 'മകൾ' :
-                claim.relation === 'Wife' ? 'ഭാര്യ' :
-                claim.relation === 'Husband' ? 'ഭർത്താവ്' : (claim.relation || `പേജ് ${idx + 1}`);
-              return (
-                <button
-                  key={claim.id || idx}
-                  type="button"
-                  onClick={() => setSelectedStatementIdx(idx)}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 ${
-                    selectedStatementIdx === idx
-                      ? 'bg-[#003366] text-white shadow-sm'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  <span>{idx + 1}. {relMalayalam}</span>
-                  <span className="opacity-70 font-mono text-[9px]">({claim.userName || user.name})</span>
-                </button>
-              );
-            })}
-          </div>
+        <div className="px-3 sm:px-4 py-2.5 bg-white border-b border-slate-200 shadow-xs w-full">
+          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-thin py-0.5 max-w-full">
+              <button
+                type="button"
+                onClick={() => setSelectedStatementIdx(-1)}
+                className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all shrink-0 cursor-pointer ${
+                  selectedStatementIdx === -1
+                    ? 'bg-[#003366] text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                എല്ലാം ഒരുമിച്ച് ({submittedClaims.length} പേജ്)
+              </button>
+              {submittedClaims.map((claim, idx) => {
+                const relMalayalam = 
+                  claim.relation === 'Self' ? 'സ്വന്തം' :
+                  claim.relation === 'Mother' ? 'അമ്മ' :
+                  claim.relation === 'Father' ? 'അച്ഛൻ' :
+                  claim.relation === 'Son' ? 'മകൻ' :
+                  claim.relation === 'Daughter' ? 'മകൾ' :
+                  claim.relation === 'Wife' ? 'ഭാര്യ' :
+                  claim.relation === 'Husband' ? 'ഭർത്താവ്' : (claim.relation || `പേജ് ${idx + 1}`);
+                return (
+                  <button
+                    key={claim.id || idx}
+                    type="button"
+                    onClick={() => setSelectedStatementIdx(idx)}
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all shrink-0 cursor-pointer flex items-center gap-1 ${
+                      selectedStatementIdx === idx
+                        ? 'bg-[#003366] text-white shadow-sm'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    <span>{idx + 1}. {relMalayalam}</span>
+                    <span className="opacity-70 font-mono text-[9px]">({claim.userName || user.name})</span>
+                  </button>
+                );
+              })}
+            </div>
 
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
-            <span>ആകെ റീഫണ്ട് വിഹിതം:</span>
-            <span className="font-mono font-black text-[#003366]">
-              ₹{submittedClaims.reduce((s, c) => s + (Number(c.totalPending) || 0), 0).toLocaleString('en-IN')}
-            </span>
+            <div className="flex items-center justify-between sm:justify-end gap-2 text-xs font-bold text-slate-600 shrink-0">
+              <span>ആകെ റീഫണ്ട് വിഹിതം:</span>
+              <span className="font-mono font-black text-[#003366]">
+                ₹{submittedClaims.reduce((s, c) => s + (Number(c.totalPending) || 0), 0).toLocaleString('en-IN')}
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Live Document Frame */}
-        <div className="flex-1 p-3 sm:p-5 max-w-5xl mx-auto w-full flex flex-col">
-          <div className="flex-1 min-h-[700px] rounded-2xl overflow-hidden border-2 border-slate-300 bg-white shadow-lg">
+        <div className="flex-1 p-2.5 sm:p-4 md:p-6 max-w-5xl mx-auto w-full flex flex-col min-w-0">
+          <div className="flex-1 w-full min-h-[600px] sm:min-h-[750px] md:min-h-[850px] rounded-2xl overflow-hidden border-2 border-slate-300 bg-white shadow-lg relative">
             <iframe
               srcDoc={
                 selectedStatementIdx === -1
@@ -2532,44 +2591,44 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                   : getSingleCourtClaimHtml(combinedUserForPrint, submittedClaims[selectedStatementIdx], selectedStatementIdx + 1, submittedClaims.length)
               }
               title="Consignment Advance Court Statement"
-              className="w-full h-full min-h-[700px] border-0 bg-white"
+              className="w-full h-full min-h-[600px] sm:min-h-[750px] md:min-h-[850px] border-0 bg-white block"
             />
           </div>
 
           {/* Bottom Footer with Back to Dashboard */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 pb-8">
-            <p className="text-xs text-slate-600 font-bold">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 pb-8 w-full">
+            <p className="text-xs text-slate-600 font-bold text-center sm:text-left">
               ✓ ഈ രേഖയാണ് കമ്പനിയിലേക്ക് / കോടതിയിലേക്ക് സമർപ്പിക്കപ്പെടേണ്ട ഉപഭോക്താവിന്റെ ഔദ്യോഗിക ക്ലെയിം സെറ്റിൽമെന്റ് ഫോം.
             </p>
-            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto">
               <Button
                 onClick={() => setFormMode('fill')}
                 variant="outline"
-                className="flex-1 sm:flex-none h-11 px-4 rounded-xl border-2 border-slate-400 bg-white text-slate-800 hover:bg-slate-100 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                className="h-11 px-3 sm:px-4 rounded-xl border-2 border-slate-400 bg-white text-slate-800 hover:bg-slate-100 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
               >
                 <ArrowLeft className="w-4 h-4 text-slate-700" />
-                <span>ഫോമിലേക്ക് (Back to Form)</span>
+                <span>ഫോമിലേക്ക്</span>
               </Button>
               <Button
                 onClick={() => printCourtComboReport(combinedUserForPrint, submittedClaims)}
-                className="flex-1 sm:flex-none h-11 px-5 rounded-xl bg-[#003366] hover:bg-[#002244] text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                className="h-11 px-3 sm:px-5 rounded-xl bg-[#003366] hover:bg-[#002244] text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
               >
                 <Printer className="w-4 h-4" />
-                പ്രിന്റ് (Print A4)
+                <span>പ്രിന്റ് (A4)</span>
               </Button>
               <Button
                 onClick={() => downloadCourtComboPdf(combinedUserForPrint, submittedClaims)}
-                className="flex-1 sm:flex-none h-11 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer border border-emerald-500"
+                className="h-11 px-3 sm:px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer border border-emerald-500"
               >
                 <Download className="w-4 h-4 text-white" />
-                <span className="text-white font-black">ഡൗൺലോഡ് (PDF)</span>
+                <span className="text-white font-black">ഡൗൺലോഡ് PDF</span>
               </Button>
               <Button
                 onClick={handleExitToDashboard}
-                className="flex-1 sm:flex-none h-11 px-5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                className="h-11 px-3 sm:px-5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
               >
                 <LayoutDashboard className="w-4 h-4 text-amber-400" />
-                <span>ഡാഷ്‌ബോർഡ് / കാർഡ്</span>
+                <span>ഡാഷ്‌ബോർഡ്</span>
               </Button>
             </div>
           </div>
@@ -2624,7 +2683,6 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                   <div 
                     id={`token-card-${rel}`}
                     className="w-[340px] h-[525px] rounded-[24px] text-white relative overflow-hidden font-sans border-[6px] border-slate-700 flex flex-col justify-between shrink-0 select-none shadow-[15px_20px_35px_rgba(0,0,0,0.85)] bg-gradient-to-br from-[#121b2b] via-[#090f19] to-[#02050b] p-5 pt-6"
-                    style={{ contentVisibility: 'auto' }}
                   >
                     {/* Top gradient strip */}
                     <div className="bg-gradient-to-r from-[#FF1493] via-[#ec008c] to-[#990055] h-1.5 w-full absolute top-0 left-0 z-30" />
@@ -2874,7 +2932,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
               className="h-8 px-3 rounded-lg bg-[#003366] hover:bg-[#002244] text-white text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-xs cursor-pointer"
             >
               <FileText className="w-3.5 h-3.5 text-amber-300" />
-              <span>ഔദ്യോഗിക ഫോം ({submittedClaims.length})</span>
+              <span>യഥാർത്ഥ ഫോം കാണുക ({submittedClaims.length})</span>
             </Button>
           )}
           <Button 
@@ -2976,18 +3034,37 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                   </p>
                 </div>
               </div>
-              <Button
-                type="button"
-                onClick={() => {
-                  if (selfClaim) populateSelfFromClaim(selfClaim);
-                  setEditingSelf(true);
-                  setSelfSelected(true);
-                }}
-                className="h-10 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md cursor-pointer"
-              >
-                <Edit3 className="w-4 h-4 text-slate-950" />
-                <span>{t('Edit Form 1', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    const allTokensMap: Record<string, string> = {};
+                    if (selfClaim?.tokenNo || selfClaim?.serialNo) allTokensMap['Self'] = String(selfClaim.tokenNo || selfClaim.serialNo);
+                    if (spouseClaim?.tokenNo || spouseClaim?.serialNo) allTokensMap[spouseClaim.relation || 'Spouse'] = String(spouseClaim.tokenNo || spouseClaim.serialNo);
+                    if (parentClaim?.tokenNo || parentClaim?.serialNo) allTokensMap[parentClaim.relation || 'Parent'] = String(parentClaim.tokenNo || parentClaim.serialNo);
+                    if (childClaim?.tokenNo || childClaim?.serialNo) allTokensMap[childClaim.relation || 'Child'] = String(childClaim.tokenNo || childClaim.serialNo);
+                    setNewlyAssignedTokens(allTokensMap);
+                    setCompleted(true);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="h-10 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md cursor-pointer"
+                >
+                  <CreditCard className="w-4 h-4 text-white" />
+                  <span>{t('Serial Card', 'സീരിയൽ കാർഡ്')}</span>
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    if (selfClaim) populateSelfFromClaim(selfClaim);
+                    setEditingSelf(true);
+                    setSelfSelected(true);
+                  }}
+                  className="h-10 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md cursor-pointer"
+                >
+                  <Edit3 className="w-4 h-4 text-slate-950" />
+                  <span>{t('Edit Form 1', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
+                </Button>
+              </div>
             </div>
             
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
@@ -3266,46 +3343,6 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                       className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-purple-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
                     />
                   </FormFieldBox>
-                </div>
-
-                {/* Leader / Sponsor Glass Container */}
-                <div className="bg-slate-50/90 p-4 rounded-3xl border-2 border-slate-300/80 space-y-3 shadow-xs">
-                  <div className="flex items-center justify-between">
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-700 text-white text-xs font-black uppercase tracking-wider shadow-2xs">
-                      👤 <span>{t('Leader / Sponsor Details', 'ലീഡർ / സ്പോൺസർ വിവരങ്ങൾ')}</span>
-                    </div>
-                    <span className="text-[9px] font-bold text-brand-magenta bg-brand-magenta/10 px-2 py-0.5 rounded-full">
-                      {t('Printed on form', 'പ്രിന്റിംഗ് ഫോമിൽ വരുന്നത്')}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormFieldBox 
-                      label={tLabel('Leader / Sponsor Name', 'ലീഡർ / സ്പോൺസർ പേര്')}
-                      icon="👤"
-                      theme="indigo"
-                    >
-                      <Input 
-                        value={selfSponsorName} 
-                        onChange={(e) => setSelfSponsorName(e.target.value)} 
-                        placeholder={tPlaceholder('Leader / Sponsor Name', 'ലീഡർ / സ്പോൺസർ പേര്')}
-                        className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
-                      />
-                    </FormFieldBox>
-                    <FormFieldBox 
-                      label={tLabel('Leader / Sponsor Mobile', 'ലീഡർ / സ്പോൺസർ മൊബൈൽ')}
-                      icon="📱"
-                      theme="indigo"
-                    >
-                      <Input 
-                        value={selfSponsorMobile} 
-                        onChange={(e) => setSelfSponsorMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
-                        placeholder={tPlaceholder('10-digit Mobile Number', '10 അക്ക മൊബൈൽ നമ്പർ')}
-                        type="tel"
-                        maxLength={10}
-                        className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 font-mono shadow-2xs"
-                      />
-                    </FormFieldBox>
-                  </div>
                 </div>
 
                 {/* Sub-breakup Selector */}
@@ -3718,18 +3755,37 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                   </p>
                 </div>
               </div>
-              <Button
-                type="button"
-                onClick={() => {
-                  if (spouseClaim) populateSpouseFromClaim(spouseClaim);
-                  setEditingSpouse(true);
-                  setSpouseSelected(true);
-                }}
-                className="h-10 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md cursor-pointer"
-              >
-                <Edit3 className="w-4 h-4 text-slate-950" />
-                <span>{t('Edit Form 2', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    const allTokensMap: Record<string, string> = {};
+                    if (selfClaim?.tokenNo || selfClaim?.serialNo) allTokensMap['Self'] = String(selfClaim.tokenNo || selfClaim.serialNo);
+                    if (spouseClaim?.tokenNo || spouseClaim?.serialNo) allTokensMap[spouseClaim.relation || 'Spouse'] = String(spouseClaim.tokenNo || spouseClaim.serialNo);
+                    if (parentClaim?.tokenNo || parentClaim?.serialNo) allTokensMap[parentClaim.relation || 'Parent'] = String(parentClaim.tokenNo || parentClaim.serialNo);
+                    if (childClaim?.tokenNo || childClaim?.serialNo) allTokensMap[childClaim.relation || 'Child'] = String(childClaim.tokenNo || childClaim.serialNo);
+                    setNewlyAssignedTokens(allTokensMap);
+                    setCompleted(true);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="h-10 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md cursor-pointer"
+                >
+                  <CreditCard className="w-4 h-4 text-white" />
+                  <span>{t('Serial Card', 'സീരിയൽ കാർഡ്')}</span>
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    if (spouseClaim) populateSpouseFromClaim(spouseClaim);
+                    setEditingSpouse(true);
+                    setSpouseSelected(true);
+                  }}
+                  className="h-10 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md cursor-pointer"
+                >
+                  <Edit3 className="w-4 h-4 text-slate-950" />
+                  <span>{t('Edit Form 2', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
+                </Button>
+              </div>
             </div>
             
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
@@ -4075,60 +4131,6 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                         placeholder={tPlaceholder('6-digit PIN', '6 അക്ക പിൻകോഡ്')}
                         maxLength={6}
                         className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-slate-700 text-xs sm:text-sm text-slate-900 font-mono shadow-2xs"
-                      />
-                    </FormFieldBox>
-                  </div>
-                </div>
-
-                {/* Leader / Sponsor Section */}
-                <div className="border-2 border-blue-200 bg-blue-50/40 rounded-2xl p-4 space-y-3 shadow-xs">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-600 text-white font-black text-xs uppercase tracking-wider shadow-xs">
-                      <span>👤</span>
-                      <span>{t('Leader / Sponsor Details', 'ലീഡർ / സ്പോൺസർ വിവരങ്ങൾ')}</span>
-                    </div>
-                    {selfSponsorName && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSpouseSponsorName(selfSponsorName);
-                          setSpouseSponsorMobile(selfSponsorMobile);
-                        }}
-                        className="text-[10px] font-black text-blue-700 bg-white border border-blue-300 hover:bg-blue-100 px-3 py-1 rounded-xl transition-all cursor-pointer shadow-2xs"
-                      >
-                        📋 {t('Copy Leader Details from Self', 'സ്വന്തം ലീഡർ വിവരങ്ങൾ പകർത്തുക')}
-                      </button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <FormFieldBox
-                      label={tLabel('Leader / Sponsor Name', 'ലീഡർ / സ്പോൺസർ പേര്')}
-                      icon="👤"
-                      badge={t('Optional', 'ഓപ്ഷണൽ')}
-                      badgeType="optional"
-                      theme="blue"
-                    >
-                      <Input 
-                        value={spouseSponsorName} 
-                        onChange={(e) => setSpouseSponsorName(e.target.value)} 
-                        placeholder={tPlaceholder('Leader / Sponsor Name', 'ലീഡർ / സ്പോൺസർ പേര്')}
-                        className="h-10 border border-blue-200 rounded-lg font-bold bg-white text-xs sm:text-sm text-slate-900"
-                      />
-                    </FormFieldBox>
-                    <FormFieldBox
-                      label={tLabel('Leader / Sponsor Mobile', 'ലീഡർ / സ്പോൺസർ മൊബൈൽ')}
-                      icon="📞"
-                      badge={t('Optional', 'ഓപ്ഷണൽ')}
-                      badgeType="optional"
-                      theme="blue"
-                    >
-                      <Input 
-                        value={spouseSponsorMobile} 
-                        onChange={(e) => setSpouseSponsorMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
-                        placeholder={tPlaceholder('10-digit Mobile Number', '10 അക്ക മൊബൈൽ നമ്പർ')}
-                        type="tel"
-                        maxLength={10}
-                        className="h-10 border border-blue-200 rounded-lg font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono"
                       />
                     </FormFieldBox>
                   </div>
@@ -4540,18 +4542,37 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                   </p>
                 </div>
               </div>
-              <Button
-                type="button"
-                onClick={() => {
-                  if (parentClaim) populateParentFromClaim(parentClaim);
-                  setEditingParent(true);
-                  setParentSelected(true);
-                }}
-                className="h-10 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md cursor-pointer"
-              >
-                <Edit3 className="w-4 h-4 text-slate-950" />
-                <span>{t('Edit Form 3', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    const allTokensMap: Record<string, string> = {};
+                    if (selfClaim?.tokenNo || selfClaim?.serialNo) allTokensMap['Self'] = String(selfClaim.tokenNo || selfClaim.serialNo);
+                    if (spouseClaim?.tokenNo || spouseClaim?.serialNo) allTokensMap[spouseClaim.relation || 'Spouse'] = String(spouseClaim.tokenNo || spouseClaim.serialNo);
+                    if (parentClaim?.tokenNo || parentClaim?.serialNo) allTokensMap[parentClaim.relation || 'Parent'] = String(parentClaim.tokenNo || parentClaim.serialNo);
+                    if (childClaim?.tokenNo || childClaim?.serialNo) allTokensMap[childClaim.relation || 'Child'] = String(childClaim.tokenNo || childClaim.serialNo);
+                    setNewlyAssignedTokens(allTokensMap);
+                    setCompleted(true);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="h-10 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md cursor-pointer"
+                >
+                  <CreditCard className="w-4 h-4 text-white" />
+                  <span>{t('Serial Card', 'സീരിയൽ കാർഡ്')}</span>
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    if (parentClaim) populateParentFromClaim(parentClaim);
+                    setEditingParent(true);
+                    setParentSelected(true);
+                  }}
+                  className="h-10 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md cursor-pointer"
+                >
+                  <Edit3 className="w-4 h-4 text-slate-950" />
+                  <span>{t('Edit Form 3', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
+                </Button>
+              </div>
             </div>
             
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
@@ -4897,60 +4918,6 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                         placeholder={tPlaceholder('6-digit PIN', '6 അക്ക പിൻകോഡ്')}
                         maxLength={6}
                         className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-slate-700 text-xs sm:text-sm text-slate-900 font-mono shadow-2xs"
-                      />
-                    </FormFieldBox>
-                  </div>
-                </div>
-
-                {/* Leader / Sponsor Section */}
-                <div className="border-2 border-blue-200 bg-blue-50/40 rounded-2xl p-4 space-y-3 shadow-xs">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-600 text-white font-black text-xs uppercase tracking-wider shadow-xs">
-                      <span>👤</span>
-                      <span>{t('Leader / Sponsor Details', 'ലീഡർ / സ്പോൺസർ വിവരങ്ങൾ')}</span>
-                    </div>
-                    {selfSponsorName && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setParentSponsorName(selfSponsorName);
-                          setParentSponsorMobile(selfSponsorMobile);
-                        }}
-                        className="text-[10px] font-black text-blue-700 bg-white border border-blue-300 hover:bg-blue-100 px-3 py-1 rounded-xl transition-all cursor-pointer shadow-2xs"
-                      >
-                        📋 {t('Copy Leader Details from Self', 'സ്വന്തം ലീഡർ വിവരങ്ങൾ പകർത്തുക')}
-                      </button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <FormFieldBox
-                      label={tLabel('Leader / Sponsor Name', 'ലീഡർ / സ്പോൺസർ പേര്')}
-                      icon="👤"
-                      badge={t('Optional', 'ഓപ്ഷണൽ')}
-                      badgeType="optional"
-                      theme="blue"
-                    >
-                      <Input 
-                        value={parentSponsorName} 
-                        onChange={(e) => setParentSponsorName(e.target.value)} 
-                        placeholder={tPlaceholder('Leader / Sponsor Name', 'ലീഡർ / സ്പോൺസർ പേര്')}
-                        className="h-10 border border-blue-200 rounded-lg font-bold bg-white text-xs sm:text-sm text-slate-900"
-                      />
-                    </FormFieldBox>
-                    <FormFieldBox
-                      label={tLabel('Leader / Sponsor Mobile', 'ലീഡർ / സ്പോൺസർ മൊബൈൽ')}
-                      icon="📞"
-                      badge={t('Optional', 'ഓപ്ഷണൽ')}
-                      badgeType="optional"
-                      theme="blue"
-                    >
-                      <Input 
-                        value={parentSponsorMobile} 
-                        onChange={(e) => setParentSponsorMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
-                        placeholder={tPlaceholder('10-digit Mobile Number', '10 അക്ക മൊബൈൽ നമ്പർ')}
-                        type="tel"
-                        maxLength={10}
-                        className="h-10 border border-blue-200 rounded-lg font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono"
                       />
                     </FormFieldBox>
                   </div>
@@ -5362,18 +5329,37 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                   </p>
                 </div>
               </div>
-              <Button
-                type="button"
-                onClick={() => {
-                  if (childClaim) populateChildFromClaim(childClaim);
-                  setEditingChild(true);
-                  setChildSelected(true);
-                }}
-                className="h-10 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md cursor-pointer"
-              >
-                <Edit3 className="w-4 h-4 text-slate-950" />
-                <span>{t('Edit Form 4', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    const allTokensMap: Record<string, string> = {};
+                    if (selfClaim?.tokenNo || selfClaim?.serialNo) allTokensMap['Self'] = String(selfClaim.tokenNo || selfClaim.serialNo);
+                    if (spouseClaim?.tokenNo || spouseClaim?.serialNo) allTokensMap[spouseClaim.relation || 'Spouse'] = String(spouseClaim.tokenNo || spouseClaim.serialNo);
+                    if (parentClaim?.tokenNo || parentClaim?.serialNo) allTokensMap[parentClaim.relation || 'Parent'] = String(parentClaim.tokenNo || parentClaim.serialNo);
+                    if (childClaim?.tokenNo || childClaim?.serialNo) allTokensMap[childClaim.relation || 'Child'] = String(childClaim.tokenNo || childClaim.serialNo);
+                    setNewlyAssignedTokens(allTokensMap);
+                    setCompleted(true);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="h-10 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md cursor-pointer"
+                >
+                  <CreditCard className="w-4 h-4 text-white" />
+                  <span>{t('Serial Card', 'സീരിയൽ കാർഡ്')}</span>
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    if (childClaim) populateChildFromClaim(childClaim);
+                    setEditingChild(true);
+                    setChildSelected(true);
+                  }}
+                  className="h-10 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md cursor-pointer"
+                >
+                  <Edit3 className="w-4 h-4 text-slate-950" />
+                  <span>{t('Edit Form 4', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
+                </Button>
+              </div>
             </div>
             
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
@@ -5719,60 +5705,6 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                         placeholder={tPlaceholder('6-digit PIN', '6 അക്ക പിൻകോഡ്')}
                         maxLength={6}
                         className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-slate-700 text-xs sm:text-sm text-slate-900 font-mono shadow-2xs"
-                      />
-                    </FormFieldBox>
-                  </div>
-                </div>
-
-                {/* Leader / Sponsor Section */}
-                <div className="border-2 border-blue-200 bg-blue-50/40 rounded-2xl p-4 space-y-3 shadow-xs">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-600 text-white font-black text-xs uppercase tracking-wider shadow-xs">
-                      <span>👤</span>
-                      <span>{t('Leader / Sponsor Details', 'ലീഡർ / സ്പോൺസർ വിവരങ്ങൾ')}</span>
-                    </div>
-                    {selfSponsorName && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setChildSponsorName(selfSponsorName);
-                          setChildSponsorMobile(selfSponsorMobile);
-                        }}
-                        className="text-[10px] font-black text-blue-700 bg-white border border-blue-300 hover:bg-blue-100 px-3 py-1 rounded-xl transition-all cursor-pointer shadow-2xs"
-                      >
-                        📋 {t('Copy Leader Details from Self', 'സ്വന്തം ലീഡർ വിവരങ്ങൾ പകർത്തുക')}
-                      </button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <FormFieldBox
-                      label={tLabel('Leader / Sponsor Name', 'ലീഡർ / സ്പോൺസർ പേര്')}
-                      icon="👤"
-                      badge={t('Optional', 'ഓപ്ഷണൽ')}
-                      badgeType="optional"
-                      theme="blue"
-                    >
-                      <Input 
-                        value={childSponsorName} 
-                        onChange={(e) => setChildSponsorName(e.target.value)} 
-                        placeholder={tPlaceholder('Leader / Sponsor Name', 'ലീഡർ / സ്പോൺസർ പേര്')}
-                        className="h-10 border border-blue-200 rounded-lg font-bold bg-white text-xs sm:text-sm text-slate-900"
-                      />
-                    </FormFieldBox>
-                    <FormFieldBox
-                      label={tLabel('Leader / Sponsor Mobile', 'ലീഡർ / സ്പോൺസർ മൊബൈൽ')}
-                      icon="📞"
-                      badge={t('Optional', 'ഓപ്ഷണൽ')}
-                      badgeType="optional"
-                      theme="blue"
-                    >
-                      <Input 
-                        value={childSponsorMobile} 
-                        onChange={(e) => setChildSponsorMobile(e.target.value.replace(/\D/g, '').slice(0, 10))} 
-                        placeholder={tPlaceholder('10-digit Mobile Number', '10 അക്ക മൊബൈൽ നമ്പർ')}
-                        type="tel"
-                        maxLength={10}
-                        className="h-10 border border-blue-200 rounded-lg font-bold bg-white text-xs sm:text-sm text-slate-900 font-mono"
                       />
                     </FormFieldBox>
                   </div>

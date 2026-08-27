@@ -627,16 +627,24 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
 
   const districtName = DISTRICTS.find(d => d.code === member.district)?.name || member.district;
 
-  const formatDate = (date: any) => {
-    if (!date) return 'Processing...';
+  const parseDateField = (date: any): Date | null => {
+    if (!date) return null;
     try {
-      if (date?.toDate) return date.toDate().toLocaleDateString('en-IN');
-      if (date?.seconds) return new Date(date.seconds * 1000).toLocaleDateString('en-IN');
+      if (date instanceof Date) return isNaN(date.getTime()) ? null : date;
+      if (typeof date.toDate === 'function') return date.toDate();
+      if (date.seconds !== undefined) return new Date(date.seconds * 1000);
+      if (date._seconds !== undefined) return new Date(date._seconds * 1000);
       const d = new Date(date);
-      return isNaN(d.getTime()) ? '---' : d.toLocaleDateString('en-IN');
-    } catch (e) {
-      return '---';
+      return isNaN(d.getTime()) ? null : d;
+    } catch {
+      return null;
     }
+  };
+
+  const formatDate = (date: any) => {
+    if (!date) return '---';
+    const d = parseDateField(date);
+    return d ? d.toLocaleDateString('en-IN') : '---';
   };
 
   const isLifeMember = String(member.membership_type || '').toUpperCase().includes('LIFE') ||
@@ -644,49 +652,39 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
   const isBanned = (member.status || '').toLowerCase() === 'banned' || (member.status || '').toLowerCase() === 'disabled';
   const isExpired = member.role !== 'admin' && member.role !== 'operator' && !member.isAdmin && member.status !== 'pending' && member.renewalPending !== true && !isLifeMember && (
     (() => {
-      const exp = member.expiryDate || (() => {
-        const reg = member.registrationDate;
-        if (!reg) return null;
-        const regD = reg.toDate ? reg.toDate() : (reg.seconds ? new Date(reg.seconds * 1000) : new Date(reg));
-        if (isNaN(regD.getTime())) return null;
-        const expD = new Date(regD);
-        expD.setFullYear(expD.getFullYear() + 1);
-        return expD;
-      })();
-      if (!exp) return false;
-      const d = exp.toDate ? exp.toDate() : (exp.seconds ? new Date(exp.seconds * 1000) : new Date(exp));
-      return isNaN(d.getTime()) ? false : d.getTime() < Date.now();
+      const expDate = parseDateField(member.expiryDate);
+      if (expDate) {
+        return expDate.getTime() < Date.now();
+      }
+      const regDate = parseDateField(member.registrationDate);
+      if (!regDate) return false;
+      const expD = new Date(regDate);
+      expD.setFullYear(expD.getFullYear() + 1);
+      return expD.getTime() < Date.now();
     })()
   );
 
-  const isPending = member.status === 'pending' || member.renewalPending === true || (!member.isApproved && member.role !== 'admin' && !member.isAdmin);
+  const isPending = member.role !== 'admin' && !member.isAdmin && (
+    member.renewalPending === true || 
+    member.status === 'pending' || 
+    (!member.isApproved && member.status !== 'active' && member.status !== 'offline')
+  );
 
   const getRenewalDate = (date: any) => {
     // If we have an explicit expiry date, use that!
-    const exp = member.expiryDate;
-    if (exp) {
-      try {
-        const d = exp?.toDate ? exp.toDate() : (exp?.seconds ? new Date(exp.seconds * 1000) : new Date(exp));
-        if (!isNaN(d.getTime())) {
-          const isPast = d.getTime() < Date.now();
-          return `${d.toLocaleDateString('en-IN')}${isPast ? ' (EXPIRED)' : ''}`;
-        }
-      } catch (e) {
-        // Fallback
-      }
+    const expDate = parseDateField(member.expiryDate);
+    if (expDate) {
+      const isPast = expDate.getTime() < Date.now();
+      return `${expDate.toLocaleDateString('en-IN')}${isPast ? ' (EXPIRED)' : ''}`;
     }
     
     // Fallback if no expiry date on user profile
-    if (!date) return '---';
-    try {
-      const d = date?.toDate ? date.toDate() : (date?.seconds ? new Date(date.seconds * 1000) : new Date(date));
-      if (isNaN(d.getTime())) return '---';
-      d.setFullYear(d.getFullYear() + 1);
-      const isPast = d.getTime() < Date.now();
-      return `${d.toLocaleDateString('en-IN')}${isPast ? ' (EXPIRED)' : ''}`;
-    } catch (e) {
-      return '---';
-    }
+    const regDate = parseDateField(date || member.registrationDate);
+    if (!regDate) return '---';
+    const d = new Date(regDate);
+    d.setFullYear(d.getFullYear() + 1);
+    const isPast = d.getTime() < Date.now();
+    return `${d.toLocaleDateString('en-IN')}${isPast ? ' (EXPIRED)' : ''}`;
   };
 
   const VERCEL_URL = 'https://hcrs-kappa.vercel.app';

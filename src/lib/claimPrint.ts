@@ -614,10 +614,9 @@ export const renderPersonCourtClaimPage = (
               <div class="doc-tag" style="margin-top: 4px;">CONSIGNMENT ADVANCE FINANCIAL STATEMENT & VERIFICATION FORM</div>
             </td>
             <td style="vertical-align: top; text-align: right; width: 205px;">
-              <div style="font-size: 8.5px; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.3px;">SETTLEMENT REF</div>
-              <div style="font-size: 16px; font-weight: 900; color: #003366; font-family: monospace; line-height: 1.2; margin-top: 2px;">#${tokenDisplay}</div>
-              <div style="font-size: 8.5px; color: #475569; margin-top: 3px; font-weight: 700;">Date: ${dateStr}</div>
-              <div style="margin-top: 3px; display: inline-block; background: #003366; color: #ffffff; font-size: 9px; font-weight: 900; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.35px;">
+              <div style="font-size: 8.5px; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.3px;">STATEMENT DATE</div>
+              <div style="font-size: 11px; font-weight: 900; color: #003366; line-height: 1.3; margin-top: 2px;">${dateStr}</div>
+              <div style="margin-top: 4px; display: inline-block; background: #003366; color: #ffffff; font-size: 9px; font-weight: 900; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.35px;">
                 PAGE ${pageNum}/${totalPages}
               </div>
             </td>
@@ -649,13 +648,9 @@ export const renderPersonCourtClaimPage = (
               <span class="meta-label">Customer PAN Card Number</span>
               <span class="meta-val font-mono" style="font-size: 12px; color: #003366;">${panStr || 'Not Provided (Optional)'}</span>
             </div>
-            <div>
+            <div style="grid-column: span 2;">
               <span class="meta-label">District & Assembly Constituency</span>
               <span class="meta-val">${districtName} • ${asslyName}</span>
-            </div>
-            <div>
-              <span class="meta-label">Sponsor / Leader Details</span>
-              <span class="meta-val">${claim.sponsorName || userProf?.sponsorName || 'N/A'}${claim.sponsorMobile || userProf?.sponsorMobile ? ' (' + (claim.sponsorMobile || userProf?.sponsorMobile) + ')' : ''}</span>
             </div>
             <div style="grid-column: span 2;">
               <span class="meta-label">Full Residential Address</span>
@@ -922,15 +917,7 @@ export const renderPersonFullAdminClaimPage = (
               <span class="meta-label">PAN Card Number</span>
               <span class="meta-val font-mono" style="font-size: 12px;">${panStr}</span>
             </div>
-            <div>
-              <span class="meta-label">Sponsor / Leader Name</span>
-              <span class="meta-val">${claim.sponsorName || userProf?.sponsorName || 'N/A'}</span>
-            </div>
-            <div>
-              <span class="meta-label">Sponsor / Leader Mobile</span>
-              <span class="meta-val font-mono">${claim.sponsorMobile || userProf?.sponsorMobile || 'N/A'}</span>
-            </div>
-            <div>
+            <div style="grid-column: span 2;">
               <span class="meta-label">District & Assembly</span>
               <span class="meta-val">${districtName} (${asslyName})</span>
             </div>
@@ -1084,7 +1071,7 @@ export const printCourtClaimReport = (claim: any, memberProfile?: any) => {
         <meta charset="UTF-8">
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
-        <title>Consignment Advance Statement - #${tokenDisplay} - ${name}</title>
+        <title>Consignment Advance Statement - ${name}</title>
         <style>
           ${getCourtReportBaseStyles()}
           html, body {
@@ -1141,7 +1128,7 @@ export const printCourtClaimReport = (claim: any, memberProfile?: any) => {
         <div class="no-print screen-toolbar">
           <div class="toolbar-title">
             <strong>Member Financial Information Registry</strong>
-            <span>Official Record • #${tokenDisplay} • ${name}</span>
+            <span>Official Record • ${name}</span>
           </div>
           <div class="toolbar-actions">
             <button onclick="window.print()" class="btn-print">🖨️ പ്രിന്റ് / സേവ് PDF (Print / Save as PDF)</button>
@@ -1158,10 +1145,9 @@ export const printCourtClaimReport = (claim: any, memberProfile?: any) => {
           function shareViaWeb() {
             var text = "HIGHRICH ONLINE SHOPPE Pvt. Ltd. - Consignment Advance Financial Statement\\n" +
                        "Name: ${name}\\n" +
-                       "Statement Ref: #${tokenDisplay}\\n" +
                        "Consignment Advance Paid: ₹${(claim.totalPaid || 0).toLocaleString('en-IN')}\\n" +
                        "Pending Balance: ₹${(claim.totalPending || 0).toLocaleString('en-IN')}\\n" +
-                       "Verification Ref: HR-CONF-${tokenDisplay}";
+                       "To: Company Management & Legal Counsels / Hon'ble Court";
             if (navigator.share) {
               navigator.share({
                 title: "Consignment Advance Statement - ${name}",
@@ -1253,6 +1239,9 @@ export const getCourtComboHtml = (primaryMember: any, memberClaims: any[]): stri
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
     <style>
       ${getCourtReportBaseStyles()}
+      *, *:before, *:after {
+        box-sizing: border-box;
+      }
       html, body {
         margin: 0;
         padding: 0;
@@ -1262,12 +1251,14 @@ export const getCourtComboHtml = (primaryMember: any, memberClaims: any[]): stri
       }
       .page-scaler-wrapper {
         width: 100%;
+        max-width: 100%;
         display: flex;
         justify-content: center;
         align-items: flex-start;
         box-sizing: border-box;
         margin: 0 0 16px 0;
         padding: 8px 0;
+        overflow: hidden;
       }
       .page-container {
         width: 760px;
@@ -1290,6 +1281,7 @@ export const getCourtComboHtml = (primaryMember: any, memberClaims: any[]): stri
           height: auto !important;
           margin: 0 !important;
           padding: 0 !important;
+          overflow: visible !important;
         }
         .page-container {
           width: 100% !important;
@@ -1319,7 +1311,7 @@ export const getCourtComboHtml = (primaryMember: any, memberClaims: any[]): stri
         var pages = document.querySelectorAll('.page-container');
         
         if (clientWidth < 776) {
-          var padding = 12;
+          var padding = 16;
           var availableWidth = Math.max(280, clientWidth - padding);
           var scale = Math.min(1, availableWidth / baseWidth);
           
@@ -1333,6 +1325,8 @@ export const getCourtComboHtml = (primaryMember: any, memberClaims: any[]): stri
             var pageHeight = page.offsetHeight || 1080;
             var scaledHeight = pageHeight * scale;
             wrapper.style.height = (scaledHeight + 10) + 'px';
+            wrapper.style.overflow = 'hidden';
+            wrapper.style.width = '100%';
           }
         } else {
           for (var i = 0; i < wrappers.length; i++) {
@@ -1342,6 +1336,7 @@ export const getCourtComboHtml = (primaryMember: any, memberClaims: any[]): stri
             
             page.style.transform = 'none';
             wrapper.style.height = 'auto';
+            wrapper.style.overflow = 'visible';
           }
         }
       }
@@ -1372,6 +1367,9 @@ export const getSingleCourtClaimHtml = (primaryMember: any, claim: any, pageNum:
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
     <style>
       ${getCourtReportBaseStyles()}
+      *, *:before, *:after {
+        box-sizing: border-box;
+      }
       html, body {
         margin: 0;
         padding: 0;
@@ -1381,12 +1379,14 @@ export const getSingleCourtClaimHtml = (primaryMember: any, claim: any, pageNum:
       }
       .page-scaler-wrapper {
         width: 100%;
+        max-width: 100%;
         display: flex;
         justify-content: center;
         align-items: flex-start;
         box-sizing: border-box;
         margin: 0 0 16px 0;
         padding: 8px 0;
+        overflow: hidden;
       }
       .page-container {
         width: 760px;
@@ -1409,6 +1409,7 @@ export const getSingleCourtClaimHtml = (primaryMember: any, claim: any, pageNum:
           height: auto !important;
           margin: 0 !important;
           padding: 0 !important;
+          overflow: visible !important;
         }
         .page-container {
           width: 100% !important;
@@ -1436,7 +1437,7 @@ export const getSingleCourtClaimHtml = (primaryMember: any, claim: any, pageNum:
         var pages = document.querySelectorAll('.page-container');
         
         if (clientWidth < 776) {
-          var padding = 12;
+          var padding = 16;
           var availableWidth = Math.max(280, clientWidth - padding);
           var scale = Math.min(1, availableWidth / baseWidth);
           
@@ -1450,6 +1451,8 @@ export const getSingleCourtClaimHtml = (primaryMember: any, claim: any, pageNum:
             var pageHeight = page.offsetHeight || 1080;
             var scaledHeight = pageHeight * scale;
             wrapper.style.height = (scaledHeight + 10) + 'px';
+            wrapper.style.overflow = 'hidden';
+            wrapper.style.width = '100%';
           }
         } else {
           for (var i = 0; i < wrappers.length; i++) {
@@ -1459,6 +1462,7 @@ export const getSingleCourtClaimHtml = (primaryMember: any, claim: any, pageNum:
             
             page.style.transform = 'none';
             wrapper.style.height = 'auto';
+            wrapper.style.overflow = 'visible';
           }
         }
       }
@@ -1588,7 +1592,6 @@ export const printCourtComboReport = (primaryMember: any, memberClaims: any[]) =
           function shareViaWeb() {
             var text = "HIGHRICH ONLINE SHOPPE Pvt. Ltd. - Consignment Advance Financial Statement (${totalCount} Persons)\\n" +
                        "Primary Account Holder: ${primeName}\\n" +
-                       "Statement Ref: #${firstToken}\\n" +
                        "Total Statement Pages: ${totalCount}\\n" +
                        "To: Company Management & Legal Counsels / Hon'ble Court";
             if (navigator.share) {
@@ -1677,13 +1680,13 @@ export const generateCourtComboPdf = async (primaryMember: any, memberClaims: an
   const cleanClaims = Array.from(uniqueMap.values());
   const totalCount = cleanClaims.length;
   const primeName = primaryMember?.name || cleanClaims[0]?.userName || 'Member';
-  const firstToken = cleanClaims[0]?.tokenNo ?? cleanClaims[0]?.serialNo ?? 'STATEMENT';
   const safeName = primeName.replace(/[^a-zA-Z0-9]/g, '_');
-  const fileName = `Consignment_Advance_Refund_Form_${firstToken}_${safeName}.pdf`;
+  const fileName = `Consignment_Advance_Refund_Form_${safeName}.pdf`;
 
   const totalPaid = cleanClaims.reduce((sum, c) => sum + (Number(c.totalPaid) || 0), 0);
   const totalReceived = cleanClaims.reduce((sum, c) => sum + (Number(c.totalReceived) || 0), 0);
   const totalPending = cleanClaims.reduce((sum, c) => sum + (Number(c.totalPending) || 0), 0);
+  const firstToken = cleanClaims[0]?.tokenNo ?? cleanClaims[0]?.serialNo ?? '1';
 
   // Ensure fonts are loaded in browser
   if (document.fonts) {

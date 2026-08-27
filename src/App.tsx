@@ -99,6 +99,86 @@ const getStrictDistrictFromEmail = (email: string): string | null => {
   return null;
 };
 
+export const selectBestUserDocument = (docs: any[], originalInput?: string) => {
+  if (!docs || docs.length === 0) return null;
+  const inputClean = (originalInput || '').trim().toLowerCase();
+  const inputDigits = inputClean.replace(/\D/g, '').slice(-10);
+
+  const sorted = [...docs].sort((a, b) => {
+    const dataA = typeof a.data === 'function' ? a.data() : a;
+    const dataB = typeof b.data === 'function' ? b.data() : b;
+    const idA = a.id || dataA.uid || '';
+    const idB = b.id || dataB.uid || '';
+
+    // 0. Super Admin / Admin Input Priority
+    const isMainAdminInput = MAIN_ADMINS.some(e => e.toLowerCase() === inputClean) || inputDigits === '9645934571';
+    const isAdmA = dataA.role === 'admin' || dataA.isAdmin === true;
+    const isAdmB = dataB.role === 'admin' || dataB.isAdmin === true;
+    if (isMainAdminInput) {
+      if (isAdmA && !isAdmB) return -1;
+      if (isAdmB && !isAdmA) return 1;
+    }
+
+    // 1. Active & Approved Status (Active accounts always beat deleted/rejected/pending)
+    const isActiveA = (dataA.status === 'active' || dataA.isApproved === true) && dataA.status !== 'deleted';
+    const isActiveB = (dataB.status === 'active' || dataB.isApproved === true) && dataB.status !== 'deleted';
+    if (isActiveA && !isActiveB) return -1;
+    if (isActiveB && !isActiveA) return 1;
+
+    // 2. Unexpired Status (expiryDate in future > expired)
+    const now = Date.now();
+    const getExpiryTime = (data: any) => {
+      const exp = data.expiryDate;
+      if (!exp) return 0;
+      return exp.toDate ? exp.toDate().getTime() : (exp.seconds ? exp.seconds * 1000 : new Date(exp).getTime());
+    };
+    const expA = getExpiryTime(dataA);
+    const expB = getExpiryTime(dataB);
+    const isUnexpiredA = expA > now;
+    const isUnexpiredB = expB > now;
+    if (isUnexpiredA && !isUnexpiredB) return -1;
+    if (isUnexpiredB && !isUnexpiredA) return 1;
+
+    // 3. Not stuck in renewal pending
+    const isRenPendingA = dataA.renewalPending === true;
+    const isRenPendingB = dataB.renewalPending === true;
+    if (!isRenPendingA && isRenPendingB) return -1;
+    if (isRenPendingA && !isRenPendingB) return 1;
+
+    // 4. Complete Member Profile (has real name and official HCRS membershipId)
+    const hasNameA = Boolean(dataA.name && dataA.name !== 'Member' && String(dataA.name).trim().length > 1);
+    const hasNameB = Boolean(dataB.name && dataB.name !== 'Member' && String(dataB.name).trim().length > 1);
+    const hasMemIdA = Boolean(dataA.membershipId && String(dataA.membershipId).toUpperCase().startsWith('HCRS'));
+    const hasMemIdB = Boolean(dataB.membershipId && String(dataB.membershipId).toUpperCase().startsWith('HCRS'));
+    const scoreA = (hasNameA ? 2 : 0) + (hasMemIdA ? 2 : 0);
+    const scoreB = (hasNameB ? 2 : 0) + (hasMemIdB ? 2 : 0);
+    if (scoreA !== scoreB) return scoreB - scoreA;
+
+    // 5. Expiry timestamp (latest expiry wins)
+    if (expA !== expB) return expB - expA;
+
+    // 6. Recent activity timestamp
+    const getActivityTime = (data: any) => {
+      const t = data.renewalApprovedAt || data.renewalDate || data.issueDate || data.registrationDate || data.createdAt;
+      if (!t) return 0;
+      return t.toDate ? t.toDate().getTime() : (t.seconds ? t.seconds * 1000 : new Date(t).getTime());
+    };
+    const actA = getActivityTime(dataA);
+    const actB = getActivityTime(dataB);
+    if (actA !== actB) return actB - actA;
+
+    // 7. Standard UID over offline_
+    const isOfflineA = String(idA).startsWith('offline_');
+    const isOfflineB = String(idB).startsWith('offline_');
+    if (!isOfflineA && isOfflineB) return -1;
+    if (isOfflineA && !isOfflineB) return 1;
+
+    return 0;
+  });
+
+  return sorted[0];
+};
+
 export default function App() {
   const [view, setView] = useState<'landing' | 'register' | 'renewal' | 'login' | 'card' | 'admin' | 'operator' | 'support' | 'loading' | 'gallery' | 'verify' | 'janamail' | 'change-password' | 'complete-profile'>(() => {
     if (typeof window !== 'undefined') {
@@ -723,7 +803,13 @@ export default function App() {
         lastAuthUserUidRef.current = authUser.uid;
       }
       const currentEmail = (authUser.email || '').toLowerCase().trim();
-      const isSuperAdminEmail = MAIN_ADMINS.some(email => email.toLowerCase() === currentEmail) || currentEmail.startsWith('admin_') || currentEmail.startsWith('adm_') || currentEmail.includes('admin@');
+      const isSuperAdminEmail = MAIN_ADMINS.some(email => email.toLowerCase() === currentEmail) || 
+        currentEmail.startsWith('admin_') || 
+        currentEmail.startsWith('adm_') || 
+        currentEmail.includes('admin@') || 
+        currentEmail.includes('9645934571') || 
+        currentEmail.includes('kmabarikiyafoods') ||
+        authUser.uid === 'offline_admin';
       const isSecondAdminEmail = SECOND_ADMINS.some(email => email.toLowerCase() === currentEmail);
       const isAdminEmail = isSuperAdminEmail || isSecondAdminEmail;
 
@@ -764,16 +850,14 @@ export default function App() {
           const cachedData = JSON.parse(cached) as UserProfile;
           setUser(cachedData);
           if (currentViewRef.current !== 'register' && currentViewRef.current !== 'renewal' && currentViewRef.current !== 'janamail') {
-            const isAdm = cachedData.role === 'admin' || cachedData.isAdmin;
-            const isOp = cachedData.role === 'operator';
+            const isAdm = cachedData.role === 'admin' || cachedData.isAdmin || isSuperAdminEmail;
+            const isOp = (cachedData.role === 'operator' || isSecondAdminEmail) && !isAdm;
             const isMustChange = !isAdm && !isOp && (
               cachedData.mustChangePassword === true ||
               cachedData.pinResetRequested === true
             );
             const isMustComplete = !isAdm && !isOp && !isMustChange && (
-              cachedData.mustCompleteProfile === true ||
-              cachedData.profileCompleted !== true ||
-              currentViewRef.current === 'complete-profile'
+              cachedData.mustCompleteProfile === true && !cachedData.name && !cachedData.membershipId
             );
 
             if (isAdm) {
@@ -782,7 +866,7 @@ export default function App() {
               setView('operator');
             } else if (isMustChange) {
               setView('change-password');
-            } else if (isMustComplete || currentViewRef.current === 'complete-profile') {
+            } else if (isMustComplete) {
               setView('complete-profile');
             } else {
               setView('card');
@@ -799,7 +883,7 @@ export default function App() {
         
         if (docSnap.exists()) {
           setLoadingStatus('Finalizing Access...');
-          const freshData = { uid: authUser.uid, ...docSnap.data() } as UserProfile;
+          let freshData = { uid: authUser.uid, ...docSnap.data() } as UserProfile;
           
           if (freshData.status === 'deleted' && !isAdminEmail) {
             console.log("Deactivated/Deleted user logged in. Signing out...");
@@ -810,9 +894,9 @@ export default function App() {
             return;
           }
 
-          if (isAdminEmail) {
-            freshData.role = isSuperAdminEmail ? 'admin' : 'operator';
-            freshData.isAdmin = isSuperAdminEmail;
+          if (isAdminEmail || freshData.role === 'admin' || freshData.isAdmin) {
+            freshData.role = (isSuperAdminEmail || freshData.isAdmin || freshData.role === 'admin') ? 'admin' : 'operator';
+            freshData.isAdmin = isSuperAdminEmail || freshData.isAdmin || freshData.role === 'admin';
             freshData.status = 'active';
           }
           
@@ -829,19 +913,43 @@ export default function App() {
               const district = DISTRICTS.find(d => d.name.toLowerCase() === prefix);
               if (district) detectedDist = district.code;
             }
-            if (!detectedDist) {
-              const storedIntent = typeof window !== 'undefined' ? sessionStorage.getItem('hcrs_district_intent') : null;
-              if (storedIntent) {
-                const resolvedCode = getDistrictCode(storedIntent);
-                if (resolvedCode && resolvedCode !== 'OTH') detectedDist = resolvedCode;
-              }
-            }
             if (detectedDist) {
               freshData.district = detectedDist;
               updateDoc(doc(db, 'users', authUser.uid), { district: detectedDist })
                 .catch(e => console.error("Failed to backport missing district:", e));
             }
           }
+
+          // Check if the current doc is a placeholder or expired, while a better active account exists
+          if (!isAdminEmail && freshData.role !== 'admin' && !freshData.isAdmin) {
+            const cleanMob = String(freshData.mobile || '').replace(/\D/g, '').slice(-10);
+            const isPlaceholderOrBroken = !freshData.membershipId || freshData.name === 'Member' || freshData.name === 'undefined' || !freshData.name;
+            const isPendingOrExpired = freshData.renewalPending === true || (freshData.expiryDate && (freshData.expiryDate.toDate ? freshData.expiryDate.toDate().getTime() : new Date(freshData.expiryDate).getTime()) < Date.now());
+
+            if (cleanMob.length === 10 && (isPlaceholderOrBroken || isPendingOrExpired)) {
+              try {
+                const qMob = query(collection(db, 'users'), where('mobile', '==', cleanMob), limit(10));
+                const snapMob = await getDocs(qMob);
+                if (!snapMob.empty && snapMob.docs.length > 1) {
+                  const bestDoc = selectBestUserDocument(snapMob.docs, cleanMob);
+                  if (bestDoc && bestDoc.id !== authUser.uid) {
+                    const bestData = bestDoc.data();
+                    console.log(`Auto-healing active document ${authUser.uid} with best profile from ${bestDoc.id}`);
+                    freshData = {
+                      ...bestData,
+                      uid: authUser.uid,
+                      role: bestData.role || 'member',
+                      status: bestData.status || 'active'
+                    };
+                    await setDoc(doc(db, 'users', authUser.uid), freshData, { merge: true }).catch(() => {});
+                  }
+                }
+              } catch (e) {
+                console.warn("Non-blocking best doc healing note:", e);
+              }
+            }
+          }
+
           userData = freshData;
         } else if (isAdminEmail) {
           // Auto-detect district from email for district admins
@@ -851,13 +959,6 @@ export default function App() {
             const prefix = currentEmail.split('@')[0].replace('hcrs', '').toLowerCase();
             const district = DISTRICTS.find(d => d.name.toLowerCase() === prefix);
             if (district) autoDistrict = district.code;
-          }
-          if (!autoDistrict) {
-            const storedIntent = typeof window !== 'undefined' ? sessionStorage.getItem('hcrs_district_intent') : null;
-            if (storedIntent) {
-              const resolvedCode = getDistrictCode(storedIntent);
-              if (resolvedCode && resolvedCode !== 'OTH') autoDistrict = resolvedCode;
-            }
           }
 
           const distObj = DISTRICTS.find(d => d.code === autoDistrict);
@@ -875,85 +976,10 @@ export default function App() {
           // Create user document for admin if it doesn't exist
           setDoc(doc(db, 'users', authUser.uid), userData)
             .catch(e => console.error("Initial admin profile creation failed:", e));
-        }
-
-        if (userData) {
-          // Force restrict second admin emails to their strict district and block session overrides
-          const checkEmail = (userData.email || '').toLowerCase().trim();
-          const checkSecond = SECOND_ADMINS.some(email => email.toLowerCase() === checkEmail);
-          const strictDistrict = getStrictDistrictFromEmail(checkEmail);
-
-          if (checkSecond && strictDistrict) {
-            userData.district = strictDistrict;
-            userData.role = 'operator';
-            userData.isAdmin = false;
-          } else {
-            // Resolve stored district intent ONLY for non-second-admin users to fix district dashboard access
-            const storedIntent = typeof window !== 'undefined' ? sessionStorage.getItem('hcrs_district_intent') : null;
-            if (storedIntent) {
-              const resolvedCode = getDistrictCode(storedIntent);
-              if (resolvedCode && resolvedCode !== 'OTH') {
-                userData.district = resolvedCode;
-              }
-            }
-          }
-
-          setUser(prev => {
-            if (JSON.stringify(prev) === JSON.stringify(userData)) return prev;
-            return userData;
-          });
-
-          // Cache resolved user profile in localStorage for offline/quota fallback
-          try {
-            localStorage.setItem(`hcrs_cached_user_${authUser.uid}`, JSON.stringify(userData));
-          } catch (e) {
-            console.error("Failed to cache user profile:", e);
-          }
-          
-          const isAdmin = userData.role === 'admin' || userData.isAdmin;
-          const isOperator = userData.role === 'operator';
-          
-          const isMustChange = !isAdmin && !isOperator && (
-            userData.mustChangePassword === true ||
-            userData.pinResetRequested === true ||
-            String(userData.pin || '').trim() === '123456' ||
-            !userData.pin
-          );
-          const isMustComplete = !isAdmin && !isOperator && !isMustChange && (
-            userData.mustCompleteProfile === true ||
-            userData.profileCompleted !== true ||
-            currentViewRef.current === 'complete-profile'
-          );
-
-          if (currentViewRef.current !== 'janamail') {
-            if (isAdmin) {
-               setView('admin');
-            } else if (isOperator || (isDirectManual && !isMagicLink && isOperator)) {
-               setView('operator');
-            } else if (isMustChange) {
-               setView('change-password');
-            } else if (isMustComplete || currentViewRef.current === 'complete-profile') {
-               setView('complete-profile');
-            } else {
-              const claimRedirect = typeof window !== 'undefined' ? sessionStorage.getItem('hcrs_claim_redirect') === 'true' : false;
-              if (claimRedirect) {
-                if (typeof window !== 'undefined') sessionStorage.removeItem('hcrs_claim_redirect');
-                setView('support');
-              } else if (currentViewRef.current !== 'renewal') {
-                setView('card');
-              }
-            }
-          }
-
-          if ((isAdmin || isOperator) && !hasInitialSyncedRef.current) {
-             hasInitialSyncedRef.current = true;
-             refreshMembersList(userData);
-          }
         } else {
-          console.warn("Profile document not found for UID:", authUser.uid);
+          console.warn("Profile document not found for UID:", authUser.uid, "- Initiating Dynamic UID Healing...");
           
           // --- DYNAMIC UID MISMATCH HEALING ---
-          let healed = false;
           try {
             let loginMobile = '';
             if (currentEmail) {
@@ -965,28 +991,18 @@ export default function App() {
             }
             
             const usersRef = collection(db, 'users');
-            let querySnap = null;
-
-            // Collect all possible query candidates to leave absolutely no chance of failure
             const candidates: { field: string; value: string; desc: string }[] = [];
             
-            // Candidate 1: extracted loginMobile from email (most common)
             if (loginMobile && /^\d{10}$/.test(loginMobile)) {
               candidates.push({ field: 'mobile', value: loginMobile, desc: 'extracted mobile from email prefix' });
             }
-            
-            // Candidate 2: current authenticating email
             if (currentEmail) {
               candidates.push({ field: 'email', value: currentEmail, desc: 'current auth email' });
             }
-            
-            // Candidate 3: potential default emails using the mobile number
             if (loginMobile && /^\d{10}$/.test(loginMobile)) {
               candidates.push({ field: 'email', value: `${loginMobile}@hcrs-life.society`, desc: 'standard life member placeholder email' });
               candidates.push({ field: 'email', value: `${loginMobile}@hcrs.society`, desc: 'standard member placeholder email' });
             }
-            
-            // Candidate 4: sessionStorage lookup for typed mobile or card ID
             if (typeof window !== 'undefined') {
               try {
                 const sessionInput = sessionStorage.getItem('hcrs_login_identifier') || '';
@@ -1007,7 +1023,6 @@ export default function App() {
               }
             }
 
-            // Deduplicate candidates (by field + value)
             const uniqueCandidates: typeof candidates = [];
             const seen = new Set<string>();
             for (const cand of candidates) {
@@ -1018,26 +1033,20 @@ export default function App() {
               }
             }
 
-            // Execute queries in fallback order until we find a match
+            const foundDocs: any[] = [];
             for (const cand of uniqueCandidates) {
-              console.log(`Healing check: querying where('${cand.field}', '==', '${cand.value}') (${cand.desc})...`);
-              const q = query(usersRef, where(cand.field, '==', cand.value), limit(1));
+              const q = query(usersRef, where(cand.field, '==', cand.value), limit(10));
               const snap = await getDocs(q);
               if (!snap.empty) {
-                querySnap = snap;
-                console.log(`Healing matched candidate via where('${cand.field}', '==', '${cand.value}') (${cand.desc})! Document ID:`, snap.docs[0].id);
-                break;
+                foundDocs.push(...snap.docs);
               }
             }
             
-            if (querySnap && !querySnap.empty) {
-              const oldDoc = querySnap.docs[0];
-              const oldDocId = oldDoc.id;
-              
-              if (oldDocId !== authUser.uid) {
-                console.log(`Found mismatched profile at ${oldDocId}. Auto-copying to current logged-in UID ${authUser.uid}...`);
-                const profileData = oldDoc.data();
-                const healedProfile = {
+            if (foundDocs.length > 0) {
+              const selectedDoc = selectBestUserDocument(foundDocs, loginMobile || currentEmail);
+              if (selectedDoc) {
+                const profileData = selectedDoc.data();
+                userData = {
                   ...profileData,
                   uid: authUser.uid,
                   role: profileData.role || 'member',
@@ -1045,30 +1054,86 @@ export default function App() {
                   issueDate: profileData.issueDate || serverTimestamp(),
                 };
                 
-                await setDoc(doc(db, 'users', authUser.uid), healedProfile);
-                console.log("Dynamic UID healing successful!");
+                await setDoc(doc(db, 'users', authUser.uid), userData, { merge: true });
+                console.log("Dynamic UID healing successful! Document ID:", selectedDoc.id);
                 
-                // Cleanup old offline/temporary document from Firestore to avoid duplicate counts/listing
-                if (oldDocId.startsWith('offline_') || oldDocId.startsWith('life_')) {
-                  console.log(`Deleting old offline/life document ${oldDocId} since it has been synced to ${authUser.uid}`);
+                if (selectedDoc.id.startsWith('offline_') || selectedDoc.id.startsWith('life_')) {
                   try {
-                    await deleteDoc(doc(db, 'users', oldDocId));
-                  } catch (delErr) {
-                    console.warn("Non-blocking deleteDoc of old profile failed:", delErr);
-                  }
+                    await deleteDoc(doc(db, 'users', selectedDoc.id));
+                  } catch (delErr) {}
                 }
-                
-                healed = true;
               }
             }
           } catch (healErr) {
             console.error("Error healing UID mismatch:", healErr);
           }
 
-          if (!healed && currentViewRef.current === 'loading' && !isAdminEmail) {
-            // If they just logged in but have no doc, maybe they're new or deleted
+          if (!userData && currentViewRef.current === 'loading' && !isAdminEmail) {
             setView('register');
             toast.info('പൂർണ്ണരൂപം ലഭ്യമല്ല. ദയവായി രജിസ്റ്റർ ചെയ്യുക. (Profile not found, please register)', { id: 'profile_not_found_toast' });
+          }
+        }
+
+        if (userData) {
+          // Force restrict second admin emails to their strict district
+          const checkEmail = (userData.email || '').toLowerCase().trim();
+          const checkSecond = SECOND_ADMINS.some(email => email.toLowerCase() === checkEmail);
+          const strictDistrict = getStrictDistrictFromEmail(checkEmail);
+
+          if (checkSecond && strictDistrict) {
+            userData.district = strictDistrict;
+            userData.role = 'operator';
+            userData.isAdmin = false;
+          }
+
+          setUser(prev => {
+            if (JSON.stringify(prev) === JSON.stringify(userData)) return prev;
+            return userData;
+          });
+
+          // Cache resolved user profile in localStorage for offline/quota fallback
+          try {
+            localStorage.setItem(`hcrs_cached_user_${authUser.uid}`, JSON.stringify(userData));
+          } catch (e) {
+            console.error("Failed to cache user profile:", e);
+          }
+          
+          const isAdmin = userData.role === 'admin' || userData.isAdmin === true || isSuperAdminEmail;
+          const isOperator = (userData.role === 'operator' || isSecondAdminEmail) && !isAdmin;
+          
+          const isMustChange = !isAdmin && !isOperator && (
+            userData.mustChangePassword === true ||
+            userData.pinResetRequested === true ||
+            String(userData.pin || '').trim() === '123456' ||
+            !userData.pin
+          );
+          const isMustComplete = !isAdmin && !isOperator && !isMustChange && (
+            userData.mustCompleteProfile === true && !userData.name && !userData.membershipId
+          );
+
+          if (currentViewRef.current !== 'janamail') {
+            if (isAdmin) {
+               setView('admin');
+            } else if (isOperator || (isDirectManual && !isMagicLink && isOperator)) {
+               setView('operator');
+            } else if (isMustChange) {
+               setView('change-password');
+            } else if (isMustComplete) {
+               setView('complete-profile');
+            } else {
+              const claimRedirect = typeof window !== 'undefined' ? sessionStorage.getItem('hcrs_claim_redirect') === 'true' : false;
+              if (claimRedirect) {
+                if (typeof window !== 'undefined') sessionStorage.removeItem('hcrs_claim_redirect');
+                setView('support');
+              } else if (currentViewRef.current !== 'renewal') {
+                setView('card');
+              }
+            }
+          }
+
+          if ((isAdmin || isOperator) && !hasInitialSyncedRef.current) {
+             hasInitialSyncedRef.current = true;
+             refreshMembersList(userData);
           }
         }
       }, (error) => {
@@ -1237,59 +1302,6 @@ export default function App() {
     let storedPin = '';
     try {
       let targetEmail = '';
-
-      const selectBestDocument = (docs: any[]) => {
-        if (!docs || docs.length === 0) return null;
-        // Sort documents to prioritize the active, non-expired/latest valid account
-        const sorted = [...docs].sort((a, b) => {
-          const dataA = a.data();
-          const dataB = b.data();
-
-          // Priority 1: User with mustChangePassword === false over mustChangePassword === true
-          const changedA = dataA.mustChangePassword === false;
-          const changedB = dataB.mustChangePassword === false;
-          if (changedA && !changedB) return -1;
-          if (changedB && !changedA) return 1;
-
-          // Priority 2: standard/healed ID (not starting with 'life_' or 'offline_')
-          const idA_starts = a.id.startsWith('life_') || a.id.startsWith('offline_');
-          const idB_starts = b.id.startsWith('life_') || b.id.startsWith('offline_');
-          if (!idA_starts && idB_starts) return -1;
-          if (idA_starts && !idB_starts) return 1;
-
-          // Priority 3: status active
-          const statusA = dataA.status || '';
-          const statusB = dataB.status || '';
-          if (statusA === 'active' && statusB !== 'active') return -1;
-          if (statusB === 'active' && statusA !== 'active') return 1;
-
-          // Priority 4: status pending
-          if (statusA === 'pending' && statusB !== 'pending') return -1;
-          if (statusB === 'pending' && statusA !== 'pending') return 1;
-
-          // Priority 5: newest expiryDate
-          const getExpiryTime = (data: any) => {
-            const exp = data.expiryDate;
-            if (!exp) return 0;
-            return exp.toDate ? exp.toDate().getTime() : (exp.seconds ? exp.seconds * 1000 : new Date(exp).getTime());
-          };
-          const expA = getExpiryTime(dataA);
-          const expB = getExpiryTime(dataB);
-          if (expA !== expB) return expB - expA;
-
-          // Priority 6: newest registrationDate
-          const getRegTime = (data: any) => {
-            const reg = data.registrationDate;
-            if (!reg) return 0;
-            return reg.toDate ? reg.toDate().getTime() : (reg.seconds ? reg.seconds * 1000 : new Date(reg).getTime());
-          };
-          const regA = getRegTime(dataA);
-          const regB = getRegTime(dataB);
-          return regB - regA;
-        });
-        return sorted[0];
-      };
-
       const usersRef = collection(db, 'users');
 
       const isMainAdminBypass = MAIN_ADMINS.some(email => email.toLowerCase() === originalInput.toLowerCase()) && trimmedPin === '246810';
@@ -1297,96 +1309,106 @@ export default function App() {
       if (isMainAdminBypass) {
         console.log("Main Admin iframe bypass activated for:", originalInput);
         targetEmail = 'admin@hcrs.society';
-      } else if (isMobile) {
-        setLoadingStatus('Resolving Mobile Identity...');
-        let querySnap = await getDocs(query(usersRef, where('mobile', '==', sanitizedMobile), limit(5)));
-        
-        // Check numeric variation (for records where mobile was stored as number)
-        if (querySnap.empty && !isNaN(Number(sanitizedMobile))) {
-          const snapNum = await getDocs(query(usersRef, where('mobile', '==', Number(sanitizedMobile)), limit(5)));
-          if (!snapNum.empty) querySnap = snapNum;
-        }
+      } else {
+        try {
+          if (isMobile) {
+            setLoadingStatus('Resolving Mobile Identity...');
+            const candidateDocs: any[] = [];
+            
+            let querySnap = await getDocs(query(usersRef, where('mobile', '==', sanitizedMobile), limit(10)));
+            if (!querySnap.empty) candidateDocs.push(...querySnap.docs);
+            
+            // Check numeric variation (for records where mobile was stored as number)
+            if (!isNaN(Number(sanitizedMobile))) {
+              const snapNum = await getDocs(query(usersRef, where('mobile', '==', Number(sanitizedMobile)), limit(10)));
+              if (!snapNum.empty) candidateDocs.push(...snapNum.docs);
+            }
 
-        // Check common country-code prefix variations
-        if (querySnap.empty && sanitizedMobile.length === 10) {
-          const variations = [
-            `+91${sanitizedMobile}`,
-            `91${sanitizedMobile}`,
-            `0${sanitizedMobile}`,
-            `+91 ${sanitizedMobile}`
-          ];
-          for (const variant of variations) {
-            const qVariant = query(usersRef, where('mobile', '==', variant), limit(5));
-            const snapVariant = await getDocs(qVariant);
-            if (!snapVariant.empty) {
-              querySnap = snapVariant;
-              break;
+            // Check common country-code prefix variations
+            if (sanitizedMobile.length === 10) {
+              const variations = [
+                `+91${sanitizedMobile}`,
+                `91${sanitizedMobile}`,
+                `0${sanitizedMobile}`,
+                `+91 ${sanitizedMobile}`
+              ];
+              for (const variant of variations) {
+                const snapVariant = await getDocs(query(usersRef, where('mobile', '==', variant), limit(10)));
+                if (!snapVariant.empty) candidateDocs.push(...snapVariant.docs);
+              }
+            }
+
+            // Also check membershipId or highrichId if phone number query was empty
+            if (candidateDocs.length === 0) {
+              const snapMem = await getDocs(query(usersRef, where('membershipId', '==', originalInput.trim().toUpperCase()), limit(10)));
+              if (!snapMem.empty) candidateDocs.push(...snapMem.docs);
+            }
+
+            if (candidateDocs.length === 0) {
+              const snapHr = await getDocs(query(usersRef, where('highrichId', '==', originalInput.trim().toUpperCase()), limit(10)));
+              if (!snapHr.empty) candidateDocs.push(...snapHr.docs);
+            }
+
+            if (candidateDocs.length > 0) {
+              const selectedDoc = selectBestUserDocument(candidateDocs, sanitizedMobile);
+              mappedUserData = selectedDoc?.data() || candidateDocs[0].data();
+              targetEmail = mappedUserData.email || `${sanitizedMobile}@hcrs.society`;
+            } else {
+              targetEmail = `${sanitizedMobile}@hcrs.society`;
+            }
+          } else {
+            // Look up by membershipId first (e.g. HCRS-LIFE-KL-MLP-KOT-001)
+            setLoadingStatus('Resolving Membership ID...');
+            const candidateDocs: any[] = [];
+
+            let querySnap = await getDocs(query(usersRef, where('membershipId', '==', originalInput.trim()), limit(10)));
+            if (!querySnap.empty) candidateDocs.push(...querySnap.docs);
+            
+            if (candidateDocs.length === 0) {
+              const snapUpper = await getDocs(query(usersRef, where('membershipId', '==', originalInput.trim().toUpperCase()), limit(10)));
+              if (!snapUpper.empty) candidateDocs.push(...snapUpper.docs);
+            }
+
+            if (candidateDocs.length === 0) {
+              const snapHr = await getDocs(query(usersRef, where('highrichId', '==', originalInput.trim().toUpperCase()), limit(10)));
+              if (!snapHr.empty) candidateDocs.push(...snapHr.docs);
+            }
+
+            if (candidateDocs.length > 0) {
+              const selectedDoc = selectBestUserDocument(candidateDocs, originalInput);
+              mappedUserData = selectedDoc?.data() || candidateDocs[0].data();
+              targetEmail = mappedUserData.email || `${mappedUserData.mobile || 'user'}@hcrs.society`;
+            } else if (originalInput.includes('@')) {
+              setLoadingStatus('Resolving Email Identity...');
+              const querySnapEmail = await getDocs(query(usersRef, where('email', '==', originalInput.toLowerCase().trim()), limit(10)));
+              if (!querySnapEmail.empty) {
+                const selectedDoc = selectBestUserDocument(querySnapEmail.docs, originalInput);
+                mappedUserData = selectedDoc?.data() || querySnapEmail.docs[0].data();
+                targetEmail = mappedUserData.email;
+              } else {
+                targetEmail = originalInput.toLowerCase().trim();
+              }
+            } else {
+              // Standard auto-append fallback
+              const fallbackEmail = `${originalInput.toLowerCase().trim()}@hcrs.society`;
+              const querySnapFallback = await getDocs(query(usersRef, where('email', '==', fallbackEmail), limit(10)));
+              if (!querySnapFallback.empty) {
+                const selectedDoc = selectBestUserDocument(querySnapFallback.docs, originalInput);
+                mappedUserData = selectedDoc?.data() || querySnapFallback.docs[0].data();
+                targetEmail = mappedUserData.email;
+              } else {
+                targetEmail = fallbackEmail;
+              }
             }
           }
-        }
-
-        // Also check membershipId or highrichId if phone number did not match
-        if (querySnap.empty) {
-          const qMem = query(usersRef, where('membershipId', '==', originalInput.trim().toUpperCase()), limit(5));
-          const snapMem = await getDocs(qMem);
-          if (!snapMem.empty) querySnap = snapMem;
-        }
-
-        if (querySnap.empty) {
-          const qHr = query(usersRef, where('highrichId', '==', originalInput.trim().toUpperCase()), limit(5));
-          const snapHr = await getDocs(qHr);
-          if (!snapHr.empty) querySnap = snapHr;
-        }
-
-        if (!querySnap.empty) {
-          const selectedDoc = selectBestDocument(querySnap.docs);
-          mappedUserData = selectedDoc?.data() || querySnap.docs[0].data();
-          targetEmail = mappedUserData.email || `${sanitizedMobile}@hcrs.society`;
-        } else {
-          targetEmail = `${sanitizedMobile}@hcrs.society`;
-        }
-      } else {
-        // Look up by membershipId first (e.g. HCRS-LIFE-KL-MLP-KOT-001)
-        setLoadingStatus('Resolving Membership ID...');
-        let q = query(usersRef, where('membershipId', '==', originalInput.trim()), limit(5));
-        let querySnap = await getDocs(q);
-        
-        if (querySnap.empty) {
-          q = query(usersRef, where('membershipId', '==', originalInput.trim().toUpperCase()), limit(5));
-          querySnap = await getDocs(q);
-        }
-
-        if (querySnap.empty) {
-          q = query(usersRef, where('highrichId', '==', originalInput.trim().toUpperCase()), limit(5));
-          querySnap = await getDocs(q);
-        }
-
-        if (!querySnap.empty) {
-          const selectedDoc = selectBestDocument(querySnap.docs);
-          mappedUserData = selectedDoc?.data() || querySnap.docs[0].data();
-          targetEmail = mappedUserData.email || `${mappedUserData.mobile || 'user'}@hcrs.society`;
-        } else if (originalInput.includes('@')) {
-          setLoadingStatus('Resolving Email Identity...');
-          const qEmail = query(usersRef, where('email', '==', originalInput.toLowerCase().trim()), limit(5));
-          const querySnapEmail = await getDocs(qEmail);
-          if (!querySnapEmail.empty) {
-            const selectedDoc = selectBestDocument(querySnapEmail.docs);
-            mappedUserData = selectedDoc?.data() || querySnapEmail.docs[0].data();
-            targetEmail = mappedUserData.email;
-          } else {
+        } catch (lookupErr) {
+          console.warn("Non-blocking pre-auth lookup note:", lookupErr);
+          if (isMobile) {
+            targetEmail = `${sanitizedMobile}@hcrs.society`;
+          } else if (originalInput.includes('@')) {
             targetEmail = originalInput.toLowerCase().trim();
-          }
-        } else {
-          // Standard auto-append fallback
-          const fallbackEmail = `${originalInput.toLowerCase().trim()}@hcrs.society`;
-          const qFallback = query(usersRef, where('email', '==', fallbackEmail), limit(5));
-          const querySnapFallback = await getDocs(qFallback);
-          if (!querySnapFallback.empty) {
-            const selectedDoc = selectBestDocument(querySnapFallback.docs);
-            mappedUserData = selectedDoc?.data() || querySnapFallback.docs[0].data();
-            targetEmail = mappedUserData.email;
           } else {
-            targetEmail = fallbackEmail;
+            targetEmail = `${originalInput.toLowerCase().trim()}@hcrs.society`;
           }
         }
       }
@@ -1591,6 +1613,25 @@ export default function App() {
         }
       }
       
+      if (mappedUserData && authResult?.user?.uid && !isAdmin) {
+        const loggedInUid = authResult.user.uid;
+        const completeUserData: UserProfile = {
+          ...mappedUserData,
+          uid: loggedInUid,
+          role: mappedUserData.role || 'member',
+          status: mappedUserData.status || 'active'
+        };
+        setUser(completeUserData);
+        try {
+          localStorage.setItem(`hcrs_cached_user_${loggedInUid}`, JSON.stringify(completeUserData));
+        } catch (e) {}
+        try {
+          await setDoc(doc(db, 'users', loggedInUid), completeUserData, { merge: true });
+        } catch (syncErr) {
+          console.warn("Could not sync resolved profile to auth UID:", syncErr);
+        }
+      }
+
       toast.success('Login Successful! (ലോഗിൻ വിജയിച്ചു)', { id: loadingToast });
       return { success: true };
     } catch (error: any) {
@@ -1945,13 +1986,18 @@ export default function App() {
       renewalPending: false // Clear renewal pending flag upon any approval
     };
 
-    // Instant optimistic state update in React:
-    setMembers(prev => prev.map(m => m.uid === uid ? { 
-      ...m, 
-      ...updatePayload, 
-      issueDate: now, 
-      registrationDate: member.registrationDate ? (member.registrationDate.toDate ? member.registrationDate.toDate() : new Date(member.registrationDate)) : now
-    } : m));
+    const targetMobile = member.mobile ? String(member.mobile).replace(/\D/g, '') : '';
+
+    // Instant optimistic state update in React for the exact approved member:
+    setMembers(prev => prev.map(m => {
+      if (m.uid !== uid) return m;
+      return { 
+        ...m, 
+        ...updatePayload, 
+        issueDate: now, 
+        registrationDate: m.registrationDate ? (m.registrationDate.toDate ? m.registrationDate.toDate() : new Date(m.registrationDate)) : now
+      };
+    }));
 
     if (user && user.uid === uid) {
       setUser(prev => prev ? {
@@ -1963,7 +2009,7 @@ export default function App() {
         issueDate: now
       } : prev);
       try {
-        localStorage.setItem(`hcrs_cached_user_${uid}`, JSON.stringify({
+        localStorage.setItem(`hcrs_cached_user_${user.uid}`, JSON.stringify({
           ...user,
           ...updatePayload,
           status: 'active',
@@ -1985,7 +2031,8 @@ export default function App() {
             membershipId: finalId,
             district: member.district,
             assemblyConstituency: member.assemblyConstituency,
-            serialNo: member.serialNo
+            serialNo: member.serialNo,
+            mobile: targetMobile
           })
         });
         if (resp.ok) {
@@ -2402,15 +2449,56 @@ export default function App() {
         }
       });
 
-      // Optimistic update in React state
-      setMembers(prev => prev.map(m => m.uid === uid ? { ...m, ...cleanData } : m));
+      const targetMobile = existingMember?.mobile || cleanData.mobile ? String(existingMember?.mobile || cleanData.mobile).replace(/\D/g, '') : '';
+
+      // Optimistic update in React state for matching UID only
+      setMembers(prev => {
+        const nextList = prev.map(m => {
+          if (m.uid !== uid) return m;
+          return {
+            ...m,
+            ...cleanData,
+            status: cleanData.status || (cleanData.isApproved ? 'active' : m.status),
+            isApproved: cleanData.isApproved !== undefined ? cleanData.isApproved : (cleanData.status === 'active' ? true : m.isApproved),
+            renewalPending: cleanData.renewalPending !== undefined ? cleanData.renewalPending : (cleanData.status === 'active' ? false : m.renewalPending),
+            issueDate: cleanData.issueDate || m.issueDate || new Date(),
+            renewalDate: cleanData.renewalDate || m.renewalDate || new Date(),
+            expiryDate: cleanData.expiryDate || m.expiryDate
+          };
+        });
+        try {
+          localStorage.setItem('hcrs_cached_members_list', JSON.stringify(nextList));
+        } catch (e) {}
+        return nextList;
+      });
+
+      // Update logged-in user state if matching
+      setUser(prev => {
+        if (!prev || prev.uid !== uid) return prev;
+        return {
+          ...prev,
+          ...cleanData,
+          status: cleanData.status || (cleanData.isApproved ? 'active' : prev.status),
+          isApproved: cleanData.isApproved !== undefined ? cleanData.isApproved : (cleanData.status === 'active' ? true : prev.isApproved),
+          renewalPending: cleanData.renewalPending !== undefined ? cleanData.renewalPending : (cleanData.status === 'active' ? false : prev.renewalPending),
+          issueDate: cleanData.issueDate || prev.issueDate || new Date(),
+          renewalDate: cleanData.renewalDate || prev.renewalDate || new Date(),
+          expiryDate: cleanData.expiryDate || prev.expiryDate
+        };
+      });
 
       // 1. Server API update (reliable backend fallback)
       try {
+        const apiData = { ...cleanData };
+        if (apiData.issueDate instanceof Date) apiData.issueDate = apiData.issueDate.toISOString();
+        if (apiData.renewalDate instanceof Date) apiData.renewalDate = apiData.renewalDate.toISOString();
+        if (apiData.expiryDate instanceof Date) apiData.expiryDate = apiData.expiryDate.toISOString();
+        if (apiData.registrationDate instanceof Date) apiData.registrationDate = apiData.registrationDate.toISOString();
+
         await fetch('/api/admin/update-member', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ uid, data: cleanData, mobile: existingMember?.mobile || cleanData.mobile })
+          body: JSON.stringify({ uid, data: apiData, mobile: targetMobile })
         });
       } catch (apiErr) {
         console.warn("[handleUpdateMember API note]:", apiErr);
@@ -3106,6 +3194,7 @@ export default function App() {
           onAccept={handleAcceptTerms} 
           onRenew={handleRenewClick}
           onLoginClick={() => setView('login')} 
+          onGoogleLogin={handleGoogleLogin}
           onGalleryClick={() => setView('gallery')}
           onRenewWithMobile={(mobile) => {
             setPrefilledMobile(mobile);

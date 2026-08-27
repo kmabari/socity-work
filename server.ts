@@ -1605,8 +1605,8 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
   // ============================================================================
   app.post(["/api/admin/approve-member", "/admin/approve-member"], async (req, res) => {
     try {
-      const { uid, membershipId, district, assemblyConstituency, serialNo } = req.body || {};
-      if (!uid) {
+      const { uid, membershipId, district, assemblyConstituency, serialNo, mobile } = req.body || {};
+      if (!uid && !mobile) {
         return res.status(400).json({ error: "Member UID is required" });
       }
 
@@ -1615,9 +1615,13 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       }
 
       try {
-        const userRef = dbAdmin.collection('users').doc(uid);
-        const userSnap = await userRef.get();
-        const existingData = userSnap.exists ? userSnap.data() : null;
+        let userSnap = null;
+        let existingData: any = null;
+        if (uid) {
+          const userRef = dbAdmin.collection('users').doc(uid);
+          userSnap = await userRef.get();
+          existingData = userSnap.exists ? userSnap.data() : null;
+        }
 
         const distCode = (district || existingData?.district || 'MLP').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3) || 'MLP';
         const assemblyCode = (assemblyConstituency || existingData?.assemblyConstituency || '001').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4) || '001';
@@ -1649,10 +1653,13 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
           updateData.registrationDate = admin.firestore.FieldValue.serverTimestamp();
         }
 
-        if (userSnap.exists) {
-          await userRef.update(updateData);
-        } else {
-          await userRef.set(updateData, { merge: true });
+        if (uid) {
+          const userRef = dbAdmin.collection('users').doc(uid);
+          if (userSnap && userSnap.exists) {
+            await userRef.update(updateData);
+          } else {
+            await userRef.set(updateData, { merge: true });
+          }
         }
 
         return res.json({
@@ -1777,9 +1784,9 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
 
   app.post(["/api/admin/approve-renewal", "/admin/approve-renewal"], async (req, res) => {
     try {
-      const { uid } = req.body || {};
-      if (!uid) {
-        return res.status(400).json({ error: "Member UID is required" });
+      const { uid, mobile } = req.body || {};
+      if (!uid && !mobile) {
+        return res.status(400).json({ error: "Member UID or mobile is required" });
       }
 
       if (!dbAdmin) {
@@ -1787,18 +1794,35 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       }
 
       try {
-        const userRef = dbAdmin.collection('users').doc(uid);
         const now = new Date();
         const expiry = new Date();
         expiry.setFullYear(now.getFullYear() + 1);
 
-        await userRef.update({
+        const updatePayload: any = {
           status: 'active',
           isApproved: true,
           renewalPending: false,
           expiryDate: admin.firestore.Timestamp.fromDate(expiry),
-          renewalApprovedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
+          renewalApprovedAt: admin.firestore.FieldValue.serverTimestamp(),
+          renewalDate: admin.firestore.FieldValue.serverTimestamp(),
+          issueDate: admin.firestore.FieldValue.serverTimestamp()
+        };
+
+        let existingMobile = mobile;
+
+        if (uid) {
+          const userRef = dbAdmin.collection('users').doc(uid);
+          const userSnap = await userRef.get();
+          if (userSnap.exists) {
+            await userRef.update(updatePayload);
+            const uData = userSnap.data();
+            if (!existingMobile && uData?.mobile) {
+              existingMobile = uData.mobile;
+            }
+          } else {
+            await userRef.set(updatePayload, { merge: true });
+          }
+        }
 
         return res.json({
           success: true,
@@ -1840,19 +1864,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         await dbAdmin.collection('users').doc(uid).set(cleanData, { merge: true });
       }
 
-      const targetMobile = mobile || (cleanData.mobile ? String(cleanData.mobile).replace(/\D/g, '') : null);
-      if (targetMobile && targetMobile.length === 10) {
-        try {
-          const snap = await dbAdmin.collection('users').where('mobile', '==', targetMobile).get();
-          for (const d of snap.docs) {
-            if (d.id !== uid) {
-              await d.ref.set(cleanData, { merge: true }).catch(() => {});
-            }
-          }
-        } catch (mErr) {}
-      }
-
-      return res.json({ success: true, uid: uid || targetMobile, updated: true });
+      return res.json({ success: true, uid: uid || mobile, updated: true });
     } catch (err: any) {
       console.warn("[Update Profile Server API Note]:", err?.message || err);
       return res.json({ success: true, note: "Client-side fallback active" });
