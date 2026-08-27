@@ -4134,7 +4134,7 @@ export default function App() {
       )}
 
       {view === 'support' && user && (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 bg-slate-50 min-h-screen w-full">
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 bg-slate-50 min-h-screen w-full max-w-full overflow-x-hidden">
           {user.status === 'pending' ? (
             <div className="min-h-screen py-6 px-4 flex items-center justify-center">
               <div className="w-full max-w-md mx-auto">

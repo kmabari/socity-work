@@ -63,7 +63,7 @@ function ClaimSerialGuide({ formLang = 'bilingual' }: { formLang?: FormLanguage 
   const isMl = formLang === 'malayalam';
 
   return (
-    <div className="bg-slate-900 text-slate-100 rounded-3xl p-5 border border-slate-800 shadow-md space-y-3 relative overflow-hidden my-4 max-w-sm mx-auto">
+    <div className="bg-slate-900 text-slate-100 rounded-3xl p-4 sm:p-5 border border-slate-800 shadow-md space-y-3 relative overflow-hidden my-4 max-w-sm w-full mx-auto">
       <div className="absolute top-0 right-0 w-16 h-16 bg-[#FF1493]/10 rounded-full blur-xl pointer-events-none" />
       <div className="flex items-center gap-2">
         <Info className="w-4.5 h-4.5 text-[#FF1493] animate-pulse shrink-0" />
@@ -84,21 +84,17 @@ function ClaimSerialGuide({ formLang = 'bilingual' }: { formLang?: FormLanguage 
       </p>
       
       {/* Visual Mockup representation of the physical paper form */}
-      <div className="bg-white text-slate-900 border border-slate-300 rounded-xl p-4 shadow-inner relative max-w-sm mx-auto font-sans leading-none text-left">
+      <div className="bg-white text-slate-900 border border-slate-300 rounded-xl p-3 sm:p-4 shadow-inner relative max-w-sm w-full mx-auto font-sans leading-none text-left overflow-hidden">
         {/* Ribbon/Seal mock */}
-        <div className="flex justify-between items-start border-b border-dashed border-slate-200 pb-2.5 mb-2.5">
-          <div>
-            <p className="text-[8px] font-black tracking-tight text-slate-800 uppercase">HIGHRICH CONSIGNMENT CLAIM</p>
+        <div className="flex justify-between items-start border-b border-dashed border-slate-200 pb-2.5 mb-2.5 gap-2">
+          <div className="min-w-0">
+            <p className="text-[8px] font-black tracking-tight text-slate-800 uppercase truncate">HIGHRICH CONSIGNMENT CLAIM</p>
             <p className="text-[6px] text-slate-400 mt-0.5">FORM NO. 1 / ക്ലെയിം ഫോം</p>
           </div>
           {/* Highlighted Serial No block with pulse */}
           <div className="border border-dashed border-rose-500 bg-rose-50 px-2 py-1.5 rounded-lg text-right animate-pulse relative shrink-0">
             <span className="text-[6px] font-black text-rose-500 uppercase tracking-wider block">SERIAL NO / സീരിയൽ</span>
             <span className="text-xs font-black text-rose-600 block leading-tight font-mono">12345</span>
-            {/* Soft pointer arrow */}
-            <div className="absolute -left-12 top-1/2 -translate-y-1/2 bg-rose-500 text-white text-[7px] px-1 py-0.5 rounded flex items-center shadow-md">
-              {isEn ? 'Here!' : 'ഇതാണ്!'} <span className="ml-1 text-[8px]">➜</span>
-            </div>
           </div>
         </div>
         
@@ -247,18 +243,18 @@ const FormFieldBox = ({
   return (
     <div 
       id={id}
-      className={`group space-y-2 bg-slate-50/90 hover:bg-white border-2 ${
+      className={`group space-y-2 bg-slate-50/90 hover:bg-white border-2 w-full min-w-0 max-w-full ${
         error 
           ? 'border-rose-500 bg-rose-50/30 ring-2 ring-rose-400/50 shadow-rose-200' 
           : 'border-slate-300 hover:border-indigo-400 focus-within:border-brand-blue focus-within:bg-white focus-within:ring-4 focus-within:ring-brand-blue/10'
       } transition-all rounded-2xl p-3 sm:p-3.5 shadow-xs flex flex-col justify-between ${className}`}
     >
-      <div className="space-y-1">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
+      <div className="space-y-1 w-full min-w-0">
+        <div className="flex items-center justify-between gap-1.5 sm:gap-2 flex-wrap w-full min-w-0">
           {/* Colored Button/Pill Label */}
-          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-black tracking-wide shadow-2xs ${error ? 'bg-rose-700 text-white' : (themeStyles[theme] || themeStyles.blue)}`}>
+          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-black tracking-wide shadow-2xs max-w-full min-w-0 ${error ? 'bg-rose-700 text-white' : (themeStyles[theme] || themeStyles.blue)}`}>
             {icon && <span className="text-xs shrink-0">{icon}</span>}
-            <span className="leading-tight">{label}</span>
+            <span className="leading-tight break-words">{label}</span>
           </div>
           {required && (
             <span className={`text-[9px] font-black ${error ? 'text-white bg-rose-600 animate-pulse' : 'text-rose-700 bg-rose-100 border border-rose-200'} px-2 py-0.5 rounded-md shrink-0 uppercase tracking-wider`}>
@@ -277,14 +273,14 @@ const FormFieldBox = ({
           )}
         </div>
         {hint && (
-          <p className="text-[10px] text-slate-500 font-semibold px-0.5 leading-tight">{hint}</p>
+          <p className="text-[10px] text-slate-500 font-semibold px-0.5 leading-tight break-words">{hint}</p>
         )}
       </div>
-      <div className="pt-0.5">{children}</div>
+      <div className="pt-0.5 w-full min-w-0">{children}</div>
       {error && (
-        <div className="flex items-center gap-1.5 text-xs font-black text-rose-700 bg-rose-100/90 border border-rose-300 px-2.5 py-1.5 rounded-xl animate-in fade-in duration-200 mt-1">
+        <div className="flex items-center gap-1.5 text-xs font-black text-rose-700 bg-rose-100/90 border border-rose-300 px-2.5 py-1.5 rounded-xl animate-in fade-in duration-200 mt-1 w-full min-w-0 break-words">
           <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-600 animate-pulse" />
-          <span>{error}</span>
+          <span className="min-w-0 break-words">{error}</span>
         </div>
       )}
     </div>
@@ -2927,44 +2923,46 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
   return (
     <div className="flex flex-col min-h-screen w-full bg-slate-50 relative pb-28 overflow-x-hidden">
       {/* Header */}
-      <div className="p-3 sm:p-4 border-b sticky top-0 bg-white/90 backdrop-blur-xl z-25 shadow-sm w-full">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-3 w-full">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+      <div className="p-2.5 sm:p-4 border-b sticky top-0 bg-white/90 backdrop-blur-xl z-25 shadow-sm w-full">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-2 sm:gap-3 w-full min-w-0">
+          <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1">
             <Button
               type="button"
               variant="ghost"
               size="sm"
               onClick={handleExitToDashboard}
-              className="h-9 px-2.5 rounded-xl text-slate-700 hover:text-slate-950 hover:bg-slate-100 flex items-center gap-1.5 cursor-pointer font-bold shrink-0 border border-slate-200"
+              className="h-8 sm:h-9 px-2 sm:px-2.5 rounded-xl text-slate-700 hover:text-slate-950 hover:bg-slate-100 flex items-center gap-1 cursor-pointer font-bold shrink-0 border border-slate-200"
               title="Back to Dashboard"
             >
-              <ArrowLeft className="w-4 h-4 text-slate-700" />
-              <span className="hidden sm:inline text-xs font-black">ഡാഷ്‌ബോർഡ്</span>
+              <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-700 shrink-0" />
+              <span className="hidden md:inline text-xs font-black">ഡാഷ്‌ബോർഡ്</span>
             </Button>
-            <div className="w-9 h-9 rounded-xl bg-brand-blue/10 flex items-center justify-center text-brand-blue shrink-0">
-              <Users className="w-4.5 h-4.5 text-brand-blue" />
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-brand-blue/10 flex items-center justify-center text-brand-blue shrink-0">
+              <Users className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-brand-blue" />
             </div>
-            <div className="min-w-0">
-              <h3 className="text-xs font-black text-brand-blue uppercase tracking-tight truncate">Member Financial Information Registry</h3>
-              <p className="text-[9px] font-extrabold text-slate-600 uppercase tracking-widest truncate">Register up to 3 direct family members</p>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-[11px] sm:text-xs font-black text-brand-blue uppercase tracking-tight truncate">Financial Info Registry</h3>
+              <p className="text-[8px] sm:text-[9px] font-extrabold text-slate-600 uppercase tracking-wider truncate">Register up to 3 direct family members</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {submittedClaims.length > 0 && (
               <Button
                 size="sm"
                 onClick={() => setFormMode('statement')}
-                className="h-8 px-2.5 sm:px-3 rounded-lg bg-[#003366] hover:bg-[#002244] text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-xs cursor-pointer whitespace-nowrap"
+                className="h-8 px-2 sm:px-3 rounded-lg bg-[#003366] hover:bg-[#002244] text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider flex items-center gap-1 sm:gap-1.5 shadow-xs cursor-pointer"
               >
                 <FileText className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                <span>യഥാർത്ഥ ഫോം കാണുക ({submittedClaims.length})</span>
+                <span className="hidden sm:inline">യഥാർത്ഥ ഫോം</span>
+                <span className="sm:hidden">ഫോം</span>
+                <span>({submittedClaims.length})</span>
               </Button>
             )}
             <Button 
               variant="ghost" 
               size="sm" 
               onClick={handleExitToDashboard} 
-              className="rounded-xl w-8 h-8 p-0 font-black text-slate-500 hover:text-slate-900 hover:bg-slate-100 cursor-pointer"
+              className="rounded-xl w-8 h-8 p-0 font-black text-slate-500 hover:text-slate-900 hover:bg-slate-100 cursor-pointer shrink-0"
               title="Close / Back to Dashboard"
             >
               ✕
@@ -2973,19 +2971,19 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 sm:py-6 space-y-8 max-w-5xl mx-auto w-full">
+      <div className="flex-1 overflow-y-auto px-2.5 sm:px-4 py-4 sm:py-6 space-y-6 sm:space-y-8 max-w-5xl mx-auto w-full min-w-0">
         
         {/* Form Language Selector Bar */}
-        <div className="bg-white rounded-2xl p-3 border-2 border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-brand-blue/10 flex items-center justify-center text-brand-blue font-bold text-sm">
+        <div className="bg-white rounded-2xl p-3 border-2 border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-brand-blue/10 flex items-center justify-center text-brand-blue font-bold text-sm shrink-0">
               🌐
             </div>
-            <div>
-              <h4 className="text-xs font-black text-slate-800 uppercase tracking-tight">
+            <div className="min-w-0">
+              <h4 className="text-xs font-black text-slate-800 uppercase tracking-tight truncate">
                 {formLang === 'english' ? 'Form Display Language' : formLang === 'malayalam' ? 'ഫോം ഭാഷ' : 'ഫോം ഭാഷ (Form Language)'}
               </h4>
-              <p className="text-[10px] font-bold text-slate-500">
+              <p className="text-[10px] font-bold text-slate-500 truncate">
                 {formLang === 'english'
                   ? 'Print section always outputs pure English only'
                   : formLang === 'malayalam'
@@ -2995,11 +2993,11 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/80">
+          <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/80 w-full sm:w-auto">
             <button
               type="button"
               onClick={() => setFormLang('english')}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+              className={`px-2 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer text-center ${
                 formLang === 'english'
                   ? 'bg-brand-blue text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
@@ -3010,7 +3008,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
             <button
               type="button"
               onClick={() => setFormLang('malayalam')}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+              className={`px-2 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer text-center ${
                 formLang === 'malayalam'
                   ? 'bg-brand-blue text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
@@ -3021,7 +3019,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
             <button
               type="button"
               onClick={() => setFormLang('bilingual')}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+              className={`px-2 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer text-center ${
                 formLang === 'bilingual'
                   ? 'bg-brand-blue text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
@@ -3093,16 +3091,16 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
               </div>
             </div>
             
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
-              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5 text-xs w-full min-w-0">
+              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5 min-w-0">
                 <span className="text-[10px] text-slate-500 font-bold block">{t('Highrich ID', 'ഹൈറിച്ച് ഐഡി')}</span>
-                <span className="font-mono font-bold text-slate-800">{selfClaim?.highrichId || '—'}</span>
+                <span className="font-mono font-bold text-slate-800 break-all">{selfClaim?.highrichId || '—'}</span>
               </div>
-              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5">
+              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5 min-w-0">
                 <span className="text-[10px] text-slate-500 font-bold block">{t('Mobile Number', 'മൊബൈൽ നമ്പർ')}</span>
-                <span className="font-mono font-bold text-slate-800">{selfClaim?.userMobile || customerMobile || user.mobile || '—'}</span>
+                <span className="font-mono font-bold text-slate-800 break-all">{selfClaim?.userMobile || customerMobile || user.mobile || '—'}</span>
               </div>
-              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5 col-span-2 sm:col-span-1">
+              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5 min-w-0">
                 <span className="text-[10px] text-slate-500 font-bold block">{t('Total Pending', 'ആകെ മിച്ച തുക')}</span>
                 <span className="font-black text-emerald-700">₹{(selfClaim?.totalPending || selfTotalPending || 0).toLocaleString('en-IN')}</span>
               </div>
@@ -3446,16 +3444,16 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                     </div>
 
                     {/* Detailed Inputs */}
-                    <div className="space-y-3">
+                    <div className="space-y-3 w-full min-w-0">
                       {selfCategories.map(catId => {
                         const cat = CATEGORIES.find(c => c.id === catId);
                         return (
-                          <div key={catId} className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 border-2 border-slate-300 rounded-2xl bg-white gap-3 shadow-xs">
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#003366] text-white text-xs font-black tracking-wide shadow-2xs shrink-0">
-                              📂 <span>{cat?.heading || catId}</span>
+                          <div key={catId} className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 border-2 border-slate-300 rounded-2xl bg-white gap-3 shadow-xs w-full min-w-0">
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#003366] text-white text-xs font-black tracking-wide shadow-2xs shrink-0 self-start sm:self-auto max-w-full">
+                              📂 <span className="truncate max-w-[200px] sm:max-w-none">{cat?.heading || catId}</span>
                             </div>
-                            <div className="grid grid-cols-2 gap-3 sm:w-80">
-                              <div className="space-y-1">
+                            <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full sm:w-80 min-w-0">
+                              <div className="space-y-1 w-full min-w-0">
                                 <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-600 text-white text-[10px] font-black uppercase">
                                   💰 <span>{t('Paid', 'നൽകിയത്')}</span>
                                 </div>
@@ -3464,10 +3462,10 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                                   placeholder={tPlaceholder('Paid', 'നൽകിയത്')} 
                                   value={selfCategoryDetails[catId]?.paid || ''}
                                   onChange={(e) => handleCategoryDetailChange('self', catId, 'paid', e.target.value)}
-                                  className="h-10 border border-slate-300 text-xs font-bold text-slate-800 bg-white placeholder:text-[10px] rounded-xl shadow-2xs"
+                                  className="h-10 border border-slate-300 text-xs font-bold text-slate-800 bg-white placeholder:text-[10px] rounded-xl shadow-2xs w-full min-w-0"
                                 />
                               </div>
-                              <div className="space-y-1">
+                              <div className="space-y-1 w-full min-w-0">
                                 <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-700 text-white text-[10px] font-black uppercase">
                                   💵 <span>{t('Received', 'ലഭിച്ചത്')}</span>
                                 </div>
@@ -3476,7 +3474,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                                   placeholder={tPlaceholder('Received', 'ലഭിച്ചത്')} 
                                   value={selfCategoryDetails[catId]?.received || ''}
                                   onChange={(e) => handleCategoryDetailChange('self', catId, 'received', e.target.value)}
-                                  className="h-10 border border-slate-300 text-xs font-bold text-slate-800 bg-white placeholder:text-[10px] rounded-xl shadow-2xs"
+                                  className="h-10 border border-slate-300 text-xs font-bold text-slate-800 bg-white placeholder:text-[10px] rounded-xl shadow-2xs w-full min-w-0"
                                 />
                               </div>
                             </div>
@@ -3814,16 +3812,16 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
               </div>
             </div>
             
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
-              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5 text-xs w-full min-w-0">
+              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5 min-w-0">
                 <span className="text-[10px] text-slate-500 font-bold block">{t('Highrich ID', 'ഹൈറിച്ച് ഐഡി')}</span>
-                <span className="font-mono font-bold text-slate-800">{spouseClaim?.highrichId || '—'}</span>
+                <span className="font-mono font-bold text-slate-800 break-all">{spouseClaim?.highrichId || '—'}</span>
               </div>
-              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5">
+              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5 min-w-0">
                 <span className="text-[10px] text-slate-500 font-bold block">{t('Mobile Number', 'മൊബൈൽ നമ്പർ')}</span>
-                <span className="font-mono font-bold text-slate-800">{spouseClaim?.individualMobile || (spouseClaim?.memberMobile && spouseClaim?.memberMobile !== spouseClaim?.userMobile ? spouseClaim?.memberMobile : '') || spouseClaim?.userMobile || spouseMobile || '—'}</span>
+                <span className="font-mono font-bold text-slate-800 break-all">{spouseClaim?.individualMobile || (spouseClaim?.memberMobile && spouseClaim?.memberMobile !== spouseClaim?.userMobile ? spouseClaim?.memberMobile : '') || spouseClaim?.userMobile || spouseMobile || '—'}</span>
               </div>
-              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5 col-span-2 sm:col-span-1">
+              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5 min-w-0">
                 <span className="text-[10px] text-slate-500 font-bold block">{t('Total Pending', 'ആകെ മിച്ച തുക')}</span>
                 <span className="font-black text-emerald-700">₹{(spouseClaim?.totalPending || spouseTotalPending || 0).toLocaleString('en-IN')}</span>
               </div>
@@ -4243,27 +4241,39 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                     </div>
 
                      {/* Detailed Inputs */}
-                    <div className="space-y-3">
+                    <div className="space-y-3 w-full min-w-0">
                       {spouseCategories.map(catId => {
                         const cat = CATEGORIES.find(c => c.id === catId);
                         return (
-                          <div key={catId} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border-2 border-rose-100 rounded-2xl bg-rose-50/20 gap-3 shadow-xs">
-                            <span className="text-xs font-black text-slate-800 shrink-0 w-36 truncate">{cat?.heading || catId}</span>
-                            <div className="flex gap-2.5 flex-1">
-                              <Input 
-                                type="number" 
-                                placeholder={tPlaceholder('Paid Amount', 'നൽകിയ തുക')} 
-                                value={spouseCategoryDetails[catId]?.paid || ''}
-                                onChange={(e) => handleCategoryDetailChange('spouse', catId, 'paid', e.target.value)}
-                                className="h-10 border-2 border-rose-200 text-xs text-slate-800 bg-white rounded-xl font-bold"
-                              />
-                              <Input 
-                                type="number" 
-                                placeholder={tPlaceholder('Received Amount', 'ലഭിച്ച തുക')} 
-                                value={spouseCategoryDetails[catId]?.received || ''}
-                                onChange={(e) => handleCategoryDetailChange('spouse', catId, 'received', e.target.value)}
-                                className="h-10 border-2 border-emerald-200 text-xs text-slate-800 bg-white rounded-xl font-bold"
-                              />
+                          <div key={catId} className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 border-2 border-rose-100 rounded-2xl bg-rose-50/20 gap-3 shadow-xs w-full min-w-0">
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-pink-700 text-white text-xs font-black tracking-wide shadow-2xs shrink-0 self-start sm:self-auto max-w-full">
+                              📂 <span className="truncate max-w-[200px] sm:max-w-none">{cat?.heading || catId}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full sm:w-80 min-w-0">
+                              <div className="space-y-1 w-full min-w-0">
+                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-600 text-white text-[10px] font-black uppercase">
+                                  💰 <span>{t('Paid', 'നൽകിയത്')}</span>
+                                </div>
+                                <Input 
+                                  type="number" 
+                                  placeholder={tPlaceholder('Paid Amount', 'നൽകിയ തുക')} 
+                                  value={spouseCategoryDetails[catId]?.paid || ''}
+                                  onChange={(e) => handleCategoryDetailChange('spouse', catId, 'paid', e.target.value)}
+                                  className="h-10 border-2 border-rose-200 text-xs text-slate-800 bg-white rounded-xl font-bold w-full min-w-0 shadow-2xs"
+                                />
+                              </div>
+                              <div className="space-y-1 w-full min-w-0">
+                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-700 text-white text-[10px] font-black uppercase">
+                                  💵 <span>{t('Received', 'ലഭിച്ചത്')}</span>
+                                </div>
+                                <Input 
+                                  type="number" 
+                                  placeholder={tPlaceholder('Received Amount', 'ലഭിച്ച തുക')} 
+                                  value={spouseCategoryDetails[catId]?.received || ''}
+                                  onChange={(e) => handleCategoryDetailChange('spouse', catId, 'received', e.target.value)}
+                                  className="h-10 border-2 border-emerald-200 text-xs text-slate-800 bg-white rounded-xl font-bold w-full min-w-0 shadow-2xs"
+                                />
+                              </div>
                             </div>
                           </div>
                         );
@@ -4601,16 +4611,16 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
               </div>
             </div>
             
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
-              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5 text-xs w-full min-w-0">
+              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5 min-w-0">
                 <span className="text-[10px] text-slate-500 font-bold block">{t('Highrich ID', 'ഹൈറിച്ച് ഐഡി')}</span>
-                <span className="font-mono font-bold text-slate-800">{parentClaim?.highrichId || '—'}</span>
+                <span className="font-mono font-bold text-slate-800 break-all">{parentClaim?.highrichId || '—'}</span>
               </div>
-              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5">
+              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5 min-w-0">
                 <span className="text-[10px] text-slate-500 font-bold block">{t('Mobile Number', 'മൊബൈൽ നമ്പർ')}</span>
-                <span className="font-mono font-bold text-slate-800">{parentClaim?.individualMobile || (parentClaim?.memberMobile && parentClaim?.memberMobile !== parentClaim?.userMobile ? parentClaim?.memberMobile : '') || parentClaim?.userMobile || parentMobile || '—'}</span>
+                <span className="font-mono font-bold text-slate-800 break-all">{parentClaim?.individualMobile || (parentClaim?.memberMobile && parentClaim?.memberMobile !== parentClaim?.userMobile ? parentClaim?.memberMobile : '') || parentClaim?.userMobile || parentMobile || '—'}</span>
               </div>
-              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5 col-span-2 sm:col-span-1">
+              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5 min-w-0">
                 <span className="text-[10px] text-slate-500 font-bold block">{t('Total Pending', 'ആകെ മിച്ച തുക')}</span>
                 <span className="font-black text-emerald-700">₹{(parentClaim?.totalPending || parentTotalPending || 0).toLocaleString('en-IN')}</span>
               </div>
@@ -5030,27 +5040,39 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                     </div>
 
                      {/* Detailed Inputs */}
-                    <div className="space-y-3">
+                    <div className="space-y-3 w-full min-w-0">
                       {parentCategories.map(catId => {
                         const cat = CATEGORIES.find(c => c.id === catId);
                         return (
-                          <div key={catId} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border-2 border-amber-100 rounded-2xl bg-amber-50/20 gap-3 shadow-xs">
-                            <span className="text-xs font-black text-slate-800 shrink-0 w-36 truncate">{cat?.heading || catId}</span>
-                            <div className="flex gap-2.5 flex-1">
-                              <Input 
-                                type="number" 
-                                placeholder={tPlaceholder('Paid Amount', 'നൽകിയ തുക')} 
-                                value={parentCategoryDetails[catId]?.paid || ''}
-                                onChange={(e) => handleCategoryDetailChange('parent', catId, 'paid', e.target.value)}
-                                className="h-10 border-2 border-amber-200 text-xs text-slate-800 bg-white rounded-xl font-bold"
-                              />
-                              <Input 
-                                type="number" 
-                                placeholder={tPlaceholder('Received Amount', 'ലഭിച്ച തുക')} 
-                                value={parentCategoryDetails[catId]?.received || ''}
-                                onChange={(e) => handleCategoryDetailChange('parent', catId, 'received', e.target.value)}
-                                className="h-10 border-2 border-emerald-200 text-xs text-slate-800 bg-white rounded-xl font-bold"
-                              />
+                          <div key={catId} className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 border-2 border-amber-100 rounded-2xl bg-amber-50/20 gap-3 shadow-xs w-full min-w-0">
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-700 text-white text-xs font-black tracking-wide shadow-2xs shrink-0 self-start sm:self-auto max-w-full">
+                              📂 <span className="truncate max-w-[200px] sm:max-w-none">{cat?.heading || catId}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full sm:w-80 min-w-0">
+                              <div className="space-y-1 w-full min-w-0">
+                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-600 text-white text-[10px] font-black uppercase">
+                                  💰 <span>{t('Paid', 'നൽകിയത്')}</span>
+                                </div>
+                                <Input 
+                                  type="number" 
+                                  placeholder={tPlaceholder('Paid Amount', 'നൽകിയ തുക')} 
+                                  value={parentCategoryDetails[catId]?.paid || ''}
+                                  onChange={(e) => handleCategoryDetailChange('parent', catId, 'paid', e.target.value)}
+                                  className="h-10 border-2 border-amber-200 text-xs text-slate-800 bg-white rounded-xl font-bold w-full min-w-0 shadow-2xs"
+                                />
+                              </div>
+                              <div className="space-y-1 w-full min-w-0">
+                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-700 text-white text-[10px] font-black uppercase">
+                                  💵 <span>{t('Received', 'ലഭിച്ചത്')}</span>
+                                </div>
+                                <Input 
+                                  type="number" 
+                                  placeholder={tPlaceholder('Received Amount', 'ലഭിച്ച തുക')} 
+                                  value={parentCategoryDetails[catId]?.received || ''}
+                                  onChange={(e) => handleCategoryDetailChange('parent', catId, 'received', e.target.value)}
+                                  className="h-10 border-2 border-emerald-200 text-xs text-slate-800 bg-white rounded-xl font-bold w-full min-w-0 shadow-2xs"
+                                />
+                              </div>
                             </div>
                           </div>
                         );
@@ -5388,16 +5410,16 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
               </div>
             </div>
             
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
-              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5 text-xs w-full min-w-0">
+              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5 min-w-0">
                 <span className="text-[10px] text-slate-500 font-bold block">{t('Highrich ID', 'ഹൈറിച്ച് ഐഡി')}</span>
-                <span className="font-mono font-bold text-slate-800">{childClaim?.highrichId || '—'}</span>
+                <span className="font-mono font-bold text-slate-800 break-all">{childClaim?.highrichId || '—'}</span>
               </div>
-              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5">
+              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5 min-w-0">
                 <span className="text-[10px] text-slate-500 font-bold block">{t('Mobile Number', 'മൊബൈൽ നമ്പർ')}</span>
-                <span className="font-mono font-bold text-slate-800">{childClaim?.individualMobile || (childClaim?.memberMobile && childClaim?.memberMobile !== childClaim?.userMobile ? childClaim?.memberMobile : '') || childClaim?.userMobile || childMobile || '—'}</span>
+                <span className="font-mono font-bold text-slate-800 break-all">{childClaim?.individualMobile || (childClaim?.memberMobile && childClaim?.memberMobile !== childClaim?.userMobile ? childClaim?.memberMobile : '') || childClaim?.userMobile || childMobile || '—'}</span>
               </div>
-              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5 col-span-2 sm:col-span-1">
+              <div className="bg-white/80 border border-emerald-100 rounded-xl p-2.5 min-w-0">
                 <span className="text-[10px] text-slate-500 font-bold block">{t('Total Pending', 'ആകെ മിച്ച തുക')}</span>
                 <span className="font-black text-emerald-700">₹{(childClaim?.totalPending || childTotalPending || 0).toLocaleString('en-IN')}</span>
               </div>
@@ -5817,27 +5839,39 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                     </div>
 
                      {/* Detailed Inputs */}
-                    <div className="space-y-3">
+                    <div className="space-y-3 w-full min-w-0">
                       {childCategories.map(catId => {
                         const cat = CATEGORIES.find(c => c.id === catId);
                         return (
-                          <div key={catId} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border-2 border-amber-100 rounded-2xl bg-amber-50/20 gap-3 shadow-xs">
-                            <span className="text-xs font-black text-slate-800 shrink-0 w-36 truncate">{cat?.heading || catId}</span>
-                            <div className="flex gap-2.5 flex-1">
-                              <Input 
-                                type="number" 
-                                placeholder={tPlaceholder('Paid Amount', 'നൽകിയ തുക')} 
-                                value={childCategoryDetails[catId]?.paid || ''}
-                                onChange={(e) => handleCategoryDetailChange('child', catId, 'paid', e.target.value)}
-                                className="h-10 border-2 border-amber-200 text-xs text-slate-800 bg-white rounded-xl font-bold"
-                              />
-                              <Input 
-                                type="number" 
-                                placeholder={tPlaceholder('Received Amount', 'ലഭിച്ച തുക')} 
-                                value={childCategoryDetails[catId]?.received || ''}
-                                onChange={(e) => handleCategoryDetailChange('child', catId, 'received', e.target.value)}
-                                className="h-10 border-2 border-emerald-200 text-xs text-slate-800 bg-white rounded-xl font-bold"
-                              />
+                          <div key={catId} className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 border-2 border-amber-100 rounded-2xl bg-amber-50/20 gap-3 shadow-xs w-full min-w-0">
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-700 text-white text-xs font-black tracking-wide shadow-2xs shrink-0 self-start sm:self-auto max-w-full">
+                              📂 <span className="truncate max-w-[200px] sm:max-w-none">{cat?.heading || catId}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full sm:w-80 min-w-0">
+                              <div className="space-y-1 w-full min-w-0">
+                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-600 text-white text-[10px] font-black uppercase">
+                                  💰 <span>{t('Paid', 'നൽകിയത്')}</span>
+                                </div>
+                                <Input 
+                                  type="number" 
+                                  placeholder={tPlaceholder('Paid Amount', 'നൽകിയ തുക')} 
+                                  value={childCategoryDetails[catId]?.paid || ''}
+                                  onChange={(e) => handleCategoryDetailChange('child', catId, 'paid', e.target.value)}
+                                  className="h-10 border-2 border-amber-200 text-xs text-slate-800 bg-white rounded-xl font-bold w-full min-w-0 shadow-2xs"
+                                />
+                              </div>
+                              <div className="space-y-1 w-full min-w-0">
+                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-700 text-white text-[10px] font-black uppercase">
+                                  💵 <span>{t('Received', 'ലഭിച്ചത്')}</span>
+                                </div>
+                                <Input 
+                                  type="number" 
+                                  placeholder={tPlaceholder('Received Amount', 'ലഭിച്ച തുക')} 
+                                  value={childCategoryDetails[catId]?.received || ''}
+                                  onChange={(e) => handleCategoryDetailChange('child', catId, 'received', e.target.value)}
+                                  className="h-10 border-2 border-emerald-200 text-xs text-slate-800 bg-white rounded-xl font-bold w-full min-w-0 shadow-2xs"
+                                />
+                              </div>
                             </div>
                           </div>
                         );
