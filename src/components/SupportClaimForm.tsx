@@ -3035,24 +3035,24 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
 
         {/* SUBMITTED CARD OR FULL FORM: 1. APPLICANT CLAIM FORM (SELF / PRIMARY) */}
         {hasSelf && !editingSelf && (
-          <div className="border-2 border-emerald-400/80 bg-gradient-to-br from-emerald-50/90 via-white to-amber-50/40 rounded-3xl shadow-lg p-5 sm:p-6 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-200/80 pb-3.5">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-emerald-300">
+          <div className="border-2 border-emerald-400/80 bg-gradient-to-br from-emerald-50/90 via-white to-amber-50/40 rounded-3xl shadow-lg p-4 sm:p-6 space-y-4 max-w-full overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-200/80 pb-3.5 w-full min-w-0">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 w-full sm:w-auto">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-emerald-300 shrink-0">
                   ✓ 1
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                    <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight truncate max-w-full">
                       {selfClaim?.userName || customerName || user.name}
                     </h3>
-                    <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black">
+                    <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black shrink-0 max-w-full">
                       {t('1. Self (സമർപ്പിച്ചു)', '1. സ്വന്തം (സമർപ്പിച്ചു)')}
                     </Badge>
                   </div>
-                  <p className="text-[11px] font-bold text-emerald-800 flex items-center gap-1.5 mt-0.5">
-                    <span>{t('Token / Serial No:', 'ഔദ്യോഗിക ടോക്കൺ നമ്പർ:')}</span>
-                    <span className="font-mono bg-emerald-600 text-white px-2 py-0.5 rounded-lg text-xs font-black shadow-2xs">
+                  <p className="text-[11px] font-bold text-emerald-800 flex flex-wrap items-center gap-1 sm:gap-1.5 mt-0.5 min-w-0">
+                    <span className="shrink-0">{t('Token / Serial No:', 'ഔദ്യോഗിക ടോക്കൺ നമ്പർ:')}</span>
+                    <span className="font-mono bg-emerald-600 text-white px-2 py-0.5 rounded-lg text-xs font-black shadow-2xs break-all max-w-full">
                       {selfClaim?.tokenNo || selfClaim?.serialNo || 'SUBMITTED'}
                     </span>
                   </p>
@@ -3071,10 +3071,10 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                     setCompleted(true);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="h-10 px-2.5 sm:px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer flex-1 sm:flex-initial min-w-0 max-w-full"
+                  className="min-h-10 h-auto py-2 px-2.5 sm:px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer flex-1 sm:flex-initial min-w-0 max-w-full whitespace-normal text-center"
                 >
                   <CreditCard className="w-4 h-4 text-white shrink-0" />
-                  <span className="truncate">{t('Serial Card', 'സീരിയൽ കാർഡ്')}</span>
+                  <span className="break-words leading-tight">{t('Serial Card', 'സീരിയൽ കാർഡ്')}</span>
                 </Button>
                 <Button
                   type="button"
@@ -3083,10 +3083,10 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                     setEditingSelf(true);
                     setSelfSelected(true);
                   }}
-                  className="h-10 px-2.5 sm:px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer flex-1 sm:flex-initial min-w-0 max-w-full"
+                  className="min-h-10 h-auto py-2 px-2.5 sm:px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer flex-1 sm:flex-initial min-w-0 max-w-full whitespace-normal text-center"
                 >
                   <Edit3 className="w-4 h-4 text-slate-950 shrink-0" />
-                  <span className="truncate">{t('Edit Form 1', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
+                  <span className="break-words leading-tight">{t('Edit Form 1', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
                 </Button>
               </div>
             </div>
@@ -3131,21 +3131,21 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-between pb-4 border-b-2 border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent p-4 sm:p-5 rounded-2xl gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-amber-300">
+          <div className="flex flex-wrap items-center justify-between pb-4 border-b-2 border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent p-4 sm:p-5 rounded-2xl gap-3 w-full min-w-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-amber-300 shrink-0">
                 👑 1
               </div>
-              <div>
-                <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+              <div className="min-w-0">
+                <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2 break-words">
                   {t('1. APPLICANT CLAIM FORM (PRIMARY / SELF)', '1. അപേക്ഷകന്റെ സ്വന്തം ക്ലെയിം ഫോം')}
                 </h3>
-                <p className="text-[10px] sm:text-xs font-bold text-amber-900 uppercase tracking-wider">
+                <p className="text-[10px] sm:text-xs font-bold text-amber-900 uppercase tracking-wider break-words">
                   {t('Primary Claimant Profile & Settlement Form', 'പ്രധാന അപേക്ഷകന്റെ വ്യക്തിഗത & സെറ്റിൽമെന്റ് ഫോം')}
                 </p>
               </div>
             </div>
-            <Badge className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black rounded-xl px-3 py-1 shadow-xs">
+            <Badge className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black rounded-xl px-3 py-1 shadow-xs shrink-0">
               {t('Form 1 (Self)', 'ഫോം 1 (സ്വന്തം)')}
             </Badge>
           </div>
@@ -3756,24 +3756,24 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
 
         {/* SUBMITTED CARD OR FULL FORM: 2. SPOUSE CLAIM FORM */}
         {hasSpouse && !editingSpouse && (
-          <div className="border-2 border-emerald-400/80 bg-gradient-to-br from-emerald-50/90 via-white to-amber-50/40 rounded-3xl shadow-lg p-5 sm:p-6 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-200/80 pb-3.5">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-emerald-300">
+          <div className="border-2 border-emerald-400/80 bg-gradient-to-br from-emerald-50/90 via-white to-amber-50/40 rounded-3xl shadow-lg p-4 sm:p-6 space-y-4 max-w-full overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-200/80 pb-3.5 w-full min-w-0">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 w-full sm:w-auto">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-emerald-300 shrink-0">
                   ✓ 2
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                    <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight truncate max-w-full">
                       {spouseClaim?.userName || spouseName}
                     </h3>
-                    <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black">
+                    <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black shrink-0 max-w-full">
                       {spouseClaim?.relation === 'Wife' ? t('2. Wife (ഭാര്യ - സമർപ്പിച്ചു)', '2. ഭാര്യ (സമർപ്പിച്ചു)') : t('2. Husband (ഭർത്താവ് - സമർപ്പിച്ചു)', '2. ഭർത്താവ് (സമർപ്പിച്ചു)')}
                     </Badge>
                   </div>
-                  <p className="text-[11px] font-bold text-emerald-800 flex items-center gap-1.5 mt-0.5">
-                    <span>{t('Token / Serial No:', 'ഔദ്യോഗിക ടോക്കൺ നമ്പർ:')}</span>
-                    <span className="font-mono bg-emerald-600 text-white px-2 py-0.5 rounded-lg text-xs font-black shadow-2xs">
+                  <p className="text-[11px] font-bold text-emerald-800 flex flex-wrap items-center gap-1 sm:gap-1.5 mt-0.5 min-w-0">
+                    <span className="shrink-0">{t('Token / Serial No:', 'ഔദ്യോഗിക ടോക്കൺ നമ്പർ:')}</span>
+                    <span className="font-mono bg-emerald-600 text-white px-2 py-0.5 rounded-lg text-xs font-black shadow-2xs break-all max-w-full">
                       {spouseClaim?.tokenNo || spouseClaim?.serialNo || 'SUBMITTED'}
                     </span>
                   </p>
@@ -3792,10 +3792,10 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                     setCompleted(true);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="h-10 px-2.5 sm:px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer flex-1 sm:flex-initial min-w-0 max-w-full"
+                  className="min-h-10 h-auto py-2 px-2.5 sm:px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer flex-1 sm:flex-initial min-w-0 max-w-full whitespace-normal text-center"
                 >
                   <CreditCard className="w-4 h-4 text-white shrink-0" />
-                  <span className="truncate">{t('Serial Card', 'സീരിയൽ കാർഡ്')}</span>
+                  <span className="break-words leading-tight">{t('Serial Card', 'സീരിയൽ കാർഡ്')}</span>
                 </Button>
                 <Button
                   type="button"
@@ -3804,10 +3804,10 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                     setEditingSpouse(true);
                     setSpouseSelected(true);
                   }}
-                  className="h-10 px-2.5 sm:px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer flex-1 sm:flex-initial min-w-0 max-w-full"
+                  className="min-h-10 h-auto py-2 px-2.5 sm:px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer flex-1 sm:flex-initial min-w-0 max-w-full whitespace-normal text-center"
                 >
                   <Edit3 className="w-4 h-4 text-slate-950 shrink-0" />
-                  <span className="truncate">{t('Edit Form 2', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
+                  <span className="break-words leading-tight">{t('Edit Form 2', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
                 </Button>
               </div>
             </div>
@@ -3852,21 +3852,21 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-between pb-4 border-b-2 border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent p-4 sm:p-5 rounded-2xl gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-amber-300">
+          <div className="flex flex-wrap items-center justify-between pb-4 border-b-2 border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent p-4 sm:p-5 rounded-2xl gap-3 w-full min-w-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-amber-300 shrink-0">
                 👑 2
               </div>
-              <div>
-                <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+              <div className="min-w-0">
+                <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2 break-words">
                   {t('2. SPOUSE CLAIM FORM (WIFE / HUSBAND)', '2. ഭാര്യ / ഭർത്താവ് ക്ലെയിം ഫോം')}
                 </h3>
-                <p className="text-[10px] sm:text-xs font-bold text-amber-900 uppercase tracking-wider">
+                <p className="text-[10px] sm:text-xs font-bold text-amber-900 uppercase tracking-wider break-words">
                   {t('Spouse Settlement Claim Form', 'ഭാര്യ അല്ലെങ്കിൽ ഭർത്താവിന്റെ സെറ്റിൽമെന്റ് ഫോം')}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 shrink-0">
               <Badge className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black rounded-xl px-3 py-1 shadow-xs">
                 {t('Form 2 (Spouse)', 'ഫോം 2 (സ്പൗസ്)')}
               </Badge>
@@ -4555,24 +4555,24 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
 
         {/* SUBMITTED CARD OR FULL FORM: 3. PARENT CLAIM FORM */}
         {hasParent && !editingParent && (
-          <div className="border-2 border-emerald-400/80 bg-gradient-to-br from-emerald-50/90 via-white to-amber-50/40 rounded-3xl shadow-lg p-5 sm:p-6 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-200/80 pb-3.5">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-emerald-300">
+          <div className="border-2 border-emerald-400/80 bg-gradient-to-br from-emerald-50/90 via-white to-amber-50/40 rounded-3xl shadow-lg p-4 sm:p-6 space-y-4 max-w-full overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-200/80 pb-3.5 w-full min-w-0">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 w-full sm:w-auto">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-emerald-300 shrink-0">
                   ✓ 3
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                    <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight truncate max-w-full">
                       {parentClaim?.userName || parentName}
                     </h3>
-                    <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black">
+                    <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black shrink-0 max-w-full">
                       {parentClaim?.relation === 'Mother' ? t('3. Mother (അമ്മ - സമർപ്പിച്ചു)', '3. അമ്മ (സമർപ്പിച്ചു)') : t('3. Father (അച്ഛൻ - സമർപ്പിച്ചു)', '3. അച്ഛൻ (സമർപ്പിച്ചു)')}
                     </Badge>
                   </div>
-                  <p className="text-[11px] font-bold text-emerald-800 flex items-center gap-1.5 mt-0.5">
-                    <span>{t('Token / Serial No:', 'ഔദ്യോഗിക ടോക്കൺ നമ്പർ:')}</span>
-                    <span className="font-mono bg-emerald-600 text-white px-2 py-0.5 rounded-lg text-xs font-black shadow-2xs">
+                  <p className="text-[11px] font-bold text-emerald-800 flex flex-wrap items-center gap-1 sm:gap-1.5 mt-0.5 min-w-0">
+                    <span className="shrink-0">{t('Token / Serial No:', 'ഔദ്യോഗിക ടോക്കൺ നമ്പർ:')}</span>
+                    <span className="font-mono bg-emerald-600 text-white px-2 py-0.5 rounded-lg text-xs font-black shadow-2xs break-all max-w-full">
                       {parentClaim?.tokenNo || parentClaim?.serialNo || 'SUBMITTED'}
                     </span>
                   </p>
@@ -4591,10 +4591,10 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                     setCompleted(true);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="h-10 px-2.5 sm:px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer flex-1 sm:flex-initial min-w-0 max-w-full"
+                  className="min-h-10 h-auto py-2 px-2.5 sm:px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer flex-1 sm:flex-initial min-w-0 max-w-full whitespace-normal text-center"
                 >
                   <CreditCard className="w-4 h-4 text-white shrink-0" />
-                  <span className="truncate">{t('Serial Card', 'സീരിയൽ കാർഡ്')}</span>
+                  <span className="break-words leading-tight">{t('Serial Card', 'സീരിയൽ കാർഡ്')}</span>
                 </Button>
                 <Button
                   type="button"
@@ -4603,10 +4603,10 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                     setEditingParent(true);
                     setParentSelected(true);
                   }}
-                  className="h-10 px-2.5 sm:px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer flex-1 sm:flex-initial min-w-0 max-w-full"
+                  className="min-h-10 h-auto py-2 px-2.5 sm:px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer flex-1 sm:flex-initial min-w-0 max-w-full whitespace-normal text-center"
                 >
                   <Edit3 className="w-4 h-4 text-slate-950 shrink-0" />
-                  <span className="truncate">{t('Edit Form 3', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
+                  <span className="break-words leading-tight">{t('Edit Form 3', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
                 </Button>
               </div>
             </div>
@@ -4651,21 +4651,21 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-between pb-4 border-b-2 border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent p-4 sm:p-5 rounded-2xl gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-amber-300">
+          <div className="flex flex-wrap items-center justify-between pb-4 border-b-2 border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent p-4 sm:p-5 rounded-2xl gap-3 w-full min-w-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-amber-300 shrink-0">
                 👑 3
               </div>
-              <div>
-                <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+              <div className="min-w-0">
+                <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2 break-words">
                   {t('3. PARENT CLAIM FORM (MOTHER / FATHER)', '3. മാതാവ് / പിതാവ് ക്ലെയിം ഫോം')}
                 </h3>
-                <p className="text-[10px] sm:text-xs font-bold text-amber-900 uppercase tracking-wider">
+                <p className="text-[10px] sm:text-xs font-bold text-amber-900 uppercase tracking-wider break-words">
                   {t('Parent Settlement Claim Form', 'മാതാവ് അല്ലെങ്കിൽ പിതാവിന്റെ സെറ്റിൽമെന്റ് ഫോം')}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 shrink-0">
               <Badge className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black rounded-xl px-3 py-1 shadow-xs">
                 {t('Form 3 (Parent)', 'ഫോം 3 (മാതാവ്/പിതാവ്)')}
               </Badge>
@@ -5354,24 +5354,24 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
 
         {/* SUBMITTED CARD OR FULL FORM: 4. CHILD CLAIM FORM */}
         {hasChild && !editingChild && (
-          <div className="border-2 border-emerald-400/80 bg-gradient-to-br from-emerald-50/90 via-white to-amber-50/40 rounded-3xl shadow-lg p-5 sm:p-6 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-200/80 pb-3.5">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-emerald-300">
+          <div className="border-2 border-emerald-400/80 bg-gradient-to-br from-emerald-50/90 via-white to-amber-50/40 rounded-3xl shadow-lg p-4 sm:p-6 space-y-4 max-w-full overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-200/80 pb-3.5 w-full min-w-0">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 w-full sm:w-auto">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-emerald-300 shrink-0">
                   ✓ 4
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                    <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight truncate max-w-full">
                       {childClaim?.userName || childName}
                     </h3>
-                    <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black">
+                    <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black shrink-0 max-w-full">
                       {childClaim?.relation === 'Son' ? t('4. Son (മകൻ - സമർപ്പിച്ചു)', '4. മകൻ (സമർപ്പിച്ചു)') : t('4. Daughter (മകൾ - സമർപ്പിച്ചു)', '4. മകൾ (സമർപ്പിച്ചു)')}
                     </Badge>
                   </div>
-                  <p className="text-[11px] font-bold text-emerald-800 flex items-center gap-1.5 mt-0.5">
-                    <span>{t('Token / Serial No:', 'ഔദ്യോഗിക ടോക്കൺ നമ്പർ:')}</span>
-                    <span className="font-mono bg-emerald-600 text-white px-2 py-0.5 rounded-lg text-xs font-black shadow-2xs">
+                  <p className="text-[11px] font-bold text-emerald-800 flex flex-wrap items-center gap-1 sm:gap-1.5 mt-0.5 min-w-0">
+                    <span className="shrink-0">{t('Token / Serial No:', 'ഔദ്യോഗിക ടോക്കൺ നമ്പർ:')}</span>
+                    <span className="font-mono bg-emerald-600 text-white px-2 py-0.5 rounded-lg text-xs font-black shadow-2xs break-all max-w-full">
                       {childClaim?.tokenNo || childClaim?.serialNo || 'SUBMITTED'}
                     </span>
                   </p>
@@ -5390,10 +5390,10 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                     setCompleted(true);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="h-10 px-2.5 sm:px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer flex-1 sm:flex-initial min-w-0 max-w-full"
+                  className="min-h-10 h-auto py-2 px-2.5 sm:px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer flex-1 sm:flex-initial min-w-0 max-w-full whitespace-normal text-center"
                 >
                   <CreditCard className="w-4 h-4 text-white shrink-0" />
-                  <span className="truncate">{t('Serial Card', 'സീരിയൽ കാർഡ്')}</span>
+                  <span className="break-words leading-tight">{t('Serial Card', 'സീരിയൽ കാർഡ്')}</span>
                 </Button>
                 <Button
                   type="button"
@@ -5402,10 +5402,10 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                     setEditingChild(true);
                     setChildSelected(true);
                   }}
-                  className="h-10 px-2.5 sm:px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer flex-1 sm:flex-initial min-w-0 max-w-full"
+                  className="min-h-10 h-auto py-2 px-2.5 sm:px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer flex-1 sm:flex-initial min-w-0 max-w-full whitespace-normal text-center"
                 >
                   <Edit3 className="w-4 h-4 text-slate-950 shrink-0" />
-                  <span className="truncate">{t('Edit Form 4', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
+                  <span className="break-words leading-tight">{t('Edit Form 4', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
                 </Button>
               </div>
             </div>
@@ -5450,21 +5450,21 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-between pb-4 border-b-2 border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent p-4 sm:p-5 rounded-2xl gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-amber-300">
+          <div className="flex flex-wrap items-center justify-between pb-4 border-b-2 border-amber-400/60 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent p-4 sm:p-5 rounded-2xl gap-3 w-full min-w-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-amber-300 shrink-0">
                 👑 4
               </div>
-              <div>
-                <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+              <div className="min-w-0">
+                <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2 break-words">
                   {t('4. CHILD CLAIM FORM (SON / DAUGHTER)', '4. മകൻ / മകൾ ക്ലെയിം ഫോം')}
                 </h3>
-                <p className="text-[10px] sm:text-xs font-bold text-amber-900 uppercase tracking-wider">
+                <p className="text-[10px] sm:text-xs font-bold text-amber-900 uppercase tracking-wider break-words">
                   {t('Child Settlement Claim Form', 'മകൻ അല്ലെങ്കിൽ മകളുടെ സെറ്റിൽമെന്റ് ഫോം')}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 shrink-0">
               <Badge className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black rounded-xl px-3 py-1 shadow-xs">
                 {t('Form 4 (Child)', 'ഫോം 4 (മക്കൾ)')}
               </Badge>
@@ -6154,15 +6154,15 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
       </div>
 
       {/* STICKY BOTTOM ACTIONS */}
-      <div className="fixed bottom-0 left-0 right-0 p-3 sm:p-4 bg-white/95 backdrop-blur-2xl border-t border-slate-200 z-20 shadow-xl">
-        <div className="max-w-5xl mx-auto flex items-center justify-center gap-3 w-full">
+      <div className="fixed bottom-0 left-0 right-0 p-3 sm:p-4 bg-white/95 backdrop-blur-2xl border-t border-slate-200 z-20 shadow-xl w-full max-w-full">
+        <div className="max-w-5xl mx-auto flex items-center justify-center gap-3 w-full min-w-0">
           <Button
             type="button"
             onClick={handleExitToDashboard}
-            className="h-12 w-full rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg cursor-pointer transition-all active:scale-[0.99]"
+            className="min-h-12 h-auto py-2.5 px-3 w-full max-w-full min-w-0 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg cursor-pointer transition-all active:scale-[0.99] whitespace-normal text-center"
           >
-            <LayoutDashboard className="w-4 h-4 text-amber-400" />
-            <span>{t('Back to Dashboard / ID Card', 'തിരികെ ഡാഷ്‌ബോർഡിലേക്ക് / ഐഡി കാർഡ്')}</span>
+            <LayoutDashboard className="w-4 h-4 text-amber-400 shrink-0" />
+            <span className="break-words text-center min-w-0 leading-tight">{t('Back to Dashboard / ID Card', 'തിരികെ ഡാഷ്‌ബോർഡിലേക്ക് / ഐഡി കാർഡ്')}</span>
           </Button>
         </div>
       </div>
