@@ -367,16 +367,9 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
                 </svg>
                 <div className="flex flex-col items-start text-left leading-tight">
                   <span className="font-extrabold text-xs sm:text-sm text-slate-900">Sign In with Google</span>
-                  <span className="text-[10px] text-blue-700 font-bold lowercase tracking-normal">അഡ്മിൻ & മെമ്പർ ഗൂഗിൾ ലോഗിൻ</span>
+                  <span className="text-[10px] text-blue-700 font-bold lowercase tracking-normal">സുരക്ഷിതമായി ലോഗിൻ ചെയ്യുക</span>
                 </div>
               </Button>
-
-              <div className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/80 flex items-start gap-2 text-left">
-                <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <p className="text-[10px] text-amber-900 font-semibold leading-relaxed">
-                  <strong>അഡ്മിൻ ശ്രദ്ധിക്കുക:</strong> അഡ്മിൻ ഇമെയിൽ ഐഡി (<code className="text-amber-800 font-bold">kmabarikiyafoods@gmail.com</code> അല്ലെങ്കിൽ <code className="text-amber-800 font-bold">admin@hcrs.society</code>) ഉപയോഗിച്ച് Google Sign-In ചെയ്താൽ നേരിട്ട് അഡ്മിൻ പാനലിലേക്ക് പ്രവേശിക്കാം.
-                </p>
-              </div>
             </form>
           </Form>
         </div>

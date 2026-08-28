@@ -44,7 +44,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, query, where, getDocs, deleteDoc, doc, serverTimestamp, updateDoc, runTransaction, setDoc, limit } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, deleteDoc, doc, serverTimestamp, updateDoc, runTransaction, setDoc, limit, writeBatch, onSnapshot } from 'firebase/firestore';
 import { subscribeToOrgSettings, OrgSettings, defaultSettings } from '@/src/lib/cms';
 import { printCourtComboReport, printCourtClaimReport, shareCourtComboPdf, downloadCourtComboPdf, getCourtComboHtml, getSingleCourtClaimHtml } from '../lib/claimPrint';
 import { sendWAClaimMessage } from '../lib/whatsapp';
@@ -111,9 +111,10 @@ function ClaimSerialGuide({ formLang = 'bilingual' }: { formLang?: FormLanguage 
 
 interface SupportClaimFormProps {
   user: any;
+  initialClaims?: any[];
   onClose?: () => void;
   onBack?: () => void;
-  onSubmitSuccess?: () => void;
+  onSubmitSuccess?: (updatedClaims: any[]) => void;
 }
 
 const CATEGORIES_DEF = [
@@ -348,7 +349,7 @@ const MissingFieldsBanner = ({
   );
 };
 
-export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProps) {
+export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmitSuccess }: SupportClaimFormProps) {
   const handleExitToDashboard = () => {
     if (onBack) {
       onBack();
@@ -361,11 +362,33 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
   const [loading, setLoading] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [orgSettings, setOrgSettings] = useState<OrgSettings>(defaultSettings);
-  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
-  const [submittedClaims, setSubmittedClaims] = useState<any[]>([]);
+  const [alreadySubmitted, setAlreadySubmitted] = useState(() => {
+    if (initialClaims && Array.isArray(initialClaims) && initialClaims.length > 0) {
+      const hasSelfDb = initialClaims.some(c => c.relation === 'Self');
+      const hasParentDb = initialClaims.some(c => ['Mother', 'Father'].includes(c.relation));
+      const hasChildDb = initialClaims.some(c => ['Son', 'Daughter'].includes(c.relation));
+      const hasSpouseDb = initialClaims.some(c => ['Wife', 'Husband'].includes(c.relation));
+      return hasSelfDb && hasParentDb && hasChildDb && hasSpouseDb;
+    }
+    return false;
+  });
+  const [submittedClaims, setSubmittedClaims] = useState<any[]>(() => (initialClaims && Array.isArray(initialClaims)) ? initialClaims : []);
   const [formMode, setFormMode] = useState<'statement' | 'fill'>('fill');
   const [selectedStatementIdx, setSelectedStatementIdx] = useState<number>(-1);
   const [newlyAssignedTokens, setNewlyAssignedTokens] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (initialClaims && Array.isArray(initialClaims) && initialClaims.length > 0 && submittedClaims.length === 0) {
+      setSubmittedClaims(initialClaims);
+      const hasSelfDb = initialClaims.some(c => c.relation === 'Self');
+      const hasParentDb = initialClaims.some(c => ['Mother', 'Father'].includes(c.relation));
+      const hasChildDb = initialClaims.some(c => ['Son', 'Daughter'].includes(c.relation));
+      const hasSpouseDb = initialClaims.some(c => ['Wife', 'Husband'].includes(c.relation));
+      if (hasSelfDb && hasParentDb && hasChildDb && hasSpouseDb) {
+        setAlreadySubmitted(true);
+      }
+    }
+  }, [initialClaims]);
   
   // Validation error state tracking
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -1070,24 +1093,24 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
 
       let docsList = Array.from(claimsMap.values());
 
-      // --- DYNAMIC CLAIM UID AUTO-HEALING ---
-      // If they logged in and are active, heal claims registered with 'offline_' prefix
+      // --- DYNAMIC CLAIM UID AUTO-HEALING (Non-blocking background) ---
       if (activeUid && !activeUid.startsWith('offline_') && docsList.length > 0) {
-        for (const claim of docsList) {
-          if (claim.uid !== activeUid) {
-            console.log(`Auto-healing offline claim ID "${claim.id}" UID: ${claim.uid} -> ${activeUid}`);
-            try {
-              await updateDoc(doc(db, 'claims', claim.id), {
-                uid: activeUid,
-                userMobile: cleanMobile || claim.userMobile || ''
-              });
-              // Update local memory reference
-              claim.uid = activeUid;
-              if (cleanMobile) claim.userMobile = cleanMobile;
-            } catch (err) {
-              console.warn("Failed to background auto-heal claim UID:", err);
-            }
-          }
+        const unhealed = docsList.filter(c => c.uid !== activeUid);
+        if (unhealed.length > 0) {
+          Promise.all(
+            unhealed.map(async (claim) => {
+              try {
+                await updateDoc(doc(db, 'claims', claim.id), {
+                  uid: activeUid,
+                  userMobile: cleanMobile || claim.userMobile || ''
+                });
+                claim.uid = activeUid;
+                if (cleanMobile) claim.userMobile = cleanMobile;
+              } catch (err) {
+                console.warn("Background auto-heal notice:", err);
+              }
+            })
+          ).catch(() => {});
         }
       }
 
@@ -1857,87 +1880,47 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
       const prefix = isRed ? 'R' : isOrange ? 'O' : 'G';
 
       if (claimsToSubmitCount > 0) {
-        // Auto-check: if all claims were deleted from database, ensure system counter resets to 0 so next claim starts from 1
-        try {
-          const sampleClaimsSnap = await getDocs(query(collection(db, 'claims'), limit(1)));
-          if (sampleClaimsSnap.empty) {
-            await setDoc(doc(db, 'system', 'totals'), {
-              redClaimsCounter: 0,
-              orangeClaimsCounter: 0,
-              greenClaimsCounter: 0,
-              claimsCounter: 0
-            }, { merge: true });
-          }
-        } catch (checkErr) {
-          console.warn("Claims pre-check notice:", checkErr);
-        }
-
         const systemTotalsRef = doc(db, 'system', 'totals');
-        await runTransaction(db, async (transaction) => {
-          const sysDoc = await transaction.get(systemTotalsRef);
-          let currentCounter = 0;
-          if (sysDoc.exists()) {
-            const data = sysDoc.data();
-            if (prefix === 'R') {
-              currentCounter = data.redClaimsCounter || 0;
-            } else if (prefix === 'O') {
-              currentCounter = data.orangeClaimsCounter || 0;
-            } else if (prefix === 'G') {
-              currentCounter = data.greenClaimsCounter || 0;
-            } else {
-              currentCounter = data.claimsCounter || 0;
+        try {
+          await runTransaction(db, async (transaction) => {
+            const sysDoc = await transaction.get(systemTotalsRef);
+            let currentCounter = 0;
+            if (sysDoc.exists()) {
+              const data = sysDoc.data();
+              if (prefix === 'R') {
+                currentCounter = data.redClaimsCounter || 0;
+              } else if (prefix === 'O') {
+                currentCounter = data.orangeClaimsCounter || 0;
+              } else if (prefix === 'G') {
+                currentCounter = data.greenClaimsCounter || 0;
+              } else {
+                currentCounter = data.claimsCounter || 0;
+              }
             }
-          }
-          baseTokenNo = currentCounter;
-          
-          const updates: any = {};
-          if (prefix === 'R') {
-            updates.redClaimsCounter = currentCounter + claimsToSubmitCount;
-          } else if (prefix === 'O') {
-            updates.orangeClaimsCounter = currentCounter + claimsToSubmitCount;
-          } else if (prefix === 'G') {
-            updates.greenClaimsCounter = currentCounter + claimsToSubmitCount;
-          } else {
-            updates.claimsCounter = currentCounter + claimsToSubmitCount;
-          }
-          
-          transaction.set(systemTotalsRef, updates, { merge: true });
-        });
+            baseTokenNo = currentCounter;
+            
+            const updates: any = {};
+            if (prefix === 'R') {
+              updates.redClaimsCounter = currentCounter + claimsToSubmitCount;
+            } else if (prefix === 'O') {
+              updates.orangeClaimsCounter = currentCounter + claimsToSubmitCount;
+            } else if (prefix === 'G') {
+              updates.greenClaimsCounter = currentCounter + claimsToSubmitCount;
+            } else {
+              updates.claimsCounter = currentCounter + claimsToSubmitCount;
+            }
+            
+            transaction.set(systemTotalsRef, updates, { merge: true });
+          });
+        } catch (txErr) {
+          console.warn("Counter transaction fallback notice:", txErr);
+          baseTokenNo = Math.floor((Date.now() / 1000) % 100000);
+        }
       }
 
       let currentTokenOffset = 0;
-
-      const saveClaimRecord = async (claimData: any, existingId?: string) => {
-        try {
-          if (existingId) {
-            await setDoc(doc(db, 'claims', existingId), claimData, { merge: true });
-            return existingId;
-          } else {
-            const ref = await addDoc(collection(db, 'claims'), claimData);
-            return ref.id;
-          }
-        } catch (clientErr) {
-          console.warn("Client Firestore write failed, attempting server fallback API:", clientErr);
-          try {
-            const res = await fetch('/api/submit-claim', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                claim: claimData,
-                claimId: existingId,
-                userMobile: customerMobile || user.mobile,
-                uid: user.uid
-              })
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data?.error || 'Server submission failed');
-            return data.id || existingId || 'ok';
-          } catch (serverErr) {
-            console.error("Server API fallback also failed:", serverErr);
-            throw clientErr;
-          }
-        }
-      };
+      const newlySavedClaimDocs: any[] = [];
+      const batch = writeBatch(db);
 
       // 1. Submit or Update Self Claim
       if (shouldProcessSelf) {
@@ -1951,7 +1934,10 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           ...commonData,
           relation: 'Self',
           relationLabel: 'Self (സ്വന്തം)',
-          userName: selfName || customerName || user.name,
+          userName: selfName || customerName || user.name || '',
+          name: selfName || customerName || user.name || '',
+          claimantName: selfName || customerName || user.name || '',
+          selfName: selfName || customerName || user.name || '',
           userMobile: customerMobile || user.mobile || '',
           primaryMobile: customerMobile || user.mobile || '',
           mainMemberMobile: customerMobile || user.mobile || '',
@@ -1982,8 +1968,11 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           notes: selfNotes,
           tokenNo: tokenVal,
           serialNo: tokenVal,
+          updatedAt: new Date().toISOString()
         };
-        await saveClaimRecord(newSelfClaim, selfClaim?.id);
+        const selfDocRef = selfClaim?.id ? doc(db, 'claims', selfClaim.id) : doc(collection(db, 'claims'));
+        batch.set(selfDocRef, newSelfClaim, { merge: true });
+        newlySavedClaimDocs.push({ ...newSelfClaim, id: selfDocRef.id });
       }
 
       // 2. Submit or Update Spouse Claim (ഭാര്യ / ഭർത്താവ്)
@@ -2015,6 +2004,9 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           relation: spouseRelation,
           relationLabel: spouseRelation === 'Wife' ? 'ഭാര്യ (Wife)' : 'ഭർത്താവ് (Husband)',
           userName: spouseName,
+          name: spouseName,
+          claimantName: spouseName,
+          spouseName: spouseName,
           userAddress: effectiveSpouseAddr,
           address: effectiveSpouseAddr,
           houseName: effectiveSpouseAddr,
@@ -2056,8 +2048,11 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           notes: spouseNotes,
           tokenNo: tokenVal,
           serialNo: tokenVal,
+          updatedAt: new Date().toISOString()
         };
-        await saveClaimRecord(newSpouseClaim, spouseClaim?.id);
+        const spouseDocRef = spouseClaim?.id ? doc(db, 'claims', spouseClaim.id) : doc(collection(db, 'claims'));
+        batch.set(spouseDocRef, newSpouseClaim, { merge: true });
+        newlySavedClaimDocs.push({ ...newSpouseClaim, id: spouseDocRef.id });
       }
 
       // 3. Submit or Update Parent Claim (അമ്മ / അച്ഛൻ)
@@ -2089,6 +2084,9 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           relation: parentRelation,
           relationLabel: parentRelation === 'Mother' ? 'അമ്മ (Mother)' : 'അച്ഛൻ (Father)',
           userName: parentName,
+          name: parentName,
+          claimantName: parentName,
+          parentName: parentName,
           userAddress: effectiveParentAddr,
           address: effectiveParentAddr,
           houseName: effectiveParentAddr,
@@ -2130,8 +2128,11 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           notes: parentNotes,
           tokenNo: tokenVal,
           serialNo: tokenVal,
+          updatedAt: new Date().toISOString()
         };
-        await saveClaimRecord(newParentClaim, parentClaim?.id);
+        const parentDocRef = parentClaim?.id ? doc(db, 'claims', parentClaim.id) : doc(collection(db, 'claims'));
+        batch.set(parentDocRef, newParentClaim, { merge: true });
+        newlySavedClaimDocs.push({ ...newParentClaim, id: parentDocRef.id });
       }
 
       // 4. Submit or Update Child Claim (മകൻ / മകൾ)
@@ -2163,6 +2164,9 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           relation: childRelation,
           relationLabel: childRelation === 'Son' ? 'മകൻ (Son)' : 'മകൾ (Daughter)',
           userName: childName,
+          name: childName,
+          claimantName: childName,
+          childName: childName,
           userAddress: effectiveChildAddr,
           address: effectiveChildAddr,
           houseName: effectiveChildAddr,
@@ -2204,43 +2208,54 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
           notes: childNotes,
           tokenNo: tokenVal,
           serialNo: tokenVal,
+          updatedAt: new Date().toISOString()
         };
-        await saveClaimRecord(newChildClaim, childClaim?.id);
+        const childDocRef = childClaim?.id ? doc(db, 'claims', childClaim.id) : doc(collection(db, 'claims'));
+        batch.set(childDocRef, newChildClaim, { merge: true });
+        newlySavedClaimDocs.push({ ...newChildClaim, id: childDocRef.id });
       }
+
+      // Fast atomic batch commit
+      await batch.commit();
 
       if (shouldProcessSelf) setEditingSelf(false);
       if (shouldProcessSpouse) setEditingSpouse(false);
       if (shouldProcessParent) setEditingParent(false);
       if (shouldProcessChild) setEditingChild(false);
-      await checkExistingClaims();
+
+      // Collate updated claims list in memory instantly
+      const updatedClaimsMap = new Map<string, any>();
+      submittedClaims.forEach(c => updatedClaimsMap.set(c.id, c));
+      newlySavedClaimDocs.forEach(c => updatedClaimsMap.set(c.id, c));
+      const fullUpdatedClaimsList = Array.from(updatedClaimsMap.values());
+
+      setSubmittedClaims(fullUpdatedClaimsList);
+
+      const hasSelfDb = fullUpdatedClaimsList.some(c => c.relation === 'Self');
+      const hasParentDb = fullUpdatedClaimsList.some(c => ['Mother', 'Father'].includes(c.relation));
+      const hasChildDb = fullUpdatedClaimsList.some(c => ['Son', 'Daughter'].includes(c.relation));
+      const hasSpouseDb = fullUpdatedClaimsList.some(c => ['Wife', 'Husband'].includes(c.relation));
+      if (hasSelfDb && hasParentDb && hasChildDb && hasSpouseDb) {
+        setAlreadySubmitted(true);
+      }
 
       // Gather ALL tokens for all submitted members so Main applicant & family cards are always visible
       const allTokensMap: Record<string, string> = { ...assignedTokens };
-      if (selfClaim?.tokenNo || selfClaim?.serialNo) {
-        if (!allTokensMap['Self']) {
-          allTokensMap['Self'] = String(selfClaim.tokenNo || selfClaim.serialNo);
+      fullUpdatedClaimsList.forEach(c => {
+        if (c.tokenNo || c.serialNo) {
+          const key = c.relation || 'Self';
+          if (!allTokensMap[key]) {
+            allTokensMap[key] = String(c.tokenNo || c.serialNo);
+          }
         }
-      }
-      if (spouseClaim?.tokenNo || spouseClaim?.serialNo) {
-        const key = spouseClaim.relation || 'Spouse';
-        if (!allTokensMap[key]) {
-          allTokensMap[key] = String(spouseClaim.tokenNo || spouseClaim.serialNo);
-        }
-      }
-      if (parentClaim?.tokenNo || parentClaim?.serialNo) {
-        const key = parentClaim.relation || 'Parent';
-        if (!allTokensMap[key]) {
-          allTokensMap[key] = String(parentClaim.tokenNo || parentClaim.serialNo);
-        }
-      }
-      if (childClaim?.tokenNo || childClaim?.serialNo) {
-        const key = childClaim.relation || 'Child';
-        if (!allTokensMap[key]) {
-          allTokensMap[key] = String(childClaim.tokenNo || childClaim.serialNo);
-        }
-      }
+      });
 
       setNewlyAssignedTokens(allTokensMap);
+
+      // Notify parent component immediately so Dashboard / ID Card reflects the new total amount & forms without re-login!
+      if (onSubmitSuccess) {
+        onSubmitSuccess(fullUpdatedClaimsList);
+      }
 
       // Trigger automated WhatsApp notification to the member if enabled in settings
       try {

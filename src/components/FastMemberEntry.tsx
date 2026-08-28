@@ -620,12 +620,11 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
             <div className="space-y-2">
               <Label className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
                 <User className="w-3.5 h-3.5 text-brand-magenta" />
-                Leader / Sponsor Name <span className="text-red-500">*</span>
+                Leader / Sponsor Name <span className="text-[10px] font-bold text-slate-500 normal-case">(Optional)</span>
               </Label>
               <Input 
                 type="text"
-                required
-                placeholder="Leader Name"
+                placeholder="Leader Name (Optional)"
                 className="h-12 rounded-xl border-2 border-slate-300 px-4 focus-visible:ring-brand-blue text-sm font-bold text-slate-950 bg-white placeholder:text-slate-400 shadow-xs"
                 value={sponsorName}
                 onChange={e => setSponsorName(e.target.value)}
@@ -634,14 +633,13 @@ export default function FastMemberEntry({ adminUser, districtQuotas, districtQuo
             <div className="space-y-2">
               <Label className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
                 <Phone className="w-3.5 h-3.5 text-brand-magenta" />
-                Leader Mobile Number <span className="text-red-500">*</span>
+                Leader Mobile Number <span className="text-[10px] font-bold text-slate-500 normal-case">(Optional)</span>
               </Label>
               <div className="relative">
                 <Input 
                   type="tel"
-                  required
                   maxLength={10}
-                  placeholder="10-digit number"
+                  placeholder="10-digit number (Optional)"
                   className="h-12 rounded-xl border-2 border-slate-300 px-4 focus-visible:ring-brand-blue text-sm font-bold font-mono text-slate-950 bg-white placeholder:text-slate-400 shadow-xs"
                   value={sponsorMobile}
                   onChange={e => setSponsorMobile(e.target.value.replace(/\D/g, ''))}

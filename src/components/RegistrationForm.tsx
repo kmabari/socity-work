@@ -55,8 +55,10 @@ const formSchema = z.object({
   state: z.string().min(1, 'Select state / സ്റ്റേറ്റ് തിരഞ്ഞെടുക്കുക'),
   district: z.string().min(1, 'Select district / ജില്ല തിരഞ്ഞെടുക്കുക'),
   assemblyConstituency: z.string().min(1, 'Assembly constituency is required / മണ്ഡലം തിരഞ്ഞെടുക്കുക'),
-  sponsorName: z.string().min(2, 'Leader / Sponsor Name is required / ലീഡറുടെ പേര് നൽകുക'),
-  sponsorMobile: z.string().regex(/^\d{10}$/, 'Enter valid 10-digit Leader / Sponsor Mobile / 10 അക്ക ലീഡറുടെ മൊബൈൽ നമ്പർ നൽകുക'),
+  sponsorName: z.string().optional().or(z.literal('')),
+  sponsorMobile: z.string().refine(val => !val || /^\d{10}$/.test(val), {
+    message: 'Enter valid 10-digit Leader / Sponsor Mobile / 10 അക്ക ലീഡറുടെ മൊബൈൽ നമ്പർ നൽകുക'
+  }).optional().or(z.literal('')),
   pin: z.string().min(6, 'Enter at least 6 characters for login password / കുറഞ്ഞത് 6 അക്ക പാസ്‌വേഡ് നൽകുക'),
 });
 
@@ -140,6 +142,48 @@ export default function RegistrationForm({
       pin: '123456',
     },
   });
+
+  // Auto-detect district from URL query parameters (distinct district links)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const rawDist = params.get('district') || params.get('d') || params.get('dist');
+    if (rawDist) {
+      const cleanDist = rawDist.trim().toUpperCase();
+      const rtoMap: Record<string, string> = {
+        'KL-01': 'TVM', 'KL01': 'TVM', '01': 'TVM', '1': 'TVM',
+        'KL-02': 'KLM', 'KL02': 'KLM', '02': 'KLM', '2': 'KLM',
+        'KL-03': 'PTA', 'KL03': 'PTA', '03': 'PTA', '3': 'PTA',
+        'KL-04': 'ALP', 'KL04': 'ALP', '04': 'ALP', '4': 'ALP',
+        'KL-05': 'KTM', 'KL05': 'KTM', '05': 'KTM', '5': 'KTM',
+        'KL-06': 'IDK', 'KL06': 'IDK', '06': 'IDK', '6': 'IDK',
+        'KL-07': 'EKM', 'KL07': 'EKM', '07': 'EKM', '7': 'EKM',
+        'KL-08': 'TCR', 'KL08': 'TCR', '08': 'TCR', '8': 'TCR',
+        'KL-09': 'PKD', 'KL09': 'PKD', '09': 'PKD', '9': 'PKD',
+        'KL-10': 'MLP', 'KL10': 'MLP', '10': 'MLP',
+        'KL-11': 'KOZ', 'KL11': 'KOZ', '11': 'KOZ',
+        'KL-12': 'WYD', 'KL12': 'WYD', '12': 'WYD',
+        'KL-13': 'KNR', 'KL13': 'KNR', '13': 'KNR',
+        'KL-14': 'KSD', 'KL14': 'KSD', '14': 'KSD',
+      };
+
+      let matchedCode: string | null = null;
+      if (rtoMap[cleanDist]) {
+        matchedCode = rtoMap[cleanDist];
+      } else {
+        const found = DISTRICTS.find(d => 
+          d.code.toUpperCase() === cleanDist || 
+          d.name.toUpperCase() === cleanDist ||
+          d.name.toUpperCase().startsWith(cleanDist)
+        );
+        if (found) matchedCode = found.code;
+      }
+
+      if (matchedCode) {
+        form.setValue('district', matchedCode, { shouldValidate: true });
+      }
+    }
+  }, [form]);
 
   // Watch sponsorMobile for auto-verifying existing member leaders
   const watchedSponsorMobile = form.watch('sponsorMobile');
@@ -648,11 +692,11 @@ export default function RegistrationForm({
                       <div className="flex items-center gap-2">
                         <User className="w-4 h-4 text-brand-blue" />
                         <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900">
-                          3. Leader / Sponsor Details (ലീഡർ / സ്പോൺസർ വിവരങ്ങൾ) <span className="text-red-500">*</span>
+                          3. Leader / Sponsor Details <span className="text-[11px] font-bold text-slate-500 normal-case">(Optional)</span>
                         </h3>
                       </div>
-                      <p className="text-[11px] font-bold text-amber-850">
-                        * പ്രിന്റിങ് ഫോമിലും ഓഫീസ് രേഖകളിലും ഉൾപ്പെടുത്തുന്നതിനായി ലീഡറുടെ/സ്പോൺസറുടെ പേരും മൊബൈൽ നമ്പറും നൽകുക. (നിലവിലുള്ള മെമ്പറുടെ നമ്പർ സ്പോൺസറായി നൽകാവുന്നതാണ്).
+                      <p className="text-[11px] font-bold text-slate-600">
+                        * Leader / Sponsor name and mobile number can be provided for records (Optional).
                       </p>
                     </div>
 
@@ -661,14 +705,14 @@ export default function RegistrationForm({
                       <FormField control={form.control} name="sponsorName" render={({ field, fieldState }) => (
                         <FormItem className="space-y-1.5">
                           <FormLabel className="text-slate-900 font-black uppercase text-xs sm:text-sm tracking-wide block">
-                            Leader / Sponsor Name (ലീഡറുടെ പേര്) <span className="text-red-500">*</span>
+                            Leader / Sponsor Name <span className="text-[11px] font-bold text-slate-500 normal-case">(Optional)</span>
                           </FormLabel>
                           <FormControl>
                             <div className="relative">
                               <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                               <Input 
                                 {...field} 
-                                placeholder="Enter Leader / Sponsor Name" 
+                                placeholder="Enter Leader / Sponsor Name (Optional)" 
                                 className={`pl-12 h-[48px] sm:h-12 bg-white border-2 border-slate-300 focus:border-brand-blue rounded-xl font-bold text-sm text-slate-950 placeholder:text-slate-400 shadow-xs ${fieldState.error ? 'border-red-500 ring-2 ring-red-200' : ''}`} 
                               />
                             </div>
@@ -681,7 +725,7 @@ export default function RegistrationForm({
                       <FormField control={form.control} name="sponsorMobile" render={({ field, fieldState }) => (
                         <FormItem className="space-y-1.5">
                           <FormLabel className="text-slate-900 font-black uppercase text-xs sm:text-sm tracking-wide block">
-                            Leader / Sponsor Mobile (ലീഡറുടെ ഫോൺ നമ്പർ) <span className="text-red-500">*</span>
+                            Leader / Sponsor Mobile <span className="text-[11px] font-bold text-slate-500 normal-case">(Optional)</span>
                           </FormLabel>
                           <FormControl>
                             <div className="relative">
@@ -690,7 +734,7 @@ export default function RegistrationForm({
                                 {...field} 
                                 type="tel"
                                 maxLength={10}
-                                placeholder="10-digit mobile number" 
+                                placeholder="10-digit mobile number (Optional)" 
                                 onChange={e => field.onChange(e.target.value.replace(/\D/g, ''))}
                                 className={`pl-12 h-[48px] sm:h-12 bg-white border-2 border-slate-300 focus:border-brand-blue rounded-xl font-bold text-sm text-slate-950 placeholder:text-slate-400 shadow-xs ${fieldState.error ? 'border-red-500' : ''}`} 
                               />

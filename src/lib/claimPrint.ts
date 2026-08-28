@@ -675,7 +675,7 @@ export const renderPersonCourtClaimPage = (
   const fullAddress = `${addressStr}${postOfficeStr ? ', P.O. ' + postOfficeStr : ''}${pinStr ? ', PIN: ' + pinStr : ''}`;
   const tokenDisplay = claim.tokenNo ?? claim.serialNo ?? 'N/A';
   const dateStr = formatClaimDateTime(claim.createdAt);
-  const memberName = claim.userName || userProf?.name || 'N/A';
+  const memberName = claim.userName || claim.claimantName || claim.name || claim.spouseName || claim.parentName || claim.childName || claim.selfName || userProf?.name || 'N/A';
   const individualMobile = claim.individualMobile || (claim.memberMobile && claim.memberMobile !== claim.userMobile ? claim.memberMobile : '');
   const primaryMobile = claim.userMobile || userProf?.mobile || '';
   const mobileStr = (individualMobile && individualMobile !== primaryMobile)
@@ -2104,9 +2104,179 @@ export const printFullAdminComboReport = (primaryMember: any, memberClaims: any[
   printWin.document.close();
 };
 
+/**
+ * Generate Full Admin Combo PDF
+ */
+export const generateFullAdminComboPdf = async (primaryMember: any, memberClaims: any[]) => {
+  if (!memberClaims || memberClaims.length === 0) {
+    throw new Error('No claim records found.');
+  }
+
+  const uniqueMap = new Map<string, any>();
+  for (const c of memberClaims) {
+    const key = c.id || `${c.userMobile || ''}_${c.userName || ''}_${c.highrichId || ''}_${c.relation || ''}`;
+    if (!uniqueMap.has(key)) {
+      uniqueMap.set(key, c);
+    }
+  }
+  const cleanClaims = Array.from(uniqueMap.values());
+  const totalCount = cleanClaims.length;
+  const primeName = primaryMember?.name || cleanClaims[0]?.userName || 'Admin_Record';
+  const safeName = primeName.replace(/[^a-zA-Z0-9]/g, '_');
+  const fileName = `Admin_Full_Record_${safeName}.pdf`;
+
+  const totalPaid = cleanClaims.reduce((sum, c) => sum + (Number(c.totalPaid) || 0), 0);
+  const totalReceived = cleanClaims.reduce((sum, c) => sum + (Number(c.totalReceived) || 0), 0);
+  const totalPending = cleanClaims.reduce((sum, c) => sum + (Number(c.totalPending) || 0), 0);
+  const firstToken = cleanClaims[0]?.tokenNo ?? cleanClaims[0]?.serialNo ?? '1';
+
+  // Ensure fonts are loaded in browser
+  if (document.fonts) {
+    try {
+      await document.fonts.ready;
+    } catch {
+      // ignore font readiness check error
+    }
+  }
+
+  // Create temporary container off-screen strictly containing only the clean A4 page without toolbar
+  const container = document.createElement('div');
+  container.id = 'pdf-admin-render-offscreen';
+  container.style.position = 'fixed';
+  container.style.top = '0';
+  container.style.left = '0';
+  container.style.width = '794px';
+  container.style.backgroundColor = '#FFFFFF';
+  container.style.color = '#0f172a';
+  container.style.zIndex = '-999999';
+  container.style.opacity = '0.01';
+  container.style.pointerEvents = 'none';
+  container.style.overflow = 'visible';
+
+  // Inject base styles
+  const styleEl = document.createElement('style');
+  styleEl.innerHTML = `
+    ${getCourtReportBaseStyles()}
+    .pdf-single-page {
+      width: 794px !important;
+      min-height: 1123px !important;
+      max-height: 1123px !important;
+      background: #ffffff !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      box-sizing: border-box !important;
+      overflow: hidden !important;
+    }
+    .page-container {
+      box-shadow: none !important;
+      border: 1.5px solid #003366 !important;
+      margin: 0 !important;
+      width: 100% !important;
+      height: 1123px !important;
+      max-height: 1123px !important;
+    }
+  `;
+  container.appendChild(styleEl);
+
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = cleanClaims.map((claim, idx) => {
+    return `<div class="pdf-single-page">
+      ${renderPersonFullAdminClaimPage(claim, primaryMember, idx + 1, totalCount)}
+    </div>`;
+  }).join('');
+  container.appendChild(wrapper);
+
+  document.body.appendChild(container);
+
+  try {
+    await new Promise(r => setTimeout(r, 250));
+
+    const pageElements = container.querySelectorAll('.pdf-single-page');
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+      compress: true
+    });
+
+    const a4WidthMm = 210;
+    const a4HeightMm = 297;
+
+    for (let i = 0; i < pageElements.length; i++) {
+      const pageEl = pageElements[i] as HTMLElement;
+      const canvas = await html2canvas(pageEl, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#FFFFFF',
+        logging: false,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: 794,
+        windowHeight: 1123,
+        onclone: html2canvasOklchOnClone
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      if (i > 0) {
+        pdf.addPage('a4', 'portrait');
+      }
+      pdf.addImage(imgData, 'JPEG', 0, 0, a4WidthMm, a4HeightMm, undefined, 'FAST');
+    }
+
+    return {
+      pdf,
+      fileName,
+      primeName,
+      totalCount,
+      totalPaid,
+      totalReceived,
+      totalPending,
+      firstToken
+    };
+  } finally {
+    if (document.body.contains(container)) {
+      document.body.removeChild(container);
+    }
+  }
+};
+
+/**
+ * Direct .PDF File Download for Full Admin Record
+ */
+export const downloadFullAdminComboPdf = async (primaryMember: any, memberClaims: any[]) => {
+  if (!memberClaims || memberClaims.length === 0) {
+    toast.error('ഡൗൺലോഡ് ചെയ്യാനുള്ള ക്ലെയിം വിവരങ്ങൾ ലഭ്യമല്ല');
+    return;
+  }
+
+  const loadingToast = toast.loading('അഡ്മിൻ റെക്കോർഡ് PDF തയ്യാറാക്കുന്നു... (Generating Admin PDF...)');
+  try {
+    const { pdf, fileName } = await generateFullAdminComboPdf(primaryMember, memberClaims);
+    
+    const blob = pdf.output('blob');
+    const blobUrl = URL.createObjectURL(blob);
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.href = blobUrl;
+    downloadAnchor.download = fileName;
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    document.body.removeChild(downloadAnchor);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+
+    toast.success('Admin PDF വിജയകരമായി ഡൗൺലോഡ് ചെയ്തു!', { id: loadingToast });
+  } catch (err: any) {
+    console.error('Error downloading Admin PDF:', err);
+    toast.error('Admin PDF ഡൗൺലോഡ് ചെയ്യാൻ സാധിച്ചില്ല: ' + (err?.message || 'Error'), { id: loadingToast });
+  }
+};
+
+export const downloadFullAdminClaimPdf = (claim: any, memberProfile?: any) => downloadFullAdminComboPdf(memberProfile, [claim]);
+
 export const printCustomerClaimReport = printFullAdminClaimReport;
 export const printCustomerComboReport = printFullAdminComboReport;
 export const printMemberComboReport = printCourtComboReport;
 export const printMemberClaimReport = printCourtClaimReport;
+
 
 

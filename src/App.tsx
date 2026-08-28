@@ -198,9 +198,32 @@ export default function App() {
 
   const [user, setUser] = useState<UserProfile | null>(null);
   const [verifiedMember, setVerifiedMember] = useState<UserProfile | null>(null);
-  const [members, setMembers] = useState<UserProfile[]>([]);
-  const [districtQuotas, setDistrictQuotas] = useState<Record<string, number>>({});
-  const [districtQuotasUsed, setDistrictQuotasUsed] = useState<Record<string, number>>({});
+  const [members, setMembers] = useState<UserProfile[]>(() => {
+    try {
+      const cached = localStorage.getItem('hcrs_cached_members_list');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn("Error loading initial cached members:", e);
+    }
+    return [];
+  });
+  const [districtQuotas, setDistrictQuotas] = useState<Record<string, number>>(() => {
+    try {
+      const cachedTotals = localStorage.getItem('hcrs_cached_district_quotas_totals');
+      if (cachedTotals) return JSON.parse(cachedTotals);
+    } catch (e) {}
+    return {};
+  });
+  const [districtQuotasUsed, setDistrictQuotasUsed] = useState<Record<string, number>>(() => {
+    try {
+      const cachedUsed = localStorage.getItem('hcrs_cached_district_quotas_used');
+      if (cachedUsed) return JSON.parse(cachedUsed);
+    } catch (e) {}
+    return {};
+  });
   const [orgSettings, setOrgSettings] = useState<OrgSettings>(defaultSettings);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isRegistering, setIsRegistering] = useState(false);
@@ -222,7 +245,7 @@ export default function App() {
   const hasInitialSyncedRef = useRef(false);
   const lastAuthUserUidRef = useRef<string | null>(null);
 
-  const refreshMembersList = useCallback(async (customUser?: UserProfile) => {
+  const refreshMembersList = useCallback(async (customUser?: UserProfile, isManual: boolean = false) => {
     const activeUser = customUser || user;
     if (!activeUser) return;
     const isAdmin = activeUser.role === 'admin' || activeUser.isAdmin;
@@ -233,8 +256,10 @@ export default function App() {
     isSyncingRef.current = true;
     setIsSyncingDocs(true);
 
-    const loadingToast = 'syncing_db_entries';
-    toast.loading('Syncing database entries...', { id: loadingToast });
+    const loadingToast = isManual ? 'syncing_db_entries' : undefined;
+    if (isManual) {
+      toast.loading('Syncing database entries...', { id: loadingToast });
+    }
 
     if (activeUser.uid === 'offline_admin') {
       try {
@@ -242,10 +267,14 @@ export default function App() {
         if (!response.ok) throw new Error('Local API failed');
         const data = await response.json();
         setMembers(data);
-        toast.success('Local Offline Backup database loaded successfully.', { id: loadingToast });
+        if (isManual) {
+          toast.success('Local Offline Backup database loaded successfully.', { id: loadingToast });
+        }
       } catch (err: any) {
         console.error("Local backup load failed:", err);
-        toast.error('Failed to reload local backup.', { id: loadingToast });
+        if (isManual) {
+          toast.error('Failed to reload local backup.', { id: loadingToast });
+        }
       } finally {
         setIsSyncingDocs(false);
         isSyncingRef.current = false;
@@ -346,14 +375,18 @@ export default function App() {
       }
 
       setMembers(cleanList);
-      toast.success('Database entries synchronized successfully.', { id: loadingToast });
+      if (isManual) {
+        toast.success('Database entries synchronized successfully.', { id: loadingToast });
+      }
     } catch (err: any) {
       console.error("Members fetch error during refresh:", err);
       const errMsg = err?.message || String(err);
       if (errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('resource-exhausted')) {
         setIsQuotaExceeded(true);
       }
-      toast.error('Sync failed. Please try again.', { id: loadingToast });
+      if (isManual) {
+        toast.error('Sync failed. Please try again.', { id: loadingToast });
+      }
       handleFirestoreError(err, OperationType.GET, 'users');
     } finally {
       setIsSyncingDocs(false);
@@ -370,18 +403,21 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    async function checkClaimSubmission() {
-      if (!user) {
-        setHasSubmittedClaim(false);
-        setSubmittedClaimsCount(0);
-        return;
-      }
-      try {
-        const rawMobile = String(user.mobile || '').replace(/\D/g, '');
-        const cleanMobile = rawMobile.length >= 10 ? rawMobile.slice(-10) : rawMobile;
-        const offlineUid = cleanMobile ? `offline_${cleanMobile}` : '';
-        const activeUid = user.uid || '';
+    if (!user) {
+      setUserSubmittedClaims([]);
+      setSubmittedClaimsCount(0);
+      setHasSubmittedClaim(false);
+      return;
+    }
 
+    const rawMobile = String(user.mobile || '').replace(/\D/g, '');
+    const cleanMobile = rawMobile.length >= 10 ? rawMobile.slice(-10) : rawMobile;
+    const offlineUid = cleanMobile ? `offline_${cleanMobile}` : '';
+    const activeUid = user.uid || '';
+
+    // Fast initial check with getDocs for quick load
+    async function checkClaimSubmission() {
+      try {
         const queryPromises = [];
 
         if (activeUid) {
@@ -467,7 +503,58 @@ export default function App() {
       }
     }
     checkClaimSubmission();
-  }, [user, claimRefreshTrigger]);
+
+    // Real-time onSnapshot listeners for instant UI updates when claims change
+    const unsubs: Array<() => void> = [];
+    if (cleanMobile) {
+      const unsubMobile = onSnapshot(
+        query(collection(db, 'claims'), where('userMobile', '==', cleanMobile)),
+        (snap) => {
+          if (!snap.empty) {
+            setUserSubmittedClaims(prev => {
+              const map = new Map<string, any>();
+              prev.forEach(c => map.set(c.id, c));
+              snap.docs.forEach(docSnap => {
+                map.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
+              });
+              const list = Array.from(map.values());
+              setSubmittedClaimsCount(list.length);
+              setHasSubmittedClaim(list.length > 0);
+              return list;
+            });
+          }
+        },
+        (err) => console.warn("claims onSnapshot mobile notice:", err)
+      );
+      unsubs.push(unsubMobile);
+    }
+    if (activeUid) {
+      const unsubUid = onSnapshot(
+        query(collection(db, 'claims'), where('uid', '==', activeUid)),
+        (snap) => {
+          if (!snap.empty) {
+            setUserSubmittedClaims(prev => {
+              const map = new Map<string, any>();
+              prev.forEach(c => map.set(c.id, c));
+              snap.docs.forEach(docSnap => {
+                map.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
+              });
+              const list = Array.from(map.values());
+              setSubmittedClaimsCount(list.length);
+              setHasSubmittedClaim(list.length > 0);
+              return list;
+            });
+          }
+        },
+        (err) => console.warn("claims onSnapshot uid notice:", err)
+      );
+      unsubs.push(unsubUid);
+    }
+
+    return () => {
+      unsubs.forEach(unsub => unsub());
+    };
+  }, [user?.uid, user?.mobile, user?.membershipId, claimRefreshTrigger]);
 
   const isLifeMember = user && (
     String(user.membership_type || '').toUpperCase().includes('LIFE') ||
@@ -3794,6 +3881,7 @@ export default function App() {
                                   എല്ലാം ഒരുമിച്ച് ({userSubmittedClaims.length} പേജ്)
                                 </button>
                                 {userSubmittedClaims.map((claim, idx) => {
+                                  const claimantName = claim.userName || claim.claimantName || claim.name || claim.spouseName || claim.parentName || claim.childName || claim.selfName || claim.personalDetails?.fullName || (claim.relation === 'Self' ? user.name : '') || `അംഗം ${idx + 1}`;
                                   const relMalayalam = 
                                     claim.relation === 'Self' ? 'സ്വന്തം' :
                                     claim.relation === 'Mother' ? 'അമ്മ' :
@@ -3807,14 +3895,14 @@ export default function App() {
                                       key={claim.id || idx}
                                       type="button"
                                       onClick={() => setSelectedCardClaimTab(idx)}
-                                      className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all shrink-0 cursor-pointer flex items-center gap-1 ${
+                                      className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
                                         selectedCardClaimTab === idx
                                           ? 'bg-[#003366] text-white shadow-sm'
                                           : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 border border-slate-200 dark:border-slate-700'
                                       }`}
                                     >
                                       <span>{idx + 1}. {relMalayalam}</span>
-                                      <span className="opacity-70 font-mono text-[9px]">({claim.userName || user.name})</span>
+                                      <span className="opacity-80 font-bold text-[10px]">({claimantName})</span>
                                     </button>
                                   );
                                 })}
@@ -3956,7 +4044,7 @@ export default function App() {
 
                           <div className="grid grid-cols-1 gap-2.5">
                             {userSubmittedClaims.map((claim, idx) => {
-                              const name = claim.claimantName || claim.name || claim.personalDetails?.fullName || user.name || `അംഗം ${idx + 1}`;
+                              const name = claim.userName || claim.claimantName || claim.name || claim.spouseName || claim.parentName || claim.childName || claim.selfName || claim.personalDetails?.fullName || (claim.relation === 'Self' ? user.name : '') || `അംഗം ${idx + 1}`;
                               let rel = claim.relation || (idx === 0 ? 'Self' : `അംഗം ${idx + 1}`);
                               let relMalayalam = rel;
                               if (rel.toLowerCase() === 'self') relMalayalam = 'സ്വന്തം (Self)';
@@ -3973,16 +4061,18 @@ export default function App() {
                               const paid = Number(claim.totalPaid) || 0;
                               const rec = Number(claim.totalReceived) || 0;
                               const pend = Number(claim.totalPending) || 0;
-                              const serial = claim.serialNumber || `#${idx + 1}`;
+                              const serial = claim.tokenNo || claim.serialNo || claim.serialNumber || `#${idx + 1}`;
+                              const indMobile = claim.individualMobile || claim.memberMobile || (claim.relation === 'Self' ? (claim.userMobile || user.mobile) : '');
+                              const hrId = claim.highrichId;
 
                               return (
-                                <div key={idx} className="bg-white/10 hover:bg-white/15 transition-colors rounded-2xl p-3.5 sm:p-4 border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                <div key={claim.id || idx} className="bg-white/10 hover:bg-white/15 transition-colors rounded-2xl p-3.5 sm:p-4 border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                                   <div className="flex items-center gap-3 min-w-0">
                                     <div className="w-8 h-8 rounded-xl bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center shrink-0 shadow-sm">
                                       {idx + 1}
                                     </div>
                                     <div className="min-w-0">
-                                      <div className="flex items-center gap-2 flex-wrap">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
                                         <Badge className="bg-blue-500/30 text-blue-200 border border-blue-400/40 text-[9px] font-black uppercase px-2 py-0.5">
                                           {relMalayalam}
                                         </Badge>
@@ -3993,9 +4083,15 @@ export default function App() {
                                           സമർപ്പിച്ചു ✓
                                         </Badge>
                                       </div>
-                                      <p className="text-xs sm:text-sm font-black text-white truncate mt-1">
+                                      <p className="text-sm font-black text-white truncate mt-1">
                                         {name}
                                       </p>
+                                      {(indMobile || hrId) && (
+                                        <p className="text-[10px] text-slate-300 font-mono mt-0.5 flex items-center gap-2 flex-wrap">
+                                          {indMobile && <span>📱 {indMobile}</span>}
+                                          {hrId && <span className="text-amber-200 font-black">ID: {hrId}</span>}
+                                        </p>
+                                      )}
                                     </div>
                                   </div>
 
@@ -4224,9 +4320,22 @@ export default function App() {
             <div className="w-full min-h-screen">
               <SupportClaimForm 
                 user={user} 
-                onClose={() => setView('card')}
-                onBack={() => setView('card')} 
-                onSubmitSuccess={() => {
+                initialClaims={userSubmittedClaims}
+                onClose={() => {
+                  setClaimRefreshTrigger(prev => prev + 1);
+                  setView('card');
+                }}
+                onBack={() => {
+                  setClaimRefreshTrigger(prev => prev + 1);
+                  setView('card');
+                }} 
+                onSubmitSuccess={(claims) => {
+                  if (claims && Array.isArray(claims) && claims.length > 0) {
+                    setUserSubmittedClaims(claims);
+                    setSubmittedClaimsCount(claims.length);
+                    setHasSubmittedClaim(true);
+                  }
+                  setClaimRefreshTrigger(prev => prev + 1);
                   setView('card');
                 }}
               />
@@ -4253,7 +4362,7 @@ export default function App() {
               districtQuotasUsed={districtQuotasUsed}
               handleLogout={handleLogout}
               onViewCard={() => setView('card')}
-              onRefreshMembers={refreshMembersList}
+              onRefreshMembers={() => refreshMembersList(undefined, true)}
               isSyncingMembers={isSyncingDocs}
             />
         </div>
@@ -4273,7 +4382,7 @@ export default function App() {
             isDirectManual={isDirectManual}
             isSecondAdmin={SECOND_ADMINS.some(email => email.toLowerCase() === (user.email || '').toLowerCase())}
             onViewCard={() => setView('card')}
-            onRefreshMembers={refreshMembersList}
+            onRefreshMembers={() => refreshMembersList(undefined, true)}
             isSyncingMembers={isSyncingDocs}
             onUpdatePhoto={handleUpdatePhoto}
           />

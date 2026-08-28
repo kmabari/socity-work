@@ -310,20 +310,20 @@ export default function ProfileEditForm({ user, onSave, onCancel, isMandatory = 
           <div className="pt-3 border-t border-slate-100 space-y-3">
             <div className="flex items-center justify-between">
               <Label className="text-[11px] font-black text-slate-900 uppercase tracking-wider">
-                Leader / Sponsor Details (ലീഡർ വിവരങ്ങൾ)
+                Leader / Sponsor Details <span className="text-[10px] font-bold text-slate-500 normal-case">(Optional)</span>
               </Label>
-              <span className="text-[10px] font-bold text-amber-700">പ്രിന്റിങ് ഫോമിൽ വരുന്നത്</span>
+              <span className="text-[10px] font-bold text-slate-500">For printed membership form (Optional)</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="edit-sponsor-name" className="text-[10px] font-black text-slate-600 uppercase tracking-wider">
-                  Leader / Sponsor Name (ലീഡറുടെ പേര്)
+                  Leader / Sponsor Name <span className="text-[9px] font-bold text-slate-400 normal-case">(Optional)</span>
                 </Label>
                 <Input 
                   id="edit-sponsor-name"
                   type="text"
-                  placeholder="Leader Name"
+                  placeholder="Leader Name (Optional)"
                   className="h-11 rounded-xl border-slate-200 px-3.5 focus-visible:ring-brand-blue text-xs font-semibold"
                   value={sponsorName}
                   onChange={e => setSponsorName(e.target.value)}
@@ -332,13 +332,13 @@ export default function ProfileEditForm({ user, onSave, onCancel, isMandatory = 
 
               <div className="space-y-1.5">
                 <Label htmlFor="edit-sponsor-mobile" className="text-[10px] font-black text-slate-600 uppercase tracking-wider">
-                  Leader Mobile (ലീഡറുടെ മൊബൈൽ)
+                  Leader Mobile <span className="text-[9px] font-bold text-slate-400 normal-case">(Optional)</span>
                 </Label>
                 <Input 
                   id="edit-sponsor-mobile"
                   type="tel"
                   maxLength={10}
-                  placeholder="10-digit mobile"
+                  placeholder="10-digit mobile (Optional)"
                   className="h-11 rounded-xl border-slate-200 px-3.5 focus-visible:ring-brand-blue text-xs font-semibold font-mono"
                   value={sponsorMobile}
                   onChange={e => setSponsorMobile(e.target.value.replace(/\D/g, ''))}

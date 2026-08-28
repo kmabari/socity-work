@@ -860,8 +860,21 @@ const I18nContext = createContext<I18nContextType | undefined>(undefined);
 
 export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [lang, setLangState] = useState<Language>(() => {
-    const saved = localStorage.getItem('hcrs_lang');
-    return (saved as Language) || 'en';
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const explicitChoice = localStorage.getItem('hcrs_user_chosen_lang_v2');
+        if (explicitChoice && (explicitChoice === 'en' || explicitChoice === 'ml' || explicitChoice === 'hi')) {
+          return explicitChoice as Language;
+        }
+        // Clear any old legacy cache that defaulted to 'ml'
+        if (localStorage.getItem('hcrs_lang') === 'ml') {
+          localStorage.removeItem('hcrs_lang');
+        }
+      }
+    } catch {
+      // ignore storage errors
+    }
+    return 'en';
   });
   const [dynamicOverrides, setDynamicOverrides] = useState<TranslationDictionary>({});
   const [loading, setLoading] = useState(true);
@@ -886,7 +899,14 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const setLanguage = (newLang: Language) => {
     setLangState(newLang);
-    localStorage.setItem('hcrs_lang', newLang);
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem('hcrs_user_chosen_lang_v2', newLang);
+        localStorage.setItem('hcrs_lang', newLang);
+      }
+    } catch {
+      // ignore storage errors
+    }
   };
 
   const t = (key: string, customFallbackDefault?: string): string => {
