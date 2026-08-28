@@ -3058,7 +3058,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto min-w-0">
                 <Button
                   type="button"
                   onClick={() => {
@@ -3071,10 +3071,10 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                     setCompleted(true);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="h-10 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md cursor-pointer"
+                  className="h-10 px-2.5 sm:px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer flex-1 sm:flex-initial min-w-0 max-w-full"
                 >
-                  <CreditCard className="w-4 h-4 text-white" />
-                  <span>{t('Serial Card', 'സീരിയൽ കാർഡ്')}</span>
+                  <CreditCard className="w-4 h-4 text-white shrink-0" />
+                  <span className="truncate">{t('Serial Card', 'സീരിയൽ കാർഡ്')}</span>
                 </Button>
                 <Button
                   type="button"
@@ -3083,10 +3083,10 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                     setEditingSelf(true);
                     setSelfSelected(true);
                   }}
-                  className="h-10 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md cursor-pointer"
+                  className="h-10 px-2.5 sm:px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer flex-1 sm:flex-initial min-w-0 max-w-full"
                 >
-                  <Edit3 className="w-4 h-4 text-slate-950" />
-                  <span>{t('Edit Form 1', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
+                  <Edit3 className="w-4 h-4 text-slate-950 shrink-0" />
+                  <span className="truncate">{t('Edit Form 1', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
                 </Button>
               </div>
             </div>
@@ -3779,7 +3779,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto min-w-0">
                 <Button
                   type="button"
                   onClick={() => {
@@ -3792,10 +3792,10 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                     setCompleted(true);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="h-10 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md cursor-pointer"
+                  className="h-10 px-2.5 sm:px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer flex-1 sm:flex-initial min-w-0 max-w-full"
                 >
-                  <CreditCard className="w-4 h-4 text-white" />
-                  <span>{t('Serial Card', 'സീരിയൽ കാർഡ്')}</span>
+                  <CreditCard className="w-4 h-4 text-white shrink-0" />
+                  <span className="truncate">{t('Serial Card', 'സീരിയൽ കാർഡ്')}</span>
                 </Button>
                 <Button
                   type="button"
@@ -3804,10 +3804,10 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                     setEditingSpouse(true);
                     setSpouseSelected(true);
                   }}
-                  className="h-10 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md cursor-pointer"
+                  className="h-10 px-2.5 sm:px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer flex-1 sm:flex-initial min-w-0 max-w-full"
                 >
-                  <Edit3 className="w-4 h-4 text-slate-950" />
-                  <span>{t('Edit Form 2', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
+                  <Edit3 className="w-4 h-4 text-slate-950 shrink-0" />
+                  <span className="truncate">{t('Edit Form 2', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
                 </Button>
               </div>
             </div>
@@ -4578,7 +4578,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto min-w-0">
                 <Button
                   type="button"
                   onClick={() => {
@@ -4591,10 +4591,10 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                     setCompleted(true);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="h-10 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md cursor-pointer"
+                  className="h-10 px-2.5 sm:px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer flex-1 sm:flex-initial min-w-0 max-w-full"
                 >
-                  <CreditCard className="w-4 h-4 text-white" />
-                  <span>{t('Serial Card', 'സീരിയൽ കാർഡ്')}</span>
+                  <CreditCard className="w-4 h-4 text-white shrink-0" />
+                  <span className="truncate">{t('Serial Card', 'സീരിയൽ കാർഡ്')}</span>
                 </Button>
                 <Button
                   type="button"
@@ -4603,10 +4603,10 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                     setEditingParent(true);
                     setParentSelected(true);
                   }}
-                  className="h-10 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md cursor-pointer"
+                  className="h-10 px-2.5 sm:px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer flex-1 sm:flex-initial min-w-0 max-w-full"
                 >
-                  <Edit3 className="w-4 h-4 text-slate-950" />
-                  <span>{t('Edit Form 3', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
+                  <Edit3 className="w-4 h-4 text-slate-950 shrink-0" />
+                  <span className="truncate">{t('Edit Form 3', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
                 </Button>
               </div>
             </div>
@@ -5377,7 +5377,7 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto min-w-0">
                 <Button
                   type="button"
                   onClick={() => {
@@ -5390,10 +5390,10 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                     setCompleted(true);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="h-10 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md cursor-pointer"
+                  className="h-10 px-2.5 sm:px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer flex-1 sm:flex-initial min-w-0 max-w-full"
                 >
-                  <CreditCard className="w-4 h-4 text-white" />
-                  <span>{t('Serial Card', 'സീരിയൽ കാർഡ്')}</span>
+                  <CreditCard className="w-4 h-4 text-white shrink-0" />
+                  <span className="truncate">{t('Serial Card', 'സീരിയൽ കാർഡ്')}</span>
                 </Button>
                 <Button
                   type="button"
@@ -5402,10 +5402,10 @@ export function SupportClaimForm({ user, onClose, onBack }: SupportClaimFormProp
                     setEditingChild(true);
                     setChildSelected(true);
                   }}
-                  className="h-10 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md cursor-pointer"
+                  className="h-10 px-2.5 sm:px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer flex-1 sm:flex-initial min-w-0 max-w-full"
                 >
-                  <Edit3 className="w-4 h-4 text-slate-950" />
-                  <span>{t('Edit Form 4', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
+                  <Edit3 className="w-4 h-4 text-slate-950 shrink-0" />
+                  <span className="truncate">{t('Edit Form 4', 'ഫോം എഡിറ്റ് ചെയ്യുക')}</span>
                 </Button>
               </div>
             </div>
