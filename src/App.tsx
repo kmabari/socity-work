@@ -3561,7 +3561,7 @@ export default function App() {
                         if (submittedClaimsCount === 0) {
                           // Stage 0: 0 Claims Submitted -> Pure RED (റെഡ്) with White Text
                           return (
-                            <div className="rounded-3xl p-5 sm:p-6 text-center lg:text-left flex flex-col gap-4 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-800 shadow-md">
+                            <div className="rounded-3xl p-4 sm:p-6 text-center lg:text-left flex flex-col gap-4 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-800 shadow-md max-w-full overflow-hidden">
                               <Button 
                                 onClick={() => setView('support')}
                                 className="w-full h-14 rounded-2xl font-black bg-red-600 hover:bg-red-700 active:bg-red-800 text-white shadow-md hover:scale-[1.01] active:scale-95 transition-all uppercase tracking-wider flex items-center justify-center gap-2.5 border-b-4 border-red-900 cursor-pointer"
@@ -3572,10 +3572,10 @@ export default function App() {
                               <Button
                                 onClick={() => setView('support')}
                                 variant="outline"
-                                className="w-full h-12 rounded-xl font-black border-2 border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20 text-red-700 dark:text-red-300 hover:bg-red-100 text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                                className="w-full min-h-[44px] h-auto py-2.5 px-2 sm:px-3.5 rounded-xl font-black border-2 border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20 text-red-700 dark:text-red-300 hover:bg-red-100 text-[11px] sm:text-xs uppercase tracking-normal sm:tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-xs whitespace-normal break-words text-center leading-snug max-w-full"
                               >
                                 <Eye className="w-4 h-4 text-red-600 shrink-0" />
-                                <span>നിലവിലെ ഫോം കാണുക / പൂരിപ്പിക്കുക</span>
+                                <span className="whitespace-normal break-words text-center leading-snug">നിലവിലെ ഫോം കാണുക / പൂരിപ്പിക്കുക</span>
                               </Button>
                               <div className="text-center lg:text-left space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                                 <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-black border border-slate-200 dark:border-slate-700">
@@ -3591,7 +3591,7 @@ export default function App() {
                         } else if (submittedClaimsCount === 1) {
                           // Stage 1: 1 Claim Submitted -> Pure ORANGE (ഓറഞ്ച്) with Dark Text
                           return (
-                            <div className="rounded-3xl p-5 sm:p-6 text-center lg:text-left flex flex-col gap-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-800 shadow-md">
+                            <div className="rounded-3xl p-4 sm:p-6 text-center lg:text-left flex flex-col gap-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-800 shadow-md max-w-full overflow-hidden">
                               <Button 
                                 onClick={() => setView('support')}
                                 className="w-full h-14 rounded-2xl font-black bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-slate-950 shadow-md hover:scale-[1.01] active:scale-95 transition-all uppercase tracking-wider flex items-center justify-center gap-2.5 border-b-4 border-orange-800 cursor-pointer"
@@ -3607,10 +3607,10 @@ export default function App() {
                                     setView('support');
                                   }
                                 }}
-                                className="w-full h-12 rounded-xl font-black bg-[#003366] hover:bg-[#002244] text-white uppercase tracking-wider text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer border border-blue-400/30"
+                                className="w-full min-h-[44px] h-auto py-2.5 px-2 sm:px-3.5 rounded-xl font-black bg-[#003366] hover:bg-[#002244] text-white uppercase tracking-normal sm:tracking-wider text-[11px] sm:text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer border border-blue-400/30 whitespace-normal break-words text-center leading-snug max-w-full"
                               >
                                 <Eye className="w-4 h-4 text-amber-300 shrink-0" />
-                                <span>നിലവിലെ ഫോം കാണുക (View Submitted Form)</span>
+                                <span className="whitespace-normal break-words text-center leading-snug">നിലവിലെ ഫോം കാണുക (View Submitted Form)</span>
                               </Button>
                               <div className="text-center lg:text-left space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                                 <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-black border border-slate-200 dark:border-slate-700">
@@ -3626,7 +3626,7 @@ export default function App() {
                         } else if (submittedClaimsCount === 2 || submittedClaimsCount === 3) {
                           // Stage 2: 2 or 3 Claims Submitted -> Pure YELLOW/AMBER (യെല്ലോ / മഞ്ഞ) with Dark Text
                           return (
-                            <div className="rounded-3xl p-5 sm:p-6 text-center lg:text-left flex flex-col gap-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-800 shadow-md">
+                            <div className="rounded-3xl p-4 sm:p-6 text-center lg:text-left flex flex-col gap-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-800 shadow-md max-w-full overflow-hidden">
                               <Button 
                                 onClick={() => setView('support')}
                                 className="w-full h-14 rounded-2xl font-black bg-amber-400 hover:bg-amber-500 active:bg-amber-600 text-slate-950 shadow-md hover:scale-[1.01] active:scale-95 transition-all uppercase tracking-wider flex items-center justify-center gap-2.5 border-b-4 border-amber-600 cursor-pointer"
@@ -3642,10 +3642,10 @@ export default function App() {
                                     setView('support');
                                   }
                                 }}
-                                className="w-full h-12 rounded-xl font-black bg-[#003366] hover:bg-[#002244] text-white uppercase tracking-wider text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer border border-blue-400/30"
+                                className="w-full min-h-[44px] h-auto py-2.5 px-2 sm:px-3.5 rounded-xl font-black bg-[#003366] hover:bg-[#002244] text-white uppercase tracking-normal sm:tracking-wider text-[11px] sm:text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer border border-blue-400/30 whitespace-normal break-words text-center leading-snug max-w-full"
                               >
                                 <Eye className="w-4 h-4 text-amber-300 shrink-0" />
-                                <span>നിലവിലെ ഫോം കാണുക (View Submitted Form)</span>
+                                <span className="whitespace-normal break-words text-center leading-snug">നിലവിലെ ഫോം കാണുക (View Submitted Form)</span>
                               </Button>
                               <div className="text-center lg:text-left space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                                 <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-black border border-slate-200 dark:border-slate-700">
@@ -3661,7 +3661,7 @@ export default function App() {
                         } else {
                           // Stage 3: 4 Claims Submitted -> Pure GREEN (പച്ച / Emerald) with White Text
                           return (
-                            <div className="rounded-3xl p-5 sm:p-6 text-center lg:text-left flex flex-col gap-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-800 shadow-md">
+                            <div className="rounded-3xl p-4 sm:p-6 text-center lg:text-left flex flex-col gap-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-800 shadow-md max-w-full overflow-hidden">
                               <Button 
                                 onClick={() => setView('support')}
                                 className="w-full h-14 rounded-2xl font-black bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-md hover:scale-[1.01] active:scale-95 transition-all uppercase tracking-wider flex items-center justify-center gap-2.5 border-b-4 border-emerald-900 cursor-pointer"
@@ -3677,10 +3677,10 @@ export default function App() {
                                     setView('support');
                                   }
                                 }}
-                                className="w-full h-12 rounded-xl font-black bg-[#003366] hover:bg-[#002244] text-white uppercase tracking-wider text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer border border-blue-400/30"
+                                className="w-full min-h-[44px] h-auto py-2.5 px-2 sm:px-3.5 rounded-xl font-black bg-[#003366] hover:bg-[#002244] text-white uppercase tracking-normal sm:tracking-wider text-[11px] sm:text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer border border-blue-400/30 whitespace-normal break-words text-center leading-snug max-w-full"
                               >
                                 <Eye className="w-4 h-4 text-amber-300 shrink-0" />
-                                <span>നിലവിലെ ഫോം കാണുക (View Submitted Form)</span>
+                                <span className="whitespace-normal break-words text-center leading-snug">നിലവിലെ ഫോം കാണുക (View Submitted Form)</span>
                               </Button>
                               <div className="text-center lg:text-left space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                                 <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs font-black border border-emerald-200 dark:border-emerald-800/60">
@@ -3970,7 +3970,7 @@ export default function App() {
                         </div>
 
                         {/* Top Action Buttons inside Totals Tab */}
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Button
                             size="sm"
                             onClick={() => {
@@ -3980,19 +3980,19 @@ export default function App() {
                                 setView('support');
                               }
                             }}
-                            className="h-8 sm:h-9 px-3 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-sm cursor-pointer"
+                            className="h-auto min-h-[36px] py-1.5 px-2.5 sm:px-3 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-[11px] sm:text-xs uppercase tracking-normal sm:tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-sm cursor-pointer whitespace-normal text-center leading-tight max-w-full"
                           >
-                            <Eye className="w-3.5 h-3.5" />
-                            <span>നിലവിലെ ഫോം കാണുക</span>
+                            <Eye className="w-3.5 h-3.5 shrink-0" />
+                            <span className="whitespace-normal leading-tight">നിലവിലെ ഫോം കാണുക</span>
                           </Button>
                           <Button
                             size="sm"
                             onClick={() => setView('support')}
                             variant="outline"
-                            className="h-8 sm:h-9 px-3 border-white/20 bg-white/10 hover:bg-white/20 text-white font-black text-xs uppercase tracking-wider rounded-xl flex items-center gap-1.5 cursor-pointer"
+                            className="h-auto min-h-[36px] py-1.5 px-2.5 sm:px-3 border-white/20 bg-white/10 hover:bg-white/20 text-white font-black text-[11px] sm:text-xs uppercase tracking-normal sm:tracking-wider rounded-xl flex items-center justify-center gap-1.5 cursor-pointer whitespace-normal text-center leading-tight max-w-full"
                           >
-                            <Pencil className="w-3.5 h-3.5 text-amber-300" />
-                            <span>എഡിറ്റ് / കൂടുതൽ ചേർക്കുക</span>
+                            <Pencil className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                            <span className="whitespace-normal leading-tight">എഡിറ്റ് / കൂടുതൽ ചേർക്കുക</span>
                           </Button>
                         </div>
                       </div>
