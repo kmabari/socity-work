@@ -602,18 +602,24 @@ export default function App() {
 
   const [isGoogleLoggingIn, setIsGoogleLoggingIn] = useState(false);
 
-  // Handle Google Auth redirect result on page load (essential for mobile browsers)
+  // Handle Google Auth redirect result on page load (essential for mobile browsers & fallback)
   useEffect(() => {
     getRedirectResult(auth)
       .then((result) => {
         if (result && result.user) {
-          console.log("Google redirect sign-in successful:", result.user.email);
+          console.log("[Google Auth Redirect] Successfully authenticated as:", result.user.email);
           toast.success(`Signed in with Google as ${result.user.email}`);
         }
       })
       .catch((error) => {
         if (error && error.code !== 'auth/null-user') {
-          console.warn("Google redirect sign-in warning:", error?.code, error?.message);
+          console.error("[Google Auth Redirect Error]", {
+            code: error?.code,
+            message: error?.message,
+            currentHostname: typeof window !== 'undefined' ? window.location.hostname : '',
+            origin: typeof window !== 'undefined' ? window.location.origin : '',
+            error
+          });
         }
       });
   }, []);
@@ -621,15 +627,32 @@ export default function App() {
   const handleGoogleLogin = async () => {
     if (isGoogleLoggingIn) return;
     setIsGoogleLoggingIn(true);
-    const loadingToast = toast.loading('Signing in with Google...');
-    setView('loading');
+    const loadingToast = toast.loading('Connecting to Google Sign-In...');
+    const currentHost = typeof window !== 'undefined' ? window.location.hostname : '';
+    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+
+    console.log("[Google Auth] Initiating Google Sign-In...", {
+      currentHost,
+      currentOrigin,
+      authDomain: auth.config.authDomain || (auth.app.options as any)?.authDomain,
+      projectId: auth.app.options.projectId
+    });
+
     try {
-      await signInWithPopup(auth, googleProvider);
+      // NOTE: Do not change view to 'loading' prior to signInWithPopup to avoid losing the synchronous user-gesture token in browsers
+      const result = await signInWithPopup(auth, googleProvider);
+      console.log("[Google Auth] Popup authentication successful:", result.user.email);
       toast.success('Signed in with Google!', { id: loadingToast });
     } catch (error: any) {
-      console.warn("Google login error details:", error?.code, error?.message);
-      setView('login');
-      const currentHost = typeof window !== 'undefined' ? window.location.hostname : '';
+      console.error("[Google Auth Error Details]:", {
+        code: error?.code,
+        message: error?.message,
+        customData: error?.customData,
+        currentHost,
+        currentOrigin,
+        authDomain: auth.config.authDomain || (auth.app.options as any)?.authDomain,
+        error
+      });
 
       if (error?.code === 'auth/popup-closed-by-user' || error?.code === 'auth/cancelled-popup-request' || error?.message?.includes('closed-by-user')) {
         toast.info('Google sign-in was cancelled (ലോഗിൻ ക്യാൻസൽ ചെയ്തു).', { id: loadingToast });
@@ -639,20 +662,22 @@ export default function App() {
           { 
             id: loadingToast,
             duration: 15000, 
-            description: `പരിഹാരം: 1) Firebase Console -> Authentication -> Settings -> Authorized Domains-ൽ "${currentHost}" ആഡ് ചെയ്യുക. അല്ലെങ്കിൽ 2) നിങ്ങളുടെ മൊബൈൽ നമ്പറും പാസ്‌വേഡും നൽകി ലോഗിൻ ചെയ്യുക.`
+            description: `Firebase Console -> Authentication -> Settings -> Authorized Domains-ൽ "${currentHost}" ആഡ് ചെയ്യുക.`
           }
         );
-      } else if (error?.code === 'auth/popup-blocked' || error?.message?.includes('popup-blocked')) {
+      } else if (error?.code === 'auth/popup-blocked' || error?.message?.includes('popup-blocked') || error?.code === 'auth/cancelled-popup-request') {
         try {
-          toast.info('Redirecting to Google Login...', { id: loadingToast });
+          console.log("[Google Auth] Popup was blocked or restricted. Initiating signInWithRedirect fallback...");
+          toast.loading('Redirecting to Google Login (റീഡയറക്റ്റ് ചെയ്യുന്നു)...', { id: loadingToast });
           await signInWithRedirect(auth, googleProvider);
           return;
-        } catch (redirErr) {
+        } catch (redirErr: any) {
+          console.error("[Google Auth Redirect Fallback Error]:", redirErr?.code, redirErr?.message, redirErr);
           toast.error('Browser Popup തടയപ്പെട്ടു. ദയവായി മൊബൈൽ നമ്പറും പാസ്‌വേഡും ഉപയോഗിച്ച് ലോഗിൻ ചെയ്യുക.', { id: loadingToast, duration: 8000 });
         }
       } else {
         const errorMsg = error?.message || 'Google sign-in failed. Please use Mobile Number & Password.';
-        toast.error(`ഗൂഗിൾ ലോഗിൻ പരാജയപ്പെട്ടു (${error?.code || 'Error'}). ദയവായി നിങ്ങളുടെ മൊബൈൽ നമ്പറും പാസ്‌വേഡും ഉപയോഗിച്ച് ലോഗിൻ ചെയ്യുക.`, { id: loadingToast, duration: 8000, description: errorMsg });
+        toast.error(`ഗൂഗിൾ ലോഗിൻ പരാജയപ്പെട്ടു (${error?.code || 'Error'}).`, { id: loadingToast, duration: 8000, description: errorMsg });
       }
     } finally {
       setIsGoogleLoggingIn(false);

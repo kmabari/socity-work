@@ -4,25 +4,56 @@ import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-// Support external deployment (Vercel, Netlify, etc.) using custom environment variables
+// Support external deployment (Vercel, Netlify, custom domain, etc.) with robust fallback merging
 const getFirebaseConfig = () => {
   const metaObj = import.meta as any;
-  const envConfig = {
-    apiKey: metaObj.env?.VITE_FIREBASE_API_KEY,
-    authDomain: metaObj.env?.VITE_FIREBASE_AUTH_DOMAIN,
-    projectId: metaObj.env?.VITE_FIREBASE_PROJECT_ID,
-    storageBucket: metaObj.env?.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: metaObj.env?.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: metaObj.env?.VITE_FIREBASE_APP_ID,
-    firestoreDatabaseId: metaObj.env?.VITE_FIREBASE_DATABASE_ID || '(default)'
-  };
+  const env = metaObj.env || {};
 
-  if (envConfig.apiKey && envConfig.projectId) {
-    console.log("Firebase initialized using Vercel/Netlify environment variables config.");
-    return envConfig;
+  const apiKey = (env.VITE_FIREBASE_API_KEY || (firebaseConfig as any).apiKey || '').trim();
+  const projectId = (env.VITE_FIREBASE_PROJECT_ID || (firebaseConfig as any).projectId || '').trim();
+  
+  // Intelligent authDomain resolution:
+  // 1. env.VITE_FIREBASE_AUTH_DOMAIN
+  // 2. firebaseConfig.authDomain
+  // 3. Derived from projectId: `${projectId}.firebaseapp.com`
+  let authDomain = (env.VITE_FIREBASE_AUTH_DOMAIN || (firebaseConfig as any).authDomain || '').trim();
+  if (!authDomain && projectId) {
+    authDomain = `${projectId}.firebaseapp.com`;
   }
 
-  return firebaseConfig;
+  const storageBucket = (env.VITE_FIREBASE_STORAGE_BUCKET || (firebaseConfig as any).storageBucket || (projectId ? `${projectId}.firebasestorage.app` : '')).trim();
+  const messagingSenderId = (env.VITE_FIREBASE_MESSAGING_SENDER_ID || (firebaseConfig as any).messagingSenderId || '').trim();
+  const appId = (env.VITE_FIREBASE_APP_ID || (firebaseConfig as any).appId || '').trim();
+  const databaseURL = (env.VITE_FIREBASE_DATABASE_URL || (firebaseConfig as any).databaseURL || '').trim();
+  const measurementId = (env.VITE_FIREBASE_MEASUREMENT_ID || (firebaseConfig as any).measurementId || '').trim();
+  const firestoreDatabaseId = (env.VITE_FIREBASE_DATABASE_ID || (firebaseConfig as any).firestoreDatabaseId || '(default)').trim();
+
+  const final = {
+    apiKey,
+    authDomain,
+    projectId,
+    storageBucket,
+    messagingSenderId,
+    appId,
+    databaseURL: databaseURL || undefined,
+    measurementId: measurementId || undefined,
+    firestoreDatabaseId: firestoreDatabaseId || '(default)'
+  };
+
+  if (typeof window !== 'undefined') {
+    const isCustomEnv = !!(env.VITE_FIREBASE_API_KEY || env.VITE_FIREBASE_PROJECT_ID || env.VITE_FIREBASE_AUTH_DOMAIN);
+    console.log(`[Firebase Auth Init] Loaded ${isCustomEnv ? 'Environment Variables' : 'Default JSON'} Config:`, {
+      projectId: final.projectId,
+      authDomain: final.authDomain,
+      hasApiKey: !!final.apiKey,
+      hasAppId: !!final.appId,
+      currentHostname: window.location.hostname,
+      currentOrigin: window.location.origin,
+      inIframe: window.self !== window.top
+    });
+  }
+
+  return final;
 };
 
 const finalConfig = getFirebaseConfig();
