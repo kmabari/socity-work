@@ -30,6 +30,7 @@ import { googleProvider } from './lib/firebase';
 import { printCourtComboReport, printCourtClaimReport, shareCourtComboPdf, downloadCourtComboPdf, getCourtComboHtml, getSingleCourtClaimHtml } from './lib/claimPrint';
 import { sendWAMessage } from './lib/whatsapp';
 import OperationJanamail from "./components/OperationJanamail";
+import { ELedgerModule } from "./eledger";
 import { InfinityBorderCard } from './components/InfinityBorderCard';
 import { InfinityBorderButton } from './components/InfinityBorderButton';
 const MAIN_ADMINS = [
@@ -180,13 +181,19 @@ export const selectBestUserDocument = (docs: any[], originalInput?: string) => {
 };
 
 export default function App() {
-  const [view, setView] = useState<'landing' | 'register' | 'renewal' | 'login' | 'card' | 'admin' | 'operator' | 'support' | 'loading' | 'gallery' | 'verify' | 'janamail' | 'change-password' | 'complete-profile'>(() => {
+  const [view, setView] = useState<'landing' | 'register' | 'renewal' | 'login' | 'card' | 'admin' | 'operator' | 'support' | 'loading' | 'gallery' | 'verify' | 'janamail' | 'eledger' | 'change-password' | 'complete-profile'>(() => {
     if (typeof window !== 'undefined') {
       const isJanamailPath = window.location.pathname.startsWith('/janamail') || 
                             window.location.pathname.endsWith('/janamail') || 
                             new URLSearchParams(window.location.search).get('view') === 'janamail';
       if (isJanamailPath) {
         return 'janamail';
+      }
+      const isELedgerPath = window.location.pathname.startsWith('/eledger') || 
+                            window.location.pathname.endsWith('/eledger') || 
+                            new URLSearchParams(window.location.search).get('view') === 'eledger';
+      if (isELedgerPath) {
+        return 'eledger';
       }
     }
     return 'loading';
@@ -901,7 +908,7 @@ export default function App() {
           if (unsubscribeMembers) { unsubscribeMembers(); unsubscribeMembers = null; }
           if (unsubscribeUser) { unsubscribeUser(); unsubscribeUser = null; }
           const curUrl = new URLSearchParams(window.location.search);
-          const allowedUnauthViews = ['landing', 'login', 'register', 'renewal', 'gallery', 'verify', 'janamail'];
+          const allowedUnauthViews = ['landing', 'login', 'register', 'renewal', 'gallery', 'verify', 'janamail', 'eledger'];
           if (!allowedUnauthViews.includes(currentViewRef.current) && !curUrl.has('memberId')) {
             setView('landing');
           }
@@ -1223,7 +1230,7 @@ export default function App() {
             userData.mustCompleteProfile === true && !userData.name && !userData.membershipId
           );
 
-          if (currentViewRef.current !== 'janamail') {
+          if (currentViewRef.current !== 'janamail' && currentViewRef.current !== 'eledger') {
             if (isAdmin) {
                setView('admin');
             } else if (isOperator || (isDirectManual && !isMagicLink && isOperator)) {
@@ -1297,7 +1304,7 @@ export default function App() {
         }
 
         if (isSuperAdminEmail) setView('admin');
-        else if (!isMagicLink && currentViewRef.current !== 'register' && currentViewRef.current !== 'janamail') setView('landing');
+        else if (!isMagicLink && currentViewRef.current !== 'register' && currentViewRef.current !== 'janamail' && currentViewRef.current !== 'eledger') setView('landing');
       });
     });
 
@@ -3323,7 +3330,24 @@ export default function App() {
               window.history.pushState({}, '', '/janamail');
             }
           }}
+          onELedgerClick={() => {
+            setView('eledger');
+            if (typeof window !== 'undefined') {
+              window.history.pushState({}, '', '/eledger');
+            }
+          }}
         />
+      )}
+
+      {view === 'eledger' && (
+        <div className="animate-in fade-in duration-500">
+          <ELedgerModule onBackToWebsite={() => {
+            setView('landing');
+            if (typeof window !== 'undefined') {
+              window.history.pushState({}, '', '/');
+            }
+          }} />
+        </div>
       )}
 
       {view === 'janamail' && (

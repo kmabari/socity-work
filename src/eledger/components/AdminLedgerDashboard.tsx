@@ -1,0 +1,917 @@
+import React, { useState } from 'react';
+import { 
+  ShieldCheck, 
+  CheckCircle2, 
+  XCircle, 
+  Clock, 
+  Building2, 
+  FileText, 
+  TrendingUp, 
+  Scale, 
+  AlertCircle,
+  Plus,
+  Users,
+  UserPlus,
+  Mail,
+  Phone,
+  KeyRound,
+  Trash2,
+  Edit2,
+  Search,
+  Filter,
+  Send,
+  Power,
+  PowerOff,
+  UserCheck,
+  AlertTriangle,
+  Info
+} from 'lucide-react';
+import { LedgerVoucher, TreasuryMetrics, CategorySummary, ELedgerUser, ELedgerRole, AccountStatus } from '../types';
+
+interface AdminLedgerDashboardProps {
+  metrics: TreasuryMetrics;
+  categories: CategorySummary[];
+  vouchers: LedgerVoucher[];
+  users: ELedgerUser[];
+  onApproveVoucher: (id: string) => void;
+  onRejectVoucher: (id: string) => void;
+  onAddUser: (user: Omit<ELedgerUser, 'id' | 'createdAt'>) => Promise<{ success: boolean; message: string }> | { success: boolean; message: string };
+  onUpdateUser: (id: string, updates: Partial<ELedgerUser>) => Promise<{ success: boolean; message: string }> | { success: boolean; message: string } | void;
+  onToggleUserStatus: (id: string) => Promise<{ success: boolean; message: string }> | { success: boolean; message: string } | void;
+  onSendPasswordReset: (email: string) => Promise<{ success: boolean; message: string }> | { success: boolean; message: string };
+  onDeleteUser: (id: string) => Promise<{ success: boolean; message: string }> | { success: boolean; message: string } | void;
+}
+
+export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
+  metrics,
+  categories,
+  vouchers,
+  users,
+  onApproveVoucher,
+  onRejectVoucher,
+  onAddUser,
+  onUpdateUser,
+  onToggleUserStatus,
+  onSendPasswordReset,
+  onDeleteUser,
+}) => {
+  const [activeAdminTab, setActiveAdminTab] = useState<'users' | 'vouchers' | 'allocations'>('users');
+  
+  // User Management State
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [isSavingUser, setIsSavingUser] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'treasurer' | 'auditor' | 'member'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'pending_setup'>('all');
+  
+  // Form State for Add/Edit User
+  const [formName, setFormName] = useState('');
+  const [formEmail, setFormEmail] = useState('');
+  const [formMobile, setFormMobile] = useState('');
+  const [formRole, setFormRole] = useState<'admin' | 'treasurer' | 'auditor' | 'member'>('member');
+  const [formDistrict, setFormDistrict] = useState('State Committee HQ');
+  const [formMembershipId, setFormMembershipId] = useState('');
+  const [formError, setFormError] = useState('');
+  const [actionNotification, setActionNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const pendingVouchers = vouchers.filter((v) => v.status === 'pending_approval');
+  const approvedVouchers = vouchers.filter((v) => v.status === 'approved' || v.status === 'audited');
+
+  // Committee Seat Counts
+  const adminCount = users.filter(u => u.role === 'admin').length;
+  const treasurerCount = users.filter(u => u.role === 'treasurer').length;
+  const auditorCount = users.filter(u => u.role === 'auditor').length;
+  const memberCount = users.filter(u => u.role === 'member').length;
+  const totalCount = users.length;
+
+  const showNotification = (type: 'success' | 'error', message: string) => {
+    setActionNotification({ type, message });
+    setTimeout(() => {
+      setActionNotification(null);
+    }, 4000);
+  };
+
+  const handleOpenAddModal = () => {
+    setEditingUserId(null);
+    setFormName('');
+    setFormEmail('');
+    setFormMobile('');
+    setFormRole(memberCount < 17 ? 'member' : 'treasurer');
+    setFormDistrict('State Committee HQ');
+    setFormMembershipId(`HCRS-SC-${(memberCount + 1).toString().padStart(2, '0')}`);
+    setFormError('');
+    setShowAddUserModal(true);
+  };
+
+  const handleOpenEditModal = (user: ELedgerUser) => {
+    setEditingUserId(user.id);
+    setFormName(user.name);
+    setFormEmail(user.email);
+    setFormMobile(user.mobile);
+    setFormRole(user.role);
+    setFormDistrict(user.district || 'State Committee HQ');
+    setFormMembershipId(user.membershipId || '');
+    setFormError('');
+    setShowAddUserModal(true);
+  };
+
+  const handleSaveUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError('');
+
+    if (!formName.trim()) {
+      setFormError('Please enter full name.');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formEmail.trim())) {
+      setFormError('Please enter a valid official email address.');
+      return;
+    }
+
+    const cleanedMobile = formMobile.replace(/\D/g, '');
+    if (cleanedMobile.length < 10) {
+      setFormError('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+
+    if (editingUserId) {
+      // Check duplicate email with other users
+      const duplicate = users.find(u => u.id !== editingUserId && u.email.toLowerCase() === formEmail.trim().toLowerCase());
+      if (duplicate) {
+        setFormError('An account with this email address already exists.');
+        return;
+      }
+
+      // Check role quota if role was modified
+      const originalUser = users.find(u => u.id === editingUserId);
+      if (originalUser && originalUser.role !== formRole) {
+        if (formRole === 'admin' && users.filter(u => u.id !== editingUserId && u.role === 'admin').length >= 1) {
+          setFormError('Only 1 Central Admin account is permitted under HCRS State Committee structure.');
+          return;
+        }
+        if (formRole === 'treasurer' && users.filter(u => u.id !== editingUserId && u.role === 'treasurer').length >= 1) {
+          setFormError('Only 1 State Treasurer account is permitted under HCRS State Committee structure.');
+          return;
+        }
+        if (formRole === 'auditor' && users.filter(u => u.id !== editingUserId && u.role === 'auditor').length >= 1) {
+          setFormError('Only 1 Statutory Auditor account is permitted under HCRS State Committee structure.');
+          return;
+        }
+        if (formRole === 'member' && users.filter(u => u.id !== editingUserId && u.role === 'member').length >= 17) {
+          setFormError('State Committee maximum capacity of 17 Members reached.');
+          return;
+        }
+      }
+
+      const updatePayload: Partial<ELedgerUser> = {
+        name: formName.trim(),
+        email: formEmail.trim().toLowerCase(),
+        mobile: cleanedMobile,
+        role: formRole,
+      };
+
+      if (formDistrict.trim()) {
+        updatePayload.district = formDistrict.trim();
+      }
+
+      // Optional membershipId only for member role
+      if (formRole === 'member' && formMembershipId.trim()) {
+        updatePayload.membershipId = formMembershipId.trim();
+      }
+
+      setIsSavingUser(true);
+      try {
+        const result = await onUpdateUser(editingUserId, updatePayload);
+        if (result && typeof result === 'object' && 'success' in result && !result.success) {
+          setFormError(result.message || 'Failed to update account.');
+          setIsSavingUser(false);
+          return;
+        }
+
+        showNotification('success', `User "${formName.trim()}" updated successfully.`);
+        setShowAddUserModal(false);
+      } catch (err: any) {
+        setFormError(err.message || 'Failed to save changes. Please try again.');
+      } finally {
+        setIsSavingUser(false);
+      }
+    } else {
+      // Role quota checks for new account
+      if (formRole === 'admin' && adminCount >= 1) {
+        setFormError('Only 1 Central Admin account is permitted under HCRS State Committee structure.');
+        return;
+      }
+      if (formRole === 'treasurer' && treasurerCount >= 1) {
+        setFormError('Only 1 State Treasurer account is permitted under HCRS State Committee structure.');
+        return;
+      }
+      if (formRole === 'auditor' && auditorCount >= 1) {
+        setFormError('Only 1 Statutory Auditor account is permitted under HCRS State Committee structure.');
+        return;
+      }
+      if (formRole === 'member' && memberCount >= 17) {
+        setFormError('State Committee maximum capacity of 17 Members reached.');
+        return;
+      }
+
+      const addPayload: Omit<ELedgerUser, 'id' | 'createdAt'> = {
+        name: formName.trim(),
+        email: formEmail.trim().toLowerCase(),
+        mobile: cleanedMobile,
+        role: formRole,
+        status: 'pending_setup',
+      };
+
+      if (formDistrict.trim()) {
+        addPayload.district = formDistrict.trim();
+      }
+
+      if (formRole === 'member') {
+        if (formMembershipId.trim()) {
+          addPayload.membershipId = formMembershipId.trim();
+        }
+        addPayload.assignedSeatNumber = memberCount + 1;
+      }
+
+      setIsSavingUser(true);
+      try {
+        const result = await onAddUser(addPayload);
+        if (result.success) {
+          showNotification('success', result.message);
+          setShowAddUserModal(false);
+        } else {
+          setFormError(result.message);
+        }
+      } catch (err: any) {
+        setFormError(err.message || 'Failed to create user.');
+      } finally {
+        setIsSavingUser(false);
+      }
+    }
+  };
+
+  const handleTriggerPasswordReset = async (email: string, name: string) => {
+    const res = await onSendPasswordReset(email);
+    if (res.success) {
+      showNotification('success', `Password setup/reset instructions dispatched to ${email} for ${name}.`);
+    } else {
+      showNotification('error', res.message);
+    }
+  };
+
+  const formatCurrency = (val: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(val);
+  };
+
+  const filteredUsers = users.filter((u) => {
+    const matchesSearch = 
+      u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.mobile.includes(searchQuery) ||
+      (u.membershipId && u.membershipId.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    const matchesRole = roleFilter === 'all' || u.role === roleFilter;
+    const matchesStatus = statusFilter === 'all' || u.status === statusFilter;
+
+    return matchesSearch && matchesRole && matchesStatus;
+  });
+
+  return (
+    <div className="space-y-8">
+      {/* Top Banner */}
+      <div className="rounded-3xl p-6 sm:p-8 bg-gradient-to-r from-slate-950 via-slate-900 to-amber-950/50 border border-amber-500/20 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
+        <div className="space-y-1.5">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-black uppercase tracking-wider">
+            <ShieldCheck className="w-3.5 h-3.5" /> Central Executive Console
+          </div>
+          <h1 className="text-xl sm:text-2xl font-black text-white">HCRS State Committee Administration</h1>
+          <p className="text-xs text-slate-300 max-w-2xl">
+            Administer committee user accounts (1 Admin, 1 Treasurer, 1 Auditor, 17 Members), enforce role security, and authorize disbursements.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="text-right p-3 rounded-2xl bg-white/5 border border-white/10">
+            <div className="text-[10px] text-slate-400 font-bold uppercase">Committee Capacity</div>
+            <div className="text-xl font-black text-amber-400">{totalCount} / 20 Active</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Action Notification Toast */}
+      {actionNotification && (
+        <div className={`p-4 rounded-2xl flex items-center gap-3 text-xs font-bold transition animate-in fade-in shadow-md ${
+          actionNotification.type === 'success' 
+            ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800'
+            : 'bg-red-100 dark:bg-red-950/80 text-red-900 dark:text-red-200 border border-red-300 dark:border-red-800'
+        }`}>
+          {actionNotification.type === 'success' ? <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" /> : <AlertTriangle className="w-5 h-5 text-red-600 shrink-0" />}
+          <span>{actionNotification.message}</span>
+        </div>
+      )}
+
+      {/* Admin Module Sub-tabs */}
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+        <button
+          onClick={() => setActiveAdminTab('users')}
+          className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 cursor-pointer ${
+            activeAdminTab === 'users'
+              ? 'bg-amber-400 text-slate-950 shadow-md'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          <span>User & Committee Management ({users.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveAdminTab('vouchers')}
+          className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 cursor-pointer ${
+            activeAdminTab === 'vouchers'
+              ? 'bg-amber-400 text-slate-950 shadow-md'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Clock className="w-4 h-4" />
+          <span>Voucher Approvals ({pendingVouchers.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveAdminTab('allocations')}
+          className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 cursor-pointer ${
+            activeAdminTab === 'allocations'
+              ? 'bg-amber-400 text-slate-950 shadow-md'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+          }`}
+        >
+          <TrendingUp className="w-4 h-4" />
+          <span>Budget Ceilings & Allocations</span>
+        </button>
+      </div>
+
+      {/* TAB 1: USER MANAGEMENT (ADMIN ONLY) */}
+      {activeAdminTab === 'users' && (
+        <div className="space-y-6">
+          {/* Real User Structure Counters */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <span className="font-bold uppercase">Central Admin</span>
+                <span className="font-mono font-bold text-amber-500">{adminCount}/1</span>
+              </div>
+              <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                {adminCount === 1 ? 'Configured' : 'Vacant'}
+              </div>
+              <p className="text-[10px] text-slate-400">Full eLedger & User Controls</p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <span className="font-bold uppercase">State Treasurer</span>
+                <span className="font-mono font-bold text-blue-500">{treasurerCount}/1</span>
+              </div>
+              <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                {treasurerCount === 1 ? 'Configured' : 'Vacant'}
+              </div>
+              <p className="text-[10px] text-slate-400">Disbursements & Fund Ops</p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <span className="font-bold uppercase">Statutory Auditor</span>
+                <span className="font-mono font-bold text-emerald-500">{auditorCount}/1</span>
+              </div>
+              <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                {auditorCount === 1 ? 'Configured' : 'Vacant'}
+              </div>
+              <p className="text-[10px] text-slate-400">CA Audit & Compliance (Read-only)</p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <span className="font-bold uppercase">Committee Members</span>
+                <span className="font-mono font-bold text-purple-500">{memberCount}/17</span>
+              </div>
+              <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                {memberCount} / 17 Seats
+              </div>
+              <p className="text-[10px] text-slate-400">Strict Isolated Self-Ledger</p>
+            </div>
+          </div>
+
+          {/* Action Bar & Filters */}
+          <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                <input
+                  type="text"
+                  placeholder="Search by full name, email address, mobile, or membership ID..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <select
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value as any)}
+                  className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300"
+                >
+                  <option value="all">All Roles</option>
+                  <option value="admin">Admin</option>
+                  <option value="treasurer">Treasurer</option>
+                  <option value="auditor">Auditor</option>
+                  <option value="member">Committee Member</option>
+                </select>
+
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as any)}
+                  className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300"
+                >
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="pending_setup">Pending Setup</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+
+                <button
+                  onClick={handleOpenAddModal}
+                  className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black flex items-center gap-1.5 shadow-md transition shrink-0 cursor-pointer"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>Add New User</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Architecture Info Notice */}
+            <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 flex items-start gap-2.5 text-[11px] text-amber-900 dark:text-amber-300">
+              <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <b>Security Architecture:</b> All real users are managed with unique email identifiers and authenticated via Firebase Authentication Email/Password. No passwords or sensitive credentials are ever stored in Firestore or client code.
+              </div>
+            </div>
+
+            {/* User List Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
+                    <th className="pb-3 px-3">User & Contact</th>
+                    <th className="pb-3 px-3">Assigned Role</th>
+                    <th className="pb-3 px-3">District / ID</th>
+                    <th className="pb-3 px-3 text-center">Status</th>
+                    <th className="pb-3 px-3 text-right">Account Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                  {filteredUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-slate-500">
+                        No users matching the search criteria.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredUsers.map((user) => (
+                      <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+                        <td className="py-3 px-3">
+                          <div className="font-bold text-slate-900 dark:text-white text-sm">
+                            {user.name}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 text-slate-500 text-[11px] mt-0.5">
+                            <span className="flex items-center gap-1">
+                              <Mail className="w-3 h-3 text-slate-400" />
+                              <span className="font-mono">{user.email}</span>
+                            </span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              <Phone className="w-3 h-3 text-slate-400" />
+                              <span>{user.mobile}</span>
+                            </span>
+                          </div>
+                        </td>
+
+                        <td className="py-3 px-3">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                            user.role === 'admin'
+                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700'
+                              : user.role === 'treasurer'
+                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 dark:border-blue-700'
+                              : user.role === 'auditor'
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
+                              : 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300 dark:border-purple-700'
+                          }`}>
+                            <ShieldCheck className="w-3 h-3" />
+                            <span>{user.role}</span>
+                          </span>
+                        </td>
+
+                        <td className="py-3 px-3 text-slate-600 dark:text-slate-400">
+                          <div className="font-medium">{user.district || 'State HQ'}</div>
+                          {user.membershipId && (
+                            <div className="text-[10px] font-mono text-amber-600 dark:text-amber-400">
+                              {user.membershipId}
+                            </div>
+                          )}
+                        </td>
+
+                        <td className="py-3 px-3 text-center">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                            user.status === 'active'
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                              : user.status === 'pending_setup'
+                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                              : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${
+                              user.status === 'active' ? 'bg-emerald-500' : user.status === 'pending_setup' ? 'bg-amber-500' : 'bg-red-500'
+                            }`} />
+                            <span>{user.status.replace('_', ' ')}</span>
+                          </span>
+                        </td>
+
+                        <td className="py-3 px-3 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {/* Send Reset / Setup Email */}
+                            <button
+                              onClick={() => handleTriggerPasswordReset(user.email, user.name)}
+                              className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-amber-100 text-slate-600 dark:text-slate-300 hover:text-amber-800 transition cursor-pointer"
+                              title="Send Password Setup / Reset Email"
+                            >
+                              <KeyRound className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Toggle Active / Inactive */}
+                            <button
+                              onClick={async () => {
+                                const res = await onToggleUserStatus(user.id);
+                                if (res && typeof res === 'object' && 'success' in res) {
+                                  if (res.success) {
+                                    showNotification('success', res.message);
+                                  } else {
+                                    showNotification('error', res.message);
+                                  }
+                                }
+                              }}
+                              className={`p-1.5 rounded-lg transition cursor-pointer ${
+                                user.status === 'active'
+                                  ? 'bg-slate-100 dark:bg-slate-800 hover:bg-red-100 text-slate-600 dark:text-slate-300 hover:text-red-700'
+                                  : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
+                              }`}
+                              title={user.status === 'active' ? 'Deactivate Account' : 'Activate Account'}
+                            >
+                              {user.status === 'active' ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
+                            </button>
+
+                            {/* Edit User */}
+                            <button
+                              onClick={() => handleOpenEditModal(user)}
+                              className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 transition cursor-pointer"
+                              title="Edit User Details"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Delete User */}
+                            {user.role !== 'admin' && (
+                              <button
+                                onClick={async () => {
+                                  if (window.confirm(`Are you sure you want to remove account for ${user.name}?`)) {
+                                    const res = await onDeleteUser(user.id);
+                                    if (res && typeof res === 'object' && 'success' in res) {
+                                      if (res.success) {
+                                        showNotification('success', `User account for ${user.name} removed.`);
+                                      } else {
+                                        showNotification('error', res.message);
+                                      }
+                                    } else {
+                                      showNotification('success', `User account for ${user.name} removed.`);
+                                    }
+                                  }
+                                }}
+                                className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-red-100 text-slate-400 hover:text-red-600 transition cursor-pointer"
+                                title="Remove User"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: VOUCHERS APPROVAL */}
+      {activeAdminTab === 'vouchers' && (
+        <div className="space-y-6">
+          <div className="rounded-3xl p-6 sm:p-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                <Clock className="w-5 h-5 text-amber-500" />
+                <span>Vouchers Awaiting Executive Approval</span>
+              </h2>
+              <span className="text-xs font-black px-2.5 py-1 rounded-lg bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300">
+                {pendingVouchers.length} Action Required
+              </span>
+            </div>
+
+            {pendingVouchers.length === 0 ? (
+              <div className="p-8 text-center rounded-2xl bg-slate-50 dark:bg-slate-950/40 border border-dashed border-slate-200 dark:border-slate-800 text-slate-500 text-xs font-medium">
+                <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2 opacity-80" />
+                All disbursement vouchers are approved and up-to-date.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {pendingVouchers.map((v) => (
+                  <div key={v.id} className="p-4 sm:p-5 rounded-2xl bg-amber-50/30 dark:bg-amber-950/10 border-2 border-amber-200 dark:border-amber-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs font-black text-amber-700 dark:text-amber-400">{v.voucherNumber}</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">{v.category}</span>
+                      </div>
+                      <div className="text-sm font-black text-slate-900 dark:text-white">{v.description}</div>
+                      <div className="text-xs text-slate-500">
+                        Beneficiary: <b className="text-slate-700 dark:text-slate-300">{v.paidToOrReceivedFrom}</b> • Ref: <span className="font-mono">{v.referenceNo}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0">
+                      <div className="text-right">
+                        <div className="text-xs text-slate-400 font-bold">Amount</div>
+                        <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white">{formatCurrency(v.amount)}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => onApproveVoucher(v.id)}
+                          className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>Authorize</span>
+                        </button>
+                        <button
+                          onClick={() => onRejectVoucher(v.id)}
+                          className="px-3 py-2 rounded-xl bg-red-100 dark:bg-red-950 hover:bg-red-200 text-red-700 dark:text-red-300 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <XCircle className="w-4 h-4" />
+                          <span>Reject</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Approved / Active Vouchers */}
+          <div className="rounded-3xl p-6 sm:p-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+              Authorized Disbursement History
+            </h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
+                    <th className="pb-3 px-3">Voucher #</th>
+                    <th className="pb-3 px-3">Date</th>
+                    <th className="pb-3 px-3">Category</th>
+                    <th className="pb-3 px-3">Beneficiary</th>
+                    <th className="pb-3 px-3 text-right">Amount</th>
+                    <th className="pb-3 px-3 text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                  {approvedVouchers.map((v) => (
+                    <tr key={v.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                      <td className="py-3 px-3 font-mono font-bold">{v.voucherNumber}</td>
+                      <td className="py-3 px-3 text-slate-500">{v.date}</td>
+                      <td className="py-3 px-3 font-semibold">{v.category}</td>
+                      <td className="py-3 px-3 text-slate-600 dark:text-slate-400">{v.paidToOrReceivedFrom}</td>
+                      <td className="py-3 px-3 text-right font-black">{formatCurrency(v.amount)}</td>
+                      <td className="py-3 px-3 text-center">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                          {v.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: BUDGET CEILINGS & ALLOCATIONS */}
+      {activeAdminTab === 'allocations' && (
+        <div className="space-y-6">
+          <div className="rounded-3xl p-6 sm:p-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+            <div>
+              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-amber-500" />
+                <span>Head-wise Budget Caps & Escrow Protection</span>
+              </h2>
+              <p className="text-xs text-slate-500">
+                Statutory limits ordained by the State Committee for legal defense, member welfare, and chapter grants.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {categories.map((c) => (
+                <div key={c.category} className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-sm text-slate-900 dark:text-white">{c.category}</span>
+                    <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">{c.percentageUsed}% Spent</span>
+                  </div>
+
+                  <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div className="bg-amber-500 h-full" style={{ width: `${Math.min(c.percentageUsed, 100)}%` }} />
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs text-slate-500">
+                    <span>Allocated: <b>{formatCurrency(c.allocated)}</b></span>
+                    <span>Remaining: <b className="text-emerald-600 dark:text-emerald-400">{formatCurrency(c.balance)}</b></span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ADD / EDIT USER MODAL */}
+      {showAddUserModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
+          <div className="max-w-md w-full rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                  <UserPlus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                    {editingUserId ? 'Edit Committee Account' : 'Add State Committee User'}
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Real user authentication via Firebase Auth
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAddUserModal(false)}
+                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {formError && (
+              <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-900 text-xs font-bold text-red-700 dark:text-red-300 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{formError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveUser} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Adv. Rajesh K. Nair"
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Official Email Address (Unique ID)</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="e.g. member.ernakulam@hcrs.org"
+                  value={formEmail}
+                  onChange={(e) => setFormEmail(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Mobile Number (10 Digits)</label>
+                <input
+                  type="tel"
+                  required
+                  maxLength={10}
+                  placeholder="e.g. 9847012345"
+                  value={formMobile}
+                  onChange={(e) => setFormMobile(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-mono"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Assigned Role</label>
+                  <select
+                    value={formRole}
+                    onChange={(e) => setFormRole(e.target.value as any)}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-bold"
+                  >
+                    <option value="member">Committee Member (17 max)</option>
+                    <option value="treasurer">State Treasurer (1)</option>
+                    <option value="auditor">Statutory Auditor (1)</option>
+                    <option value="admin">Central Admin (1)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">District / Chapter</label>
+                  <select
+                    value={formDistrict}
+                    onChange={(e) => setFormDistrict(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-medium"
+                  >
+                    <option value="State Committee HQ">State Committee HQ</option>
+                    <option value="Thiruvananthapuram">Thiruvananthapuram</option>
+                    <option value="Kollam">Kollam</option>
+                    <option value="Pathanamthitta">Pathanamthitta</option>
+                    <option value="Alappuzha">Alappuzha</option>
+                    <option value="Kottayam">Kottayam</option>
+                    <option value="Idukki">Idukki</option>
+                    <option value="Ernakulam">Ernakulam</option>
+                    <option value="Thrissur">Thrissur</option>
+                    <option value="Palakkad">Palakkad</option>
+                    <option value="Malappuram">Malappuram</option>
+                    <option value="Kozhikode">Kozhikode</option>
+                    <option value="Wayanad">Wayanad</option>
+                    <option value="Kannur">Kannur</option>
+                    <option value="Kasaragod">Kasaragod</option>
+                  </select>
+                </div>
+              </div>
+
+              {formRole === 'member' && (
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Membership / Seat ID</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. HCRS-SC-05"
+                    value={formMembershipId}
+                    onChange={(e) => setFormMembershipId(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-mono"
+                  />
+                </div>
+              )}
+
+              <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-[11px] text-slate-500 dark:text-slate-400">
+                🔒 A password setup link will be automatically generated for this account via Firebase Authentication.
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  disabled={isSavingUser}
+                  onClick={() => setShowAddUserModal(false)}
+                  className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold cursor-pointer disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingUser}
+                  className="px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black shadow-md cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isSavingUser ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>{editingUserId ? 'Save Changes' : 'Create & Invite User'}</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
