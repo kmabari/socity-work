@@ -8,9 +8,16 @@ import {
 } from '../types';
 
 export const INITIAL_TREASURY_METRICS: TreasuryMetrics = {
-  totalInflow: 0,
+  openingBankBalance: 10000,
+  totalBankCredits: 0,
+  totalMemberAllocations: 0,
+  totalMemberExpenses: 0,
+  currentMemberHeldBalance: 0,
+  currentBankBalance: 10000,
+  totalSocietyFundBalance: 10000,
+  totalInflow: 10000,
   totalOutflow: 0,
-  currentReserveBalance: 0,
+  currentReserveBalance: 10000,
   pendingAuditsCount: 0,
   verifiedVouchersCount: 0,
   totalMembersContributed: 0,

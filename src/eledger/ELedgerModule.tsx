@@ -14,7 +14,7 @@ import {
   INITIAL_MEMBER_FINANCIAL_ACCOUNTS, 
   INITIAL_AUDIT_LOGS 
 } from './data/ledgerData';
-import { ELedgerUser, LedgerVoucher, MemberFinancialAccount } from './types';
+import { ELedgerUser, LedgerVoucher, MemberFinancialAccount, ELedgerBankCredit } from './types';
 import {
   bootstrapEledgerDataIfEmpty,
   subscribeToEledgerAuth,
@@ -25,6 +25,11 @@ import {
   subscribeToVouchers,
   subscribeToMemberAccounts,
   subscribeToAuditLogs,
+  subscribeToBankCredits,
+  addEledgerBankCredit,
+  deleteEledgerBankCredit,
+  updateOpeningBankBalance,
+  submitMemberExpenseInDb,
   addEledgerUser,
   updateEledgerUser,
   toggleEledgerUserStatus,
@@ -52,6 +57,7 @@ export const ELedgerModule: React.FC<ELedgerModuleProps> = ({ onBackToWebsite })
   const [metrics, setMetrics] = useState(INITIAL_TREASURY_METRICS);
   const [categories, setCategories] = useState(INITIAL_CATEGORY_SUMMARIES);
   const [vouchers, setVouchers] = useState<LedgerVoucher[]>(INITIAL_VOUCHERS);
+  const [bankCredits, setBankCredits] = useState<ELedgerBankCredit[]>([]);
   const [memberAccounts, setMemberAccounts] = useState<Record<string, MemberFinancialAccount>>(INITIAL_MEMBER_FINANCIAL_ACCOUNTS);
   const [auditLogs, setAuditLogs] = useState(INITIAL_AUDIT_LOGS);
 
@@ -79,6 +85,7 @@ export const ELedgerModule: React.FC<ELedgerModuleProps> = ({ onBackToWebsite })
       setMetrics(INITIAL_TREASURY_METRICS);
       setCategories(INITIAL_CATEGORY_SUMMARIES);
       setVouchers(INITIAL_VOUCHERS);
+      setBankCredits([]);
       setMemberAccounts(INITIAL_MEMBER_FINANCIAL_ACCOUNTS);
       setAuditLogs(INITIAL_AUDIT_LOGS);
       return;
@@ -105,6 +112,10 @@ export const ELedgerModule: React.FC<ELedgerModuleProps> = ({ onBackToWebsite })
       if (v.length > 0) setVouchers(v);
     });
 
+    const unsubBankCredits = subscribeToBankCredits((bc) => {
+      setBankCredits(bc);
+    });
+
     const unsubMembers = subscribeToMemberAccounts((m) => {
       if (Object.keys(m).length > 0) setMemberAccounts(m);
     });
@@ -118,6 +129,7 @@ export const ELedgerModule: React.FC<ELedgerModuleProps> = ({ onBackToWebsite })
       unsubMetrics();
       unsubCategories();
       unsubVouchers();
+      unsubBankCredits();
       unsubMembers();
       unsubAudit();
     };
@@ -171,6 +183,18 @@ export const ELedgerModule: React.FC<ELedgerModuleProps> = ({ onBackToWebsite })
     await createEledgerVoucher(newVoucherData, prepName, vouchers.length);
   };
 
+  const handleAddBankCredit = async (creditData: Omit<ELedgerBankCredit, 'id' | 'createdAt'>): Promise<{ success: boolean; message: string }> => {
+    return await addEledgerBankCredit(creditData);
+  };
+
+  const handleDeleteBankCredit = async (id: string): Promise<{ success: boolean; message: string }> => {
+    return await deleteEledgerBankCredit(id);
+  };
+
+  const handleUpdateOpeningBalance = async (amount: number): Promise<{ success: boolean; message: string }> => {
+    return await updateOpeningBankBalance(amount);
+  };
+
   const handleApproveVoucher = async (id: string) => {
     const approver = currentUser ? currentUser.name : 'Central Admin';
     await approveEledgerVoucher(id, approver);
@@ -192,9 +216,24 @@ export const ELedgerModule: React.FC<ELedgerModuleProps> = ({ onBackToWebsite })
     await allocateMemberCreditInDb(memberId, amount, targetAcc);
   };
 
-  const handleSubmitBillClaim = async (claim: { description: string; amount: number; invoiceRef: string }) => {
+  const handleSubmitMemberExpense = async (expense: { 
+    description: string; 
+    amount: number; 
+    invoiceRef: string;
+    category?: string;
+    date?: string;
+    receiptUrl?: string;
+  }) => {
     if (!currentUser) return;
-    await submitMemberBillClaimInDb(currentUser.id, claim);
+    const targetAcc = memberAccounts[currentUser.id] || currentMemberAccount;
+    await submitMemberExpenseInDb(currentUser.id, {
+      date: expense.date || new Date().toISOString().split('T')[0],
+      category: expense.category || 'General Operational Expense',
+      description: expense.description,
+      amount: expense.amount,
+      invoiceRef: expense.invoiceRef,
+      receiptUrl: expense.receiptUrl,
+    }, targetAcc);
   };
 
   // Get current member's isolated financial account
@@ -207,10 +246,10 @@ export const ELedgerModule: React.FC<ELedgerModuleProps> = ({ onBackToWebsite })
         email: currentUser?.email || 'member@hcrs.org',
         mobile: currentUser?.mobile || '9847000000',
         district: currentUser?.district || 'State HQ',
-        allocatedCredit: 25000,
+        allocatedCredit: 0,
         totalContributed: 0,
         expensesClaimed: 0,
-        availableBalance: 25000,
+        availableBalance: 0,
         billsSubmitted: 0,
         status: 'active',
         recentTransactions: [],
@@ -231,7 +270,7 @@ export const ELedgerModule: React.FC<ELedgerModuleProps> = ({ onBackToWebsite })
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans flex flex-col selection:bg-amber-500 selection:text-slate-950">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans flex flex-col selection:bg-amber-500 selection:text-slate-950 w-full max-w-full overflow-x-hidden">
       <ELedgerNavbar
         currentTab={currentTab}
         onSelectTab={(tab) => setCurrentTab(tab as any)}
@@ -241,7 +280,7 @@ export const ELedgerModule: React.FC<ELedgerModuleProps> = ({ onBackToWebsite })
         onOpenLogin={() => setCurrentTab('login')}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 min-w-0">
         {!currentUser ? (
           <ELedgerLogin
             onLoginSuccess={handleLoginSuccess}
@@ -255,6 +294,9 @@ export const ELedgerModule: React.FC<ELedgerModuleProps> = ({ onBackToWebsite })
                 categories={categories}
                 vouchers={vouchers}
                 auditLogs={auditLogs}
+                users={users}
+                memberAccounts={memberAccounts}
+                bankCredits={bankCredits}
               />
             )}
 
@@ -276,12 +318,17 @@ export const ELedgerModule: React.FC<ELedgerModuleProps> = ({ onBackToWebsite })
 
             {currentTab === 'dashboard' && currentUser.role === 'treasurer' && (
               <TreasurerLedgerDashboard
+                metrics={metrics}
+                bankCredits={bankCredits}
                 vouchers={vouchers}
                 categories={categories}
                 users={users}
                 memberAccounts={memberAccounts}
                 onCreateVoucher={handleCreateVoucher}
                 onAllocateMemberCredit={handleAllocateMemberCredit}
+                onAddBankCredit={handleAddBankCredit}
+                onDeleteBankCredit={handleDeleteBankCredit}
+                onUpdateOpeningBalance={handleUpdateOpeningBalance}
               />
             )}
 
@@ -299,7 +346,11 @@ export const ELedgerModule: React.FC<ELedgerModuleProps> = ({ onBackToWebsite })
               <MemberLedgerDashboard
                 currentUser={currentUser}
                 financialAccount={currentMemberAccount}
-                onSubmitBillClaim={handleSubmitBillClaim}
+                onSubmitBillClaim={handleSubmitMemberExpense}
+                metrics={metrics}
+                vouchers={vouchers}
+                categories={categories}
+                bankCredits={bankCredits}
               />
             )}
           </>

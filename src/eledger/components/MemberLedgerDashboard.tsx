@@ -13,26 +13,63 @@ import {
   AlertCircle,
   TrendingDown,
   Building2,
-  Calendar
+  Calendar,
+  Layers,
+  Sparkles,
+  Printer
 } from 'lucide-react';
-import { MemberFinancialAccount, ELedgerUser, MemberTransaction } from '../types';
+import { MemberFinancialAccount, ELedgerUser, MemberTransaction, TreasuryMetrics, LedgerVoucher, CategorySummary, ELedgerBankCredit } from '../types';
+import { A4PrintReportsModal } from './A4PrintReportsModal';
 
 interface MemberLedgerDashboardProps {
   currentUser: ELedgerUser;
   financialAccount: MemberFinancialAccount;
-  onSubmitBillClaim?: (claim: { description: string; amount: number; invoiceRef: string }) => void;
+  onSubmitBillClaim?: (claim: { 
+    description: string; 
+    amount: number; 
+    invoiceRef: string;
+    category?: string;
+    date?: string;
+    receiptUrl?: string;
+  }) => void;
+  metrics?: TreasuryMetrics;
+  vouchers?: LedgerVoucher[];
+  categories?: CategorySummary[];
+  bankCredits?: ELedgerBankCredit[];
 }
 
 export const MemberLedgerDashboard: React.FC<MemberLedgerDashboardProps> = ({
   currentUser,
   financialAccount,
   onSubmitBillClaim,
+  metrics,
+  vouchers = [],
+  categories = [],
+  bankCredits = [],
 }) => {
   const [showClaimModal, setShowClaimModal] = useState(false);
+  const [showA4PrintModal, setShowA4PrintModal] = useState(false);
+  const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0]);
+  const [expenseCategory, setExpenseCategory] = useState('Travel & Conveyance (യാത്രാ ചെലവ്)');
   const [claimDesc, setClaimDesc] = useState('');
   const [claimAmount, setClaimAmount] = useState('');
   const [claimRef, setClaimRef] = useState('');
+  const [formError, setFormError] = useState('');
   const [claimSubmitted, setClaimSubmitted] = useState(false);
+
+  const availableBalance = financialAccount.availableBalance || 0;
+  const parsedAmount = parseFloat(claimAmount) || 0;
+  const projectedBalance = Math.max(0, availableBalance - parsedAmount);
+
+  const expenseCategories = [
+    'Travel & Conveyance (യാത്രാ ചെലവ്)',
+    'District Review & Meeting Expenses (ജില്ലാ യോഗങ്ങൾ / അവലോകനം)',
+    'Legal & Court Documentation (കോടതി / വക്കീൽ ഫീസ് & രേഖകൾ)',
+    'Xerox, Printing & Stationery (പ്രിന്റിംഗ്, സെറോക്സ് & സ്റ്റേഷനറി)',
+    'Postal, Courier & Dispatch (തപാൽ / കൊറിയർ ചെലവുകൾ)',
+    'Emergency Member Relief & Welfare (അടിയന്തിര ആശ്വാസ ധനസഹായം)',
+    'Administrative & Chapter Operations (മേഖലാ ഓഫീസ് ചെലവുകൾ)',
+  ];
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -44,13 +81,30 @@ export const MemberLedgerDashboard: React.FC<MemberLedgerDashboardProps> = ({
 
   const handleClaimSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!claimDesc || !claimAmount) return;
+    setFormError('');
+
+    if (!claimDesc.trim()) {
+      setFormError('Please describe the purpose of this expense.');
+      return;
+    }
+
+    if (!parsedAmount || parsedAmount <= 0) {
+      setFormError('Please enter a valid expense amount.');
+      return;
+    }
+
+    if (parsedAmount > availableBalance) {
+      setFormError(`Expense amount (₹${parsedAmount.toLocaleString('en-IN')}) exceeds your current available wallet balance (₹${availableBalance.toLocaleString('en-IN')}). Please request additional credit allocation from the State Treasurer.`);
+      return;
+    }
 
     if (onSubmitBillClaim) {
       onSubmitBillClaim({
-        description: claimDesc,
-        amount: parseFloat(claimAmount),
-        invoiceRef: claimRef || `INV-${Date.now().toString().slice(-4)}`,
+        date: expenseDate,
+        category: expenseCategory,
+        description: claimDesc.trim(),
+        amount: parsedAmount,
+        invoiceRef: claimRef.trim() || `BILL-${Date.now().toString().slice(-4)}`,
       });
     }
 
@@ -61,78 +115,97 @@ export const MemberLedgerDashboard: React.FC<MemberLedgerDashboardProps> = ({
       setClaimDesc('');
       setClaimAmount('');
       setClaimRef('');
-    }, 1500);
+      setFormError('');
+    }, 2000);
   };
 
   return (
     <div className="space-y-8">
-      {/* Member Profile Header */}
+      {/* Member Profile & Wallet Header */}
       <div className="rounded-3xl p-6 sm:p-8 bg-gradient-to-br from-purple-950 via-slate-900 to-slate-900 border border-purple-500/20 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl">
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs font-black uppercase">
-            <Users className="w-3.5 h-3.5" /> State Committee Member Account
+            <Users className="w-3.5 h-3.5" /> State Committee Member Wallet
           </div>
           <h1 className="text-xl sm:text-2xl font-black text-white">{currentUser.name}</h1>
           <div className="text-xs text-slate-300 flex flex-wrap items-center gap-3">
-            <span>Seat / Membership ID: <b className="font-mono text-amber-300">{financialAccount.membershipId || currentUser.membershipId || 'HCRS-SC-01'}</b></span>
+            <span>Seat ID: <b className="font-mono text-amber-300">{financialAccount.membershipId || currentUser.membershipId || 'HCRS-SC-01'}</b></span>
             <span>•</span>
             <span>District: <b className="text-white">{currentUser.district || financialAccount.district || 'State HQ'}</b></span>
             <span>•</span>
             <span className="inline-flex items-center gap-1 text-emerald-400 font-bold">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Entitlement Verified
+              <CheckCircle2 className="w-3.5 h-3.5" /> Auto-Reconciled Treasury Wallet
             </span>
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-white/10 border border-white/10 backdrop-blur-md text-right space-y-1 min-w-[220px]">
-          <div className="text-xs text-purple-200 font-bold uppercase">Allocated Member Credit</div>
-          <div className="text-2xl sm:text-3xl font-black text-amber-300">
-            {formatCurrency(financialAccount.allocatedCredit)}
+        <div className="p-5 rounded-2xl bg-white/10 border border-white/10 backdrop-blur-md text-right space-y-1.5 min-w-[240px]">
+          <div className="text-xs text-purple-200 font-bold uppercase tracking-wider">Current Available Balance</div>
+          <div className="text-2xl sm:text-3xl font-black text-emerald-400">
+            {formatCurrency(availableBalance)}
           </div>
-          <div className="text-[11px] text-slate-300 flex items-center justify-end gap-1">
-            <span>Available Balance:</span>
-            <b className="text-emerald-400 font-bold">{formatCurrency(financialAccount.availableBalance)}</b>
+          <div className="text-[11px] text-slate-300 flex items-center justify-end gap-1.5">
+            <span>Allocated Pool:</span>
+            <b className="text-amber-300 font-bold">{formatCurrency(financialAccount.allocatedCredit || 0)}</b>
           </div>
         </div>
       </div>
 
-      {/* 3 Metric Cards for This Member Only */}
+      {/* Automatic Reconciliation Explanation Callout */}
+      <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-300 text-xs flex items-start gap-3">
+        <Sparkles className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+        <div className="space-y-1">
+          <div className="font-extrabold text-amber-800 dark:text-amber-200">
+            Automatic Treasury Reconciliation (ഓട്ടോമാറ്റിക് റീകൺസിലിയേഷൻ)
+          </div>
+          <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+            നിങ്ങളുടെ വാലറ്റിൽ നിന്നുമുള്ള ഓരോ ചിലവും രേഖപ്പെടുത്തുമ്പോൾ, ആ തുക നിങ്ങളുടെ <b>Current Available Balance</b>-ൽ നിന്ന് ഉടനടി കുറയുകയും, ഒപ്പം <b>State Treasury Expense</b>-ലും തനിയെ (automatically) രേഖപ്പെടുത്തപ്പെടുകയും ചെയ്യുന്നു.
+          </p>
+        </div>
+      </div>
+
+      {/* 3 Metric Cards for This Member */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-2">
           <div className="text-xs font-bold uppercase text-slate-500 flex items-center justify-between">
-            <span>Expenses Claimed</span>
+            <span>Expenses Incurred (ചിലവഴിച്ചത്)</span>
             <TrendingDown className="w-4 h-4 text-blue-500" />
           </div>
           <div className="text-xl font-black text-slate-900 dark:text-white">
-            {formatCurrency(financialAccount.expensesClaimed)}
+            {formatCurrency(financialAccount.expensesClaimed || 0)}
           </div>
-          <p className="text-xs text-slate-500">{financialAccount.billsSubmitted} Verified Bills / Invoices Settled</p>
+          <p className="text-xs text-slate-500">{financialAccount.billsSubmitted || 0} Invoices / Expenses Settled</p>
         </div>
 
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-2">
           <div className="text-xs font-bold uppercase text-slate-500 flex items-center justify-between">
-            <span>Welfare & Relief Eligible</span>
-            <ShieldCheck className="w-4 h-4 text-emerald-500" />
+            <span>Allocated Advance (ലഭിച്ച വിഹിതം)</span>
+            <Wallet className="w-4 h-4 text-purple-500" />
           </div>
-          <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">Active Tier 1</div>
-          <p className="text-xs text-slate-500">Full advocate legal defense pool coverage & relief eligibility.</p>
+          <div className="text-xl font-black text-amber-600 dark:text-amber-400">
+            {formatCurrency(financialAccount.allocatedCredit || 0)}
+          </div>
+          <p className="text-xs text-slate-500">Provided by State Treasurer for operational activities.</p>
         </div>
 
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-2">
           <div className="text-xs font-bold uppercase text-slate-500">Quick Actions</div>
           <div className="flex items-center gap-2 pt-1">
             <button
-              onClick={() => setShowClaimModal(true)}
-              className="flex-1 py-2 px-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-xs font-black text-slate-950 flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
+              onClick={() => {
+                setFormError('');
+                setShowClaimModal(true);
+              }}
+              className="flex-1 py-2.5 px-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-xs font-black text-slate-950 flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer active:scale-95"
             >
-              <PlusCircle className="w-3.5 h-3.5" /> Submit Bill Claim
+              <PlusCircle className="w-4 h-4" /> Record New Expense
             </button>
             <button 
-              onClick={() => window.print()}
-              className="py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1 transition cursor-pointer"
-              title="Download Statement"
+              onClick={() => setShowA4PrintModal(true)}
+              className="py-2.5 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs font-bold text-white flex items-center gap-1.5 transition cursor-pointer shadow-sm active:scale-95"
+              title="Generate Official A4 Statement"
             >
-              <Download className="w-3.5 h-3.5" /> Statement
+              <Printer className="w-4 h-4" /> A4 Statement
             </button>
           </div>
         </div>
@@ -143,37 +216,58 @@ export const MemberLedgerDashboard: React.FC<MemberLedgerDashboardProps> = ({
         <div className="flex items-center justify-between">
           <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
             <Receipt className="w-5 h-5 text-purple-500" />
-            <span>Your Personal Transaction & Allocation History</span>
+            <span>Your Personal Ledger & Expense Vouchers ({financialAccount.recentTransactions?.length || 0})</span>
           </h2>
-          <span className="text-[11px] font-bold text-slate-500">Strictly Private to Your Account</span>
+          <span className="text-[11px] font-bold text-slate-500">Auto-Synced with State Treasury</span>
         </div>
 
         <div className="space-y-3">
-          {financialAccount.recentTransactions.length === 0 ? (
-            <div className="p-6 text-center text-xs text-slate-500">
-              No transactions recorded yet for this member account.
+          {!financialAccount.recentTransactions || financialAccount.recentTransactions.length === 0 ? (
+            <div className="p-8 text-center text-xs text-slate-500 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+              No transactions recorded yet in this member wallet. Click "Record New Expense" to log operational expenses.
             </div>
           ) : (
             financialAccount.recentTransactions.map((tx) => (
-              <div key={tx.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 font-bold uppercase">
-                      {tx.type.replace('_', ' ')}
+              <div key={tx.id} className="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-md font-bold uppercase ${
+                      tx.type === 'credit_allocation'
+                        ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
+                        : 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300'
+                    }`}>
+                      {tx.type === 'credit_allocation' ? 'Credit Received' : 'Expense Deducted'}
                     </span>
-                    <span className="text-xs text-slate-500 flex items-center gap-1">
-                      <Calendar className="w-3 h-3" /> {tx.date}
-                    </span>
+                    {tx.voucherNo && (
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold">
+                        Voucher: {tx.voucherNo}
+                      </span>
+                    )}
+                    {tx.category && (
+                      <span className="text-xs text-slate-500 font-medium">
+                        • {tx.category}
+                      </span>
+                    )}
                   </div>
                   <div className="text-xs font-bold text-slate-900 dark:text-white">{tx.description}</div>
-                  <div className="text-[11px] text-slate-500 font-mono">Ref: {tx.referenceNo}</div>
+                  <div className="text-[11px] text-slate-500 flex items-center gap-2">
+                    <span>Date: <b>{tx.date}</b></span>
+                    <span>•</span>
+                    <span className="font-mono">Bill/Ref: {tx.referenceNo}</span>
+                  </div>
                 </div>
 
-                <div className="text-right">
-                  <div className="text-sm font-black text-slate-900 dark:text-white">{formatCurrency(tx.amount)}</div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 uppercase">
-                    {tx.status}
-                  </span>
+                <div className="text-left sm:text-right shrink-0">
+                  <div className={`text-base font-black ${
+                    tx.type === 'credit_allocation'
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-slate-900 dark:text-white'
+                  }`}>
+                    {tx.type === 'credit_allocation' ? '+' : '-'}{formatCurrency(tx.amount)}
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    Balance After: <b className="text-slate-700 dark:text-slate-300">{formatCurrency(tx.balanceAfterTransaction)}</b>
+                  </div>
                 </div>
               </div>
             ))
@@ -181,84 +275,141 @@ export const MemberLedgerDashboard: React.FC<MemberLedgerDashboardProps> = ({
         </div>
       </div>
 
-      {/* Bill Claim Modal */}
+      {/* Record Expense Modal */}
       {showClaimModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
-          <div className="max-w-md w-full rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in">
+          <div className="max-w-lg w-full rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center">
-                  <Receipt className="w-4 h-4" />
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-purple-500/10 text-purple-500 flex items-center justify-center">
+                  <Receipt className="w-5 h-5" />
                 </div>
-                <h3 className="font-black text-base text-slate-900 dark:text-white">
-                  Submit Operational Bill Claim
-                </h3>
+                <div>
+                  <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white">
+                    Record Expense (ചിലവ് രേഖപ്പെടുത്തുക)
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Automatically deducted from your wallet & synced to Treasury
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => setShowClaimModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
             {claimSubmitted ? (
-              <div className="p-6 text-center space-y-2">
-                <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
-                <h4 className="font-bold text-sm text-slate-900 dark:text-white">Bill Claim Submitted!</h4>
-                <p className="text-xs text-slate-500">Transferred to State Treasurer and Admin for review.</p>
+              <div className="p-8 text-center space-y-2">
+                <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto animate-bounce" />
+                <h4 className="font-black text-base text-slate-900 dark:text-white">Expense Recorded Successfully!</h4>
+                <p className="text-xs text-slate-500">
+                  ₹{parsedAmount.toLocaleString('en-IN')} deducted from your wallet and automatically reflected in Treasury Expenses.
+                </p>
               </div>
             ) : (
-              <form onSubmit={handleClaimSubmit} className="space-y-3 text-xs">
+              <form onSubmit={handleClaimSubmit} className="space-y-3.5 text-xs">
+                {formError && (
+                  <div className="p-3 rounded-xl bg-red-100 dark:bg-red-950 text-red-900 dark:text-red-200 text-xs font-bold flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                    <span>{formError}</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Expense Date (തീയതി)</label>
+                    <input
+                      type="date"
+                      required
+                      value={expenseDate}
+                      onChange={(e) => setExpenseDate(e.target.value)}
+                      className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Expense Category (ഇനം)</label>
+                    <select
+                      value={expenseCategory}
+                      onChange={(e) => setExpenseCategory(e.target.value)}
+                      className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-bold"
+                    >
+                      {expenseCategories.map((cat) => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Expense Purpose / Head</label>
-                  <input
-                    type="text"
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Description / Statutory Purpose (വിവരണം)</label>
+                  <textarea
                     required
-                    placeholder="e.g. District meeting transport & court document xerox"
+                    rows={2}
+                    placeholder="e.g. Ernakulam District Review Travel Petrol & Highway Toll expenses"
                     value={claimDesc}
                     onChange={(e) => setClaimDesc(e.target.value)}
                     className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-medium"
                   />
                 </div>
 
-                <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Amount Claimed (₹ INR)</label>
-                  <input
-                    type="number"
-                    required
-                    max={financialAccount.availableBalance}
-                    placeholder={`Max available: ₹${financialAccount.availableBalance}`}
-                    value={claimAmount}
-                    onChange={(e) => setClaimAmount(e.target.value)}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-bold"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Amount Spent (തുക ₹)</label>
+                    <input
+                      type="number"
+                      required
+                      placeholder="e.g. 200"
+                      value={claimAmount}
+                      onChange={(e) => setClaimAmount(e.target.value)}
+                      className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-black text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Bill / Voucher Ref No.</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. TOLL-82918 or BILL-01"
+                      value={claimRef}
+                      onChange={(e) => setClaimRef(e.target.value)}
+                      className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-mono font-bold"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Receipt / Invoice Ref No.</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. BILL-2026-9912"
-                    value={claimRef}
-                    onChange={(e) => setClaimRef(e.target.value)}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-mono"
-                  />
+                {/* Real-time Wallet Deduction Preview */}
+                <div className="p-3.5 rounded-2xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900/40 space-y-1.5">
+                  <div className="text-[11px] font-bold text-purple-900 dark:text-purple-300 flex items-center justify-between">
+                    <span>Current Wallet Balance:</span>
+                    <span className="font-black">{formatCurrency(availableBalance)}</span>
+                  </div>
+                  <div className="text-[11px] font-bold text-slate-600 dark:text-slate-400 flex items-center justify-between">
+                    <span>Expense to Deduct:</span>
+                    <span className="font-black text-red-500">-{formatCurrency(parsedAmount)}</span>
+                  </div>
+                  <div className="text-xs font-black text-emerald-600 dark:text-emerald-400 flex items-center justify-between pt-1 border-t border-purple-200 dark:border-purple-800">
+                    <span>Projected Balance After Deduction:</span>
+                    <span>{formatCurrency(projectedBalance)}</span>
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-end gap-2 pt-2">
                   <button
                     type="button"
                     onClick={() => setShowClaimModal(false)}
-                    className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold cursor-pointer"
+                    className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold cursor-pointer hover:bg-slate-200 transition"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 font-black text-slate-950 shadow-sm cursor-pointer"
+                    className="px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 font-black text-slate-950 shadow-md cursor-pointer transition active:scale-95"
                   >
-                    Submit to Treasurer
+                    Confirm & Record Expense
                   </button>
                 </div>
               </form>
@@ -266,6 +417,38 @@ export const MemberLedgerDashboard: React.FC<MemberLedgerDashboardProps> = ({
           </div>
         </div>
       )}
+
+      {/* Official A4 Statement Print Modal */}
+      <A4PrintReportsModal
+        isOpen={showA4PrintModal}
+        onClose={() => setShowA4PrintModal(false)}
+        initialMode="single_member"
+        initialMemberId={currentUser.id}
+        metrics={metrics || {
+          totalInflow: 0,
+          totalOutflow: 0,
+          currentReserveBalance: 0,
+          statutoryReserve: 0,
+          operationalBuffer: 0,
+          advocateFundPool: 0,
+          auditedVouchersCount: 0,
+          pendingVouchersCount: 0,
+          discrepancyCount: 0,
+          openingBankBalance: 0,
+          totalBankCredits: 0,
+          currentBankBalance: 0,
+          totalMemberAllocations: financialAccount.allocatedCredit || 0,
+          totalMemberExpenses: financialAccount.expensesClaimed || 0,
+          currentMemberHeldBalance: financialAccount.availableBalance || 0,
+          totalSocietyFundBalance: financialAccount.availableBalance || 0,
+        }}
+        categories={categories}
+        vouchers={vouchers}
+        bankCredits={bankCredits}
+        users={[currentUser]}
+        memberAccounts={{ [currentUser.id]: financialAccount }}
+      />
     </div>
   );
 };
+

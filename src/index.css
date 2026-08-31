@@ -300,3 +300,69 @@ nav.fixed h1 {
 nav.fixed p {
   color: #c9a227;
 }
+
+/* Utility to hide scrollbar while allowing smooth touch scroll */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ========================================================================= */
+/* HCRS eLedger A4 Print & Report Engine CSS                                 */
+/* ========================================================================= */
+@page {
+  size: A4 portrait;
+  margin: 10mm 12mm 12mm 12mm;
+}
+
+@media print {
+  html, body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide app navigation, fixed headers, buttons, footers, toolbars */
+  header, nav, footer, .no-print, [data-no-print="true"] {
+    display: none !important;
+  }
+
+  /* Ensure modal/printable container expands to full A4 page width */
+  .printable-report-container {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .a4-page-sheet {
+    box-shadow: none !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 10mm !important;
+    width: 100% !important;
+    min-height: auto !important;
+    page-break-inside: avoid;
+  }
+
+  .page-break-always {
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+
+  tr, .avoid-break {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}

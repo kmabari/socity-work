@@ -150,6 +150,15 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // 7. Bank Credits (Treasurer Bank Statement entries & reconciliations)
+    match /eledger_bank_credits/{creditId} {
+      // Authenticated committee users can read
+      allow read: if isCommitteeUser();
+      
+      // Treasurer & Admin can add, update, delete bank credit entries
+      allow create, update, delete: if isCentralAdmin() || isTreasurer();
+    }
+
     // Deny all other unauthenticated access by default
     match /{document=**} {
       allow read, write: if false;

@@ -37,10 +37,28 @@ export interface MemberTransaction {
   id: string;
   date: string;
   type: 'credit_allocation' | 'expense_reimbursement' | 'relief_grant' | 'contribution';
+  category?: string;
+  memberName?: string;
   description: string;
   amount: number;
+  balanceAfterTransaction: number;
   referenceNo: string;
+  voucherNo?: string;
   status: 'verified' | 'pending' | 'processed';
+}
+
+export interface ELedgerBankCredit {
+  id: string;
+  fromDate: string;
+  toDate: string;
+  monthLabel: string;
+  amount: number;
+  bankName: string;
+  referenceNo: string;
+  description: string;
+  recordedBy: string;
+  createdAt: string;
+  slipProofUrl?: string;
 }
 
 export type VoucherType = 'income' | 'expense' | 'transfer';
@@ -74,6 +92,13 @@ export interface LedgerVoucher {
 }
 
 export interface TreasuryMetrics {
+  openingBankBalance: number;
+  totalBankCredits: number;
+  totalMemberAllocations: number;
+  totalMemberExpenses: number;
+  currentMemberHeldBalance: number;
+  currentBankBalance: number;
+  totalSocietyFundBalance: number;
   totalInflow: number;
   totalOutflow: number;
   currentReserveBalance: number;
@@ -81,6 +106,20 @@ export interface TreasuryMetrics {
   verifiedVouchersCount: number;
   totalMembersContributed: number;
   lastAuditedDate: string;
+}
+
+export interface MonthlyReconciliationStatement {
+  id: string;
+  monthLabel: string;
+  fromDate: string;
+  toDate: string;
+  openingBalance: number;
+  bankCredits: number;
+  allocations: number;
+  memberExpenses: number;
+  directDisbursements: number;
+  closingBalance: number;
+  isReconciled: boolean;
 }
 
 export interface CategorySummary {
@@ -100,4 +139,5 @@ export interface AuditLogEntry {
   comment: string;
   hashSignature: string;
 }
+
 

@@ -26,7 +26,9 @@ import {
   CategorySummary,
   MemberFinancialAccount,
   AuditLogEntry,
-  FundCategory
+  FundCategory,
+  ELedgerBankCredit,
+  MemberTransaction,
 } from '../types';
 import {
   INITIAL_TREASURY_METRICS,
@@ -42,6 +44,7 @@ const CATEGORIES_COL = 'eledger_fund_categories';
 const VOUCHERS_COL = 'eledger_vouchers';
 const MEMBER_ACCOUNTS_COL = 'eledger_member_accounts';
 const AUDIT_LOGS_COL = 'eledger_audit_logs';
+const BANK_CREDITS_COL = 'eledger_bank_credits';
 
 /**
  * Helper to remove undefined, null, or empty optional fields from any Firestore payload
@@ -503,6 +506,127 @@ export function subscribeToAuditLogs(callback: (logs: AuditLogEntry[]) => void):
   );
 }
 
+export function subscribeToBankCredits(callback: (credits: ELedgerBankCredit[]) => void): () => void {
+  return onSnapshot(
+    collection(eledgerDb, BANK_CREDITS_COL),
+    (snapshot) => {
+      const credits: ELedgerBankCredit[] = [];
+      snapshot.forEach((docSnap) => {
+        credits.push({ ...docSnap.data(), id: docSnap.id } as ELedgerBankCredit);
+      });
+      // Sort descending by fromDate
+      credits.sort((a, b) => new Date(b.fromDate || b.createdAt).getTime() - new Date(a.fromDate || a.createdAt).getTime());
+      callback(credits);
+    },
+    (err) => {
+      console.warn('[eLedger Service] subscribeToBankCredits warning:', err);
+    }
+  );
+}
+
+/**
+ * Bank Credit Operations (Treasurer Operation)
+ * Prevents duplicate entries for same period or UTR reference number
+ */
+export async function addEledgerBankCredit(
+  creditData: Omit<ELedgerBankCredit, 'id' | 'createdAt'>,
+  existingCredits?: ELedgerBankCredit[]
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const cleanRef = creditData.referenceNo.trim();
+    if (!cleanRef) {
+      return { success: false, message: 'Please provide Bank UTR or Reference Number.' };
+    }
+
+    if (!creditData.amount || creditData.amount <= 0) {
+      return { success: false, message: 'Please enter a valid credit amount.' };
+    }
+
+    if (!creditData.fromDate || !creditData.toDate) {
+      return { success: false, message: 'Please specify the statement date range (From Date & To Date).' };
+    }
+
+    // Fetch existing credits if not provided
+    let creditsToCheck = existingCredits;
+    if (!creditsToCheck) {
+      const snap = await getDocs(collection(eledgerDb, BANK_CREDITS_COL));
+      creditsToCheck = snap.docs.map(d => ({ ...d.data(), id: d.id } as ELedgerBankCredit));
+    }
+
+    // Duplicate Check: UTR reference or exact matching period with same amount
+    const duplicateRef = creditsToCheck.find(
+      c => c.referenceNo && c.referenceNo.toLowerCase() === cleanRef.toLowerCase()
+    );
+    if (duplicateRef) {
+      return { 
+        success: false, 
+        message: `Duplicate Protection: Bank UTR/Ref "${cleanRef}" was already recorded on ${duplicateRef.fromDate} to ${duplicateRef.toDate}.` 
+      };
+    }
+
+    const duplicatePeriod = creditsToCheck.find(
+      c => c.fromDate === creditData.fromDate && 
+           c.toDate === creditData.toDate && 
+           c.amount === creditData.amount &&
+           c.bankName.toLowerCase() === creditData.bankName.toLowerCase()
+    );
+    if (duplicatePeriod) {
+      return {
+        success: false,
+        message: `Duplicate Protection: A deposit entry of ₹${creditData.amount.toLocaleString('en-IN')} for the exact period (${creditData.fromDate} to ${creditData.toDate}) already exists.`
+      };
+    }
+
+    const creditId = `credit-${Date.now()}`;
+    const newEntry: ELedgerBankCredit = {
+      ...creditData,
+      id: creditId,
+      referenceNo: cleanRef,
+      createdAt: new Date().toISOString(),
+    };
+
+    await setDoc(doc(eledgerDb, BANK_CREDITS_COL, creditId), {
+      ...sanitizeForFirestore(newEntry),
+      createdAtServer: serverTimestamp(),
+    });
+
+    // Automatically recalculate unified treasury metrics
+    await syncEledgerMetricsFromVouchers();
+
+    return { 
+      success: true, 
+      message: `Bank credit of ₹${creditData.amount.toLocaleString('en-IN')} successfully verified and integrated into Treasury balance.` 
+    };
+  } catch (err: any) {
+    console.error('[eLedger Service] addEledgerBankCredit error:', err);
+    return { success: false, message: err.message || 'Failed to record bank credit entry.' };
+  }
+}
+
+export async function deleteEledgerBankCredit(id: string): Promise<{ success: boolean; message: string }> {
+  try {
+    await deleteDoc(doc(eledgerDb, BANK_CREDITS_COL, id));
+    await syncEledgerMetricsFromVouchers();
+    return { success: true, message: 'Bank credit entry removed and Treasury balance reconciled.' };
+  } catch (err: any) {
+    return { success: false, message: err.message || 'Failed to delete bank credit entry.' };
+  }
+}
+
+export async function updateOpeningBankBalance(amount: number): Promise<{ success: boolean; message: string }> {
+  try {
+    await setDoc(
+      doc(eledgerDb, 'eledger_treasury_metrics', 'current_state'), 
+      { openingBankBalance: amount, updatedAt: serverTimestamp() }, 
+      { merge: true }
+    );
+    await syncEledgerMetricsFromVouchers();
+    return { success: true, message: `Opening bank balance updated to ₹${amount.toLocaleString('en-IN')}.` };
+  } catch (err: any) {
+    return { success: false, message: err.message || 'Failed to update opening balance.' };
+  }
+}
+
 /**
  * User Management Operations (Admin Only)
  */
@@ -584,6 +708,7 @@ export async function addEledgerUser(
             type: 'credit_allocation',
             description: 'Initial Committee Operational Credit Grant',
             amount: defaultAllocated,
+            balanceAfterTransaction: defaultAllocated,
             referenceNo: `INIT-${newUserId.toUpperCase()}`,
             status: 'verified',
           }
@@ -730,13 +855,59 @@ export async function createEledgerVoucher(
 }
 
 /**
- * Recalculate metrics and category balances based on current vouchers
+ * Recalculate metrics and category balances based on unified reconciliation logic
+ * (Bank Credits + Opening Balance - Member Allocations - Direct Disbursements + Member Expenses)
  */
 export async function syncEledgerMetricsFromVouchers(): Promise<void> {
   try {
+    // 1. Fetch current Metrics doc for opening balance
+    const metricsDocRef = doc(eledgerDb, 'eledger_treasury_metrics', 'current_state');
+    const metricsSnap = await getDoc(metricsDocRef);
+    let openingBankBalance = 10000;
+    if (metricsSnap.exists()) {
+      const data = metricsSnap.data();
+      if (typeof data.openingBankBalance === 'number') {
+        openingBankBalance = data.openingBankBalance;
+      }
+    }
+
+    // 2. Fetch Bank Credits
+    let totalBankCredits = 0;
+    try {
+      const bankCreditsSnap = await getDocs(collection(eledgerDb, BANK_CREDITS_COL));
+      bankCreditsSnap.forEach((docSnap) => {
+        const c = docSnap.data() as ELedgerBankCredit;
+        if (typeof c.amount === 'number') {
+          totalBankCredits += c.amount;
+        }
+      });
+    } catch (err) {
+      console.warn('[eLedger Service] bank credits fetch error:', err);
+    }
+
+    // 3. Fetch Member Accounts
+    let totalMemberAllocations = 0;
+    let totalMemberExpenses = 0;
+    try {
+      const memberSnap = await getDocs(collection(eledgerDb, MEMBER_ACCOUNTS_COL));
+      memberSnap.forEach((docSnap) => {
+        const m = docSnap.data() as MemberFinancialAccount;
+        if (typeof m.allocatedCredit === 'number') {
+          totalMemberAllocations += m.allocatedCredit;
+        }
+        if (typeof m.expensesClaimed === 'number') {
+          totalMemberExpenses += m.expensesClaimed;
+        }
+      });
+    } catch (err) {
+      console.warn('[eLedger Service] member accounts fetch error:', err);
+    }
+
+    const currentMemberHeldBalance = Math.max(0, totalMemberAllocations - totalMemberExpenses);
+
+    // 4. Fetch Vouchers (Direct non-member vouchers & total verified counts)
     const vouchSnap = await getDocs(collection(eledgerDb, VOUCHERS_COL));
-    let totalInflow = 0;
-    let totalOutflow = 0;
+    let directDisbursements = 0;
     let verifiedCount = 0;
     let pendingAuditsCount = 0;
     let latestAuditDate = '';
@@ -747,11 +918,15 @@ export async function syncEledgerMetricsFromVouchers(): Promise<void> {
       const v = docSnap.data() as LedgerVoucher;
       if (v.status === 'approved' || v.status === 'audited') {
         verifiedCount++;
-        if (v.type === 'income') {
-          totalInflow += v.amount;
-        } else if (v.type === 'expense') {
-          totalOutflow += v.amount;
+        if (v.type === 'expense') {
           categorySpentMap[v.category] = (categorySpentMap[v.category] || 0) + v.amount;
+          // If not member wallet expense, count as direct society disbursement from bank
+          if (!v.preparedBy?.includes('Member Wallet') && v.category !== 'Special Member Allocation Pool') {
+            directDisbursements += v.amount;
+          }
+        } else if (v.type === 'income') {
+          // Direct income vouchers added to bank deposits
+          totalBankCredits += v.amount;
         }
       }
       if (v.status === 'approved') {
@@ -764,31 +939,57 @@ export async function syncEledgerMetricsFromVouchers(): Promise<void> {
       }
     });
 
-    const currentReserveBalance = totalInflow - totalOutflow;
+    // 5. Compute Unified Mathematical Balances
+    // Current Bank Balance = Opening Bank Balance + Bank Deposits - Member Allocations - Direct Disbursements
+    const currentBankBalance = openingBankBalance + totalBankCredits - totalMemberAllocations - directDisbursements;
+    // Total Society Fund Balance = Current Bank Balance + Current Member-held Balance
+    const totalSocietyFundBalance = currentBankBalance + currentMemberHeldBalance;
 
-    await updateDoc(doc(eledgerDb, 'eledger_treasury_metrics', 'current_state'), {
-      totalInflow,
-      totalOutflow,
-      currentReserveBalance,
-      verifiedVouchersCount: verifiedCount,
-      pendingAuditsCount,
-      lastAuditedDate: latestAuditDate || 'Pending Audit',
-      updatedAt: serverTimestamp(),
-    });
+    const totalInflow = openingBankBalance + totalBankCredits;
+    const totalOutflow = totalMemberExpenses + directDisbursements;
+    const currentReserveBalance = totalSocietyFundBalance;
+
+    await setDoc(
+      metricsDocRef,
+      {
+        openingBankBalance,
+        totalBankCredits,
+        totalMemberAllocations,
+        totalMemberExpenses,
+        currentMemberHeldBalance,
+        currentBankBalance,
+        totalSocietyFundBalance,
+        totalInflow,
+        totalOutflow,
+        currentReserveBalance,
+        verifiedVouchersCount: verifiedCount,
+        pendingAuditsCount,
+        lastAuditedDate: latestAuditDate || 'Pending Audit',
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
 
     // Update categories
-    const catSnap = await getDocs(collection(eledgerDb, CATEGORIES_COL));
-    for (const catDoc of catSnap.docs) {
-      const cat = catDoc.data() as CategorySummary;
-      const spent = categorySpentMap[cat.category] || 0;
-      const balance = (cat.allocated || 0) - spent;
-      const percentageUsed = cat.allocated > 0 ? Math.min(100, Math.round((spent / cat.allocated) * 100)) : 0;
-      await updateDoc(catDoc.ref, {
-        spent,
-        balance,
-        percentageUsed,
-        updatedAt: serverTimestamp(),
-      });
+    try {
+      const catSnap = await getDocs(collection(eledgerDb, CATEGORIES_COL));
+      for (const catDoc of catSnap.docs) {
+        const cat = catDoc.data() as CategorySummary;
+        let spent = categorySpentMap[cat.category] || 0;
+        if (cat.category === 'Special Member Allocation Pool') {
+          spent = totalMemberExpenses;
+        }
+        const balance = Math.max(0, (cat.allocated || 0) - spent);
+        const percentageUsed = cat.allocated > 0 ? Math.min(100, Math.round((spent / cat.allocated) * 100)) : 0;
+        await updateDoc(catDoc.ref, {
+          spent,
+          balance,
+          percentageUsed,
+          updatedAt: serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      console.warn('[eLedger Service] category update note:', e);
     }
   } catch (err) {
     console.warn('[eLedger Service] syncEledgerMetricsFromVouchers note:', err);
@@ -847,68 +1048,194 @@ export async function auditEledgerVoucher(
 
 /**
  * Member Credit Allocation (Treasurer Operation)
+ * Increases member available balance and syncs treasury allocations in real-time
  */
 export async function allocateMemberCreditInDb(
   memberId: string,
   amount: number,
   currentAccount?: MemberFinancialAccount
 ): Promise<void> {
+  if (amount <= 0) return;
   const memberRef = doc(eledgerDb, MEMBER_ACCOUNTS_COL, memberId);
   const snap = await getDoc(memberRef);
   
-  if (snap.exists()) {
-    const existing = snap.data() as MemberFinancialAccount;
-    const updatedAllocated = (existing.allocatedCredit || 0) + amount;
-    const updatedBalance = (existing.availableBalance || 0) + amount;
-    const newTx = {
-      id: `tx-alloc-${Date.now()}`,
-      date: new Date().toISOString().split('T')[0],
-      type: 'credit_allocation' as const,
-      description: 'Operational Credit Augmentation by State Treasurer',
-      amount: amount,
-      referenceNo: `ALLOC-${Date.now().toString().slice(-4)}`,
-      status: 'verified' as const,
-    };
+  const existing = snap.exists() ? (snap.data() as MemberFinancialAccount) : currentAccount;
+  const updatedAllocated = ((existing?.allocatedCredit || 0) + amount);
+  const updatedBalance = ((existing?.availableBalance || 0) + amount);
+  
+  const newTx: MemberTransaction = {
+    id: `tx-alloc-${Date.now()}`,
+    date: new Date().toISOString().split('T')[0],
+    type: 'credit_allocation',
+    category: 'Operational Advance',
+    description: 'Operational Credit Allocation by State Treasurer',
+    amount: amount,
+    balanceAfterTransaction: updatedBalance,
+    referenceNo: `ALLOC-${Date.now().toString().slice(-4)}`,
+    status: 'verified',
+  };
 
+  if (snap.exists()) {
     await updateDoc(memberRef, {
       allocatedCredit: updatedAllocated,
       availableBalance: updatedBalance,
-      recentTransactions: [newTx, ...(existing.recentTransactions || [])],
+      recentTransactions: [newTx, ...(existing?.recentTransactions || [])],
       updatedAt: serverTimestamp(),
     });
+  } else {
+    await setDoc(memberRef, {
+      userId: memberId,
+      membershipId: currentAccount?.membershipId || `HCRS-MB-${Date.now().toString().slice(-4)}`,
+      memberName: currentAccount?.memberName || 'Committee Member',
+      email: currentAccount?.email || '',
+      mobile: currentAccount?.mobile || '',
+      district: currentAccount?.district || 'State HQ',
+      allocatedCredit: updatedAllocated,
+      totalContributed: 0,
+      expensesClaimed: 0,
+      availableBalance: updatedBalance,
+      billsSubmitted: 0,
+      status: 'active',
+      recentTransactions: [newTx],
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  }
+
+  // Recalculate unified treasury reconciliation
+  await syncEledgerMetricsFromVouchers();
+}
+
+/**
+ * Member Expense Submission (Automatic Member Wallet & Treasury Expense Sync)
+ * Deducts from Member Wallet balance and automatically reflects in Treasury Expense
+ */
+export async function submitMemberExpenseInDb(
+  memberId: string,
+  expense: {
+    date: string;
+    category: string;
+    description: string;
+    amount: number;
+    invoiceRef: string;
+    receiptUrl?: string;
+  },
+  memberAccount?: MemberFinancialAccount
+): Promise<{ success: boolean; message: string; voucherNo?: string }> {
+  try {
+    if (!expense.amount || expense.amount <= 0) {
+      return { success: false, message: 'Please enter a valid expense amount.' };
+    }
+
+    const memberRef = doc(eledgerDb, MEMBER_ACCOUNTS_COL, memberId);
+    const snap = await getDoc(memberRef);
+    const existing = snap.exists() ? (snap.data() as MemberFinancialAccount) : memberAccount;
+
+    if (!existing) {
+      return { success: false, message: 'Member financial account not found.' };
+    }
+
+    const currentBal = existing.availableBalance || 0;
+    if (expense.amount > currentBal) {
+      return {
+        success: false,
+        message: `Insufficient Wallet Balance! Available: ₹${currentBal.toLocaleString('en-IN')}, Requested Expense: ₹${expense.amount.toLocaleString('en-IN')}. Please request additional credit from State Treasurer.`
+      };
+    }
+
+    const newExpenseTotal = (existing.expensesClaimed || 0) + expense.amount;
+    const newAvailableBalance = Math.max(0, currentBal - expense.amount);
+    
+    // Generate unified voucher number
+    const voucherDocId = `vouch-exp-${Date.now()}`;
+    const voucherNumber = `HCRS/EXP/2026/${Date.now().toString().slice(-4)}`;
+
+    const newTx: MemberTransaction = {
+      id: `tx-exp-${Date.now()}`,
+      date: expense.date || new Date().toISOString().split('T')[0],
+      type: 'expense_reimbursement',
+      category: expense.category,
+      memberName: existing.memberName,
+      description: expense.description,
+      amount: expense.amount,
+      balanceAfterTransaction: newAvailableBalance,
+      referenceNo: expense.invoiceRef || `BILL-${Date.now().toString().slice(-4)}`,
+      voucherNo: voucherNumber,
+      status: 'verified',
+    };
+
+    // 1. Update Member Wallet in Firestore
+    await setDoc(
+      memberRef,
+      {
+        userId: memberId,
+        membershipId: existing.membershipId || '',
+        memberName: existing.memberName || '',
+        email: existing.email || '',
+        mobile: existing.mobile || '',
+        district: existing.district || '',
+        allocatedCredit: existing.allocatedCredit || 0,
+        totalContributed: existing.totalContributed || 0,
+        expensesClaimed: newExpenseTotal,
+        availableBalance: newAvailableBalance,
+        billsSubmitted: (existing.billsSubmitted || 0) + 1,
+        status: existing.status || 'active',
+        recentTransactions: [newTx, ...(existing.recentTransactions || [])],
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    // 2. Automatically generate and approve linked Treasury Expense Voucher
+    const newVoucher: LedgerVoucher = {
+      id: voucherDocId,
+      voucherNumber: voucherNumber,
+      date: expense.date || new Date().toISOString().split('T')[0],
+      type: 'expense',
+      category: 'Special Member Allocation Pool',
+      amount: expense.amount,
+      description: `[Member Wallet Expense - ${expense.category}] ${expense.description}`,
+      paidToOrReceivedFrom: existing.memberName || 'Committee Member',
+      paymentMode: 'Cash / Impress',
+      referenceNo: expense.invoiceRef || `BILL-${Date.now().toString().slice(-4)}`,
+      status: 'approved',
+      preparedBy: `${existing.memberName} (Member Wallet)`,
+      approvedBy: 'Auto-Reconciliation Engine',
+      attachmentsCount: expense.receiptUrl ? 1 : 0,
+      district: existing.district || 'State HQ',
+    };
+
+    await setDoc(doc(eledgerDb, VOUCHERS_COL, voucherDocId), {
+      ...sanitizeForFirestore(newVoucher),
+      createdAt: serverTimestamp(),
+    });
+
+    // 3. Automatically sync unified treasury metrics in Firestore
+    await syncEledgerMetricsFromVouchers();
+
+    return {
+      success: true,
+      message: `Expense of ₹${expense.amount.toLocaleString('en-IN')} successfully deducted from Member Wallet and automatically reflected in Treasury Expenses. New balance: ₹${newAvailableBalance.toLocaleString('en-IN')}.`,
+      voucherNo: voucherNumber,
+    };
+  } catch (err: any) {
+    console.error('[eLedger Service] submitMemberExpenseInDb error:', err);
+    return { success: false, message: err.message || 'Failed to process member expense.' };
   }
 }
 
 /**
- * Member Bill Claim Submission (Member Operation)
+ * Legacy compatibility wrapper for submitMemberBillClaimInDb
  */
 export async function submitMemberBillClaimInDb(
   memberId: string,
-  claim: { description: string; amount: number; invoiceRef: string }
+  claim: { description: string; amount: number; invoiceRef: string; category?: string; date?: string; memberName?: string }
 ): Promise<void> {
-  const memberRef = doc(eledgerDb, MEMBER_ACCOUNTS_COL, memberId);
-  const snap = await getDoc(memberRef);
-  
-  if (snap.exists()) {
-    const existing = snap.data() as MemberFinancialAccount;
-    const newExpense = (existing.expensesClaimed || 0) + claim.amount;
-    const newBalance = Math.max(0, (existing.availableBalance || 0) - claim.amount);
-    const newTx = {
-      id: `tx-claim-${Date.now()}`,
-      date: new Date().toISOString().split('T')[0],
-      type: 'expense_reimbursement' as const,
-      description: claim.description,
-      amount: claim.amount,
-      referenceNo: claim.invoiceRef,
-      status: 'pending' as const,
-    };
-
-    await updateDoc(memberRef, {
-      expensesClaimed: newExpense,
-      availableBalance: newBalance,
-      billsSubmitted: (existing.billsSubmitted || 0) + 1,
-      recentTransactions: [newTx, ...(existing.recentTransactions || [])],
-      updatedAt: serverTimestamp(),
-    });
-  }
+  await submitMemberExpenseInDb(memberId, {
+    date: claim.date || new Date().toISOString().split('T')[0],
+    category: claim.category || 'General Operational Expense',
+    description: claim.description,
+    amount: claim.amount,
+    invoiceRef: claim.invoiceRef,
+  });
 }

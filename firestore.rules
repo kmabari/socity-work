@@ -484,5 +484,11 @@ service cloud.firestore {
       allow create: if isEledgerAdmin() || isEledgerAuditor();
       allow update, delete: if false;
     }
+
+    // 7. Bank Credits (Treasurer Bank Statement entries & reconciliations)
+    match /eledger_bank_credits/{creditId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isEledgerAdmin() || isEledgerTreasurer();
+    }
   }
 }
