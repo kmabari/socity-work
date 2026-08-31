@@ -512,10 +512,40 @@ export function subscribeToBankCredits(callback: (credits: ELedgerBankCredit[]) 
     (snapshot) => {
       const credits: ELedgerBankCredit[] = [];
       snapshot.forEach((docSnap) => {
-        credits.push({ ...docSnap.data(), id: docSnap.id } as ELedgerBankCredit);
+        const data = docSnap.data() as Partial<ELedgerBankCredit>;
+        const fromDate = (data.fromDate || data.dateRangeFrom || '').trim();
+        const toDate = (data.toDate || data.dateRangeTo || '').trim();
+        const ref = (data.referenceNo || data.bankUtrReference || '').trim();
+        const monthLabel = (data.monthLabel || '').trim();
+        const bankName = (data.bankName || 'State Bank of India (A/c 4082190123)').trim();
+        const desc = (data.description || 'Bank statement credit deposit').trim();
+        const recordedBy = (data.recordedBy || data.verifiedBy || 'State Treasurer').trim();
+        const amount = typeof data.amount === 'number' ? data.amount : parseFloat(String(data.amount || 0));
+
+        credits.push({
+          ...data,
+          id: docSnap.id,
+          fromDate,
+          toDate,
+          dateRangeFrom: fromDate,
+          dateRangeTo: toDate,
+          monthLabel: monthLabel || 'Statement Deposit',
+          bankName,
+          referenceNo: ref,
+          bankUtrReference: ref,
+          description: desc,
+          recordedBy,
+          verifiedBy: recordedBy,
+          amount: isNaN(amount) ? 0 : amount,
+          createdAt: data.createdAt || new Date().toISOString(),
+        } as ELedgerBankCredit);
       });
-      // Sort descending by fromDate
-      credits.sort((a, b) => new Date(b.fromDate || b.createdAt).getTime() - new Date(a.fromDate || a.createdAt).getTime());
+      // Sort descending by fromDate or createdAt
+      credits.sort((a, b) => {
+        const dateB = new Date(b.fromDate || b.dateRangeFrom || b.createdAt || 0).getTime();
+        const dateA = new Date(a.fromDate || a.dateRangeFrom || a.createdAt || 0).getTime();
+        return dateB - dateA;
+      });
       callback(credits);
     },
     (err) => {
@@ -529,22 +559,33 @@ export function subscribeToBankCredits(callback: (credits: ELedgerBankCredit[]) 
  * Prevents duplicate entries for same period or UTR reference number
  */
 export async function addEledgerBankCredit(
-  creditData: Omit<ELedgerBankCredit, 'id' | 'createdAt'>,
+  creditData: Partial<ELedgerBankCredit>,
   existingCredits?: ELedgerBankCredit[]
 ): Promise<{ success: boolean; message: string }> {
   try {
-    const cleanRef = creditData.referenceNo.trim();
+    const rawRef = creditData.referenceNo || creditData.bankUtrReference || '';
+    const cleanRef = (typeof rawRef === 'string' ? rawRef : String(rawRef || '')).trim();
     if (!cleanRef) {
-      return { success: false, message: 'Please provide Bank UTR or Reference Number.' };
+      return { success: false, message: 'Please enter Bank UTR / Transaction Reference Number.' };
     }
 
-    if (!creditData.amount || creditData.amount <= 0) {
-      return { success: false, message: 'Please enter a valid credit amount.' };
+    const rawAmount = creditData.amount;
+    const parsedAmount = typeof rawAmount === 'number' ? rawAmount : parseFloat(String(rawAmount || 0));
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      return { success: false, message: 'Please enter a valid credit amount greater than 0.' };
     }
 
-    if (!creditData.fromDate || !creditData.toDate) {
+    const cleanFromDate = (creditData.fromDate || creditData.dateRangeFrom || '').trim();
+    const cleanToDate = (creditData.toDate || creditData.dateRangeTo || '').trim();
+    if (!cleanFromDate || !cleanToDate) {
       return { success: false, message: 'Please specify the statement date range (From Date & To Date).' };
     }
+
+    const cleanMonthLabel = (creditData.monthLabel || '').trim() || new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    const cleanBankName = (creditData.bankName || '').trim() || 'State Bank of India (A/c 4082190123)';
+    const cleanDesc = (creditData.description || '').trim() || 'Bank statement credit deposit';
+    const cleanRecordedBy = (creditData.recordedBy || creditData.verifiedBy || '').trim() || 'State Treasurer';
+    const cleanSlipProof = (creditData.slipProofUrl || creditData.slipUrlOrNote || '').trim() || undefined;
 
     // Fetch existing credits if not provided
     let creditsToCheck = existingCredits;
@@ -553,36 +594,54 @@ export async function addEledgerBankCredit(
       creditsToCheck = snap.docs.map(d => ({ ...d.data(), id: d.id } as ELedgerBankCredit));
     }
 
-    // Duplicate Check: UTR reference or exact matching period with same amount
-    const duplicateRef = creditsToCheck.find(
-      c => c.referenceNo && c.referenceNo.toLowerCase() === cleanRef.toLowerCase()
-    );
+    // Duplicate Check: UTR reference (case-insensitive)
+    const duplicateRef = creditsToCheck.find(c => {
+      const existingUtr = (c.referenceNo || c.bankUtrReference || '').trim();
+      return existingUtr !== '' && existingUtr.toLowerCase() === cleanRef.toLowerCase();
+    });
     if (duplicateRef) {
+      const dupFrom = (duplicateRef.fromDate || duplicateRef.dateRangeFrom || '').trim();
+      const dupTo = (duplicateRef.toDate || duplicateRef.dateRangeTo || '').trim();
       return { 
         success: false, 
-        message: `Duplicate Protection: Bank UTR/Ref "${cleanRef}" was already recorded on ${duplicateRef.fromDate} to ${duplicateRef.toDate}.` 
+        message: `Duplicate Protection: Bank UTR/Ref "${cleanRef}" was already recorded${dupFrom && dupTo ? ` for period ${dupFrom} to ${dupTo}` : ''}.` 
       };
     }
 
-    const duplicatePeriod = creditsToCheck.find(
-      c => c.fromDate === creditData.fromDate && 
-           c.toDate === creditData.toDate && 
-           c.amount === creditData.amount &&
-           c.bankName.toLowerCase() === creditData.bankName.toLowerCase()
-    );
+    // Duplicate Period Check: exact matching period with same amount and bank
+    const duplicatePeriod = creditsToCheck.find(c => {
+      const existingFrom = (c.fromDate || c.dateRangeFrom || '').trim();
+      const existingTo = (c.toDate || c.dateRangeTo || '').trim();
+      const existingBank = (c.bankName || '').trim().toLowerCase();
+      return existingFrom === cleanFromDate && 
+             existingTo === cleanToDate && 
+             c.amount === parsedAmount &&
+             (existingBank === cleanBankName.toLowerCase() || !cleanBankName);
+    });
     if (duplicatePeriod) {
       return {
         success: false,
-        message: `Duplicate Protection: A deposit entry of ₹${creditData.amount.toLocaleString('en-IN')} for the exact period (${creditData.fromDate} to ${creditData.toDate}) already exists.`
+        message: `Duplicate Protection: A deposit entry of ₹${parsedAmount.toLocaleString('en-IN')} for the exact period (${cleanFromDate} to ${cleanToDate}) already exists.`
       };
     }
 
     const creditId = `credit-${Date.now()}`;
     const newEntry: ELedgerBankCredit = {
-      ...creditData,
       id: creditId,
-      referenceNo: cleanRef,
+      fromDate: cleanFromDate,
+      toDate: cleanToDate,
+      dateRangeFrom: cleanFromDate,
+      dateRangeTo: cleanToDate,
+      monthLabel: cleanMonthLabel,
+      amount: parsedAmount,
+      bankName: cleanBankName,
+      referenceNo: cleanRef.toUpperCase(),
+      bankUtrReference: cleanRef.toUpperCase(),
+      description: cleanDesc,
+      recordedBy: cleanRecordedBy,
+      verifiedBy: cleanRecordedBy,
       createdAt: new Date().toISOString(),
+      ...(cleanSlipProof ? { slipProofUrl: cleanSlipProof, slipUrlOrNote: cleanSlipProof } : {}),
     };
 
     await setDoc(doc(eledgerDb, BANK_CREDITS_COL, creditId), {
@@ -595,7 +654,7 @@ export async function addEledgerBankCredit(
 
     return { 
       success: true, 
-      message: `Bank credit of ₹${creditData.amount.toLocaleString('en-IN')} successfully verified and integrated into Treasury balance.` 
+      message: `Bank credit of ₹${parsedAmount.toLocaleString('en-IN')} successfully verified and integrated into Treasury balance.` 
     };
   } catch (err: any) {
     console.error('[eLedger Service] addEledgerBankCredit error:', err);

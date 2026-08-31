@@ -59,6 +59,12 @@ export interface ELedgerBankCredit {
   recordedBy: string;
   createdAt: string;
   slipProofUrl?: string;
+  // Compatibility and UI aliases
+  bankUtrReference?: string;
+  dateRangeFrom?: string;
+  dateRangeTo?: string;
+  verifiedBy?: string;
+  slipUrlOrNote?: string;
 }
 
 export type VoucherType = 'income' | 'expense' | 'transfer';

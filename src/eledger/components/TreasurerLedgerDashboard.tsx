@@ -49,7 +49,7 @@ interface TreasurerLedgerDashboardProps {
   memberAccounts: Record<string, MemberFinancialAccount>;
   onCreateVoucher: (voucher: Omit<LedgerVoucher, 'id' | 'voucherNumber' | 'status' | 'preparedBy'>) => void;
   onAllocateMemberCredit?: (memberId: string, amount: number) => void;
-  onAddBankCredit?: (creditData: Omit<ELedgerBankCredit, 'id' | 'createdAt'>) => Promise<{ success: boolean; message: string }>;
+  onAddBankCredit?: (creditData: Partial<ELedgerBankCredit>) => Promise<{ success: boolean; message: string }>;
   onDeleteBankCredit?: (id: string) => Promise<{ success: boolean; message: string }>;
   onUpdateOpeningBalance?: (amount: number) => Promise<{ success: boolean; message: string }>;
 }
@@ -178,24 +178,54 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
   const handleBankCreditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBankCreditError('');
-    const parsed = parseFloat(creditAmount);
 
-    if (!parsed || parsed <= 0) {
-      setBankCreditError('Please enter a valid deposit amount.');
+    // 1. Amount validation
+    const parsed = parseFloat(creditAmount);
+    if (isNaN(parsed) || parsed <= 0) {
+      setBankCreditError('Please enter a valid credit deposit amount greater than 0.');
       return;
     }
 
-    if (!creditUtr.trim()) {
+    // 2. From Date & To Date validation
+    const cleanFromDate = (creditFromDate || '').trim();
+    const cleanToDate = (creditToDate || '').trim();
+    if (!cleanFromDate) {
+      setBankCreditError('Please select a valid From Date (തുടക്കം).');
+      return;
+    }
+    if (!cleanToDate) {
+      setBankCreditError('Please select a valid To Date (അവസാനം).');
+      return;
+    }
+
+    // 3. Month Label validation
+    const cleanMonthLabel = (creditMonthLabel || '').trim();
+    if (!cleanMonthLabel) {
+      setBankCreditError('Please provide a Statement Month / Label (e.g. August 2026 Batch 1).');
+      return;
+    }
+
+    // 4. Bank Name validation
+    const cleanBankName = (creditBankName || '').trim();
+    if (!cleanBankName) {
+      setBankCreditError('Please enter the Bank Name & Society Account.');
+      return;
+    }
+
+    // 5. Bank UTR / Reference validation
+    const cleanUtr = (creditUtr || '').trim();
+    if (!cleanUtr) {
       setBankCreditError('Please enter Bank UTR / Transaction Reference Number.');
       return;
     }
 
-    // Check duplicate UTR
-    const isDuplicate = bankCredits.some(
-      bc => bc.bankUtrReference.trim().toLowerCase() === creditUtr.trim().toLowerCase()
-    );
+    // 6. Duplicate UTR check (defensive against undefined/null fields in existing list)
+    const isDuplicate = bankCredits.some(bc => {
+      const existingUtr = (bc?.bankUtrReference || bc?.referenceNo || '').trim();
+      return existingUtr !== '' && existingUtr.toLowerCase() === cleanUtr.toLowerCase();
+    });
     if (isDuplicate) {
-      setBankCreditError(`A bank credit entry with UTR "${creditUtr.trim()}" already exists. Please verify.`);
+      setBankCreditError(`A bank credit entry with UTR "${cleanUtr}" already exists. Please verify.`);
       return;
     }
 
@@ -206,16 +236,24 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
 
     setIsSubmittingBankCredit(true);
     try {
+      const cleanDesc = (creditDesc || '').trim() || 'Bank statement credit deposit';
+      const cleanSlipNote = (creditSlipNote || '').trim() || undefined;
+
       const res = await onAddBankCredit({
-        dateRangeFrom: creditFromDate,
-        dateRangeTo: creditToDate,
-        monthLabel: creditMonthLabel,
+        fromDate: cleanFromDate,
+        toDate: cleanToDate,
+        dateRangeFrom: cleanFromDate,
+        dateRangeTo: cleanToDate,
+        monthLabel: cleanMonthLabel,
         amount: parsed,
-        bankName: creditBankName,
-        bankUtrReference: creditUtr.trim().toUpperCase(),
-        description: creditDesc.trim() || 'Bank statement credit deposit',
-        slipUrlOrNote: creditSlipNote.trim() || undefined,
+        bankName: cleanBankName,
+        referenceNo: cleanUtr.toUpperCase(),
+        bankUtrReference: cleanUtr.toUpperCase(),
+        description: cleanDesc,
+        recordedBy: 'State Treasurer',
         verifiedBy: 'State Treasurer',
+        slipProofUrl: cleanSlipNote,
+        slipUrlOrNote: cleanSlipNote,
       });
 
       if (res.success) {
@@ -226,7 +264,7 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
         setCreditDesc('');
         setCreditSlipNote('');
       } else {
-        setBankCreditError(res.message);
+        setBankCreditError(res.message || 'Failed to record bank credit.');
       }
     } catch (err: any) {
       setBankCreditError(err.message || 'Failed to record bank credit.');
@@ -236,7 +274,8 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
   };
 
   const handleDeleteCredit = async (id: string, utr: string) => {
-    if (!confirm(`Are you sure you want to delete Bank Credit entry (UTR: ${utr})? Treasury metrics will automatically recalculate.`)) {
+    const displayUtr = utr || 'Bank Credit Entry';
+    if (!confirm(`Are you sure you want to delete Bank Credit entry (UTR: ${displayUtr})? Treasury metrics will automatically recalculate.`)) {
       return;
     }
     if (!onDeleteBankCredit) return;
@@ -245,7 +284,7 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
     if (res.success) {
       showToast('success', 'Bank Credit entry removed and treasury balance updated.');
     } else {
-      showToast('error', res.message);
+      showToast('error', res.message || 'Failed to delete entry.');
     }
   };
 
@@ -295,13 +334,13 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
 
   const filteredBankCredits = useMemo(() => {
     return bankCredits.filter(bc => {
-      const q = bankSearch.toLowerCase();
-      return (
-        bc.bankUtrReference.toLowerCase().includes(q) ||
-        bc.bankName.toLowerCase().includes(q) ||
-        bc.description.toLowerCase().includes(q) ||
-        bc.monthLabel.toLowerCase().includes(q)
-      );
+      const q = (bankSearch || '').toLowerCase().trim();
+      if (!q) return true;
+      const utr = (bc.bankUtrReference || bc.referenceNo || '').toLowerCase();
+      const bank = (bc.bankName || '').toLowerCase();
+      const desc = (bc.description || '').toLowerCase();
+      const month = (bc.monthLabel || '').toLowerCase();
+      return utr.includes(q) || bank.includes(q) || desc.includes(q) || month.includes(q);
     });
   }, [bankCredits, bankSearch]);
 
@@ -733,35 +772,45 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
                       </td>
                     </tr>
                   ) : (
-                    filteredBankCredits.map((bc) => (
-                      <tr key={bc.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                        <td className="py-3 px-3">
-                          <div className="font-bold text-slate-900 dark:text-white">{bc.monthLabel}</div>
-                          <div className="text-[10px] text-slate-500">{bc.dateRangeFrom} → {bc.dateRangeTo}</div>
-                        </td>
-                        <td className="py-3 px-3 font-semibold text-slate-800 dark:text-slate-200">
-                          {bc.bankName}
-                        </td>
-                        <td className="py-3 px-3 font-mono font-bold text-blue-600 dark:text-blue-400">
-                          {bc.bankUtrReference}
-                        </td>
-                        <td className="py-3 px-3 text-slate-600 dark:text-slate-400 max-w-xs truncate">
-                          {bc.description}
-                        </td>
-                        <td className="py-3 px-3 text-right font-black text-emerald-600 dark:text-emerald-400">
-                          +{formatCurrency(bc.amount)}
-                        </td>
-                        <td className="py-3 px-3 text-center">
-                          <button
-                            onClick={() => handleDeleteCredit(bc.id, bc.bankUtrReference)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 transition cursor-pointer"
-                            title="Delete Entry"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
+                    filteredBankCredits.map((bc) => {
+                      const fromDate = bc.fromDate || bc.dateRangeFrom || '—';
+                      const toDate = bc.toDate || bc.dateRangeTo || '—';
+                      const utr = bc.bankUtrReference || bc.referenceNo || 'N/A';
+                      const month = bc.monthLabel || 'Statement Deposit';
+                      const bank = bc.bankName || 'State Bank of India';
+                      const desc = bc.description || 'Bank statement credit deposit';
+                      const amount = typeof bc.amount === 'number' ? bc.amount : parseFloat(String(bc.amount || 0));
+
+                      return (
+                        <tr key={bc.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                          <td className="py-3 px-3">
+                            <div className="font-bold text-slate-900 dark:text-white">{month}</div>
+                            <div className="text-[10px] text-slate-500">{fromDate} → {toDate}</div>
+                          </td>
+                          <td className="py-3 px-3 font-semibold text-slate-800 dark:text-slate-200">
+                            {bank}
+                          </td>
+                          <td className="py-3 px-3 font-mono font-bold text-blue-600 dark:text-blue-400">
+                            {utr}
+                          </td>
+                          <td className="py-3 px-3 text-slate-600 dark:text-slate-400 max-w-xs truncate">
+                            {desc}
+                          </td>
+                          <td className="py-3 px-3 text-right font-black text-emerald-600 dark:text-emerald-400">
+                            +{formatCurrency(isNaN(amount) ? 0 : amount)}
+                          </td>
+                          <td className="py-3 px-3 text-center">
+                            <button
+                              onClick={() => handleDeleteCredit(bc.id, utr)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 transition cursor-pointer"
+                              title="Delete Entry"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>

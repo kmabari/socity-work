@@ -183,7 +183,7 @@ export const ELedgerModule: React.FC<ELedgerModuleProps> = ({ onBackToWebsite })
     await createEledgerVoucher(newVoucherData, prepName, vouchers.length);
   };
 
-  const handleAddBankCredit = async (creditData: Omit<ELedgerBankCredit, 'id' | 'createdAt'>): Promise<{ success: boolean; message: string }> => {
+  const handleAddBankCredit = async (creditData: Partial<ELedgerBankCredit>): Promise<{ success: boolean; message: string }> => {
     return await addEledgerBankCredit(creditData);
   };
 
