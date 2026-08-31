@@ -382,6 +382,7 @@ service cloud.firestore {
     function isEledgerAdmin() {
       return isSignedIn() && (
         isMainAdmin() ||
+        isAdmin() ||
         (request.auth.token.get('email', null) != null && (
           request.auth.token.get('email', '').lower() in [
             'kmabarikiyafoods@gmail.com',
@@ -395,7 +396,10 @@ service cloud.firestore {
           request.auth.token.get('email', '').lower().matches('.*(hcrskerala|kmabarikiyafoods|mabarikiyafoods|hcrsindia|admin|eledger|highrich|9645934571|@hcrs).*')
         )) ||
         (exists(/databases/$(database)/documents/eledger_users/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/eledger_users/$(request.auth.uid)).data.get('role', '') == 'admin') ||
+         get(/databases/$(database)/documents/eledger_users/$(request.auth.uid)).data.get('role', '') in ['admin', 'Admin']) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') in ['admin', 'Admin'] ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isAdmin', false) == true)) ||
         (exists(/databases/$(database)/documents/eledger_users/admin-hcrskerala) &&
          request.auth.token.get('email', null) != null &&
          get(/databases/$(database)/documents/eledger_users/admin-hcrskerala).data.get('email', '').lower() == request.auth.token.get('email', '').lower())
@@ -407,9 +411,23 @@ service cloud.firestore {
         isEledgerAdmin() ||
         request.auth.uid == 'NX2b63Hzu4RFhR4BCQP5OMpI4jw1' ||
         (exists(/databases/$(database)/documents/eledger_users/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/eledger_users/$(request.auth.uid)).data.get('role', '') == 'treasurer') ||
-        (request.auth.token.get('email', null) != null &&
-         request.auth.token.get('email', '').lower().matches('.*(treasurer|hcrstreasurer).*'))
+         get(/databases/$(database)/documents/eledger_users/$(request.auth.uid)).data.get('role', '') in ['treasurer', 'state_treasurer', 'Treasurer']) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') in ['treasurer', 'state_treasurer', 'Treasurer', 'admin', 'Admin'] ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isTreasurer', false) == true ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isAdmin', false) == true)) ||
+        (exists(/databases/$(database)/documents/eledger_users/treasurer-hcrskerala) &&
+         request.auth.token.get('email', null) != null &&
+         get(/databases/$(database)/documents/eledger_users/treasurer-hcrskerala).data.get('email', '').lower() == request.auth.token.get('email', '').lower()) ||
+        (request.auth.token.get('email', null) != null && (
+          request.auth.token.get('email', '').lower() in [
+            'treasurer@hcrs.society',
+            'hcrstreasurer@gmail.com',
+            'treasurer.eledger@hcrs.org',
+            'statetreasurer@hcrs.society'
+          ] ||
+          request.auth.token.get('email', '').lower().matches('.*(treasurer|hcrstreasurer|state_treasurer|statetreasurer).*')
+        ))
       );
     }
 
@@ -417,7 +435,12 @@ service cloud.firestore {
       return isSignedIn() && (
         isEledgerAdmin() ||
         (exists(/databases/$(database)/documents/eledger_users/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/eledger_users/$(request.auth.uid)).data.get('role', '') == 'auditor') ||
+         get(/databases/$(database)/documents/eledger_users/$(request.auth.uid)).data.get('role', '') in ['auditor', 'statutory_auditor', 'Auditor']) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') in ['auditor', 'statutory_auditor', 'Auditor']) ||
+        (exists(/databases/$(database)/documents/eledger_users/auditor-hcrskerala) &&
+         request.auth.token.get('email', null) != null &&
+         get(/databases/$(database)/documents/eledger_users/auditor-hcrskerala).data.get('email', '').lower() == request.auth.token.get('email', '').lower()) ||
         (request.auth.token.get('email', null) != null &&
          request.auth.token.get('email', '').lower().matches('.*(auditor|hcrsauditor).*'))
       );
@@ -432,6 +455,8 @@ service cloud.firestore {
         isEledgerAdmin() || 
         request.auth.uid == userId ||
         userId == 'admin-hcrskerala' ||
+        userId == 'treasurer-hcrskerala' ||
+        userId == 'auditor-hcrskerala' ||
         (request.auth.token.get('email', null) != null && resource != null && resource.data.get('email', '').lower() == request.auth.token.get('email', '').lower()) ||
         (request.auth.token.get('email', null) != null && request.resource != null && request.resource.data.get('email', '').lower() == request.auth.token.get('email', '').lower())
       );
@@ -461,7 +486,7 @@ service cloud.firestore {
 
     // 5. Member Financial Accounts (Individual credit allocations & bill claims)
     match /eledger_member_accounts/{accountId} {
-      allow read: if isEledgerAdmin() || isEledgerTreasurer() || (
+      allow read: if isEledgerAdmin() || isEledgerTreasurer() || isEledgerAuditor() || (
         isSignedIn() && (
           request.auth.uid == accountId ||
           (request.auth.token.get('email', null) != null && resource != null && resource.data.get('email', '').lower() == request.auth.token.get('email', '').lower())

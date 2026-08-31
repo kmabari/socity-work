@@ -4,6 +4,7 @@ import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 // Dedicated Firebase Configuration for HCRS eLedger Project
+// Strictly isolated from the main HCRS membership project
 export const eledgerFirebaseConfig = {
   apiKey: "AIzaSyBSj2cHzYiZRq6HLeFX3aAPIs5Jqorqnuk",
   authDomain: "hcrs-eledger.firebaseapp.com",
@@ -22,3 +23,4 @@ export const eledgerApp = existingApp || initializeApp(eledgerFirebaseConfig, 'e
 export const eledgerAuth = getAuth(eledgerApp);
 export const eledgerDb = getFirestore(eledgerApp);
 export const eledgerStorage = getStorage(eledgerApp);
+

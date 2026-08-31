@@ -48,7 +48,7 @@ interface TreasurerLedgerDashboardProps {
   users: ELedgerUser[];
   memberAccounts: Record<string, MemberFinancialAccount>;
   onCreateVoucher: (voucher: Omit<LedgerVoucher, 'id' | 'voucherNumber' | 'status' | 'preparedBy'>) => void;
-  onAllocateMemberCredit?: (memberId: string, amount: number) => void;
+  onAllocateMemberCredit?: (memberId: string, amount: number) => Promise<{ success: boolean; message: string }>;
   onAddBankCredit?: (creditData: Partial<ELedgerBankCredit>) => Promise<{ success: boolean; message: string }>;
   onDeleteBankCredit?: (id: string) => Promise<{ success: boolean; message: string }>;
   onUpdateOpeningBalance?: (amount: number) => Promise<{ success: boolean; message: string }>;
@@ -125,6 +125,34 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
   const [voucherFilter, setVoucherFilter] = useState<'all' | 'direct' | 'member_wallet'>('all');
 
   const committeeMembers = useMemo(() => users.filter(u => u.role === 'member'), [users]);
+
+  const memberRosterStats = useMemo(() => {
+    let totalAllocated = 0;
+    let totalExpenses = 0;
+    let totalBalance = 0;
+    const accountsList = Object.values(memberAccounts) as MemberFinancialAccount[];
+
+    committeeMembers.forEach((m) => {
+      const acc = memberAccounts[m.id] || 
+        accountsList.find(a => m.email && a.email && a.email.toLowerCase().trim() === m.email.toLowerCase().trim()) ||
+        accountsList.find(a => m.name && a.memberName && a.memberName.toLowerCase().trim() === m.name.toLowerCase().trim()) ||
+        {
+          allocatedCredit: 0,
+          expensesClaimed: 0,
+          availableBalance: 0,
+        };
+      totalAllocated += (acc.allocatedCredit || 0);
+      totalExpenses += (acc.expensesClaimed || 0);
+      totalBalance += (acc.availableBalance || 0);
+    });
+
+    return {
+      totalAllocated,
+      totalExpenses,
+      totalBalance,
+      memberCount: committeeMembers.length,
+    };
+  }, [committeeMembers, memberAccounts]);
 
   const availableCategories: FundCategory[] = [
     'Legal Defense & Court Fund',
@@ -313,23 +341,31 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
     }
   };
 
-  const handleMemberCreditSubmit = (e: React.FormEvent) => {
+  const handleMemberCreditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedMemberId || !memberAllocationAmount) return;
 
     const parsed = parseFloat(memberAllocationAmount);
-    if (!parsed || parsed <= 0) return;
-
-    if (onAllocateMemberCredit) {
-      onAllocateMemberCredit(selectedMemberId, parsed);
+    if (!parsed || parsed <= 0) {
+      showToast('error', 'Please enter a valid allocation amount greater than 0.');
+      return;
     }
 
     const memberObj = committeeMembers.find(m => m.id === selectedMemberId);
-    setAllocationSuccess(`₹${parsed.toLocaleString('en-IN')} credit assigned to ${memberObj?.name || 'Member'}. Member wallet updated.`);
-    setTimeout(() => {
-      setAllocationSuccess('');
-      setMemberAllocationAmount('');
-    }, 4000);
+
+    if (onAllocateMemberCredit) {
+      const res = await onAllocateMemberCredit(selectedMemberId, parsed);
+      if (res && res.success) {
+        showToast('success', res.message || `₹${parsed.toLocaleString('en-IN')} allocated successfully.`);
+        setAllocationSuccess(res.message || `₹${parsed.toLocaleString('en-IN')} credit assigned to ${memberObj?.name || 'Member'}. Member wallet updated.`);
+        setMemberAllocationAmount('');
+        setTimeout(() => {
+          setAllocationSuccess('');
+        }, 5000);
+      } else {
+        showToast('error', res?.message || 'Failed to allocate credit.');
+      }
+    }
   };
 
   const filteredBankCredits = useMemo(() => {
@@ -614,53 +650,88 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
             </div>
 
             {/* Formula Visual Box */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-4 w-full min-w-0">
-              <div className="font-bold text-xs text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                Reconciliation Flow Diagram:
+            <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-[#09111E] border-2 border-amber-500/40 shadow-xl space-y-4 w-full min-w-0">
+              <div className="flex items-center justify-between gap-2 border-b border-amber-500/20 pb-3">
+                <div className="font-black text-xs sm:text-sm text-amber-300 uppercase tracking-wider flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <span>Reconciliation Flow Diagram & Live Ledger Equations</span>
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full bg-amber-400/20 border border-amber-400/50 text-[10px] font-black text-amber-300 uppercase tracking-widest">
+                  Live Audit State
+                </span>
               </div>
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 text-xs w-full min-w-0">
-                <div className="p-3.5 sm:p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 space-y-1 w-full min-w-0">
-                  <div className="font-black text-blue-900 dark:text-blue-300">Bank Inflows & Liquid Cash</div>
-                  <div className="text-[11px] text-slate-600 dark:text-slate-400">
-                    Opening Balance: <b>{formatCurrency(metrics.openingBankBalance || 0)}</b>
+                {/* 1. Bank Inflows & Liquid Cash */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-b from-[#0F1E36] to-[#0A1424] border-2 border-blue-400/60 shadow-md space-y-2 w-full min-w-0">
+                  <div className="font-black text-sm text-blue-300 flex items-center justify-between border-b border-blue-400/30 pb-2">
+                    <span>Bank Inflows & Cash</span>
+                    <Landmark className="w-4 h-4 text-blue-400 shrink-0" />
                   </div>
-                  <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
-                    + Total Deposits: {formatCurrency(metrics.totalBankCredits || 0)}
+                  <div className="text-xs text-slate-200 flex items-center justify-between pt-1">
+                    <span className="text-slate-300">Opening Balance:</span>
+                    <b className="text-white font-bold">{formatCurrency(metrics.openingBankBalance || 0)}</b>
                   </div>
-                  <div className="text-[11px] text-red-500 font-bold">
-                    - Member Allocations: {formatCurrency(metrics.totalMemberAllocations || 0)}
+                  <div className="text-xs text-emerald-400 font-bold flex items-center justify-between">
+                    <span>+ Total Bank Deposits:</span>
+                    <span className="font-black text-emerald-300">{formatCurrency(metrics.totalBankCredits || 0)}</span>
                   </div>
-                  <div className="text-xs font-black text-blue-600 dark:text-blue-400 pt-1 border-t border-blue-200 dark:border-blue-900">
-                    = Current Bank: {formatCurrency(metrics.currentBankBalance || 0)}
+                  <div className="text-xs text-rose-300 font-bold flex items-center justify-between">
+                    <span>- Member Allocations:</span>
+                    <span className="font-black text-rose-300">{formatCurrency(metrics.totalMemberAllocations || 0)}</span>
                   </div>
-                </div>
-
-                <div className="p-3.5 sm:p-4 rounded-xl bg-purple-50 dark:purple-950/30 border border-purple-200 dark:border-purple-900/40 space-y-1 w-full min-w-0">
-                  <div className="font-black text-purple-900 dark:text-purple-300">Member Operational Wallets</div>
-                  <div className="text-[11px] text-slate-600 dark:text-slate-400">
-                    Total Pool Assigned: <b>{formatCurrency(metrics.totalMemberAllocations || 0)}</b>
-                  </div>
-                  <div className="text-[11px] text-amber-600 dark:text-amber-400 font-bold">
-                    - Settled Expenses: {formatCurrency(metrics.totalMemberExpenses || 0)}
-                  </div>
-                  <div className="text-[11px] text-purple-600 dark:text-purple-400 font-bold">
-                    Available in Member Wallets: {formatCurrency(metrics.currentMemberHeldBalance || 0)}
-                  </div>
-                  <div className="text-xs font-black text-purple-700 dark:text-purple-300 pt-1 border-t border-purple-200 dark:border-purple-900">
-                    100% Auto-Reconciled
+                  <div className="text-xs font-black text-cyan-300 pt-2.5 border-t border-blue-500/40 flex items-center justify-between">
+                    <span>= Current Bank Balance:</span>
+                    <span className="text-sm font-black text-white">{formatCurrency(metrics.currentBankBalance || 0)}</span>
                   </div>
                 </div>
 
-                <div className="p-3.5 sm:p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 space-y-1 w-full min-w-0">
-                  <div className="font-black text-amber-900 dark:text-amber-300">Society Total Unspent Assets</div>
-                  <div className="text-[11px] text-slate-600 dark:text-slate-400">
-                    Bank Reserve: <b>{formatCurrency(metrics.currentBankBalance || 0)}</b>
+                {/* 2. Member Operational Wallets (Featured Dark Blue with Golden Border) */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-b from-[#0D1B2A] to-[#08121E] border-2 border-amber-400 shadow-xl shadow-amber-500/10 space-y-2 w-full min-w-0 ring-2 ring-amber-400/20">
+                  <div className="font-black text-sm text-amber-300 flex items-center justify-between border-b border-amber-400/40 pb-2">
+                    <span className="tracking-wide">Member Operational Wallets</span>
+                    <Users className="w-4 h-4 text-amber-400 shrink-0" />
                   </div>
-                  <div className="text-[11px] text-slate-600 dark:text-slate-400">
-                    + Member Held: <b>{formatCurrency(metrics.currentMemberHeldBalance || 0)}</b>
+                  <div className="text-xs text-slate-200 flex items-center justify-between pt-1">
+                    <span className="text-slate-300">Total Pool Assigned:</span>
+                    <b className="text-white font-black">{formatCurrency(metrics.totalMemberAllocations || 0)}</b>
                   </div>
-                  <div className="text-xs font-black text-amber-600 dark:text-amber-400 pt-2 border-t border-amber-200 dark:border-amber-900">
-                    = Total Fund: {formatCurrency(metrics.totalSocietyFundBalance || 0)}
+                  <div className="text-xs text-amber-300 font-bold flex items-center justify-between">
+                    <span>- Settled Expenses:</span>
+                    <span className="font-black text-amber-200">{formatCurrency(metrics.totalMemberExpenses || 0)}</span>
+                  </div>
+                  <div className="text-xs text-amber-400 font-black flex items-center justify-between">
+                    <span className="text-amber-300">Available in Member Wallets:</span>
+                    <span className="text-sm font-black text-white">{formatCurrency(metrics.currentMemberHeldBalance || 0)}</span>
+                  </div>
+                  <div className="text-xs font-black text-amber-300 pt-2.5 border-t border-amber-400/40 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                      Status:
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-[11px] font-black text-emerald-300">
+                      100% Auto-Reconciled
+                    </span>
+                  </div>
+                </div>
+
+                {/* 3. Society Total Unspent Assets */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-b from-[#131F33] to-[#0A1322] border-2 border-emerald-400/60 shadow-md space-y-2 w-full min-w-0">
+                  <div className="font-black text-sm text-emerald-300 flex items-center justify-between border-b border-emerald-400/30 pb-2">
+                    <span>Society Total Unspent Assets</span>
+                    <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
+                  </div>
+                  <div className="text-xs text-slate-200 flex items-center justify-between pt-1">
+                    <span className="text-slate-300">Bank Reserve:</span>
+                    <b className="text-white font-bold">{formatCurrency(metrics.currentBankBalance || 0)}</b>
+                  </div>
+                  <div className="text-xs text-slate-200 flex items-center justify-between">
+                    <span className="text-slate-300">+ Member Held Funds:</span>
+                    <b className="text-emerald-300 font-bold">{formatCurrency(metrics.currentMemberHeldBalance || 0)}</b>
+                  </div>
+                  <div className="text-xs font-black text-emerald-300 pt-4 border-t border-emerald-500/40 flex items-center justify-between">
+                    <span>= Total Society Fund:</span>
+                    <span className="text-base font-black text-amber-300">{formatCurrency(metrics.totalSocietyFundBalance || 0)}</span>
                   </div>
                 </div>
               </div>
@@ -752,16 +823,16 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
             </div>
 
             {/* Bank Credits Table */}
-            <div className="w-full max-w-full min-w-0 overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800/60">
+            <div className="w-full max-w-full min-w-0 overflow-x-auto max-h-[340px] overflow-y-auto rounded-2xl border border-slate-100 dark:border-slate-800/60 shadow-inner">
               <table className="min-w-[620px] w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase tracking-wider bg-slate-50/50 dark:bg-slate-950/50">
-                    <th className="py-3 px-3">Date Range / Month</th>
-                    <th className="py-3 px-3">Bank & Account</th>
-                    <th className="py-3 px-3">UTR / Ref No.</th>
-                    <th className="py-3 px-3">Description / Source</th>
-                    <th className="py-3 px-3 text-right">Credit Amount</th>
-                    <th className="py-3 px-3 text-center">Actions</th>
+                <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+                  <tr className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+                    <th className="py-2.5 px-3">Date Range / Month</th>
+                    <th className="py-2.5 px-3">Bank & Account</th>
+                    <th className="py-2.5 px-3">UTR / Ref No.</th>
+                    <th className="py-2.5 px-3">Description / Source</th>
+                    <th className="py-2.5 px-3 text-right">Credit Amount</th>
+                    <th className="py-2.5 px-3 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -888,17 +959,17 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
               </div>
             </div>
 
-            <div className="w-full max-w-full min-w-0 overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800/60">
+            <div className="w-full max-w-full min-w-0 overflow-x-auto max-h-[340px] overflow-y-auto rounded-2xl border border-slate-100 dark:border-slate-800/60 shadow-inner">
               <table className="min-w-[650px] w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase tracking-wider bg-slate-50/50 dark:bg-slate-950/50">
-                    <th className="py-3 px-3">Voucher #</th>
-                    <th className="py-3 px-3">Date</th>
-                    <th className="py-3 px-3">Category</th>
-                    <th className="py-3 px-3">Description</th>
-                    <th className="py-3 px-3">Payee / Member</th>
-                    <th className="py-3 px-3 text-right">Amount</th>
-                    <th className="py-3 px-3 text-center">Status</th>
+                <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+                  <tr className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+                    <th className="py-2.5 px-3">Voucher #</th>
+                    <th className="py-2.5 px-3">Date</th>
+                    <th className="py-2.5 px-3">Category</th>
+                    <th className="py-2.5 px-3">Description</th>
+                    <th className="py-2.5 px-3">Payee / Member</th>
+                    <th className="py-2.5 px-3 text-right">Amount</th>
+                    <th className="py-2.5 px-3 text-center">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -1015,9 +1086,14 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
           {/* Members Table */}
           <div className="p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4 w-full max-w-full min-w-0">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
-              <h3 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white break-words">
-                State Committee Member Allocation Roster ({committeeMembers.length} Members)
-              </h3>
+              <div>
+                <h3 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white break-words">
+                  State Committee Member Allocation Roster ({committeeMembers.length} Members)
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Consolidated operational tracking across all {committeeMembers.length} committee member accounts
+                </p>
+              </div>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -1029,16 +1105,53 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
                 </button>
               </div>
             </div>
-            <div className="w-full max-w-full min-w-0 overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800/60">
+
+            {/* Consolidated 17 Committee Member Financial Calculations Bar */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+              <div className="space-y-1">
+                <div className="text-[10px] font-bold uppercase text-slate-500 flex items-center justify-between">
+                  <span>1. Total Allocated Credit</span>
+                  <span className="text-purple-600 font-black">All {memberRosterStats.memberCount} Members</span>
+                </div>
+                <div className="text-lg font-black text-slate-900 dark:text-white">
+                  {formatCurrency(memberRosterStats.totalAllocated)}
+                </div>
+                <div className="text-[10px] text-slate-500">ആകെ അനുവദിച്ച തുക</div>
+              </div>
+
+              <div className="space-y-1 border-t sm:border-t-0 sm:border-l border-slate-200 dark:border-slate-800 pt-2 sm:pt-0 sm:pl-4">
+                <div className="text-[10px] font-bold uppercase text-slate-500 flex items-center justify-between">
+                  <span>2. Total Expenses Settled</span>
+                  <span className="text-red-500 font-bold">Verified Claims</span>
+                </div>
+                <div className="text-lg font-black text-red-600 dark:text-red-400">
+                  {formatCurrency(memberRosterStats.totalExpenses)}
+                </div>
+                <div className="text-[10px] text-slate-500">ആകെ ചിലവഴിച്ച തുക</div>
+              </div>
+
+              <div className="space-y-1 border-t sm:border-t-0 sm:border-l border-slate-200 dark:border-slate-800 pt-2 sm:pt-0 sm:pl-4">
+                <div className="text-[10px] font-bold uppercase text-slate-500 flex items-center justify-between">
+                  <span>3. Total Unspent Balance</span>
+                  <span className="text-emerald-600 font-bold">With Members</span>
+                </div>
+                <div className="text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                  {formatCurrency(memberRosterStats.totalBalance)}
+                </div>
+                <div className="text-[10px] text-slate-500">കൈവശമുള്ള ആകെ ബാക്കി</div>
+              </div>
+            </div>
+
+            <div className="w-full max-w-full min-w-0 overflow-x-auto max-h-[340px] overflow-y-auto rounded-2xl border border-slate-100 dark:border-slate-800/60 shadow-inner">
               <table className="min-w-[580px] w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase tracking-wider bg-slate-50/50 dark:bg-slate-950/50">
-                    <th className="py-3 px-3">Member Name</th>
-                    <th className="py-3 px-3">District</th>
-                    <th className="py-3 px-3 text-right">Allocated Pool</th>
-                    <th className="py-3 px-3 text-right">Expenses Settled</th>
-                    <th className="py-3 px-3 text-right">Available Balance</th>
-                    <th className="py-3 px-3 text-center">A4 Print</th>
+                <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+                  <tr className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+                    <th className="py-2.5 px-3">Member Name</th>
+                    <th className="py-2.5 px-3">District</th>
+                    <th className="py-2.5 px-3 text-right">Allocated Pool</th>
+                    <th className="py-2.5 px-3 text-right">Expenses Settled</th>
+                    <th className="py-2.5 px-3 text-right">Available Balance</th>
+                    <th className="py-2.5 px-3 text-center">A4 Print</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -1050,11 +1163,15 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
                     </tr>
                   ) : (
                     committeeMembers.map((m) => {
-                      const acc = memberAccounts[m.id] || memberAccounts['default-member'] || {
-                        allocatedCredit: 0,
-                        expensesClaimed: 0,
-                        availableBalance: 0,
-                      };
+                      const accountsList = Object.values(memberAccounts) as MemberFinancialAccount[];
+                      const acc = memberAccounts[m.id] || 
+                        accountsList.find(a => m.email && a.email && a.email.toLowerCase().trim() === m.email.toLowerCase().trim()) ||
+                        accountsList.find(a => m.name && a.memberName && a.memberName.toLowerCase().trim() === m.name.toLowerCase().trim()) ||
+                        memberAccounts['default-member'] || {
+                          allocatedCredit: 0,
+                          expensesClaimed: 0,
+                          availableBalance: 0,
+                        };
                       return (
                         <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                           <td className="py-3 px-3 font-bold text-slate-900 dark:text-white">
@@ -1064,7 +1181,7 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
                           <td className="py-3 px-3 text-slate-500">{m.district || 'State HQ'}</td>
                           <td className="py-3 px-3 text-right font-medium">{formatCurrency(acc.allocatedCredit)}</td>
                           <td className="py-3 px-3 text-right font-medium">{formatCurrency(acc.expensesClaimed)}</td>
-                          <td className="py-3 px-3 text-right font-black text-emerald-600 dark:text-emerald-400">
+                          <td className="py-3 px-3 text-right font-black text-emerald-600 dark:text-emerald-400 font-mono">
                             {formatCurrency(acc.availableBalance)}
                           </td>
                           <td className="py-3 px-3 text-center">
@@ -1083,6 +1200,33 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
                     })
                   )}
                 </tbody>
+                {committeeMembers.length > 0 && (
+                  <tfoot className="sticky bottom-0 bg-slate-100 dark:bg-slate-900 border-t-2 border-slate-300 dark:border-slate-700 font-black text-xs">
+                    <tr>
+                      <td colSpan={2} className="py-2.5 px-3 uppercase text-[10px] text-slate-600 dark:text-slate-400 text-right">
+                        All {memberRosterStats.memberCount} Members Total:
+                      </td>
+                      <td className="py-2.5 px-3 text-right text-slate-900 dark:text-white">
+                        {formatCurrency(memberRosterStats.totalAllocated)}
+                      </td>
+                      <td className="py-2.5 px-3 text-right text-red-600 dark:text-red-400">
+                        {formatCurrency(memberRosterStats.totalExpenses)}
+                      </td>
+                      <td className="py-2.5 px-3 text-right text-emerald-600 dark:text-emerald-400 font-mono text-sm">
+                        {formatCurrency(memberRosterStats.totalBalance)}
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => openA4Print('all_members')}
+                          className="px-2 py-0.5 rounded bg-slate-900 text-white text-[10px] font-bold"
+                        >
+                          Print All
+                        </button>
+                      </td>
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             </div>
           </div>

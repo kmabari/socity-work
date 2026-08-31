@@ -98,7 +98,7 @@ export const AuditorLedgerDashboard: React.FC<AuditorLedgerDashboardProps> = ({
             All authorized vouchers have been audited and certified.
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="max-h-[360px] overflow-y-auto pr-1 space-y-3">
             {unauditedApprovedVouchers.map((v) => (
               <div key={v.id} className="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -177,7 +177,7 @@ export const AuditorLedgerDashboard: React.FC<AuditorLedgerDashboardProps> = ({
           </h2>
         </div>
 
-        <div className="space-y-3">
+        <div className="max-h-[360px] overflow-y-auto pr-1 space-y-3">
           {auditLogs.map((log) => (
             <div key={log.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
               <div className="space-y-1">

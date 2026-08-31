@@ -28,7 +28,10 @@ service cloud.firestore {
           getAuthEmail().lower().matches('.*(hcrskerala|kmabarikiyafoods|mabarikiyafoods|hcrsindia|admin|eledger|highrich|9645934571|@hcrs).*')
         )) ||
         (exists(/databases/$(database)/documents/eledger_users/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/eledger_users/$(request.auth.uid)).data.get('role', '') == 'admin') ||
+         get(/databases/$(database)/documents/eledger_users/$(request.auth.uid)).data.get('role', '') in ['admin', 'Admin']) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') in ['admin', 'Admin'] ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isAdmin', false) == true)) ||
         (exists(/databases/$(database)/documents/eledger_users/admin-hcrskerala) &&
          getAuthEmail() != '' &&
          get(/databases/$(database)/documents/eledger_users/admin-hcrskerala).data.get('email', '').lower() == getAuthEmail().lower())
@@ -38,23 +41,36 @@ service cloud.firestore {
     function getUserRole() {
       return isAuthenticated() && exists(/databases/$(database)/documents/eledger_users/$(request.auth.uid))
         ? get(/databases/$(database)/documents/eledger_users/$(request.auth.uid)).data.get('role', '')
-        : '';
+        : (isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+           ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '')
+           : '');
     }
     
     function isAdmin() {
-      return isCentralAdmin() || getUserRole() == 'admin';
+      return isCentralAdmin() || getUserRole() in ['admin', 'Admin'];
     }
     
     function isTreasurer() {
       return isCentralAdmin() || 
-             getUserRole() == 'treasurer' ||
+             getUserRole() in ['treasurer', 'state_treasurer', 'Treasurer'] ||
+             (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isTreasurer', false) == true) ||
+             (exists(/databases/$(database)/documents/eledger_users/treasurer-hcrskerala) && getAuthEmail() != '' && get(/databases/$(database)/documents/eledger_users/treasurer-hcrskerala).data.get('email', '').lower() == getAuthEmail().lower()) ||
              request.auth.uid == 'NX2b63Hzu4RFhR4BCQP5OMpI4jw1' ||
-             (getAuthEmail() != '' && getAuthEmail().lower().matches('.*(treasurer|hcrstreasurer).*'));
+             (getAuthEmail() != '' && (
+               getAuthEmail().lower() in [
+                 'treasurer@hcrs.society',
+                 'hcrstreasurer@gmail.com',
+                 'treasurer.eledger@hcrs.org',
+                 'statetreasurer@hcrs.society'
+               ] ||
+               getAuthEmail().lower().matches('.*(treasurer|hcrstreasurer|state_treasurer|statetreasurer).*')
+             ));
     }
     
     function isAuditor() {
       return isCentralAdmin() || 
-             getUserRole() == 'auditor' ||
+             getUserRole() in ['auditor', 'statutory_auditor', 'Auditor'] ||
+             (exists(/databases/$(database)/documents/eledger_users/auditor-hcrskerala) && getAuthEmail() != '' && get(/databases/$(database)/documents/eledger_users/auditor-hcrskerala).data.get('email', '').lower() == getAuthEmail().lower()) ||
              (getAuthEmail() != '' && getAuthEmail().lower().matches('.*(auditor|hcrsauditor).*'));
     }
     

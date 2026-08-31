@@ -213,7 +213,8 @@ export const ELedgerModule: React.FC<ELedgerModuleProps> = ({ onBackToWebsite })
 
   const handleAllocateMemberCredit = async (memberId: string, amount: number) => {
     const targetAcc = memberAccounts[memberId];
-    await allocateMemberCreditInDb(memberId, amount, targetAcc);
+    const memberUser = users.find(u => u.id === memberId);
+    return await allocateMemberCreditInDb(memberId, amount, targetAcc, memberUser);
   };
 
   const handleSubmitMemberExpense = async (expense: { 
@@ -236,16 +237,60 @@ export const ELedgerModule: React.FC<ELedgerModuleProps> = ({ onBackToWebsite })
     }, targetAcc);
   };
 
-  // Get current member's isolated financial account
-  const currentMemberAccount: MemberFinancialAccount = (currentUser && memberAccounts[currentUser.id]) 
-    ? memberAccounts[currentUser.id] 
-    : (memberAccounts['default-member'] || {
-        userId: currentUser?.id || 'default-member',
-        membershipId: currentUser?.membershipId || 'HCRS-SC-01',
-        memberName: currentUser?.name || 'State Committee Member',
-        email: currentUser?.email || 'member@hcrs.org',
-        mobile: currentUser?.mobile || '9847000000',
-        district: currentUser?.district || 'State HQ',
+  // Get current member's isolated financial account (matched by UID, email, or name)
+  const currentMemberAccount: MemberFinancialAccount = (() => {
+    if (!currentUser) {
+      return (
+        memberAccounts['default-member'] || {
+          userId: 'default-member',
+          membershipId: 'HCRS-SC-01',
+          memberName: 'State Committee Member',
+          email: 'member@hcrs.org',
+          mobile: '9847000000',
+          district: 'State HQ',
+          allocatedCredit: 0,
+          totalContributed: 0,
+          expensesClaimed: 0,
+          availableBalance: 0,
+          billsSubmitted: 0,
+          status: 'active',
+          recentTransactions: [],
+        }
+      );
+    }
+
+    // 1. Direct match by ID
+    if (memberAccounts[currentUser.id]) {
+      return memberAccounts[currentUser.id];
+    }
+
+    const accountsList = Object.values(memberAccounts) as MemberFinancialAccount[];
+
+    // 2. Match by Email
+    if (currentUser.email) {
+      const targetByEmail = accountsList.find(
+        (acc) => acc.email && acc.email.toLowerCase().trim() === currentUser.email!.toLowerCase().trim()
+      );
+      if (targetByEmail) return targetByEmail;
+    }
+
+    // 3. Match by Name
+    if (currentUser.name) {
+      const targetByName = accountsList.find(
+        (acc) => acc.memberName && acc.memberName.toLowerCase().trim() === currentUser.name!.toLowerCase().trim()
+      );
+      if (targetByName) return targetByName;
+    }
+
+    // 4. Default fallback
+    return (
+      memberAccounts['default-member'] || {
+        userId: currentUser.id,
+        membershipId: currentUser.membershipId || 'HCRS-SC-01',
+        memberName: currentUser.name || 'State Committee Member',
+        email: currentUser.email || '',
+        mobile: currentUser.mobile || '',
+        district: currentUser.district || 'State HQ',
         allocatedCredit: 0,
         totalContributed: 0,
         expensesClaimed: 0,
@@ -253,7 +298,9 @@ export const ELedgerModule: React.FC<ELedgerModuleProps> = ({ onBackToWebsite })
         billsSubmitted: 0,
         status: 'active',
         recentTransactions: [],
-      });
+      }
+    );
+  })();
 
   if (authLoading) {
     return (

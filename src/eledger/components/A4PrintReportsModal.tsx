@@ -626,15 +626,16 @@ export const A4PrintReportsModal: React.FC<A4PrintReportsModalProps> = ({
                         <th className="py-2.5 px-3">Date</th>
                         <th className="py-2.5 px-3">Expense Category / Head</th>
                         <th className="py-2.5 px-3">Description / Purpose</th>
-                        <th className="py-2.5 px-3">Bill/Invoice Ref</th>
-                        <th className="py-2.5 px-3 text-right">Debit / Credit</th>
-                        <th className="py-2.5 px-3 text-right">Balance After</th>
+                        <th className="py-2.5 px-3">Bill / Ref #</th>
+                        <th className="py-2.5 px-3 text-right text-emerald-800">Credit / വരവ് (+)</th>
+                        <th className="py-2.5 px-3 text-right text-red-700">Expense / ചിലവ് (-)</th>
+                        <th className="py-2.5 px-3 text-right">Balance / ബാക്കി</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {activeSingleMemberData.transactions.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="py-8 text-center text-slate-500 italic">
+                          <td colSpan={8} className="py-8 text-center text-slate-500 italic">
                             No transactions recorded for this member during the selected statement period.
                           </td>
                         </tr>
@@ -650,10 +651,11 @@ export const A4PrintReportsModal: React.FC<A4PrintReportsModalProps> = ({
                               <td className="py-2 px-3 font-mono text-[10px] text-blue-700 font-bold whitespace-nowrap">
                                 {tx.referenceNo || 'N/A'}
                               </td>
-                              <td className={`py-2 px-3 text-right font-black whitespace-nowrap ${
-                                isCredit ? 'text-emerald-600' : 'text-slate-900'
-                              }`}>
-                                {isCredit ? '+' : '-'}{formatCurrency(tx.amount)}
+                              <td className="py-2 px-3 text-right font-black text-emerald-600 whitespace-nowrap">
+                                {isCredit ? `+${formatCurrency(tx.amount)}` : '—'}
+                              </td>
+                              <td className="py-2 px-3 text-right font-black text-red-600 whitespace-nowrap">
+                                {!isCredit ? `-${formatCurrency(tx.amount)}` : '—'}
                               </td>
                               <td className="py-2 px-3 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
                                 {formatCurrency(tx.balanceAfterTransaction)}
@@ -668,10 +670,13 @@ export const A4PrintReportsModal: React.FC<A4PrintReportsModalProps> = ({
                         <td colSpan={5} className="py-2.5 px-3 text-right uppercase text-[10px]">
                           Statement Summary Totals:
                         </td>
+                        <td className="py-2.5 px-3 text-right text-emerald-700">
+                          +{formatCurrency(activeSingleMemberData.allocatedCredit)}
+                        </td>
                         <td className="py-2.5 px-3 text-right text-red-600">
                           -{formatCurrency(activeSingleMemberData.expensesClaimed)}
                         </td>
-                        <td className="py-2.5 px-3 text-right text-emerald-700 text-sm">
+                        <td className="py-2.5 px-3 text-right text-emerald-800 text-sm">
                           {formatCurrency(activeSingleMemberData.availableBalance)}
                         </td>
                       </tr>
@@ -846,15 +851,16 @@ export const A4PrintReportsModal: React.FC<A4PrintReportsModalProps> = ({
                             <th className="py-2.5 px-3">Date</th>
                             <th className="py-2.5 px-3">Expense Category</th>
                             <th className="py-2.5 px-3">Description / Purpose</th>
-                            <th className="py-2.5 px-3">Bill Ref</th>
-                            <th className="py-2.5 px-3 text-right">Debit / Credit</th>
-                            <th className="py-2.5 px-3 text-right">Balance After</th>
+                            <th className="py-2.5 px-3">Bill / Ref #</th>
+                            <th className="py-2.5 px-3 text-right text-emerald-800">Credit / വരവ് (+)</th>
+                            <th className="py-2.5 px-3 text-right text-red-700">Expense / ചിലവ് (-)</th>
+                            <th className="py-2.5 px-3 text-right">Balance / ബാക്കി</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                           {memberData.transactions.length === 0 ? (
                             <tr>
-                              <td colSpan={7} className="py-6 text-center text-slate-500 italic">
+                              <td colSpan={8} className="py-6 text-center text-slate-500 italic">
                                 No expense transactions recorded for this member during this period.
                               </td>
                             </tr>
@@ -870,10 +876,11 @@ export const A4PrintReportsModal: React.FC<A4PrintReportsModalProps> = ({
                                   <td className="py-2 px-3 font-mono text-[10px] text-blue-700 font-bold whitespace-nowrap">
                                     {tx.referenceNo || 'N/A'}
                                   </td>
-                                  <td className={`py-2 px-3 text-right font-black whitespace-nowrap ${
-                                    isCredit ? 'text-emerald-600' : 'text-slate-900'
-                                  }`}>
-                                    {isCredit ? '+' : '-'}{formatCurrency(tx.amount)}
+                                  <td className="py-2 px-3 text-right font-black text-emerald-600 whitespace-nowrap">
+                                    {isCredit ? `+${formatCurrency(tx.amount)}` : '—'}
+                                  </td>
+                                  <td className="py-2 px-3 text-right font-black text-red-600 whitespace-nowrap">
+                                    {!isCredit ? `-${formatCurrency(tx.amount)}` : '—'}
                                   </td>
                                   <td className="py-2 px-3 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
                                     {formatCurrency(tx.balanceAfterTransaction)}
@@ -886,12 +893,15 @@ export const A4PrintReportsModal: React.FC<A4PrintReportsModalProps> = ({
                         <tfoot>
                           <tr className="bg-slate-100/90 font-black border-t-2 border-slate-300 text-slate-900">
                             <td colSpan={5} className="py-2.5 px-3 text-right uppercase text-[10px]">
-                              Summary:
+                              Summary Totals:
+                            </td>
+                            <td className="py-2.5 px-3 text-right text-emerald-700">
+                              +{formatCurrency(memberData.allocatedCredit)}
                             </td>
                             <td className="py-2.5 px-3 text-right text-red-600">
                               -{formatCurrency(memberData.expensesClaimed)}
                             </td>
-                            <td className="py-2.5 px-3 text-right text-emerald-700 text-sm">
+                            <td className="py-2.5 px-3 text-right text-emerald-800 text-sm">
                               {formatCurrency(memberData.availableBalance)}
                             </td>
                           </tr>

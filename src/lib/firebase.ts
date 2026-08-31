@@ -58,8 +58,8 @@ const getFirebaseConfig = () => {
 
 const finalConfig = getFirebaseConfig();
 
-const app = initializeApp(finalConfig);
-const secondaryApp = initializeApp(finalConfig, 'Secondary');
+export const app = initializeApp(finalConfig);
+export const secondaryApp = initializeApp(finalConfig, 'Secondary');
 
 // Gracefully determine which local cache configuration is safe to use.
 // In iframe/sandbox/cloud-run environments, WebChannel stream connections and IndexedDB 

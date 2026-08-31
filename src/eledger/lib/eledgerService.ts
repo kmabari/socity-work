@@ -944,13 +944,61 @@ export async function syncEledgerMetricsFromVouchers(): Promise<void> {
       console.warn('[eLedger Service] bank credits fetch error:', err);
     }
 
-    // 3. Fetch Member Accounts
+    // 3. Fetch Member Accounts (Strict Deduplication per Committee Member)
     let totalMemberAllocations = 0;
     let totalMemberExpenses = 0;
     try {
       const memberSnap = await getDocs(collection(eledgerDb, MEMBER_ACCOUNTS_COL));
+      const uniqueMembersMap = new Map<string, MemberFinancialAccount>();
+      const duplicateDocIdsToDelete: string[] = [];
+
       memberSnap.forEach((docSnap) => {
         const m = docSnap.data() as MemberFinancialAccount;
+        // Generate unique key for the member
+        const emailKey = m.email ? m.email.trim().toLowerCase() : '';
+        const nameKey = m.memberName ? m.memberName.trim().toLowerCase() : '';
+        const idKey = m.membershipId ? m.membershipId.trim().toLowerCase() : '';
+        const uniqueKey = emailKey || idKey || nameKey || docSnap.id;
+
+        if (!uniqueMembersMap.has(uniqueKey)) {
+          uniqueMembersMap.set(uniqueKey, { ...m, userId: docSnap.id });
+        } else {
+          // A record for this member already exists. Merge/choose the most accurate one
+          const existing = uniqueMembersMap.get(uniqueKey)!;
+          if (docSnap.id === 'default-member' || docSnap.id.startsWith('default-')) {
+            duplicateDocIdsToDelete.push(docSnap.id);
+          } else if (existing.userId === 'default-member') {
+            duplicateDocIdsToDelete.push(existing.userId);
+            uniqueMembersMap.set(uniqueKey, { ...m, userId: docSnap.id });
+          } else {
+            // Keep the one with max allocated/claimed
+            const maxAlloc = Math.max(existing.allocatedCredit || 0, m.allocatedCredit || 0);
+            const maxExp = Math.max(existing.expensesClaimed || 0, m.expensesClaimed || 0);
+            const maxBal = Math.max(existing.availableBalance || 0, m.availableBalance || 0);
+            uniqueMembersMap.set(uniqueKey, {
+              ...existing,
+              allocatedCredit: maxAlloc,
+              expensesClaimed: maxExp,
+              availableBalance: maxBal,
+            });
+            // Mark the duplicate doc for deletion if different ID
+            if (docSnap.id !== existing.userId) {
+              duplicateDocIdsToDelete.push(docSnap.id);
+            }
+          }
+        }
+      });
+
+      // Cleanup redundant duplicate docs in background
+      for (const dupId of duplicateDocIdsToDelete) {
+        try {
+          await deleteDoc(doc(eledgerDb, MEMBER_ACCOUNTS_COL, dupId));
+        } catch (delErr) {
+          console.warn('[eLedger Service] Cleanup duplicate member doc note:', delErr);
+        }
+      }
+
+      uniqueMembersMap.forEach((m) => {
         if (typeof m.allocatedCredit === 'number') {
           totalMemberAllocations += m.allocatedCredit;
         }
@@ -1112,57 +1160,87 @@ export async function auditEledgerVoucher(
 export async function allocateMemberCreditInDb(
   memberId: string,
   amount: number,
-  currentAccount?: MemberFinancialAccount
-): Promise<void> {
-  if (amount <= 0) return;
-  const memberRef = doc(eledgerDb, MEMBER_ACCOUNTS_COL, memberId);
-  const snap = await getDoc(memberRef);
-  
-  const existing = snap.exists() ? (snap.data() as MemberFinancialAccount) : currentAccount;
-  const updatedAllocated = ((existing?.allocatedCredit || 0) + amount);
-  const updatedBalance = ((existing?.availableBalance || 0) + amount);
-  
-  const newTx: MemberTransaction = {
-    id: `tx-alloc-${Date.now()}`,
-    date: new Date().toISOString().split('T')[0],
-    type: 'credit_allocation',
-    category: 'Operational Advance',
-    description: 'Operational Credit Allocation by State Treasurer',
-    amount: amount,
-    balanceAfterTransaction: updatedBalance,
-    referenceNo: `ALLOC-${Date.now().toString().slice(-4)}`,
-    status: 'verified',
-  };
+  currentAccount?: MemberFinancialAccount,
+  memberUser?: ELedgerUser
+): Promise<{ success: boolean; message: string }> {
+  try {
+    if (amount <= 0) {
+      return { success: false, message: 'Please enter a valid credit amount greater than 0.' };
+    }
+    const memberRef = doc(eledgerDb, MEMBER_ACCOUNTS_COL, memberId);
+    const snap = await getDoc(memberRef);
+    
+    const existing = snap.exists() ? (snap.data() as MemberFinancialAccount) : currentAccount;
+    const updatedAllocated = ((existing?.allocatedCredit || 0) + amount);
+    const updatedBalance = ((existing?.availableBalance || 0) + amount);
+    
+    const newTx: MemberTransaction = {
+      id: `tx-alloc-${Date.now()}`,
+      date: new Date().toISOString().split('T')[0],
+      type: 'credit_allocation',
+      category: 'Operational Advance',
+      description: 'Operational Credit Allocation by State Treasurer',
+      amount: amount,
+      balanceAfterTransaction: updatedBalance,
+      referenceNo: `ALLOC-${Date.now().toString().slice(-4)}`,
+      status: 'verified',
+    };
 
-  if (snap.exists()) {
-    await updateDoc(memberRef, {
+    const memberPayload: Record<string, any> = {
+      userId: memberId,
+      membershipId: memberUser?.membershipId || existing?.membershipId || currentAccount?.membershipId || `HCRS-MB-${Date.now().toString().slice(-4)}`,
+      memberName: memberUser?.name || existing?.memberName || currentAccount?.memberName || 'Committee Member',
+      email: memberUser?.email || existing?.email || currentAccount?.email || '',
+      mobile: memberUser?.mobile || existing?.mobile || currentAccount?.mobile || '',
+      district: memberUser?.district || existing?.district || currentAccount?.district || 'State HQ',
       allocatedCredit: updatedAllocated,
+      totalContributed: existing?.totalContributed || 0,
+      expensesClaimed: existing?.expensesClaimed || 0,
       availableBalance: updatedBalance,
+      billsSubmitted: existing?.billsSubmitted || 0,
+      status: 'active',
       recentTransactions: [newTx, ...(existing?.recentTransactions || [])],
       updatedAt: serverTimestamp(),
-    });
-  } else {
-    await setDoc(memberRef, {
-      userId: memberId,
-      membershipId: currentAccount?.membershipId || `HCRS-MB-${Date.now().toString().slice(-4)}`,
-      memberName: currentAccount?.memberName || 'Committee Member',
-      email: currentAccount?.email || '',
-      mobile: currentAccount?.mobile || '',
-      district: currentAccount?.district || 'State HQ',
-      allocatedCredit: updatedAllocated,
-      totalContributed: 0,
-      expensesClaimed: 0,
-      availableBalance: updatedBalance,
-      billsSubmitted: 0,
-      status: 'active',
-      recentTransactions: [newTx],
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-  }
+    };
 
-  // Recalculate unified treasury reconciliation
-  await syncEledgerMetricsFromVouchers();
+    if (snap.exists()) {
+      await updateDoc(memberRef, memberPayload);
+    } else {
+      await setDoc(memberRef, {
+        ...memberPayload,
+        createdAt: serverTimestamp(),
+      });
+    }
+
+    // Clean redundant duplicate placeholder docs (like default-member) if this is a real committee member
+    if (memberUser?.email) {
+      try {
+        const cleanEmail = memberUser.email.trim().toLowerCase();
+        const qEmail = query(collection(eledgerDb, MEMBER_ACCOUNTS_COL));
+        const emailSnap = await getDocs(qEmail);
+        for (const docAcc of emailSnap.docs) {
+          const accData = docAcc.data() as MemberFinancialAccount;
+          if (docAcc.id !== memberId && (docAcc.id === 'default-member' || (accData.email && accData.email.trim().toLowerCase() === cleanEmail))) {
+            // Delete redundant duplicate doc so total allocations are not double-counted
+            await deleteDoc(doc(eledgerDb, MEMBER_ACCOUNTS_COL, docAcc.id));
+          }
+        }
+      } catch (cleanErr) {
+        console.warn('[eLedger Service] Duplicate member cleanup note:', cleanErr);
+      }
+    }
+
+    // Recalculate unified treasury reconciliation
+    await syncEledgerMetricsFromVouchers();
+
+    return { 
+      success: true, 
+      message: `₹${amount.toLocaleString('en-IN')} credit allocated to ${memberUser?.name || existing?.memberName || 'Member'}. Available balance: ₹${updatedBalance.toLocaleString('en-IN')}.` 
+    };
+  } catch (err: any) {
+    console.error('[eLedger Service] allocateMemberCreditInDb error:', err);
+    return { success: false, message: err.message || 'Failed to allocate member credit in database.' };
+  }
 }
 
 /**

@@ -213,65 +213,97 @@ export const MemberLedgerDashboard: React.FC<MemberLedgerDashboardProps> = ({
 
       {/* Member's Isolated Transaction Log */}
       <div className="rounded-3xl p-6 sm:p-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-            <Receipt className="w-5 h-5 text-purple-500" />
-            <span>Your Personal Ledger & Expense Vouchers ({financialAccount.recentTransactions?.length || 0})</span>
-          </h2>
-          <span className="text-[11px] font-bold text-slate-500">Auto-Synced with State Treasury</span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <Receipt className="w-5 h-5 text-purple-500" />
+              <span>Personal Financial Ledger & Expense Statement ({financialAccount.recentTransactions?.length || 0})</span>
+            </h2>
+            <p className="text-[11px] text-slate-500">Separated Credit (+) and Expense (-) columns • Auto-Synced with State Treasury</p>
+          </div>
+          <button 
+            onClick={() => setShowA4PrintModal(true)}
+            className="self-start sm:self-auto py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs font-bold text-white flex items-center gap-1.5 transition cursor-pointer shadow-sm active:scale-95"
+          >
+            <Printer className="w-3.5 h-3.5" /> Print A4 Statement
+          </button>
         </div>
 
-        <div className="space-y-3">
-          {!financialAccount.recentTransactions || financialAccount.recentTransactions.length === 0 ? (
-            <div className="p-8 text-center text-xs text-slate-500 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-              No transactions recorded yet in this member wallet. Click "Record New Expense" to log operational expenses.
-            </div>
-          ) : (
-            financialAccount.recentTransactions.map((tx) => (
-              <div key={tx.id} className="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-md font-bold uppercase ${
-                      tx.type === 'credit_allocation'
-                        ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
-                        : 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300'
-                    }`}>
-                      {tx.type === 'credit_allocation' ? 'Credit Received' : 'Expense Deducted'}
-                    </span>
-                    {tx.voucherNo && (
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold">
-                        Voucher: {tx.voucherNo}
-                      </span>
-                    )}
-                    {tx.category && (
-                      <span className="text-xs text-slate-500 font-medium">
-                        • {tx.category}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs font-bold text-slate-900 dark:text-white">{tx.description}</div>
-                  <div className="text-[11px] text-slate-500 flex items-center gap-2">
-                    <span>Date: <b>{tx.date}</b></span>
-                    <span>•</span>
-                    <span className="font-mono">Bill/Ref: {tx.referenceNo}</span>
-                  </div>
-                </div>
-
-                <div className="text-left sm:text-right shrink-0">
-                  <div className={`text-base font-black ${
-                    tx.type === 'credit_allocation'
-                      ? 'text-emerald-600 dark:text-emerald-400'
-                      : 'text-slate-900 dark:text-white'
-                  }`}>
-                    {tx.type === 'credit_allocation' ? '+' : '-'}{formatCurrency(tx.amount)}
-                  </div>
-                  <div className="text-[11px] text-slate-500">
-                    Balance After: <b className="text-slate-700 dark:text-slate-300">{formatCurrency(tx.balanceAfterTransaction)}</b>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
+        {/* Structured Financial Ledger Table with Separate Credit & Expense Columns */}
+        <div className="w-full max-w-full overflow-x-auto max-h-[380px] overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-800 shadow-inner">
+          <table className="min-w-[680px] w-full text-left text-xs">
+            <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold uppercase text-[11px]">
+              <tr>
+                <th className="py-3 px-3">Date</th>
+                <th className="py-3 px-3">Details & Category</th>
+                <th className="py-3 px-3">Bill / Ref #</th>
+                <th className="py-3 px-3 text-right text-emerald-700 dark:text-emerald-400">Credit / വരവ് (+)</th>
+                <th className="py-3 px-3 text-right text-red-600 dark:text-red-400">Expense / ചിലവ് (-)</th>
+                <th className="py-3 px-3 text-right text-slate-900 dark:text-white">Balance / ബാക്കി</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {!financialAccount.recentTransactions || financialAccount.recentTransactions.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-xs text-slate-500">
+                    No transactions recorded yet in this member wallet. Click "Record New Expense" to log operational expenses.
+                  </td>
+                </tr>
+              ) : (
+                financialAccount.recentTransactions.map((tx) => {
+                  const isCredit = tx.type === 'credit_allocation' || tx.type === 'contribution';
+                  return (
+                    <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
+                      <td className="py-3 px-3 whitespace-nowrap font-medium text-slate-700 dark:text-slate-300">
+                        {tx.date}
+                      </td>
+                      <td className="py-3 px-3 max-w-xs">
+                        <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+                          <span>{tx.description}</span>
+                          {tx.voucherNo && (
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold">
+                              {tx.voucherNo}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-slate-500">{tx.category || 'Member Operational Activity'}</div>
+                      </td>
+                      <td className="py-3 px-3 whitespace-nowrap font-mono text-[11px] text-slate-500">
+                        {tx.referenceNo || '—'}
+                      </td>
+                      <td className="py-3 px-3 text-right font-black text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                        {isCredit ? `+${formatCurrency(tx.amount)}` : '—'}
+                      </td>
+                      <td className="py-3 px-3 text-right font-black text-red-600 dark:text-red-400 whitespace-nowrap">
+                        {!isCredit ? `-${formatCurrency(tx.amount)}` : '—'}
+                      </td>
+                      <td className="py-3 px-3 text-right font-black text-slate-900 dark:text-white whitespace-nowrap font-mono">
+                        {formatCurrency(tx.balanceAfterTransaction)}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+            {financialAccount.recentTransactions && financialAccount.recentTransactions.length > 0 && (
+              <tfoot className="sticky bottom-0 bg-slate-50 dark:bg-slate-900 border-t-2 border-slate-300 dark:border-slate-700 font-black text-xs">
+                <tr>
+                  <td colSpan={3} className="py-2.5 px-3 uppercase text-[10px] text-slate-500 text-right">
+                    Account Totals:
+                  </td>
+                  <td className="py-2.5 px-3 text-right text-emerald-600 dark:text-emerald-400">
+                    +{formatCurrency(financialAccount.allocatedCredit || 0)}
+                  </td>
+                  <td className="py-2.5 px-3 text-right text-red-600 dark:text-red-400">
+                    -{formatCurrency(financialAccount.expensesClaimed || 0)}
+                  </td>
+                  <td className="py-2.5 px-3 text-right text-slate-900 dark:text-white font-mono text-sm">
+                    {formatCurrency(financialAccount.availableBalance || 0)}
+                  </td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
         </div>
       </div>
 

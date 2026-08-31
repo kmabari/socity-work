@@ -510,15 +510,15 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
             </div>
 
             {/* User List Table */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[360px] overflow-y-auto rounded-2xl border border-slate-100 dark:border-slate-800/60 shadow-inner">
               <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
-                    <th className="pb-3 px-3">User & Contact</th>
-                    <th className="pb-3 px-3">Assigned Role</th>
-                    <th className="pb-3 px-3">District / ID</th>
-                    <th className="pb-3 px-3 text-center">Status</th>
-                    <th className="pb-3 px-3 text-right">Account Actions</th>
+                <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+                  <tr className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+                    <th className="py-2.5 px-3">User & Contact</th>
+                    <th className="py-2.5 px-3">Assigned Role</th>
+                    <th className="py-2.5 px-3">District / ID</th>
+                    <th className="py-2.5 px-3 text-center">Status</th>
+                    <th className="py-2.5 px-3 text-right">Account Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -685,7 +685,7 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
                 All disbursement vouchers are approved and up-to-date.
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="max-h-[360px] overflow-y-auto pr-1 space-y-3">
                 {pendingVouchers.map((v) => (
                   <div key={v.id} className="p-4 sm:p-5 rounded-2xl bg-amber-50/30 dark:bg-amber-950/10 border-2 border-amber-200 dark:border-amber-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="space-y-1">
@@ -730,18 +730,18 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
           {/* Approved / Active Vouchers */}
           <div className="rounded-3xl p-6 sm:p-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
             <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-              Authorized Disbursement History
+              Authorized Disbursement History ({approvedVouchers.length})
             </h2>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[340px] overflow-y-auto rounded-2xl border border-slate-100 dark:border-slate-800/60 shadow-inner">
               <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
-                    <th className="pb-3 px-3">Voucher #</th>
-                    <th className="pb-3 px-3">Date</th>
-                    <th className="pb-3 px-3">Category</th>
-                    <th className="pb-3 px-3">Beneficiary</th>
-                    <th className="pb-3 px-3 text-right">Amount</th>
-                    <th className="pb-3 px-3 text-center">Status</th>
+                <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+                  <tr className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+                    <th className="py-2.5 px-3">Voucher #</th>
+                    <th className="py-2.5 px-3">Date</th>
+                    <th className="py-2.5 px-3">Category</th>
+                    <th className="py-2.5 px-3">Beneficiary</th>
+                    <th className="py-2.5 px-3 text-right">Amount</th>
+                    <th className="py-2.5 px-3 text-center">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
