@@ -3293,7 +3293,7 @@ export default function App() {
   const maintenanceMode = orgSettings?.maintenanceMode;
 
   return (
-    <div className="min-h-screen bg-[#FAF9FC]">
+    <div className="min-h-screen bg-[#FAF9FC] w-full max-w-full overflow-x-hidden min-w-0">
       {(() => {
         if (maintenanceMode) {
           return (
@@ -3340,7 +3340,7 @@ export default function App() {
       )}
 
       {view === 'eledger' && (
-        <div className="animate-in fade-in duration-500">
+        <div className="animate-in fade-in duration-500 w-full max-w-full overflow-x-hidden min-w-0">
           <ELedgerModule onBackToWebsite={() => {
             setView('landing');
             if (typeof window !== 'undefined') {
