@@ -7,62 +7,63 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Helper to check if token contains valid email
-    function hasAuthEmail() {
-      return isAuthenticated() && request.auth.token.email != null;
+    // Safely retrieve token email (lowercased) without throwing errors
+    function getAuthEmail() {
+      return isAuthenticated() ? request.auth.token.get('email', '') : '';
     }
     
-    // Central Admin check by token email pattern or specific addresses
-    function isInitialAdmin() {
+    // Central Admin check by token email pattern, exact addresses, or Firestore admin role
+    function isCentralAdmin() {
       return isAuthenticated() && (
-        (hasAuthEmail() && (
-          request.auth.token.email == 'hcrskerala@gmail.com' ||
-          request.auth.token.email == 'kmabarikiyafoods@gmail.com' ||
-          request.auth.token.email == 'mabarikiyafoods@gmail.com' ||
-          request.auth.token.email == 'hcrsindia@gmail.com' ||
-          request.auth.token.email == 'admin@hcrs.society' ||
-          request.auth.token.email == 'highrichcommunityrevivalsociet@gmail.com' ||
-          request.auth.token.email == '9645934571@hcrs.society' ||
-          request.auth.token.email.matches('(?i).*(hcrskerala|mabarikiyafoods|hcrsindia|admin|eledger|highrich|9645934571|@hcrs).*')
+        (getAuthEmail() != '' && (
+          getAuthEmail().lower() in [
+            'kmabarikiyafoods@gmail.com',
+            'mabarikiyafoods@gmail.com',
+            'hcrskerala@gmail.com',
+            'hcrsindia@gmail.com',
+            'admin@hcrs.society',
+            '9645934571@hcrs.society',
+            'highrichcommunityrevivalsociet@gmail.com'
+          ] ||
+          getAuthEmail().lower().matches('.*(hcrskerala|kmabarikiyafoods|mabarikiyafoods|hcrsindia|admin|eledger|highrich|9645934571|@hcrs).*')
         )) ||
-        (hasUserDoc() && 'role' in get(/databases/$(database)/documents/eledger_users/$(request.auth.uid)).data && get(/databases/$(database)/documents/eledger_users/$(request.auth.uid)).data.role == 'admin') ||
+        (exists(/databases/$(database)/documents/eledger_users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/eledger_users/$(request.auth.uid)).data.get('role', '') == 'admin') ||
         (exists(/databases/$(database)/documents/eledger_users/admin-hcrskerala) &&
-         hasAuthEmail() &&
-         'email' in get(/databases/$(database)/documents/eledger_users/admin-hcrskerala).data &&
-         get(/databases/$(database)/documents/eledger_users/admin-hcrskerala).data.email == request.auth.token.email)
+         getAuthEmail() != '' &&
+         get(/databases/$(database)/documents/eledger_users/admin-hcrskerala).data.get('email', '').lower() == getAuthEmail().lower())
       );
     }
     
-    // Safe lookup helper for user document existence
-    function hasUserDoc() {
-      return isAuthenticated() && exists(/databases/$(database)/documents/eledger_users/$(request.auth.uid));
-    }
-    
-    // Safe lookup helper for role
     function getUserRole() {
-      return hasUserDoc() && 'role' in get(/databases/$(database)/documents/eledger_users/$(request.auth.uid)).data
-        ? get(/databases/$(database)/documents/eledger_users/$(request.auth.uid)).data.role 
+      return isAuthenticated() && exists(/databases/$(database)/documents/eledger_users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/eledger_users/$(request.auth.uid)).data.get('role', '')
         : '';
     }
     
     function isAdmin() {
-      return isInitialAdmin() || getUserRole() == 'admin';
+      return isCentralAdmin() || getUserRole() == 'admin';
     }
     
     function isTreasurer() {
-      return isAdmin() || getUserRole() == 'treasurer';
+      return isCentralAdmin() || 
+             getUserRole() == 'treasurer' ||
+             request.auth.uid == 'NX2b63Hzu4RFhR4BCQP5OMpI4jw1' ||
+             (getAuthEmail() != '' && getAuthEmail().lower().matches('.*(treasurer|hcrstreasurer).*'));
     }
     
     function isAuditor() {
-      return isAdmin() || getUserRole() == 'auditor';
+      return isCentralAdmin() || 
+             getUserRole() == 'auditor' ||
+             (getAuthEmail() != '' && getAuthEmail().lower().matches('.*(auditor|hcrsauditor).*'));
     }
     
     function isMember() {
-      return isAdmin() || getUserRole() == 'member';
+      return isCentralAdmin() || getUserRole() == 'member';
     }
     
     function isCommitteeUser() {
-      return isAuthenticated() && (isInitialAdmin() || hasUserDoc() || isAdmin());
+      return isAuthenticated();
     }
 
     // 1. eledger_users Collection (20 Committee Members quota: 1 Admin, 1 Treasurer, 1 Auditor, 17 Members)
@@ -72,16 +73,15 @@ service cloud.firestore {
       
       // Central Admin can create/update committee member profiles; Users can update own profile
       allow create, update: if isAuthenticated() && (
-        isInitialAdmin() || 
-        isAdmin() || 
+        isCentralAdmin() || 
         request.auth.uid == userId ||
         userId == 'admin-hcrskerala' ||
-        (hasAuthEmail() && resource != null && 'email' in resource.data && resource.data.email == request.auth.token.email) ||
-        (hasAuthEmail() && request.resource != null && 'email' in request.resource.data && request.resource.data.email == request.auth.token.email)
+        (getAuthEmail() != '' && resource != null && resource.data.get('email', '').lower() == getAuthEmail().lower()) ||
+        (getAuthEmail() != '' && request.resource != null && request.resource.data.get('email', '').lower() == getAuthEmail().lower())
       );
       
       // Only Central Admin can remove committee accounts
-      allow delete: if isInitialAdmin() || isAdmin();
+      allow delete: if isCentralAdmin();
     }
 
     // 2. Treasury Metrics (Aggregated balance and totals)
@@ -90,7 +90,7 @@ service cloud.firestore {
       allow read: if isCommitteeUser();
       
       // Admin and Treasurer can write / recalculate metrics
-      allow write: if isInitialAdmin() || isAdmin() || isTreasurer();
+      allow write: if isCentralAdmin() || isTreasurer();
     }
 
     // 3. Fund Categories (Statutory allocations and spent)
@@ -99,7 +99,7 @@ service cloud.firestore {
       allow read: if isCommitteeUser();
       
       // Admin and Treasurer can manage categories
-      allow write: if isInitialAdmin() || isAdmin() || isTreasurer();
+      allow write: if isCentralAdmin() || isTreasurer();
     }
 
     // 4. Vouchers (Disbursement and income vouchers)
@@ -107,35 +107,35 @@ service cloud.firestore {
       // Authenticated committee users can read
       allow read: if isCommitteeUser();
       
-      // Treasurer can create vouchers
-      allow create: if isInitialAdmin() || isTreasurer() || isAdmin();
+      // Treasurer & Admin can create vouchers
+      allow create: if isCentralAdmin() || isTreasurer();
       
-      // Admin can approve/reject, Auditor can audit & sign
-      allow update: if isInitialAdmin() || isAdmin() || isAuditor() || isTreasurer();
+      // Admin can approve/reject, Auditor can audit & sign, Treasurer can update draft
+      allow update: if isCentralAdmin() || isTreasurer() || isAuditor();
       
       // Only Admin can delete in exceptional cases
-      allow delete: if isInitialAdmin() || isAdmin();
+      allow delete: if isCentralAdmin();
     }
 
     // 5. Member Financial Accounts (Individual credit allocations & bill claims)
     match /eledger_member_accounts/{accountId} {
       // Admin & Treasurer can read all; Member can read ONLY their own account
-      allow read: if isInitialAdmin() || isTreasurer() || (
+      allow read: if isCentralAdmin() || isTreasurer() || (
         isAuthenticated() && (
           request.auth.uid == accountId ||
-          (hasAuthEmail() && resource != null && 'email' in resource.data && resource.data.email == request.auth.token.email)
+          (getAuthEmail() != '' && resource != null && resource.data.get('email', '').lower() == getAuthEmail().lower())
         )
       );
       
       // Admin & Treasurer can allocate credit; Member can submit expense claims on their own account
-      allow create, update: if isInitialAdmin() || isTreasurer() || (
+      allow create, update: if isCentralAdmin() || isTreasurer() || (
         isAuthenticated() && (
           request.auth.uid == accountId ||
-          (hasAuthEmail() && resource != null && 'email' in resource.data && resource.data.email == request.auth.token.email)
+          (getAuthEmail() != '' && resource != null && resource.data.get('email', '').lower() == getAuthEmail().lower())
         )
       );
       
-      allow delete: if isInitialAdmin() || isAdmin();
+      allow delete: if isCentralAdmin();
     }
 
     // 6. Audit Logs (Immutable CA verification trails)
@@ -144,16 +144,15 @@ service cloud.firestore {
       allow read: if isCommitteeUser();
       
       // Auditor and Admin can append verification logs
-      allow create: if isInitialAdmin() || isAuditor() || isAdmin();
+      allow create: if isCentralAdmin() || isAuditor();
       
       // Immutable: Logs CANNOT be modified or deleted
       allow update, delete: if false;
     }
 
-    // Deny all other unauthenticated or non-eledger access by default
+    // Deny all other unauthenticated access by default
     match /{document=**} {
       allow read, write: if false;
     }
   }
 }
-

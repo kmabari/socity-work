@@ -337,19 +337,19 @@ export default function LandingPage({
 
       {/* Navigation Bar */}
       <nav 
-        className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-premium px-2.5 sm:px-6 md:px-8 py-2 sm:py-3 transition-all duration-300"
+        className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-premium px-2 sm:px-6 md:px-8 py-1.5 sm:py-3 transition-all duration-300"
       >
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-1.5 sm:gap-4">
           <div 
-            className="flex items-center gap-2 sm:gap-3 cursor-pointer group shrink-0" 
+            className="flex items-center gap-1.5 sm:gap-3 cursor-pointer group shrink-0" 
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           >
-            <div className="bg-white p-1 sm:p-1.5 rounded-xl shadow-premium border border-slate-100 group-hover:scale-105 transition-all duration-300">
-              <Logo size="sm" className="h-8 sm:h-11 md:h-12 w-auto" />
+            <div className="bg-white p-0.5 sm:p-1.5 rounded-lg sm:rounded-xl shadow-premium border border-slate-100 group-hover:scale-105 transition-all duration-300 shrink-0">
+              <Logo size="sm" className="h-7 sm:h-11 md:h-12 w-auto" />
             </div>
             <div>
-              <h1 className="text-[11px] sm:text-sm font-bold text-[#1a2b5c] uppercase tracking-wider leading-none font-heading whitespace-nowrap">HCRS Portal</h1>
-              <p className="text-[8px] sm:text-[10px] font-black text-[#c9a227] uppercase tracking-widest mt-0.5 sm:mt-1 whitespace-nowrap">Kerala Division</p>
+              <h1 className="text-[10px] sm:text-sm font-bold text-[#1a2b5c] uppercase tracking-wider leading-none font-heading whitespace-nowrap">HCRS Portal</h1>
+              <p className="text-[7px] sm:text-[10px] font-black text-[#c9a227] uppercase tracking-widest mt-0.5 sm:mt-1 whitespace-nowrap">Kerala Division</p>
             </div>
           </div>
 
@@ -389,10 +389,10 @@ export default function LandingPage({
             </button>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-3 md:gap-4 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-3 md:gap-4 shrink-0">
             <button 
               onClick={onELedgerClick} 
-              className="lg:hidden text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 hover:text-emerald-950 flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 border border-emerald-300 shadow-2xs cursor-pointer"
+              className="hidden md:inline-flex lg:hidden text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 hover:text-emerald-950 items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 border border-emerald-300 shadow-2xs cursor-pointer"
               title="HCRS eLedger - State Committee Portal"
             >
               <Lock className="w-3 h-3 text-emerald-600" />
@@ -403,12 +403,12 @@ export default function LandingPage({
             <Button 
               variant="outline" 
               onClick={onLoginClick}
-              className="text-[10px] sm:text-xs font-extrabold uppercase tracking-widest text-[#1a2b5c] border-2 border-[#1a2b5c]/20 hover:border-[#1a2b5c]/40 hover:bg-[#1a2b5c]/5 rounded-full h-8 sm:h-10 px-2.5 sm:px-5 md:px-6 transition-all duration-300 shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-95 shrink-0 whitespace-nowrap"
+              className="text-[9px] sm:text-xs font-extrabold uppercase tracking-wider sm:tracking-widest text-[#1a2b5c] border sm:border-2 border-[#1a2b5c]/20 hover:border-[#1a2b5c]/40 hover:bg-[#1a2b5c]/5 rounded-full h-7 sm:h-10 px-2 sm:px-5 md:px-6 transition-all duration-300 shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-95 shrink-0 whitespace-nowrap"
             >
               {t('nav_sign_in', 'Sign In')}
             </Button>
             <Button 
-              className="bg-[#1a2b5c] hover:bg-[#233875] text-white rounded-full px-2.5 sm:px-5 md:px-6 h-8 sm:h-10 font-extrabold uppercase text-[10px] sm:text-xs tracking-widest shadow-sm hover:shadow-md transition-all border border-[#1a2b5c] hover:border-[#233875] hover:scale-[1.02] active:scale-95 duration-300 shrink-0 whitespace-nowrap"
+              className="bg-[#1a2b5c] hover:bg-[#233875] text-white rounded-full px-2 sm:px-5 md:px-6 h-7 sm:h-10 font-extrabold uppercase text-[9px] sm:text-xs tracking-wider sm:tracking-widest shadow-sm hover:shadow-md transition-all border border-[#1a2b5c] hover:border-[#233875] hover:scale-[1.02] active:scale-95 duration-300 shrink-0 whitespace-nowrap"
               onClick={onRenew}
             >
               {t('nav_get_id_card', 'Get ID Card')}

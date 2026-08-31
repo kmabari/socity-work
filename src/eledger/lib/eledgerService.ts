@@ -121,6 +121,10 @@ export const CENTRAL_ADMIN_EMAILS = [
   '9645934571@hcrs.society',
 ];
 
+export const TREASURER_UIDS = [
+  'NX2b63Hzu4RFhR4BCQP5OMpI4jw1',
+];
+
 export function isCentralAdminEmail(email?: string | null): boolean {
   if (!email) return false;
   const clean = email.trim().toLowerCase();
@@ -136,6 +140,17 @@ export function isCentralAdminEmail(email?: string | null): boolean {
     clean.includes('9645934571') ||
     clean.endsWith('@hcrs.society') ||
     clean.endsWith('@hcrs.org')
+  );
+}
+
+export function isTreasurerUser(fbUser?: FirebaseUser | null, email?: string | null): boolean {
+  if (fbUser && TREASURER_UIDS.includes(fbUser.uid)) return true;
+  if (!email) return false;
+  const clean = email.trim().toLowerCase();
+  return (
+    clean.includes('treasurer') ||
+    clean.includes('hcrstreasurer') ||
+    clean.includes('state_treasurer')
   );
 }
 
@@ -179,6 +194,45 @@ export async function ensureAdminUserRecord(fbUser: FirebaseUser): Promise<ELedg
 }
 
 /**
+ * Ensure State Treasurer user doc is synced with Auth UID upon authentication
+ */
+export async function ensureTreasurerUserRecord(fbUser: FirebaseUser): Promise<ELedgerUser> {
+  const userDocRef = doc(eledgerDb, USERS_COL, fbUser.uid);
+  try {
+    const snap = await getDoc(userDocRef);
+    if (snap.exists()) {
+      const existing = snap.data() as ELedgerUser;
+      if (existing.role !== 'treasurer' || existing.status !== 'active') {
+        await setDoc(userDocRef, { role: 'treasurer', status: 'active', updatedAt: serverTimestamp() }, { merge: true });
+        return { ...existing, id: fbUser.uid, role: 'treasurer', status: 'active' };
+      }
+      return { ...existing, id: fbUser.uid };
+    }
+  } catch (err) {
+    console.warn('[eLedger Service] Treasurer doc check warning:', err);
+  }
+
+  const treasurerDoc: ELedgerUser = {
+    id: fbUser.uid,
+    name: fbUser.displayName || 'HCRS State Treasurer',
+    email: fbUser.email?.toLowerCase() || 'treasurer@hcrs.society',
+    mobile: '9847000002',
+    role: 'treasurer',
+    status: 'active',
+    district: 'State HQ',
+    createdAt: new Date().toISOString().split('T')[0],
+    lastLoginAt: new Date().toISOString().split('T')[0],
+  };
+
+  try {
+    await setDoc(userDocRef, sanitizeForFirestore(treasurerDoc), { merge: true });
+  } catch (err) {
+    console.warn('[eLedger Service] Treasurer doc setDoc warning:', err);
+  }
+  return treasurerDoc;
+}
+
+/**
  * Sign in to eLedger with email and password
  */
 export async function eledgerSignIn(email: string, pass: string): Promise<{ success: boolean; user?: ELedgerUser; error?: string }> {
@@ -191,6 +245,12 @@ export async function eledgerSignIn(email: string, pass: string): Promise<{ succ
     if (isCentralAdminEmail(cleanEmail)) {
       const adminUser = await ensureAdminUserRecord(fbUser);
       return { success: true, user: adminUser };
+    }
+
+    // If State Treasurer signs in (by UID or email pattern)
+    if (isTreasurerUser(fbUser, cleanEmail)) {
+      const treasurerUser = await ensureTreasurerUserRecord(fbUser);
+      return { success: true, user: treasurerUser };
     }
 
     // Verify role and authorization strictly from Firestore document for other users
@@ -254,17 +314,29 @@ export async function fetchEledgerUserProfile(fbUser: FirebaseUser): Promise<ELe
     // 1. Check by UID
     const docByUid = await getDoc(doc(eledgerDb, USERS_COL, fbUser.uid));
     if (docByUid.exists()) {
-      return docByUid.data() as ELedgerUser;
+      return { ...docByUid.data(), id: fbUser.uid } as ELedgerUser;
     }
 
-    // 2. Check by Email
+    // 2. Check if known Treasurer UID
+    if (TREASURER_UIDS.includes(fbUser.uid)) {
+      return await ensureTreasurerUserRecord(fbUser);
+    }
+
+    // 3. Check by Email
     if (fbUser.email) {
       const q = query(collection(eledgerDb, USERS_COL));
       const snap = await getDocs(q);
       for (const d of snap.docs) {
         const u = d.data() as ELedgerUser;
-        if (u.email.toLowerCase() === fbUser.email.toLowerCase()) {
-          return { ...u, id: d.id };
+        if (u.email && u.email.toLowerCase() === fbUser.email.toLowerCase()) {
+          const matchedProfile: ELedgerUser = { ...u, id: fbUser.uid };
+          // Sync to UID doc so Firestore security rules can evaluate getUserRole() instantly
+          try {
+            await setDoc(doc(eledgerDb, USERS_COL, fbUser.uid), sanitizeForFirestore(matchedProfile), { merge: true });
+          } catch (syncErr) {
+            console.warn('[eLedger Service] UID doc sync note:', syncErr);
+          }
+          return matchedProfile;
         }
       }
     }
@@ -290,6 +362,12 @@ export function subscribeToEledgerAuth(
       if (isCentralAdminEmail(fbUser.email)) {
         const adminDoc = await ensureAdminUserRecord(fbUser);
         onUserChanged(adminDoc, false);
+        return;
+      }
+
+      if (isTreasurerUser(fbUser, fbUser.email)) {
+        const treasurerDoc = await ensureTreasurerUserRecord(fbUser);
+        onUserChanged(treasurerDoc, false);
         return;
       }
 
@@ -325,7 +403,9 @@ export function subscribeToUsers(callback: (users: ELedgerUser[]) => void): () =
         const existing = userMap.get(emailKey);
         if (!existing) {
           userMap.set(emailKey, u);
-        } else if (existing.id === 'admin-hcrskerala' && u.id !== 'admin-hcrskerala') {
+        } else if ((existing.id === 'admin-hcrskerala' || existing.id.startsWith('usr-')) && !u.id.startsWith('usr-')) {
+          userMap.set(emailKey, u);
+        } else if (u.id === 'NX2b63Hzu4RFhR4BCQP5OMpI4jw1' || u.role === 'treasurer') {
           userMap.set(emailKey, u);
         }
       });

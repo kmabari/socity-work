@@ -223,6 +223,61 @@
         "createdAt": { "type": "string" }
       },
       "required": ["name"]
+    },
+    "ELedgerUser": {
+      "title": "eLedger Committee User",
+      "description": "Authorized accounts in the 20-seat HCRS State Committee eLedger portal.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "mobile": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "treasurer", "auditor", "member"] },
+        "status": { "type": "string", "enum": ["active", "inactive", "pending_setup"] },
+        "district": { "type": "string" },
+        "membershipId": { "type": "string" },
+        "assignedSeatNumber": { "type": "integer" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["name", "email", "mobile", "role", "status"]
+    },
+    "ELedgerVoucher": {
+      "title": "eLedger Voucher",
+      "description": "Financial disbursement and receipts vouchers for committee treasury.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "voucherNumber": { "type": "string" },
+        "date": { "type": "string" },
+        "category": { "type": "string" },
+        "amount": { "type": "number" },
+        "type": { "type": "string", "enum": ["expense", "income", "credit_allocation"] },
+        "status": { "type": "string", "enum": ["draft", "submitted", "approved", "rejected", "audited"] },
+        "preparedBy": { "type": "string" },
+        "approvedBy": { "type": "string" },
+        "auditedBy": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["voucherNumber", "date", "category", "amount", "type", "status"]
+    },
+    "ELedgerMemberAccount": {
+      "title": "eLedger Member Financial Account",
+      "description": "Isolated operational balance and bill claim records for committee members.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "membershipId": { "type": "string" },
+        "memberName": { "type": "string" },
+        "email": { "type": "string" },
+        "mobile": { "type": "string" },
+        "allocatedCredit": { "type": "number" },
+        "expensesClaimed": { "type": "number" },
+        "availableBalance": { "type": "number" },
+        "billsSubmitted": { "type": "integer" },
+        "status": { "type": "string" }
+      },
+      "required": ["userId", "memberName", "email", "allocatedCredit", "availableBalance"]
     }
   },
   "firestore": {
@@ -273,6 +328,18 @@
     "janamail_analytics": {
       "schema": "JanamailAnalytics",
       "description": "Collection of campaign interaction events and analytics."
+    },
+    "eledger_users": {
+      "schema": "ELedgerUser",
+      "description": "Isolated eLedger Committee membership profiles."
+    },
+    "eledger_vouchers": {
+      "schema": "ELedgerVoucher",
+      "description": "Isolated eLedger financial vouchers."
+    },
+    "eledger_member_accounts": {
+      "schema": "ELedgerMemberAccount",
+      "description": "Isolated individual member operational ledger accounts."
     }
   }
 }

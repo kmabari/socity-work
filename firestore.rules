@@ -375,5 +375,114 @@ service cloud.firestore {
       allow create: if true;
       allow read: if isAdmin() || isOperator();
     }
+
+    // ==========================================
+    // HCRS eLedger Isolated Module Rules
+    // ==========================================
+    function isEledgerAdmin() {
+      return isSignedIn() && (
+        isMainAdmin() ||
+        (request.auth.token.get('email', null) != null && (
+          request.auth.token.get('email', '').lower() in [
+            'kmabarikiyafoods@gmail.com',
+            'mabarikiyafoods@gmail.com',
+            'hcrskerala@gmail.com',
+            'hcrsindia@gmail.com',
+            'admin@hcrs.society',
+            '9645934571@hcrs.society',
+            'highrichcommunityrevivalsociet@gmail.com'
+          ] ||
+          request.auth.token.get('email', '').lower().matches('.*(hcrskerala|kmabarikiyafoods|mabarikiyafoods|hcrsindia|admin|eledger|highrich|9645934571|@hcrs).*')
+        )) ||
+        (exists(/databases/$(database)/documents/eledger_users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/eledger_users/$(request.auth.uid)).data.get('role', '') == 'admin') ||
+        (exists(/databases/$(database)/documents/eledger_users/admin-hcrskerala) &&
+         request.auth.token.get('email', null) != null &&
+         get(/databases/$(database)/documents/eledger_users/admin-hcrskerala).data.get('email', '').lower() == request.auth.token.get('email', '').lower())
+      );
+    }
+
+    function isEledgerTreasurer() {
+      return isSignedIn() && (
+        isEledgerAdmin() ||
+        request.auth.uid == 'NX2b63Hzu4RFhR4BCQP5OMpI4jw1' ||
+        (exists(/databases/$(database)/documents/eledger_users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/eledger_users/$(request.auth.uid)).data.get('role', '') == 'treasurer') ||
+        (request.auth.token.get('email', null) != null &&
+         request.auth.token.get('email', '').lower().matches('.*(treasurer|hcrstreasurer).*'))
+      );
+    }
+
+    function isEledgerAuditor() {
+      return isSignedIn() && (
+        isEledgerAdmin() ||
+        (exists(/databases/$(database)/documents/eledger_users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/eledger_users/$(request.auth.uid)).data.get('role', '') == 'auditor') ||
+        (request.auth.token.get('email', null) != null &&
+         request.auth.token.get('email', '').lower().matches('.*(auditor|hcrsauditor).*'))
+      );
+    }
+
+    // 1. eledger_users Collection (20 Committee Members quota: 1 Admin, 1 Treasurer, 1 Auditor, 17 Members)
+    match /eledger_users/{userId} {
+      allow read: if isSignedIn();
+      
+      // Central Admin can create/update committee member profiles; Users can update own profile
+      allow create, update: if isSignedIn() && (
+        isEledgerAdmin() || 
+        request.auth.uid == userId ||
+        userId == 'admin-hcrskerala' ||
+        (request.auth.token.get('email', null) != null && resource != null && resource.data.get('email', '').lower() == request.auth.token.get('email', '').lower()) ||
+        (request.auth.token.get('email', null) != null && request.resource != null && request.resource.data.get('email', '').lower() == request.auth.token.get('email', '').lower())
+      );
+      
+      allow delete: if isEledgerAdmin();
+    }
+
+    // 2. Treasury Metrics (Aggregated balance and totals)
+    match /eledger_treasury_metrics/{metricId} {
+      allow read: if isSignedIn();
+      allow write: if isEledgerAdmin() || isEledgerTreasurer();
+    }
+
+    // 3. Fund Categories (Statutory allocations and spent)
+    match /eledger_fund_categories/{categoryId} {
+      allow read: if isSignedIn();
+      allow write: if isEledgerAdmin() || isEledgerTreasurer();
+    }
+
+    // 4. Vouchers (Disbursement and income vouchers)
+    match /eledger_vouchers/{voucherId} {
+      allow read: if isSignedIn();
+      allow create: if isEledgerAdmin() || isEledgerTreasurer();
+      allow update: if isEledgerAdmin() || isEledgerTreasurer() || isEledgerAuditor();
+      allow delete: if isEledgerAdmin();
+    }
+
+    // 5. Member Financial Accounts (Individual credit allocations & bill claims)
+    match /eledger_member_accounts/{accountId} {
+      allow read: if isEledgerAdmin() || isEledgerTreasurer() || (
+        isSignedIn() && (
+          request.auth.uid == accountId ||
+          (request.auth.token.get('email', null) != null && resource != null && resource.data.get('email', '').lower() == request.auth.token.get('email', '').lower())
+        )
+      );
+      
+      allow create, update: if isEledgerAdmin() || isEledgerTreasurer() || (
+        isSignedIn() && (
+          request.auth.uid == accountId ||
+          (request.auth.token.get('email', null) != null && resource != null && resource.data.get('email', '').lower() == request.auth.token.get('email', '').lower())
+        )
+      );
+      
+      allow delete: if isEledgerAdmin();
+    }
+
+    // 6. Audit Logs (Immutable CA verification trails)
+    match /eledger_audit_logs/{logId} {
+      allow read: if isSignedIn();
+      allow create: if isEledgerAdmin() || isEledgerAuditor();
+      allow update, delete: if false;
+    }
   }
 }
