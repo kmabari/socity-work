@@ -24,7 +24,8 @@ import {
   PowerOff,
   UserCheck,
   AlertTriangle,
-  Info
+  Info,
+  Lock
 } from 'lucide-react';
 import { LedgerVoucher, TreasuryMetrics, CategorySummary, ELedgerUser, ELedgerRole, AccountStatus } from '../types';
 
@@ -64,6 +65,11 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'treasurer' | 'auditor' | 'member'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'pending_setup'>('all');
+  
+  // Dedicated Secure Change Password Modal State
+  const [passwordResetTargetUser, setPasswordResetTargetUser] = useState<ELedgerUser | null>(null);
+  const [isSendingResetLink, setIsSendingResetLink] = useState(false);
+  const [resetModalFeedback, setResetModalFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   
   // Form State for Add/Edit User
   const [formName, setFormName] = useState('');
@@ -250,6 +256,47 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
       } finally {
         setIsSavingUser(false);
       }
+    }
+  };
+
+  const handleOpenPasswordResetModal = (user: ELedgerUser) => {
+    setPasswordResetTargetUser(user);
+    setResetModalFeedback(null);
+    setIsSendingResetLink(false);
+  };
+
+  const handleClosePasswordResetModal = () => {
+    setPasswordResetTargetUser(null);
+    setResetModalFeedback(null);
+    setIsSendingResetLink(false);
+  };
+
+  const handleSendResetLinkInModal = async () => {
+    if (!passwordResetTargetUser) return;
+    setIsSendingResetLink(true);
+    setResetModalFeedback(null);
+    try {
+      const res = await onSendPasswordReset(passwordResetTargetUser.email);
+      if (res.success) {
+        setResetModalFeedback({
+          type: 'success',
+          message: `Official Firebase password-reset link successfully dispatched to ${passwordResetTargetUser.email}. The user can open the link in their inbox to choose a new password.`
+        });
+        showNotification('success', `Password reset link sent to ${passwordResetTargetUser.email}`);
+      } else {
+        setResetModalFeedback({
+          type: 'error',
+          message: res.message || 'Failed to dispatch reset link. Please verify internet connection and registered email.'
+        });
+        showNotification('error', res.message);
+      }
+    } catch (err: any) {
+      setResetModalFeedback({
+        type: 'error',
+        message: err.message || 'An unexpected error occurred while sending reset email.'
+      });
+    } finally {
+      setIsSendingResetLink(false);
     }
   };
 
@@ -542,13 +589,14 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
 
                         <td className="py-3 px-3 text-right">
                           <div className="flex items-center justify-end gap-1.5">
-                            {/* Send Reset / Setup Email */}
+                            {/* Change Password Modal Trigger */}
                             <button
-                              onClick={() => handleTriggerPasswordReset(user.email, user.name)}
-                              className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-amber-100 text-slate-600 dark:text-slate-300 hover:text-amber-800 transition cursor-pointer"
-                              title="Send Password Setup / Reset Email"
+                              onClick={() => handleOpenPasswordResetModal(user)}
+                              className="px-2.5 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-300/80 dark:border-amber-700/60 transition cursor-pointer flex items-center gap-1 text-[11px] font-bold shadow-2xs"
+                              title={`Change Password / Send Reset Link for ${user.name}`}
                             >
-                              <KeyRound className="w-3.5 h-3.5" />
+                              <KeyRound className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                              <span className="hidden sm:inline">Change Password</span>
                             </button>
 
                             {/* Toggle Active / Inactive */}
@@ -880,6 +928,30 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
                 </div>
               )}
 
+              {editingUserId && (
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const targetUser = users.find(u => u.id === editingUserId);
+                      if (targetUser) {
+                        setShowAddUserModal(false);
+                        handleOpenPasswordResetModal(targetUser);
+                      }
+                    }}
+                    className="w-full p-2.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50/80 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300 font-bold flex items-center justify-between text-xs hover:bg-amber-100 dark:hover:bg-amber-900/50 transition cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <KeyRound className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      <span>Change Password / Send Reset Link</span>
+                    </div>
+                    <span className="text-[10px] uppercase font-black tracking-wider px-2 py-0.5 rounded bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200">
+                      Open Reset Flow
+                    </span>
+                  </button>
+                </div>
+              )}
+
               <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-[11px] text-slate-500 dark:text-slate-400">
                 🔒 A password setup link will be automatically generated for this account via Firebase Authentication.
               </div>
@@ -909,6 +981,137 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* DEDICATED SECURE CHANGE PASSWORD / SEND RESET LINK MODAL */}
+      {passwordResetTargetUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in">
+          <div className="max-w-md w-full rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-2xl space-y-5">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white font-heading">
+                    Change User Password
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    State Committee Authentication & Security
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleClosePasswordResetModal}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                title="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Target User & Registered Email Card */}
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-black text-slate-900 dark:text-white block">
+                    {passwordResetTargetUser.name}
+                  </span>
+                  <span className="text-[10px] text-slate-500">
+                    {passwordResetTargetUser.district || 'State Committee HQ'}
+                  </span>
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+                  {passwordResetTargetUser.role}
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                  Registered Official Email Address
+                </label>
+                <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-mono text-xs text-slate-900 dark:text-white font-bold shadow-2xs">
+                  <Mail className="w-4 h-4 text-amber-500 shrink-0" />
+                  <span className="truncate">{passwordResetTargetUser.email}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Security Explanation */}
+            <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 space-y-2 text-xs text-amber-900 dark:text-amber-300">
+              <div className="flex items-center gap-2 font-bold">
+                <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>Zero-Knowledge Credential Security</span>
+              </div>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                In strict compliance with society privacy rules and Firebase security standards, existing passwords are never displayed, requested, or stored.
+              </p>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 space-y-1.5 pt-1.5 border-t border-amber-200/60 dark:border-amber-900/30">
+                <div className="flex items-start gap-1.5">
+                  <span className="w-4 h-4 rounded-full bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200 text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">1</span>
+                  <span>Click <b>"Send Password Reset Link"</b> to dispatch an official Firebase Authentication email to <b>{passwordResetTargetUser.email}</b>.</span>
+                </div>
+                <div className="flex items-start gap-1.5">
+                  <span className="w-4 h-4 rounded-full bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200 text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">2</span>
+                  <span>The user opens the secure link in their email inbox.</span>
+                </div>
+                <div className="flex items-start gap-1.5">
+                  <span className="w-4 h-4 rounded-full bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200 text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">3</span>
+                  <span>The user sets their new password, which activates immediately.</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Inline Feedback Toast */}
+            {resetModalFeedback && (
+              <div className={`p-3.5 rounded-2xl flex items-start gap-2.5 text-xs font-bold animate-in fade-in shadow-xs ${
+                resetModalFeedback.type === 'success'
+                  ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800'
+                  : 'bg-red-100 dark:bg-red-950/80 text-red-900 dark:text-red-200 border border-red-300 dark:border-red-800'
+              }`}>
+                {resetModalFeedback.type === 'success' ? (
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                )}
+                <div className="space-y-0.5">
+                  <div className="font-extrabold">{resetModalFeedback.type === 'success' ? 'Password Reset Email Sent' : 'Action Failed'}</div>
+                  <div className="text-[11px] font-normal opacity-90">{resetModalFeedback.message}</div>
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={handleClosePasswordResetModal}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold cursor-pointer text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+              >
+                {resetModalFeedback?.type === 'success' ? 'Done' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                disabled={isSendingResetLink}
+                onClick={handleSendResetLinkInModal}
+                className="px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black shadow-md cursor-pointer disabled:opacity-50 flex items-center gap-2 text-xs transition active:scale-95"
+              >
+                {isSendingResetLink ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                    <span>Dispatching Link...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-3.5 h-3.5" />
+                    <span>{resetModalFeedback?.type === 'success' ? 'Resend Password Reset Link' : 'Send Password Reset Link'}</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
