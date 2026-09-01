@@ -244,43 +244,43 @@ const FormFieldBox = ({
   return (
     <div 
       id={id}
-      className={`group space-y-2 bg-slate-50/90 hover:bg-white border-2 w-full min-w-0 max-w-full ${
+      className={`group space-y-2.5 bg-slate-50/90 hover:bg-white border-2 w-full min-w-0 max-w-full ${
         error 
           ? 'border-rose-500 bg-rose-50/30 ring-2 ring-rose-400/50 shadow-rose-200' 
           : 'border-slate-300 hover:border-indigo-400 focus-within:border-brand-blue focus-within:bg-white focus-within:ring-4 focus-within:ring-brand-blue/10'
-      } transition-all rounded-2xl p-3 sm:p-3.5 shadow-xs flex flex-col justify-between ${className}`}
+      } transition-all rounded-2xl p-4 sm:p-4.5 shadow-xs flex flex-col justify-between ${className}`}
     >
-      <div className="space-y-1 w-full min-w-0">
-        <div className="flex items-center justify-between gap-1.5 sm:gap-2 flex-wrap w-full min-w-0">
+      <div className="space-y-1.5 w-full min-w-0">
+        <div className="flex items-center justify-between gap-2 flex-wrap w-full min-w-0">
           {/* Colored Button/Pill Label */}
-          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-black tracking-wide shadow-2xs max-w-full min-w-0 ${error ? 'bg-rose-700 text-white' : (themeStyles[theme] || themeStyles.blue)}`}>
-            {icon && <span className="text-xs shrink-0">{icon}</span>}
+          <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black tracking-wide shadow-2xs max-w-full min-w-0 ${error ? 'bg-rose-700 text-white' : (themeStyles[theme] || themeStyles.blue)}`}>
+            {icon && <span className="text-sm shrink-0">{icon}</span>}
             <span className="leading-tight break-words">{label}</span>
           </div>
           {required && (
-            <span className={`text-[9px] font-black ${error ? 'text-white bg-rose-600 animate-pulse' : 'text-rose-700 bg-rose-100 border border-rose-200'} px-2 py-0.5 rounded-md shrink-0 uppercase tracking-wider`}>
+            <span className={`text-[10px] font-black ${error ? 'text-white bg-rose-600 animate-pulse' : 'text-rose-700 bg-rose-100 border border-rose-200'} px-2.5 py-0.5 rounded-md shrink-0 uppercase tracking-wider`}>
               {formLang === 'english' ? 'Required *' : 'നിർബന്ധം *'}
             </span>
           )}
           {optional && (
-            <span className="text-[9px] font-black text-slate-500 bg-slate-200/80 px-2 py-0.5 rounded-md shrink-0">
+            <span className="text-[10px] font-black text-slate-500 bg-slate-200/80 px-2 py-0.5 rounded-md shrink-0">
               {formLang === 'english' ? 'Optional' : 'ഓപ്ഷണൽ'}
             </span>
           )}
           {badge && !required && !optional && (
-            <span className="text-[9px] font-bold text-slate-600 bg-slate-200/80 px-2 py-0.5 rounded-md shrink-0">
+            <span className="text-[10px] font-bold text-slate-600 bg-slate-200/80 px-2.5 py-0.5 rounded-md shrink-0">
               {badge}
             </span>
           )}
         </div>
         {hint && (
-          <p className="text-[10px] text-slate-500 font-semibold px-0.5 leading-tight break-words">{hint}</p>
+          <p className="text-[11px] text-slate-500 font-semibold px-0.5 leading-tight break-words">{hint}</p>
         )}
       </div>
-      <div className="pt-0.5 w-full min-w-0">{children}</div>
+      <div className="pt-1 w-full min-w-0">{children}</div>
       {error && (
-        <div className="flex items-center gap-1.5 text-xs font-black text-rose-700 bg-rose-100/90 border border-rose-300 px-2.5 py-1.5 rounded-xl animate-in fade-in duration-200 mt-1 w-full min-w-0 break-words">
-          <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-600 animate-pulse" />
+        <div className="flex items-center gap-1.5 text-xs font-black text-rose-700 bg-rose-100/90 border border-rose-300 px-3 py-2 rounded-xl animate-in fade-in duration-200 mt-1.5 w-full min-w-0 break-words">
+          <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 animate-pulse" />
           <span className="min-w-0 break-words">{error}</span>
         </div>
       )}
@@ -558,6 +558,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
   const [customerPostOffice, setCustomerPostOffice] = useState(user?.postOffice || (user as any)?.po || '');
   const [customerPincode, setCustomerPincode] = useState(user?.pincode || (user as any)?.pin || (user as any)?.postalCode || '');
   const [customerPan, setCustomerPan] = useState(user?.panNumber || (user as any)?.pan || '');
+  const [customerPlace, setCustomerPlace] = useState((user as any)?.place || (user as any)?.location || '');
 
   // Auto-sync Main Member's Address changes into Family Members (Spouse, Parent, Child)
   const handleCustomerAddressChange = (val: string) => {
@@ -1646,7 +1647,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
       return;
     }
 
-    // 1. Mandatory validation for Self Claim (Name, Mobile, PAN)
+    // 1. Mandatory validation for Self Claim (All 5 Sections Mandatory)
     const errs: Record<string, string> = {};
     const missing: Array<{ id: string; key: string; label: string }> = [];
 
@@ -1654,18 +1655,101 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
       const sName = (customerName || selfName || user?.name || '').trim();
       const sMobile = (customerMobile || user?.mobile || '').trim().replace(/\D/g, '');
       const sPan = (customerPan || user?.panNumber || user?.pan || '').trim().toUpperCase();
+      const sId = (selfHighrichId || '').trim();
+      const sAddress = (customerAddress || '').trim();
+      const sDistrict = (customerDistrict || '').trim();
+      const sConstituency = (customerConstituency || '').trim();
+      const sPostOffice = (customerPostOffice || '').trim();
+      const sPincode = (customerPincode || '').trim().replace(/\D/g, '');
 
+      // Section 1: Customer Information
       if (!sName) {
-        errs['customerName'] = 'അപേക്ഷകന്റെ പേര് നിർബന്ധമാണ് (Applicant Name is required)';
-        missing.push({ id: 'field-customerName', key: 'customerName', label: '1. അപേക്ഷകന്റെ പേര് (Applicant Name)' });
+        errs['customerName'] = 'കസ്റ്റമറുടെ പേര് നിർബന്ധമാണ് (Customer Name is required)';
+        missing.push({ id: 'field-customerName', key: 'customerName', label: '1. കസ്റ്റമറുടെ പേര് (Customer Name)' });
       }
       if (sMobile.length < 10) {
         errs['customerMobile'] = '10 അക്ക രജിസ്റ്റേർഡ് മൊബൈൽ നമ്പർ നൽകുക (10-digit Mobile is required)';
-        missing.push({ id: 'field-customerMobile', key: 'customerMobile', label: '1. രജിസ്റ്റേർഡ് മൊബൈൽ നമ്പർ (10-digit Mobile)' });
+        missing.push({ id: 'field-customerMobile', key: 'customerMobile', label: '1. രജിസ്റ്റേർഡ് മൊബൈൽ നമ്പർ (Mobile Number)' });
       }
       if (!sPan || sPan.length < 10) {
-        errs['customerPan'] = '10 അക്ക പാൻ കാർഡ് നമ്പർ രേഖപ്പെടുത്തുക - ഉദാ: ABCDE1234F';
-        missing.push({ id: 'field-customerPan', key: 'customerPan', label: '1. പാൻ കാർഡ് നമ്പർ (PAN Card Number)' });
+        errs['customerPan'] = '10 അക്ക പാൻ കാർഡ് നമ്പർ രേഖപ്പെടുത്തുക (PAN is required)';
+        missing.push({ id: 'field-customerPan', key: 'customerPan', label: '1. പാൻ കാർഡ് നമ്പർ (PAN Number)' });
+      }
+      if (!sAddress) {
+        errs['customerAddress'] = 'മേൽവിലാസം നിർബന്ധമാണ് (Address is required)';
+        missing.push({ id: 'field-customerAddress', key: 'customerAddress', label: '1. മേൽവിലാസം (Address)' });
+      }
+      if (!sDistrict) {
+        errs['customerDistrict'] = 'ജില്ല നിർബന്ധമാണ് (District is required)';
+        missing.push({ id: 'field-customerDistrict', key: 'customerDistrict', label: '1. ജില്ല (District)' });
+      }
+      if (!sConstituency) {
+        errs['customerConstituency'] = 'നിയമസഭാ മണ്ഡലം നിർബന്ധമാണ് (Constituency is required)';
+        missing.push({ id: 'field-customerConstituency', key: 'customerConstituency', label: '1. നിയമസഭാ മണ്ഡലം (Constituency)' });
+      }
+      if (!sPostOffice) {
+        errs['customerPostOffice'] = 'പോസ്റ്റ് ഓഫീസ് നിർബന്ധമാണ് (Post Office is required)';
+        missing.push({ id: 'field-customerPostOffice', key: 'customerPostOffice', label: '1. പോസ്റ്റ് ഓഫീസ് (Post Office)' });
+      }
+      if (!sPincode || sPincode.length < 6) {
+        errs['customerPincode'] = '6 അക്ക പിൻകോഡ് നിർബന്ധമാണ് (6-digit PIN is required)';
+        missing.push({ id: 'field-customerPincode', key: 'customerPincode', label: '1. പിൻകോഡ് (PIN Code)' });
+      }
+
+      // Section 2: Consignment Advance Statement
+      if (Number(selfTotalPaid || 0) <= 0) {
+        errs['selfTotalPaid'] = 'നൽകിയ തുക രേഖപ്പെടുത്തുക (Paid Amount is required)';
+        missing.push({ id: 'field-selfTotalPaid', key: 'selfTotalPaid', label: '2. നൽകിയ തുക (Paid Amount)' });
+      }
+
+      // Section 3: Payment Made to Company
+      if (!paidFromAccount.trim() && !transactionRef.trim()) {
+        errs['paidFromAccount'] = 'പണം നൽകിയ അക്കൗണ്ട് നമ്പർ അല്ലെങ്കിൽ റഫറൻസ് നിർബന്ധമാണ്';
+        missing.push({ id: 'field-paidFromAccount', key: 'paidFromAccount', label: '3. പണം നൽകിയ അക്കൗണ്ട് നമ്പർ (Paid Account)' });
+      }
+      if (!paidFromBank.trim()) {
+        errs['paidFromBank'] = 'പണം നൽകിയ ബാങ്ക് പേര് നിർബന്ധമാണ്';
+        missing.push({ id: 'field-paidFromBank', key: 'paidFromBank', label: '3. പണം നൽകിയ ബാങ്ക് (Paid Bank)' });
+      }
+      if (!paidFromBranch.trim()) {
+        errs['paidFromBranch'] = 'പണം നൽകിയ ബ്രാഞ്ച് പേര് നിർബന്ധമാണ്';
+        missing.push({ id: 'field-paidFromBranch', key: 'paidFromBranch', label: '3. പണം നൽകിയ ബ്രാഞ്ച് (Paid Branch)' });
+      }
+      if (!paidFromIfsc.trim()) {
+        errs['paidFromIfsc'] = 'IFSC കോഡ് നിർബന്ധമാണ്';
+        missing.push({ id: 'field-paidFromIfsc', key: 'paidFromIfsc', label: '3. IFSC കോഡ് (Paid IFSC)' });
+      }
+
+      // Section 4: Account Provided to Company
+      if (!settlementAccountHolder.trim()) {
+        errs['settlementAccountHolder'] = 'അക്കൗണ്ട് ഉടമയുടെ പേര് നിർബന്ധമാണ്';
+        missing.push({ id: 'field-settlementAccountHolder', key: 'settlementAccountHolder', label: '4. അക്കൗണ്ട് ഉടമയുടെ പേര് (Account Holder)' });
+      }
+      if (!settlementBankName.trim()) {
+        errs['settlementBankName'] = 'ബാങ്ക് പേര് നിർബന്ധമാണ്';
+        missing.push({ id: 'field-settlementBankName', key: 'settlementBankName', label: '4. ബാങ്ക് പേര് (Bank Name)' });
+      }
+      if (!settlementBranch.trim()) {
+        errs['settlementBranch'] = 'ബ്രാഞ്ച് പേര് നിർബന്ധമാണ്';
+        missing.push({ id: 'field-settlementBranch', key: 'settlementBranch', label: '4. ബ്രാഞ്ച് പേര് (Branch)' });
+      }
+      if (!settlementAccountNumber.trim()) {
+        errs['settlementAccountNumber'] = 'നിങ്ങളുടെ അക്കൗണ്ട് നമ്പർ നിർബന്ധമാണ്';
+        missing.push({ id: 'field-settlementAccountNumber', key: 'settlementAccountNumber', label: '4. നിങ്ങളുടെ അക്കൗണ്ട് നമ്പർ (Account Number)' });
+      }
+      if (!settlementIfsc.trim()) {
+        errs['settlementIfsc'] = 'IFSC കോഡ് നിർബന്ധമാണ്';
+        missing.push({ id: 'field-settlementIfsc', key: 'settlementIfsc', label: '4. IFSC കോഡ് (Settlement IFSC)' });
+      }
+
+      // Section 5: Declaration & Confirmation
+      if (!consentLegal) {
+        errs['consentLegal'] = 'സാക്ഷ്യപത്രം ടിക്ക് ചെയ്ത് സ്ഥിരീകരിക്കുക';
+        missing.push({ id: 'field-consentLegal', key: 'consentLegal', label: '5. സാക്ഷ്യപത്രം സ്ഥിരീകരണം (Declaration Confirmation)' });
+      }
+      if (!customerPlace.trim()) {
+        errs['customerPlace'] = 'സാക്ഷ്യപ്പെടുത്തുന്ന സ്ഥലം രേഖപ്പെടുത്തുക';
+        missing.push({ id: 'field-customerPlace', key: 'customerPlace', label: '5. സ്ഥലം (Declaration Place)' });
       }
     }
 
@@ -1817,6 +1901,8 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
         settlementAccountNumber: settlementAccountNumber || user.settlementAccountNumber || user.accountNumber || '',
         settlementIfsc: settlementIfsc || user.settlementIfsc || user.ifscCode || '',
         settlementAccountHolder: settlementAccountHolder || customerName || user.name || '',
+        customerPlace: customerPlace || (user as any)?.place || '',
+        place: customerPlace || (user as any)?.place || '',
         futurePreference,
         hardshipStatus,
         isEmergency,
@@ -1832,6 +1918,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
           await updateDoc(doc(db, 'users', user.uid), {
             name: customerName || user.name || '',
             mobile: customerMobile || user.mobile || '',
+            place: customerPlace || (user as any)?.place || '',
             address: effectiveMainAddress,
             residentialAddress: effectiveMainAddress,
             userAddress: effectiveMainAddress,
@@ -2298,178 +2385,97 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
 
   const renderFutureAndConditionsBlock = (formIdSuffix: string = 'self') => (
     <div className="space-y-4 pt-4 border-t-2 border-amber-300/80">
-      {/* 1. FUTURE PREFERENCE (ഭാവിയിലെ താല്പര്യം) */}
-      <Card className={`border-2 rounded-2xl shadow-xs overflow-hidden bg-white transition-all duration-300 ${
-        !futurePreference 
-          ? 'border-rose-400 bg-rose-50/10 shadow-[0_0_15px_rgba(239,68,68,0.1)]' 
-          : 'border-emerald-200 bg-white'
+      {/* 5. CUSTOMER DECLARATION & CONFIRMATION (കസ്റ്റമർ സാക്ഷ്യപത്രവും സ്ഥിരീകരണവും) */}
+      <Card className={`border-2 rounded-3xl shadow-md overflow-hidden bg-white transition-all duration-300 ${
+        !consentLegal || !customerPlace.trim()
+          ? 'border-amber-400 bg-amber-50/20 shadow-[0_0_15px_rgba(245,158,11,0.1)]' 
+          : 'border-emerald-300 bg-white'
       }`}>
-        <CardContent className="p-4 sm:p-5 space-y-3">
-          <div className="flex items-center justify-between border-b pb-2.5 border-slate-100 flex-wrap gap-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-brand-magenta text-white text-xs font-black uppercase tracking-wider shadow-2xs">
-              <Heart className="w-3.5 h-3.5 animate-pulse" />
-              <span>{t('Future Preference', 'ഭാവിയിലെ താല്പര്യം')}</span>
-            </div>
-            {!futurePreference ? (
-              <Badge className="bg-rose-500 hover:bg-rose-600 text-white font-black text-[9px] uppercase px-2 py-0.5 rounded animate-bounce">
-                ⚠️ {t('Selection Required', 'തിരഞ്ഞെടുക്കൽ നിർബന്ധം')}
-              </Badge>
-            ) : (
-              <Badge className="bg-emerald-500 text-white font-black text-[9px] uppercase px-2 py-0.5 rounded flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" /> {t('Selected', 'പൂർത്തിയായി')}
-              </Badge>
-            )}
-          </div>
-          
-          <div className="space-y-2.5">
-            <p className="text-xs font-bold text-slate-700 leading-relaxed">
-              {t(
-                'If the company resumes operations, what is your family preference? (Select family preference) *',
-                'കമ്പനി പ്രവർത്തനം പുനരാരംഭിക്കുകയാണെങ്കിൽ താങ്കളുടെ കുടുംബത്തിന്റെ താൽപര്യം? (Select family preference) *'
-              )}
-            </p>
-            <RadioGroup value={futurePreference} onValueChange={setFuturePreference} className="space-y-2">
-              {PREFERENCES.map(pref => {
-                const isSelected = futurePreference === pref.id;
-                return (
-                  <div 
-                    key={pref.id}
-                    className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer ${
-                      isSelected 
-                        ? 'border-brand-magenta bg-brand-magenta/5 shadow-xs scale-[1.005]' 
-                        : 'border-slate-200 hover:border-slate-300 bg-slate-50/60'
-                    }`}
-                    onClick={() => setFuturePreference(pref.id)}
-                  >
-                    <RadioGroupItem value={pref.id} id={`${pref.id}-${formIdSuffix}`} className="text-brand-magenta w-4 h-4" />
-                    <Label htmlFor={`${pref.id}-${formIdSuffix}`} className={`text-xs font-extrabold cursor-pointer flex-1 leading-normal ${
-                      isSelected ? 'text-brand-magenta' : 'text-slate-800'
-                    }`}>
-                      {pref.label}
-                    </Label>
-                  </div>
-                );
-              })}
-            </RadioGroup>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 2. HARDSHIP STATUS (നിലവിലെ ബുദ്ധിമുട്ടുകൾ) */}
-      <Card className={`border-2 rounded-2xl shadow-xs overflow-hidden bg-white transition-all duration-300 ${
-        hardshipStatus.length === 0 
-          ? 'border-rose-400 bg-rose-50/10 shadow-[0_0_15px_rgba(239,68,68,0.1)]' 
-          : 'border-emerald-200 bg-white'
-      }`}>
-        <CardContent className="p-4 sm:p-5 space-y-3">
-          <div className="flex items-center justify-between border-b pb-2.5 border-slate-100 flex-wrap gap-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-red-600 text-white text-xs font-black uppercase tracking-wider shadow-2xs">
-              <ShieldAlert className="w-3.5 h-3.5 animate-pulse" />
-              <span>{t('Current Hardship Status (Emergency Status)', 'നിലവിലെ ബുദ്ധിമുട്ടുകൾ')}</span>
-            </div>
-            {hardshipStatus.length === 0 ? (
-              <Badge className="bg-rose-500 hover:bg-rose-600 text-white font-black text-[9px] uppercase px-2 py-0.5 rounded animate-bounce">
-                ⚠️ {t('Selection Required', 'തിരഞ്ഞെടുക്കൽ നിർബന്ധം')}
-              </Badge>
-            ) : (
-              <Badge className="bg-emerald-500 text-white font-black text-[9px] uppercase px-2 py-0.5 rounded flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" /> {t('Selected', 'പൂർത്തിയായി')}
-              </Badge>
-            )}
-          </div>
-
-          <div className="space-y-2.5">
-            <p className="text-xs font-bold text-slate-700 leading-relaxed">
-              {t(
-                'Select hardship/crisis faced currently by you or family (Select economic hardship) *',
-                'നിലവിൽ താങ്കളോ കുടുംബമോ നേരിടുന്ന ബുദ്ധിമുട്ടുകൾ തിരഞ്ഞെടുക്കുക (Select economic hardship) *'
-              )}
-            </p>
-            <div className="grid grid-cols-1 gap-2">
-              {HARDSHIPS.map(hard => {
-                const isSelected = hardshipStatus.includes(hard.id);
-                return (
-                  <div 
-                    key={hard.id}
-                    onClick={() => {
-                      if (isSelected) {
-                        setHardshipStatus(prev => prev.filter(i => i !== hard.id));
-                      } else {
-                        if (hard.id === 'none') {
-                          setHardshipStatus(['none']);
-                        } else {
-                          setHardshipStatus(prev => [...prev.filter(i => i !== 'none'), hard.id]);
-                        }
-                      }
-                    }}
-                    className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer ${
-                      isSelected
-                        ? 'border-red-500 bg-red-50/40 shadow-xs'
-                        : 'border-slate-200 hover:border-slate-300 bg-slate-50/60'
-                    }`}
-                  >
-                    <Checkbox 
-                      checked={isSelected} 
-                      className={`pointer-events-none w-4 h-4 ${
-                        isSelected ? "border-red-600 bg-red-600 text-white" : "border-slate-300"
-                      }`} 
-                    />
-                    <Label className={`text-xs font-extrabold cursor-pointer flex-1 leading-relaxed ${
-                      isSelected ? 'text-red-700 font-bold' : 'text-slate-800'
-                    }`}>{hard.label}</Label>
-                    {['bank', 'crisis', 'medical'].includes(hard.id) && (
-                      <ShieldAlert className={`w-3.5 h-3.5 ${isSelected ? 'text-red-600 animate-bounce' : 'text-slate-400'}`} />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 3. SHARING CONSENT & CONDITIONS / SAKSHYAPATHRAM (സാക്ഷ്യപത്രവും നിബന്ധനകളും) */}
-      <div 
-        onClick={() => setConsentLegal(!consentLegal)}
-        className={`p-4 sm:p-5 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3.5 ${
-          consentLegal 
-            ? 'border-emerald-500 bg-emerald-50/40 shadow-xs' 
-            : 'border-rose-400 bg-rose-50/10 shadow-[0_0_15px_rgba(239,68,68,0.1)] hover:border-rose-300'
-        }`}
-      >
-        <Checkbox 
-          checked={consentLegal} 
-          onCheckedChange={(val) => setConsentLegal(!!val)} 
-          className={`w-4.5 h-4.5 mt-0.5 pointer-events-none ${
-            consentLegal 
-              ? 'border-emerald-600 bg-emerald-600 text-white' 
-              : 'border-rose-400 bg-white'
-          }`} 
-        />
-        <div className="flex-1 min-w-0 space-y-2">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-700 text-white text-xs font-black uppercase tracking-wider shadow-2xs">
-              📜 <span>{t('Declaration & Conditions *', 'സാക്ഷ്യപത്രവും നിബന്ധനകളും *')}</span>
+        <CardContent className="p-5 md:p-6 space-y-4">
+          <div className="flex items-center justify-between border-b pb-3 border-amber-100 flex-wrap gap-2">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-700 to-[#003366] text-white text-xs font-black uppercase tracking-wider shadow-sm">
+              📜 <span>{t('5. Customer Declaration & Confirmation', '5. കസ്റ്റമർ സാക്ഷ്യപത്രവും സ്ഥിരീകരണവും')}</span>
             </div>
             {!consentLegal ? (
-              <Badge className="bg-rose-500 hover:bg-rose-600 text-white font-black text-[9px] px-2 py-0.5 rounded animate-bounce">
-                ⚠️ {t('Tick required', 'സാക്ഷ്യപ്പെടുത്തൽ ആവശ്യമാണ്')}
+              <Badge className="bg-rose-500 hover:bg-rose-600 text-white font-black text-[9px] uppercase px-2.5 py-1 rounded-lg animate-bounce">
+                ⚠️ {t('Confirmation Required *', 'സ്ഥിരീകരണം നിർബന്ധം *')}
               </Badge>
             ) : (
-              <Badge className="bg-emerald-500 text-white font-black text-[9px] px-2 py-0.5 rounded flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" /> {t('Declared', 'സാക്ഷ്യപ്പെടുത്തി')}
+              <Badge className="bg-emerald-600 text-white font-black text-[9px] uppercase px-2.5 py-1 rounded-lg flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" /> {t('Conditions Confirmed & Verified', 'സ്ഥിരീകരിച്ചു')}
               </Badge>
             )}
           </div>
-          <p className={`text-xs font-bold leading-relaxed ${consentLegal ? 'text-slate-700' : 'text-rose-950 font-extrabold'}`}>
+
+          {/* Declaration Text Box */}
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-slate-800 text-xs sm:text-sm leading-relaxed font-semibold text-justify">
             {formLang === 'english' ? (
-              '“I hereby declare that the amounts entered in this claim application are approximate and true to the best of my knowledge. The Consignment Advance amount, amount received so far, and remaining final balance are to be verified by HIGHRICH ONLINE SHOPPE Pvt. Ltd. from relevant records and submitted in writing to the Hon’ble Court. In the event the court case continues indefinitely, this application is submitted for receiving the due balance amount verified by the company and sanctioned by the Hon’ble Court from the surplus interest amount reported by the company to the court. I also affirm that this form is submitted out of my own interest and with my full consent.”'
+              '“I acknowledge that data pertaining to consignment advance paid by me are not readily available with the company, in order ascertain the true facts. I hereby certify and declare that the financial figures and particulars stated in this statement are true, accurate, and correct to the best of my knowledge and records. The Consignment Advance paid, cumulative returns received, and the final net pending balance claimed herein are subject to verification and final reconciliation with the official corporate accounts books and bank ledgers of HIGHRICH ONLINE SHOPPE PVT. LTD. For the filing before the Hon’ble Court. In the event of ongoing legal proceedings, this statement and verification claim is submitted to facilitate disbursement funds deposited before the Hon’ble Court/Competent Authority, subject to formal reconciliation by the Company and approval by the Hon’ble Court. I also affirm and submit that this form is submitted out of my own interest and with my full consent.”'
             ) : (
-              '“ഈ അപേക്ഷയിൽ ഞാൻ രേഖപ്പെടുത്തിയിട്ടുള്ള തുക എന്റെ അറിവിന്റെ അടിസ്ഥാനത്തിൽ ഏകദേശം ശരിയാണെന്ന് സാക്ഷ്യപ്പെടുത്തുന്നു. Consignment Advance തുക, ഇതിനകം ലഭിച്ച തുക, ശേഷിക്കുന്നതായി കണക്കാക്കുന്ന അന്തിമ ബാലൻസ് എന്നിവ HIGHRICH ONLINE SHOPPE Pvt. Ltd. ബന്ധപ്പെട്ട രേഖകൾ പരിശോധിച്ച് സ്ഥിരീകരിച്ച് കോടതിയിൽ രേഖാമൂലം സമർപ്പിക്കേണ്ടതാണ്. കമ്പനിയുടെ കേസ് അനന്തമായി നീണ്ടുപോകുന്ന സാഹചര്യത്തിൽ, കമ്പനി കോടതിയെ രേഖാമൂലം അറിയിച്ചിട്ടുള്ള അധികമായി ലഭിച്ച പലിശത്തുകയിൽ നിന്ന്, കമ്പനി സ്ഥിരീകരിച്ച് കോടതി അനുവദിക്കുന്ന പക്ഷം എനിക്ക് ലഭിക്കേണ്ട തുക ലഭ്യമാക്കുന്നതിനായാണ് ഈ അപേക്ഷ സമർപ്പിക്കുന്നത്. ഈ ഫോം സമർപ്പിക്കുന്നത് എന്റെ സ്വന്തം താല്പര്യ പ്രകാരം എന്റെ പൂർണ സമ്മതത്തോടെയും ആണ് എന്ന് ബോധിപ്പിക്കുന്നു.”'
+              '“കമ്പനിയിൽ നിന്നും യഥാർത്ഥ വിവരങ്ങൾ ലഭ്യമാക്കാൻ സാധിക്കാത്ത സാഹചര്യത്തിൽ, എന്റെ പക്കലുള്ള വിവരങ്ങളുടെ അടിസ്ഥാനത്തിലാണ് ഞാൻ ഈ അപേക്ഷ സമർപ്പിക്കുന്നത്. ഈ അപേക്ഷയിൽ ഞാൻ രേഖപ്പെടുത്തിയിട്ടുള്ള സാമ്പത്തിക കണക്കുകളും വിവരങ്ങളും എന്റെ അറിവിലും രേഖകളിലും പൂർണ്ണമായും സത്യവും കൃത്യവുമാണെന്ന് സാക്ഷ്യപ്പെടുത്തുന്നു. ഇതിൽ അവകാശപ്പെടുന്ന Consignment Advance തുക, ഇതിനകം ലഭിച്ച തുക, ശേഷിക്കുന്ന അന്തിമ ബാലൻസ് എന്നിവ ബഹുമാനപ്പെട്ട കോടതി മുൻപാകെ സമർപ്പിക്കുന്നതിനായി HIGHRICH ONLINE SHOPPE PVT. LTD.-ന്റെ ഔദ്യോഗിക കണക്കുപുസ്തകങ്ങളും ബാങ്ക് ലെഡ്ജറുകളുമായി പരിശോധിച്ച് അന്തിമമായി സ്ഥിരീകരിക്കേണ്ടതാണ്. നിലവിലുള്ള നിയമനടപടികളുടെ ഭാഗമായി, ബഹുമാനപ്പെട്ട കോടതി/സക്ഷമ അതോറിറ്റി മുൻപാകെ നിക്ഷേപിച്ചിട്ടുള്ള തുകയിൽ നിന്നും കമ്പനി പരിശോധിച്ച് കോടതി അംഗീകരിക്കുന്ന മുറയ്ക്ക് തുക ലഭ്യമാക്കുന്നതിനായാണ് ഈ സ്റ്റേറ്റ്‌മെന്റും വെരിഫിക്കേഷൻ ക്ലെയിമും സമർപ്പിക്കുന്നത്. ഈ ഫോം എന്റെ സ്വന്തം താല്പര്യപ്രകാരം പൂർണ്ണ സമ്മതത്തോടെയാണ് സമർപ്പിക്കുന്നതെന്നും ഞാൻ ബോധിപ്പിക്കുന്നു.”'
             )}
-          </p>
-        </div>
-      </div>
+          </div>
+
+          {/* Verification Checkbox */}
+          <div 
+            onClick={() => setConsentLegal(!consentLegal)}
+            className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-3.5 ${
+              consentLegal 
+                ? 'border-emerald-500 bg-emerald-50/50 shadow-xs' 
+                : 'border-rose-400 bg-rose-50/20 shadow-xs hover:border-rose-500'
+            }`}
+          >
+            <Checkbox 
+              checked={consentLegal} 
+              onCheckedChange={(val) => setConsentLegal(!!val)} 
+              className={`w-5 h-5 pointer-events-none rounded-md ${
+                consentLegal 
+                  ? 'border-emerald-600 bg-emerald-600 text-white' 
+                  : 'border-rose-400 bg-white'
+              }`} 
+            />
+            <Label className={`text-xs sm:text-sm font-extrabold cursor-pointer flex-1 leading-normal ${
+              consentLegal ? 'text-emerald-900' : 'text-rose-950 font-black'
+            }`}>
+              {t('I confirm, certify, and declare that the above statements and figures are true and correct *', 'മുകളിൽ നൽകിയിട്ടുള്ള എല്ലാ വിവരങ്ങളും കണക്കുകളും പൂർണ്ണമായും സത്യമാണെന്ന് ഞാൻ ഇതിനാൽ സാക്ഷ്യപ്പെടുത്തുന്നു *')}
+            </Label>
+          </div>
+
+          {/* Place of Declaration */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+            <FormFieldBox 
+              id="field-customerPlace"
+              label={tLabel('Place of Declaration *', 'സ്ഥലം *')}
+              icon="📍"
+              theme="amber"
+              required
+              error={validationErrors['customerPlace']}
+            >
+              <Input 
+                value={customerPlace} 
+                onChange={(e) => {
+                  setCustomerPlace(e.target.value);
+                  clearFieldError('customerPlace');
+                }} 
+                placeholder={tPlaceholder('Enter Place (e.g. Thrissur)', 'സ്ഥലം നൽകുക (ഉദാ: തൃശ്ശൂർ)')}
+                className={`h-11 border-2 ${validationErrors['customerPlace'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-amber-600 text-xs sm:text-sm text-slate-900 shadow-2xs`}
+              />
+            </FormFieldBox>
+
+            <FormFieldBox 
+              label={tLabel('Statement Date', 'തീയതി')}
+              icon="📅"
+              theme="slate"
+            >
+              <Input 
+                value={new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })} 
+                disabled
+                className="h-11 border border-slate-300 rounded-xl font-bold bg-slate-100 text-xs sm:text-sm text-slate-800 shadow-2xs cursor-not-allowed"
+              />
+            </FormFieldBox>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 
@@ -3175,10 +3181,10 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                 </div>
                 <div>
                   <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide">
-                    {t('1. Applicant Personal Profile (Customer & Declarant Profile)', '1. അപേക്ഷകന്റെ വ്യക്തിഗത വിവരങ്ങൾ')}
+                    {t('1. Customer & Declarant Information (Mandatory)', '1. കസ്റ്റമർ & ഡിക്ലറന്റ് വിവരങ്ങൾ (നിർബന്ധം)')}
                   </h4>
                   <p className="text-[9px] font-bold text-slate-400 uppercase">
-                    {t('Customer Settlement Form Information', 'കസ്റ്റമർ സെറ്റിൽമെന്റ് ഫോം വിവരങ്ങൾ')}
+                    {t('Customer Personal & Address Details', 'കസ്റ്റമറുടെ വ്യക്തിഗത & മേൽവിലാസ വിവരങ്ങൾ')}
                   </p>
                 </div>
               </div>
@@ -3191,7 +3197,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
               {/* Applicant Name Column */}
               <FormFieldBox 
                 id="field-customerName"
-                label={tLabel('Applicant Name (Customer Name) *', 'അപേക്ഷകന്റെ പേര് *')}
+                label={tLabel('Customer Name / Declarant Name *', 'കസ്റ്റമറുടെ പേര് *')}
                 icon="👤"
                 theme="blue"
                 required
@@ -3201,6 +3207,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                   value={customerName} 
                   onChange={(e) => {
                     setCustomerName(e.target.value);
+                    setSelfName(e.target.value);
                     clearFieldError('customerName');
                   }} 
                   placeholder={tPlaceholder('Full Name as per records', 'രേഖകളിലുള്ള മുഴുവൻ പേര്')}
@@ -3230,75 +3237,21 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                 />
               </FormFieldBox>
 
-              {/* Full Address Column */}
+              {/* Customer ID Column */}
               <FormFieldBox 
-                label={tLabel('Full Residential Address', 'മേൽവിലാസം')}
-                icon="🏠"
-                theme="indigo"
-                className="md:col-span-2"
+                id="field-selfHighrichId"
+                label={tLabel('Customer ID (Highrich ID)', 'കസ്റ്റമർ ഐഡി / ഹൈറിച്ച് ഐഡി (ഓപ്ഷണൽ)')}
+                icon="🆔"
+                theme="purple"
+                optional
               >
                 <Input 
-                  value={customerAddress} 
-                  onChange={(e) => handleCustomerAddressChange(e.target.value)} 
-                  placeholder={tPlaceholder('House Name, Street, Locality', 'വീട്ടുപേര്, സ്ഥലം, ലൊക്കാലിറ്റി')}
-                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
-                />
-              </FormFieldBox>
-
-              {/* District Column */}
-              <FormFieldBox 
-                label={tLabel('District', 'ജില്ല')}
-                icon="📍"
-                theme="indigo"
-              >
-                <Input 
-                  value={customerDistrict} 
-                  onChange={(e) => handleCustomerDistrictChange(e.target.value)} 
-                  placeholder={tPlaceholder('District', 'ജില്ല')}
-                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
-                />
-              </FormFieldBox>
-
-              {/* Assembly Constituency Column */}
-              <FormFieldBox 
-                label={tLabel('Assembly Constituency', 'നിയമസഭാ മണ്ഡലം')}
-                icon="🏛️"
-                theme="indigo"
-              >
-                <Input 
-                  value={customerConstituency} 
-                  onChange={(e) => handleCustomerConstituencyChange(e.target.value)} 
-                  placeholder={tPlaceholder('Assembly Constituency', 'നിയമസഭാ മണ്ഡലം')}
-                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
-                />
-              </FormFieldBox>
-
-              {/* Post Office Column */}
-              <FormFieldBox 
-                label={tLabel('Post Office', 'പോസ്റ്റ് ഓഫീസ്')}
-                icon="📬"
-                theme="slate"
-              >
-                <Input 
-                  value={customerPostOffice} 
-                  onChange={(e) => handleCustomerPostOfficeChange(e.target.value)} 
-                  placeholder={tPlaceholder('Post Office', 'പോസ്റ്റ് ഓഫീസ്')}
-                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-slate-700 text-xs sm:text-sm text-slate-900 shadow-2xs"
-                />
-              </FormFieldBox>
-
-              {/* PIN Code Column */}
-              <FormFieldBox 
-                label={tLabel('PIN Code', 'പിൻകോഡ്')}
-                icon="📮"
-                theme="slate"
-              >
-                <Input 
-                  value={customerPincode} 
-                  onChange={(e) => handleCustomerPincodeChange(e.target.value)} 
-                  placeholder={tPlaceholder('6-digit PIN', '6 അക്ക പിൻകോഡ്')}
-                  maxLength={6}
-                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-slate-700 text-xs sm:text-sm text-slate-900 font-mono shadow-2xs"
+                  value={selfHighrichId} 
+                  onChange={(e) => {
+                    setSelfHighrichId(e.target.value);
+                  }} 
+                  placeholder={tPlaceholder('Enter Customer ID (Optional)', 'കസ്റ്റമർ ഐഡി നൽകുക')}
+                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-purple-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
                 />
               </FormFieldBox>
 
@@ -3310,7 +3263,6 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                 theme="purple"
                 required
                 error={validationErrors['customerPan']}
-                className="md:col-span-2"
               >
                 <Input 
                   value={customerPan} 
@@ -3321,6 +3273,108 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                   placeholder={tPlaceholder('e.g. ABCDE1234F', 'പാൻ നമ്പർ നൽകുക (ഉദാ: ABCDE1234F)')}
                   maxLength={10}
                   className={`h-10 border ${validationErrors['customerPan'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-purple-600 text-xs sm:text-sm text-slate-900 font-mono uppercase shadow-2xs`}
+                />
+              </FormFieldBox>
+
+              {/* Full Address Column */}
+              <FormFieldBox 
+                id="field-customerAddress"
+                label={tLabel('Full Residential Address *', 'മേൽവിലാസം *')}
+                icon="🏠"
+                theme="indigo"
+                required
+                error={validationErrors['customerAddress']}
+                className="md:col-span-2"
+              >
+                <Input 
+                  value={customerAddress} 
+                  onChange={(e) => {
+                    handleCustomerAddressChange(e.target.value);
+                    clearFieldError('customerAddress');
+                  }} 
+                  placeholder={tPlaceholder('House Name, Street, Locality', 'വീട്ടുപേര്, സ്ഥലം, ലൊക്കാലിറ്റി')}
+                  className={`h-10 border ${validationErrors['customerAddress'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-2xs`}
+                />
+              </FormFieldBox>
+
+              {/* District Column */}
+              <FormFieldBox 
+                id="field-customerDistrict"
+                label={tLabel('District *', 'ജില്ല *')}
+                icon="📍"
+                theme="indigo"
+                required
+                error={validationErrors['customerDistrict']}
+              >
+                <Input 
+                  value={customerDistrict} 
+                  onChange={(e) => {
+                    handleCustomerDistrictChange(e.target.value);
+                    clearFieldError('customerDistrict');
+                  }} 
+                  placeholder={tPlaceholder('District', 'ജില്ല')}
+                  className={`h-10 border ${validationErrors['customerDistrict'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-2xs`}
+                />
+              </FormFieldBox>
+
+              {/* Assembly Constituency Column */}
+              <FormFieldBox 
+                id="field-customerConstituency"
+                label={tLabel('Assembly Constituency *', 'നിയമസഭാ മണ്ഡലം *')}
+                icon="🏛️"
+                theme="indigo"
+                required
+                error={validationErrors['customerConstituency']}
+              >
+                <Input 
+                  value={customerConstituency} 
+                  onChange={(e) => {
+                    handleCustomerConstituencyChange(e.target.value);
+                    clearFieldError('customerConstituency');
+                  }} 
+                  placeholder={tPlaceholder('Assembly Constituency', 'നിയമസഭാ മണ്ഡലം')}
+                  className={`h-10 border ${validationErrors['customerConstituency'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-2xs`}
+                />
+              </FormFieldBox>
+
+              {/* Post Office Column */}
+              <FormFieldBox 
+                id="field-customerPostOffice"
+                label={tLabel('Post Office *', 'പോസ്റ്റ് ഓഫീസ് *')}
+                icon="📬"
+                theme="slate"
+                required
+                error={validationErrors['customerPostOffice']}
+              >
+                <Input 
+                  value={customerPostOffice} 
+                  onChange={(e) => {
+                    handleCustomerPostOfficeChange(e.target.value);
+                    clearFieldError('customerPostOffice');
+                  }} 
+                  placeholder={tPlaceholder('Post Office', 'പോസ്റ്റ് ഓഫീസ്')}
+                  className={`h-10 border ${validationErrors['customerPostOffice'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-slate-700 text-xs sm:text-sm text-slate-900 shadow-2xs`}
+                />
+              </FormFieldBox>
+
+              {/* PIN Code Column */}
+              <FormFieldBox 
+                id="field-customerPincode"
+                label={tLabel('PIN Code *', 'പിൻകോഡ് *')}
+                icon="📮"
+                theme="slate"
+                required
+                error={validationErrors['customerPincode']}
+              >
+                <Input 
+                  value={customerPincode} 
+                  onChange={(e) => {
+                    handleCustomerPincodeChange(e.target.value);
+                    clearFieldError('customerPincode');
+                  }} 
+                  placeholder={tPlaceholder('6-digit PIN', '6 അക്ക പിൻകോഡ്')}
+                  maxLength={6}
+                  className={`h-10 border ${validationErrors['customerPincode'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-slate-700 text-xs sm:text-sm text-slate-900 font-mono shadow-2xs`}
                 />
               </FormFieldBox>
             </div>
@@ -3528,7 +3582,7 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
         </Card>
         )}
 
-        {/* 1. PAYMENT MADE DETAILS (1. നിങ്ങൾ പണം നൽകിയ അക്കൗണ്ട് വിവരങ്ങൾ) */}
+        {/* 3. PAYMENT MADE TO COMPANY (3. കമ്പനിയിലേക്ക് പണം നൽകിയ വിവരങ്ങൾ) */}
         <Card className="border-2 border-indigo-200 rounded-3xl shadow-[0_8px_30px_rgba(99,102,241,0.06)] overflow-hidden bg-white/95 backdrop-blur-xl">
           <CardContent className="p-5 md:p-6 space-y-4">
             <div className="flex items-center justify-between border-b pb-3.5 border-indigo-100">
@@ -3537,69 +3591,102 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                   💳
                 </div>
                 <div>
-                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide">
-                    {t('1. DETAILS OF ACCOUNT TO WHICH YOU PAID', '1. നിങ്ങൾ പണം നൽകിയ അക്കൗണ്ട് വിവരങ്ങൾ (അറിയാമെങ്കിൽ)')}
+                  <h4 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wide">
+                    {t('3. PAYMENT MADE TO COMPANY (Mandatory)', '3. കമ്പനിയിലേക്ക് പണം നൽകിയ വിവരങ്ങൾ (നിർബന്ധം)')}
                   </h4>
-                  <p className="text-[9px] font-bold text-slate-500 uppercase">
-                    {t('Account & payment details (Fill only if known / remember)', 'കമ്പനിയിലേക്ക് പണം നൽകിയ വിവരങ്ങൾ (ഓർമ്മയുണ്ടെങ്കിൽ മാത്രം)')}
+                  <p className="text-[10px] font-bold text-slate-500 uppercase">
+                    {t('Details of Bank Account to which payment was made', 'കമ്പനിയിലേക്ക് പണം നൽകിയ അക്കൗണ്ട് വിവരങ്ങൾ')}
                   </p>
                 </div>
               </div>
-              <Badge className="bg-indigo-50 text-indigo-700 border border-indigo-200 text-[9px] font-bold rounded-lg px-2 py-0.5">
-                {t('Optional', 'ഓപ്ഷണൽ')}
-              </Badge>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Account Number to which you paid */}
               <FormFieldBox 
-                label={tLabel('Account Number you paid to', 'നിങ്ങൾ പണം നൽകിയ അക്കൗണ്ട് നമ്പർ')}
+                id="field-paidFromAccount"
+                label={tLabel('Account Number / Receipt / UTR you paid to *', 'നിങ്ങൾ പണം നൽകിയ അക്കൗണ്ട് നമ്പർ / രസീത് / UTR *')}
                 icon="💳"
                 theme="indigo"
-                optional
+                required
+                error={validationErrors['paidFromAccount']}
                 className="md:col-span-2"
               >
                 <Input 
                   value={paidFromAccount} 
-                  onChange={(e) => setPaidFromAccount(e.target.value)} 
-                  placeholder={tPlaceholder('Enter Account Number paid to', 'നിങ്ങൾ പണം നൽകിയ അക്കൗണ്ട് നമ്പർ നൽകുക')}
-                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 font-mono shadow-2xs"
+                  onChange={(e) => {
+                    setPaidFromAccount(e.target.value);
+                    clearFieldError('paidFromAccount');
+                  }} 
+                  placeholder={tPlaceholder('Enter Account Number or Transaction Ref paid to', 'നിങ്ങൾ പണം നൽകിയ അക്കൗണ്ട് നമ്പർ / റഫറൻസ് നൽകുക')}
+                  className={`h-11 sm:h-12 border-2 ${validationErrors['paidFromAccount'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 font-mono shadow-xs`}
                 />
               </FormFieldBox>
 
               {/* Paid Bank Name */}
               <FormFieldBox 
-                label={tLabel('Bank', 'ബാങ്ക്')}
+                id="field-paidFromBank"
+                label={tLabel('Bank Name *', 'ബാങ്ക് *')}
                 icon="🏦"
                 theme="indigo"
-                optional
+                required
+                error={validationErrors['paidFromBank']}
               >
                 <Input 
                   value={paidFromBank} 
-                  onChange={(e) => setPaidFromBank(e.target.value)} 
+                  onChange={(e) => {
+                    setPaidFromBank(e.target.value);
+                    clearFieldError('paidFromBank');
+                  }} 
                   placeholder={tPlaceholder('e.g. State Bank of India / HDFC Bank', 'ഉദാ: State Bank of India / Federal Bank')}
-                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
+                  className={`h-11 sm:h-12 border-2 ${validationErrors['paidFromBank'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-xs`}
                 />
               </FormFieldBox>
 
               {/* Branch */}
               <FormFieldBox 
-                label={tLabel('Branch', 'ബ്രാഞ്ച്')}
+                id="field-paidFromBranch"
+                label={tLabel('Branch *', 'ബ്രാഞ്ച് *')}
                 icon="📍"
                 theme="indigo"
-                optional
+                required
+                error={validationErrors['paidFromBranch']}
               >
                 <Input 
                   value={paidFromBranch} 
-                  onChange={(e) => setPaidFromBranch(e.target.value)} 
+                  onChange={(e) => {
+                    setPaidFromBranch(e.target.value);
+                    clearFieldError('paidFromBranch');
+                  }} 
                   placeholder={tPlaceholder('Branch Name', 'ബ്രാഞ്ച് പേര്')}
-                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
+                  className={`h-11 sm:h-12 border-2 ${validationErrors['paidFromBranch'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-xs`}
+                />
+              </FormFieldBox>
+
+              {/* IFSC Code */}
+              <FormFieldBox 
+                id="field-paidFromIfsc"
+                label={tLabel('IFSC Code *', 'IFSC കോഡ് *')}
+                icon="🏛️"
+                theme="indigo"
+                required
+                error={validationErrors['paidFromIfsc']}
+              >
+                <Input 
+                  value={paidFromIfsc} 
+                  onChange={(e) => {
+                    setPaidFromIfsc(e.target.value.toUpperCase());
+                    clearFieldError('paidFromIfsc');
+                  }} 
+                  placeholder="e.g. SBIN0001234"
+                  className={`h-11 sm:h-12 border-2 ${validationErrors['paidFromIfsc'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 font-mono uppercase shadow-xs`}
                 />
               </FormFieldBox>
 
               {/* Payment Date */}
               <FormFieldBox 
-                label={tLabel('Payment Date (If Known)', 'പണം കൊടുത്ത തീയതി (അറിയാമെങ്കിൽ)')}
+                id="field-paymentDate"
+                label={tLabel('Payment Date', 'പണം കൊടുത്ത തീയതി (ഓപ്ഷണൽ)')}
                 icon="📅"
                 theme="indigo"
                 optional
@@ -3607,30 +3694,17 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                 <Input 
                   type="date"
                   value={paymentDate} 
-                  onChange={(e) => setPaymentDate(e.target.value)} 
-                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
-                />
-              </FormFieldBox>
-
-              {/* Transaction ID / UTR */}
-              <FormFieldBox 
-                label={tLabel('Transaction ID / UTR (If Known)', 'ട്രാൻസാക്ഷൻ ഐഡി / UTR (അറിയാമെങ്കിൽ)')}
-                icon="🔢"
-                theme="indigo"
-                optional
-              >
-                <Input 
-                  value={transactionRef} 
-                  onChange={(e) => setTransactionRef(e.target.value)} 
-                  placeholder={tPlaceholder('Transaction ID / UTR Reference', 'ട്രാൻസാക്ഷൻ ഐഡി അല്ലെങ്കിൽ UTR നമ്പർ')}
-                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 font-mono shadow-2xs"
+                  onChange={(e) => {
+                    setPaymentDate(e.target.value);
+                  }} 
+                  className="h-11 sm:h-12 border-2 border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-xs"
                 />
               </FormFieldBox>
             </div>
           </CardContent>
         </Card>
 
-        {/* 2. YOUR ACCOUNT DETAILS PROVIDED TO COMPANY (2. കമ്പനിയിൽ നിങ്ങൾ നൽകിയ നിങ്ങളുടെ അക്കൗണ്ട് വിവരങ്ങൾ) */}
+        {/* 4. ACCOUNT & PAN CARD DETAILS PROVIDED TO COMPANY (4. കമ്പനിയിൽ നൽകിയ ബാങ്ക് അക്കൗണ്ട് & പാൻ വിവരങ്ങൾ) */}
         <Card className="border-2 border-emerald-300 rounded-3xl shadow-[0_8px_30px_rgba(16,185,129,0.08)] overflow-hidden bg-white/95 backdrop-blur-xl">
           <CardContent className="p-5 md:p-6 space-y-4">
             <div className="flex flex-wrap items-center justify-between border-b pb-3.5 border-emerald-100 gap-2">
@@ -3640,72 +3714,114 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                 </div>
                 <div>
                   <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide">
-                    {t('2. YOUR BANK ACCOUNT DETAILS GIVEN TO COMPANY', '2. കമ്പനിയിൽ നിങ്ങൾ നൽകിയ നിങ്ങളുടെ അക്കൗണ്ട് വിവരങ്ങൾ')}
+                    {t('4. ACCOUNT & PAN CARD DETAILS PROVIDED TO COMPANY (Mandatory)', '4. കമ്പനിയിൽ നൽകിയ ബാങ്ക് അക്കൗണ്ട് വിവരങ്ങൾ (നിർബന്ധം)')}
                   </h4>
                   <p className="text-[9px] font-bold text-slate-500 uppercase">
-                    {t('Your registered account for settlements', 'നിങ്ങളുടെ രജിസ്റ്റർ ചെയ്ത ബാങ്ക് അക്കൗണ്ട് വിവരങ്ങൾ')}
+                    {t('Your registered account for settlements & disbursement', 'നിങ്ങളുടെ രജിസ്റ്റർ ചെയ്ത ബാങ്ക് അക്കൗണ്ട് വിവരങ്ങൾ')}
                   </p>
                 </div>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Your Account Number in Company */}
+              {/* Account Holder Name */}
               <FormFieldBox 
-                label={tLabel('Your Bank Account Number in Company *', 'കമ്പനിയിൽ നിങ്ങൾ നൽകിയ നിങ്ങളുടെ അക്കൗണ്ട് നമ്പർ *')}
-                icon="🏦"
+                id="field-settlementAccountHolder"
+                label={tLabel('Account Holder Name *', 'അക്കൗണ്ട് ഉടമയുടെ പേര് *')}
+                icon="👤"
                 theme="emerald"
                 required
+                error={validationErrors['settlementAccountHolder']}
                 className="md:col-span-2"
               >
                 <Input 
-                  value={settlementAccountNumber} 
-                  onChange={(e) => setSettlementAccountNumber(e.target.value)} 
-                  placeholder={tPlaceholder('Enter Your Bank Account Number', 'നിങ്ങളുടെ ബാങ്ക് അക്കൗണ്ട് നമ്പർ നൽകുക')}
-                  className="h-10 border border-emerald-300 rounded-xl font-bold bg-white focus:bg-white focus:border-emerald-600 text-xs sm:text-sm text-slate-900 font-mono shadow-2xs"
+                  value={settlementAccountHolder} 
+                  onChange={(e) => {
+                    setSettlementAccountHolder(e.target.value);
+                    clearFieldError('settlementAccountHolder');
+                  }} 
+                  placeholder={tPlaceholder('Name as in Bank Account', 'ബാങ്ക് അക്കൗണ്ടിലെ പേര്')}
+                  className={`h-10 border ${validationErrors['settlementAccountHolder'] ? 'border-rose-500 bg-rose-50/50' : 'border-emerald-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-emerald-600 text-xs sm:text-sm text-slate-900 shadow-2xs`}
                 />
               </FormFieldBox>
 
               {/* Bank Name */}
               <FormFieldBox 
-                label={tLabel('Bank', 'ബാങ്ക്')}
+                id="field-settlementBankName"
+                label={tLabel('Bank Name *', 'ബാങ്ക് *')}
                 icon="🏦"
                 theme="teal"
+                required
+                error={validationErrors['settlementBankName']}
               >
                 <Input 
                   value={settlementBankName} 
-                  onChange={(e) => setSettlementBankName(e.target.value)} 
+                  onChange={(e) => {
+                    setSettlementBankName(e.target.value);
+                    clearFieldError('settlementBankName');
+                  }} 
                   placeholder={tPlaceholder('e.g. State Bank of India / Federal Bank', 'ഉദാ: State Bank of India / Federal Bank')}
-                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-teal-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
+                  className={`h-10 border ${validationErrors['settlementBankName'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-teal-600 text-xs sm:text-sm text-slate-900 shadow-2xs`}
                 />
               </FormFieldBox>
 
               {/* Branch */}
               <FormFieldBox 
-                label={tLabel('Branch', 'ബ്രാഞ്ച്')}
+                id="field-settlementBranch"
+                label={tLabel('Branch *', 'ബ്രാഞ്ച് *')}
                 icon="📍"
                 theme="teal"
+                required
+                error={validationErrors['settlementBranch']}
               >
                 <Input 
                   value={settlementBranch} 
-                  onChange={(e) => setSettlementBranch(e.target.value)} 
+                  onChange={(e) => {
+                    setSettlementBranch(e.target.value);
+                    clearFieldError('settlementBranch');
+                  }} 
                   placeholder={tPlaceholder('Branch Name', 'ബ്രാഞ്ച് പേര്')}
-                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-teal-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
+                  className={`h-10 border ${validationErrors['settlementBranch'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-teal-600 text-xs sm:text-sm text-slate-900 shadow-2xs`}
+                />
+              </FormFieldBox>
+
+              {/* Your Account Number in Company */}
+              <FormFieldBox 
+                id="field-settlementAccountNumber"
+                label={tLabel('Your Bank Account Number in Company *', 'കമ്പനിയിൽ നിങ്ങൾ നൽകിയ നിങ്ങളുടെ അക്കൗണ്ട് നമ്പർ *')}
+                icon="🏦"
+                theme="emerald"
+                required
+                error={validationErrors['settlementAccountNumber']}
+              >
+                <Input 
+                  value={settlementAccountNumber} 
+                  onChange={(e) => {
+                    setSettlementAccountNumber(e.target.value);
+                    clearFieldError('settlementAccountNumber');
+                  }} 
+                  placeholder={tPlaceholder('Enter Your Bank Account Number', 'നിങ്ങളുടെ ബാങ്ക് അക്കൗണ്ട് നമ്പർ നൽകുക')}
+                  className={`h-10 border ${validationErrors['settlementAccountNumber'] ? 'border-rose-500 bg-rose-50/50' : 'border-emerald-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-emerald-600 text-xs sm:text-sm text-slate-900 font-mono shadow-2xs`}
                 />
               </FormFieldBox>
 
               {/* IFSC Code */}
               <FormFieldBox 
-                label={tLabel('IFSC Code (If Known)', 'IFSC കോഡ് (അറിയാമെങ്കിൽ)')}
+                id="field-settlementIfsc"
+                label={tLabel('IFSC Code *', 'IFSC കോഡ് *')}
                 icon="🏛️"
                 theme="teal"
-                optional
+                required
+                error={validationErrors['settlementIfsc']}
               >
                 <Input 
                   value={settlementIfsc} 
-                  onChange={(e) => setSettlementIfsc(e.target.value.toUpperCase())} 
+                  onChange={(e) => {
+                    setSettlementIfsc(e.target.value.toUpperCase());
+                    clearFieldError('settlementIfsc');
+                  }} 
                   placeholder="e.g. SBIN0001234"
-                  className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-teal-600 text-xs sm:text-sm text-slate-900 font-mono uppercase shadow-2xs"
+                  className={`h-10 border ${validationErrors['settlementIfsc'] ? 'border-rose-500 bg-rose-50/50' : 'border-slate-300'} rounded-xl font-bold bg-white focus:bg-white focus:border-teal-600 text-xs sm:text-sm text-slate-900 font-mono uppercase shadow-2xs`}
                 />
               </FormFieldBox>
             </div>
@@ -4324,17 +4440,14 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                         💳
                       </div>
                       <div>
-                        <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide">
-                          {t('1. DETAILS OF ACCOUNT TO WHICH YOU PAID', '1. നിങ്ങൾ പണം നൽകിയ അക്കൗണ്ട് വിവരങ്ങൾ (അറിയാമെങ്കിൽ)')}
+                        <h4 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wide">
+                          {t('1. DETAILS OF ACCOUNT TO WHICH YOU PAID', '1. നിങ്ങൾ പണം നൽകിയ അക്കൗണ്ട് വിവരങ്ങൾ')}
                         </h4>
-                        <p className="text-[9px] font-bold text-slate-500 uppercase">
-                          {t('Account & payment details (Fill only if known / remember)', 'കമ്പനിയിലേക്ക് പണം നൽകിയ വിവരങ്ങൾ (ഓർമ്മയുണ്ടെങ്കിൽ മാത്രം)')}
+                        <p className="text-[10px] font-bold text-slate-500 uppercase">
+                          {t('Account & payment details (Payment made to company)', 'കമ്പനിയിലേക്ക് പണം നൽകിയ വിവരങ്ങൾ')}
                         </p>
                       </div>
                     </div>
-                    <Badge className="bg-indigo-50 text-indigo-700 border border-indigo-200 text-[9px] font-bold rounded-lg px-2 py-0.5">
-                      {t('Optional', 'ഓപ്ഷണൽ')}
-                    </Badge>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -4343,14 +4456,13 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                       label={tLabel('Account Number you paid to', 'നിങ്ങൾ പണം നൽകിയ അക്കൗണ്ട് നമ്പർ')}
                       icon="💳"
                       theme="indigo"
-                      optional
                       className="md:col-span-2"
                     >
                       <Input 
                         value={spousePaidFromAccount} 
                         onChange={(e) => setSpousePaidFromAccount(e.target.value)} 
                         placeholder={tPlaceholder('Enter Account Number paid to', 'നിങ്ങൾ പണം നൽകിയ അക്കൗണ്ട് നമ്പർ നൽകുക')}
-                        className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 font-mono shadow-2xs"
+                        className="h-11 sm:h-12 border-2 border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 font-mono shadow-xs"
                       />
                     </FormFieldBox>
 
@@ -4359,13 +4471,12 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                       label={tLabel('Bank', 'ബാങ്ക്')}
                       icon="🏦"
                       theme="indigo"
-                      optional
                     >
                       <Input 
                         value={spousePaidFromBank} 
                         onChange={(e) => setSpousePaidFromBank(e.target.value)} 
                         placeholder={tPlaceholder('e.g. State Bank of India / HDFC Bank', 'ഉദാ: State Bank of India / Federal Bank')}
-                        className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
+                        className="h-11 sm:h-12 border-2 border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-xs"
                       />
                     </FormFieldBox>
 
@@ -4374,43 +4485,40 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                       label={tLabel('Branch', 'ബ്രാഞ്ച്')}
                       icon="📍"
                       theme="indigo"
-                      optional
                     >
                       <Input 
                         value={spousePaidFromBranch} 
                         onChange={(e) => setSpousePaidFromBranch(e.target.value)} 
                         placeholder={tPlaceholder('Branch Name', 'ബ്രാഞ്ച് പേര്')}
-                        className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
+                        className="h-11 sm:h-12 border-2 border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-xs"
                       />
                     </FormFieldBox>
 
                     {/* Payment Date */}
                     <FormFieldBox 
-                      label={tLabel('Payment Date (If Known)', 'പണം കൊടുത്ത തീയതി (അറിയാമെങ്കിൽ)')}
+                      label={tLabel('Payment Date', 'പണം കൊടുത്ത തീയതി')}
                       icon="📅"
                       theme="indigo"
-                      optional
                     >
                       <Input 
                         type="date"
                         value={spousePaymentDate} 
                         onChange={(e) => setSpousePaymentDate(e.target.value)} 
-                        className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
+                        className="h-11 sm:h-12 border-2 border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 shadow-xs"
                       />
                     </FormFieldBox>
 
                     {/* Transaction ID / UTR */}
                     <FormFieldBox 
-                      label={tLabel('Transaction ID / UTR (If Known)', 'ട്രാൻസാക്ഷൻ ഐഡി / UTR (അറിയാമെങ്കിൽ)')}
+                      label={tLabel('Transaction ID / UTR', 'ട്രാൻസാക്ഷൻ ഐഡി / UTR')}
                       icon="🔢"
                       theme="indigo"
-                      optional
                     >
                       <Input 
                         value={spouseTransactionRef} 
                         onChange={(e) => setSpouseTransactionRef(e.target.value)} 
                         placeholder={tPlaceholder('Transaction ID / UTR Reference', 'ട്രാൻസാക്ഷൻ ഐഡി അല്ലെങ്കിൽ UTR നമ്പർ')}
-                        className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 font-mono shadow-2xs"
+                        className="h-11 sm:h-12 border-2 border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-indigo-600 text-xs sm:text-sm text-slate-900 font-mono shadow-xs"
                       />
                     </FormFieldBox>
                   </div>
@@ -5123,17 +5231,14 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                         💳
                       </div>
                       <div>
-                        <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide">
-                          {t('1. DETAILS OF ACCOUNT TO WHICH YOU PAID', '1. നിങ്ങൾ പണം നൽകിയ അക്കൗണ്ട് വിവരങ്ങൾ (അറിയാമെങ്കിൽ)')}
+                        <h4 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wide">
+                          {t('1. DETAILS OF ACCOUNT TO WHICH YOU PAID', '1. നിങ്ങൾ പണം നൽകിയ അക്കൗണ്ട് വിവരങ്ങൾ')}
                         </h4>
-                        <p className="text-[9px] font-bold text-slate-500 uppercase">
-                          {t('Account & payment details (Fill only if known / remember)', 'കമ്പനിയിലേക്ക് പണം നൽകിയ വിവരങ്ങൾ (ഓർമ്മയുണ്ടെങ്കിൽ മാത്രം)')}
+                        <p className="text-[10px] font-bold text-slate-500 uppercase">
+                          {t('Account & payment details (Payment made to company)', 'കമ്പനിയിലേക്ക് പണം നൽകിയ വിവരങ്ങൾ')}
                         </p>
                       </div>
                     </div>
-                    <Badge className="bg-amber-50 text-amber-800 border border-amber-200 text-[9px] font-bold rounded-lg px-2 py-0.5">
-                      {t('Optional', 'ഓപ്ഷണൽ')}
-                    </Badge>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -5142,14 +5247,13 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                       label={tLabel('Account Number you paid to', 'നിങ്ങൾ പണം നൽകിയ അക്കൗണ്ട് നമ്പർ')}
                       icon="💳"
                       theme="amber"
-                      optional
                       className="md:col-span-2"
                     >
                       <Input 
                         value={parentPaidFromAccount} 
                         onChange={(e) => setParentPaidFromAccount(e.target.value)} 
                         placeholder={tPlaceholder('Enter Account Number paid to', 'നിങ്ങൾ പണം നൽകിയ അക്കൗണ്ട് നമ്പർ നൽകുക')}
-                        className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-amber-600 text-xs sm:text-sm text-slate-900 font-mono shadow-2xs"
+                        className="h-11 sm:h-12 border-2 border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-amber-600 text-xs sm:text-sm text-slate-900 font-mono shadow-xs"
                       />
                     </FormFieldBox>
 
@@ -5158,13 +5262,12 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                       label={tLabel('Bank', 'ബാങ്ക്')}
                       icon="🏦"
                       theme="amber"
-                      optional
                     >
                       <Input 
                         value={parentPaidFromBank} 
                         onChange={(e) => setParentPaidFromBank(e.target.value)} 
                         placeholder={tPlaceholder('e.g. State Bank of India / HDFC Bank', 'ഉദാ: State Bank of India / Federal Bank')}
-                        className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-amber-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
+                        className="h-11 sm:h-12 border-2 border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-amber-600 text-xs sm:text-sm text-slate-900 shadow-xs"
                       />
                     </FormFieldBox>
 
@@ -5173,43 +5276,40 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                       label={tLabel('Branch', 'ബ്രാഞ്ച്')}
                       icon="📍"
                       theme="amber"
-                      optional
                     >
                       <Input 
                         value={parentPaidFromBranch} 
                         onChange={(e) => setParentPaidFromBranch(e.target.value)} 
                         placeholder={tPlaceholder('Branch Name', 'ബ്രാഞ്ച് പേര്')}
-                        className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-amber-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
+                        className="h-11 sm:h-12 border-2 border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-amber-600 text-xs sm:text-sm text-slate-900 shadow-xs"
                       />
                     </FormFieldBox>
 
                     {/* Payment Date */}
                     <FormFieldBox 
-                      label={tLabel('Payment Date (If Known)', 'പണം കൊടുത്ത തീയതി (അറിയാമെങ്കിൽ)')}
+                      label={tLabel('Payment Date', 'പണം കൊടുത്ത തീയതി')}
                       icon="📅"
                       theme="amber"
-                      optional
                     >
                       <Input 
                         type="date"
                         value={parentPaymentDate} 
                         onChange={(e) => setParentPaymentDate(e.target.value)} 
-                        className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-amber-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
+                        className="h-11 sm:h-12 border-2 border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-amber-600 text-xs sm:text-sm text-slate-900 shadow-xs"
                       />
                     </FormFieldBox>
 
                     {/* Transaction ID / UTR */}
                     <FormFieldBox 
-                      label={tLabel('Transaction ID / UTR (If Known)', 'ട്രാൻസാക്ഷൻ ഐഡി / UTR (അറിയാമെങ്കിൽ)')}
+                      label={tLabel('Transaction ID / UTR', 'ട്രാൻസാക്ഷൻ ഐഡി / UTR')}
                       icon="🔢"
                       theme="amber"
-                      optional
                     >
                       <Input 
                         value={parentTransactionRef} 
                         onChange={(e) => setParentTransactionRef(e.target.value)} 
                         placeholder={tPlaceholder('Transaction ID / UTR Reference', 'ട്രാൻസാക്ഷൻ ഐഡി അല്ലെങ്കിൽ UTR നമ്പർ')}
-                        className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-amber-600 text-xs sm:text-sm text-slate-900 font-mono shadow-2xs"
+                        className="h-11 sm:h-12 border-2 border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-amber-600 text-xs sm:text-sm text-slate-900 font-mono shadow-xs"
                       />
                     </FormFieldBox>
                   </div>
@@ -5922,17 +6022,14 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                         💳
                       </div>
                       <div>
-                        <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide">
-                          {t('1. DETAILS OF ACCOUNT TO WHICH YOU PAID', '1. നിങ്ങൾ പണം നൽകിയ അക്കൗണ്ട് വിവരങ്ങൾ (അറിയാമെങ്കിൽ)')}
+                        <h4 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wide">
+                          {t('1. DETAILS OF ACCOUNT TO WHICH YOU PAID', '1. നിങ്ങൾ പണം നൽകിയ അക്കൗണ്ട് വിവരങ്ങൾ')}
                         </h4>
-                        <p className="text-[9px] font-bold text-slate-500 uppercase">
-                          {t('Account & payment details (Fill only if known / remember)', 'കമ്പനിയിലേക്ക് പണം നൽകിയ വിവരങ്ങൾ (ഓർമ്മയുണ്ടെങ്കിൽ മാത്രം)')}
+                        <p className="text-[10px] font-bold text-slate-500 uppercase">
+                          {t('Account & payment details (Payment made to company)', 'കമ്പനിയിലേക്ക് പണം നൽകിയ വിവരങ്ങൾ')}
                         </p>
                       </div>
                     </div>
-                    <Badge className="bg-amber-50 text-amber-800 border border-amber-200 text-[9px] font-bold rounded-lg px-2 py-0.5">
-                      {t('Optional', 'ഓപ്ഷണൽ')}
-                    </Badge>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -5941,14 +6038,13 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                       label={tLabel('Account Number you paid to', 'നിങ്ങൾ പണം നൽകിയ അക്കൗണ്ട് നമ്പർ')}
                       icon="💳"
                       theme="amber"
-                      optional
                       className="md:col-span-2"
                     >
                       <Input 
                         value={childPaidFromAccount} 
                         onChange={(e) => setChildPaidFromAccount(e.target.value)} 
                         placeholder={tPlaceholder('Enter Account Number paid to', 'നിങ്ങൾ പണം നൽകിയ അക്കൗണ്ട് നമ്പർ നൽകുക')}
-                        className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-amber-600 text-xs sm:text-sm text-slate-900 font-mono shadow-2xs"
+                        className="h-11 sm:h-12 border-2 border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-amber-600 text-xs sm:text-sm text-slate-900 font-mono shadow-xs"
                       />
                     </FormFieldBox>
 
@@ -5957,13 +6053,12 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                       label={tLabel('Bank', 'ബാങ്ക്')}
                       icon="🏦"
                       theme="amber"
-                      optional
                     >
                       <Input 
                         value={childPaidFromBank} 
                         onChange={(e) => setChildPaidFromBank(e.target.value)} 
                         placeholder={tPlaceholder('e.g. State Bank of India / HDFC Bank', 'ഉദാ: State Bank of India / Federal Bank')}
-                        className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-amber-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
+                        className="h-11 sm:h-12 border-2 border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-amber-600 text-xs sm:text-sm text-slate-900 shadow-xs"
                       />
                     </FormFieldBox>
 
@@ -5972,43 +6067,40 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
                       label={tLabel('Branch', 'ബ്രാഞ്ച്')}
                       icon="📍"
                       theme="amber"
-                      optional
                     >
                       <Input 
                         value={childPaidFromBranch} 
                         onChange={(e) => setChildPaidFromBranch(e.target.value)} 
                         placeholder={tPlaceholder('Branch Name', 'ബ്രാഞ്ച് പേര്')}
-                        className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-amber-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
+                        className="h-11 sm:h-12 border-2 border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-amber-600 text-xs sm:text-sm text-slate-900 shadow-xs"
                       />
                     </FormFieldBox>
 
                     {/* Payment Date */}
                     <FormFieldBox 
-                      label={tLabel('Payment Date (If Known)', 'പണം കൊടുത്ത തീയതി (അറിയാമെങ്കിൽ)')}
+                      label={tLabel('Payment Date', 'പണം കൊടുത്ത തീയതി')}
                       icon="📅"
                       theme="amber"
-                      optional
                     >
                       <Input 
                         type="date"
                         value={childPaymentDate} 
                         onChange={(e) => setChildPaymentDate(e.target.value)} 
-                        className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-amber-600 text-xs sm:text-sm text-slate-900 shadow-2xs"
+                        className="h-11 sm:h-12 border-2 border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-amber-600 text-xs sm:text-sm text-slate-900 shadow-xs"
                       />
                     </FormFieldBox>
 
                     {/* Transaction ID / UTR */}
                     <FormFieldBox 
-                      label={tLabel('Transaction ID / UTR (If Known)', 'ട്രാൻസാക്ഷൻ ഐഡി / UTR (അറിയാമെങ്കിൽ)')}
+                      label={tLabel('Transaction ID / UTR', 'ട്രാൻസാക്ഷൻ ഐഡി / UTR')}
                       icon="🔢"
                       theme="amber"
-                      optional
                     >
                       <Input 
                         value={childTransactionRef} 
                         onChange={(e) => setChildTransactionRef(e.target.value)} 
                         placeholder={tPlaceholder('Transaction ID / UTR Reference', 'ട്രാൻസാക്ഷൻ ഐഡി അല്ലെങ്കിൽ UTR നമ്പർ')}
-                        className="h-10 border border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-amber-600 text-xs sm:text-sm text-slate-900 font-mono shadow-2xs"
+                        className="h-11 sm:h-12 border-2 border-slate-300 rounded-xl font-bold bg-white focus:bg-white focus:border-amber-600 text-xs sm:text-sm text-slate-900 font-mono shadow-xs"
                       />
                     </FormFieldBox>
                   </div>

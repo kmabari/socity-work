@@ -223,7 +223,7 @@ export const getCourtReportBaseStyles = (): string => `
   }
   .header-table {
     width: 100%;
-    border-bottom: 2px solid #003366;
+    border-bottom: 1px solid #cbd5e1;
     padding-bottom: 6px;
     margin-bottom: 6px;
   }
@@ -266,7 +266,7 @@ export const getCourtReportBaseStyles = (): string => `
     line-height: 1.3;
   }
   .meta-box {
-    border: 1.4px solid #cbd5e1;
+    border: 1px solid #cbd5e1;
     background: #f8fafc;
     border-radius: 6px;
     padding: 8px 12px;
@@ -311,8 +311,8 @@ export const getCourtReportBaseStyles = (): string => `
     color: #003366;
     letter-spacing: 0.4px;
     margin: 8px 0 5px 0;
-    border-bottom: 2px solid #003366;
-    padding-bottom: 4px;
+    border-bottom: 1px solid #cbd5e1;
+    padding-bottom: 3px;
     line-height: 1.35;
   }
   table.claim-table {
@@ -329,12 +329,12 @@ export const getCourtReportBaseStyles = (): string => `
     padding: 7px 10px;
     text-align: left;
     font-size: 9.5px;
-    border: 1.2px solid #003366;
+    border: 1px solid #003366;
     letter-spacing: 0.3px;
     line-height: 1.35;
   }
   table.claim-table td {
-    border: 1.2px solid #cbd5e1;
+    border: 1px solid #cbd5e1;
     padding: 6.5px 10px;
     font-size: 11.5px;
     line-height: 1.45;
@@ -349,11 +349,11 @@ export const getCourtReportBaseStyles = (): string => `
     color: #003366;
     font-size: 12.5px;
     padding: 8px 10px !important;
-    border-top: 2.2px solid #003366 !important;
+    border-top: 1.2px solid #003366 !important;
     line-height: 1.4;
   }
   .declaration-box {
-    border: 1.4px solid #64748b;
+    border: 1px solid #94a3b8;
     background: #ffffff;
     border-radius: 6px;
     padding: 9px 12px;
@@ -376,7 +376,7 @@ export const getCourtReportBaseStyles = (): string => `
   .sig-box {
     text-align: center;
     background: #f8fafc;
-    border: 1.3px solid #cbd5e1;
+    border: 1px solid #cbd5e1;
     border-radius: 6px;
     padding: 8px 10px 7px 10px;
     display: flex;
@@ -390,7 +390,7 @@ export const getCourtReportBaseStyles = (): string => `
     color: #003366;
     text-transform: uppercase;
     line-height: 1.35;
-    border-bottom: 1.2px solid #e2e8f0;
+    border-bottom: 1px solid #e2e8f0;
     padding-bottom: 4px;
     margin-bottom: 5px;
   }
@@ -404,7 +404,7 @@ export const getCourtReportBaseStyles = (): string => `
     line-height: 1.3;
   }
   .company-audit-box {
-    border: 1.8px solid #003366;
+    border: 1.2px solid #cbd5e1;
     background: #f8fafc;
     border-radius: 6px;
     padding: 8px 12px 7px 12px;
@@ -704,11 +704,11 @@ export const renderPersonCourtClaimPage = (
         <table class="header-table">
           <tr>
             <td style="vertical-align: top;">
-              <div class="org-title">HIGHRICH ONLINE SHOPPE Pvt. Ltd.</div>
+              <div class="org-title">HIGHRICH ONLINE SHOPPE PVT. LTD.</div>
               <div class="org-sub-meta">
                 <span>CIN: U51909KL2019PTC060087</span> • 
-                <span style="font-weight: 800; color: #003366;">Company PAN: AAJCH7065C</span> • 
-                <span>Reg. Office: TC41/1030/14, 2nd Floor, Kanimangalam Tower, Valiyalukkal, Thrissur - 680027</span>
+                <span style="font-weight: 800; color: #003366;">COMPANY PAN: AABCH77066C</span> • 
+                <span>Reg. Office: TC9/3702/014, 2nd Floor, Kanimangalam Tower, Valapad, Thrissur - 680567, Kerala, India</span>
               </div>
               <div class="doc-tag" style="margin-top: 4px;">CONSIGNMENT ADVANCE FINANCIAL STATEMENT & VERIFICATION FORM</div>
             </td>
@@ -723,8 +723,8 @@ export const renderPersonCourtClaimPage = (
         </table>
 
         <!-- Target Authority / Management Line (Cleanly positioned below divider) -->
-        <div style="font-size: 8.5px; color: #003366; font-weight: 800; margin-top: 4px; margin-bottom: 6px; padding: 3px 8px; background: #f1f5f9; border-left: 3px solid #003366; border-radius: 3px; line-height: 1.4;">
-          TO: THE MANAGEMENT & LEGAL COUNSELS / ADVOCATES OF HIGHRICH ONLINE SHOPPE PVT. LTD. & BEFORE THE HON'BLE COURT
+        <div style="font-size: 9px; color: #003366; font-weight: 800; margin-top: 4px; margin-bottom: 6px; padding: 3px 8px; background: #f8fafc; border-left: 2px solid #003366; border-radius: 3px; line-height: 1.4;">
+          TO: THE MANAGEMENT OF HIGHRICH ONLINE SHOPPE PVT. LTD.
         </div>
 
         <!-- 1. Customer & Declarant Information -->
@@ -745,7 +745,7 @@ export const renderPersonCourtClaimPage = (
             </div>
             <div>
               <span class="meta-label">Customer PAN Card Number</span>
-              <span class="meta-val font-mono" style="font-size: 12px; color: #003366;">${panStr || 'Not Provided (Optional)'}</span>
+              <span class="meta-val font-mono" style="font-size: 12px; color: #003366;">${panStr || 'N/A'}</span>
             </div>
             <div style="grid-column: span 2;">
               <span class="meta-label">District & Assembly Constituency</span>
@@ -798,25 +798,25 @@ export const renderPersonCourtClaimPage = (
           </tbody>
         </table>
 
-        <!-- 3. Payment Made to the Company (Optional) -->
-        <div class="section-heading">3. Payment Made to Company (Optional)</div>
+        <!-- 3. Payment Made to Company -->
+        <div class="section-heading">3. Payment Made to Company</div>
         <div class="meta-box">
           <div class="grid-2">
             <div>
               <span class="meta-label">Bank Account No. / Receipt / UTR No.</span>
-              <span class="meta-val font-mono" style="font-size: 11.5px;">${paidAccount || transRef || 'Not Provided (Optional)'}</span>
+              <span class="meta-val font-mono" style="font-size: 11.5px;">${paidAccount || transRef || '—'}</span>
             </div>
             <div>
               <span class="meta-label">Bank to which payment was transferred & Branch</span>
-              <span class="meta-val">${paidBankName ? `${paidBankName}${paidBranch ? ' (' + paidBranch + ')' : ''}` : 'Not Provided (Optional)'}</span>
+              <span class="meta-val">${paidBankName ? `${paidBankName}${paidBranch ? ' (' + paidBranch + ')' : ''}` : '—'}</span>
             </div>
             <div>
               <span class="meta-label">IFSC Code</span>
-              <span class="meta-val font-mono" style="font-size: 11.5px;">${paidIfsc || 'Not Provided (Optional)'}</span>
+              <span class="meta-val font-mono" style="font-size: 11.5px;">${paidIfsc || '—'}</span>
             </div>
             <div>
               <span class="meta-label">Payment Date</span>
-              <span class="meta-val font-mono" style="font-size: 11.5px;">${claim.paymentDate ? formatClaimDateOnly(claim.paymentDate) : 'Not Provided (Optional)'}</span>
+              <span class="meta-val font-mono" style="font-size: 11.5px;">${claim.paymentDate ? formatClaimDateOnly(claim.paymentDate) : '—'}</span>
             </div>
           </div>
         </div>
@@ -824,7 +824,7 @@ export const renderPersonCourtClaimPage = (
         <!-- 4. ACCOUNT & PAN CARD DETAILS PROVIDED TO COMPANY -->
         <div class="section-heading">4. ACCOUNT & PAN CARD DETAILS PROVIDED TO COMPANY</div>
         <div class="meta-box">
-          <div class="grid-4">
+          <div class="grid-4" style="grid-template-columns: 1.1fr 1.15fr 1.2fr 1.05fr;">
             <div>
               <span class="meta-label">Account Holder Name</span>
               <span class="meta-val" style="font-size: 11px;">${settlementHolder || memberName}</span>
@@ -847,8 +847,8 @@ export const renderPersonCourtClaimPage = (
         <!-- 5. Customer Declaration & Confirmation -->
         <div class="section-heading">5. Customer Declaration & Confirmation</div>
         <div class="declaration-box">
-          <div style="font-size: 9.5px; line-height: 1.55; color: #0f172a; font-weight: 600; text-align: justify;">
-            “I hereby certify and declare that the financial figures and particulars stated in this statement are true, accurate, and correct to the best of my knowledge and records. The Consignment Advance paid, cumulative returns received, and the final net pending balance claimed herein are subject to verification and final reconciliation with the official corporate accounting books and bank ledgers of HIGHRICH ONLINE SHOPPE Pvt. Ltd. for filing and submission before the Hon'ble Court. In the event of ongoing legal proceedings, this statement and verification claim is submitted to facilitate disbursement and refund out of the excess interest / reserve funds deposited before the Hon'ble Court, subject to formal reconciliation by the Company and approval by the Hon'ble Court. I also affirm and submit that this form is submitted out of my own interest and with my full consent.”
+          <div style="font-size: 8.8px; line-height: 1.5; color: #0f172a; font-weight: 600; text-align: justify;">
+            “I acknowledge that data pertaining to consignment advance paid by me are not readily available with the company, in order ascertain the true facts. I hereby certify and declare that the financial figures and particulars stated in this statement are true, accurate, and correct to the best of my knowledge and records. The Consignment Advance paid, cumulative returns received, and the final net pending balance claimed herein are subject to verification and final reconciliation with the official corporate accounts books and bank ledgers of HIGHRICH ONLINE SHOPPE PVT. LTD. For the filing before the Hon’ble Court. In the event of ongoing legal proceedings, this statement and verification claim is submitted to facilitate disbursement funds deposited before the Hon’ble Court/Competent Authority, subject to formal reconciliation by the Company and approval by the Hon’ble Court. I also affirm and submit that this form is submitted out of my own interest and with my full consent.”
           </div>
           <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 8px; padding-top: 6px; border-top: 1.2px dashed #cbd5e1;">
             <div>
@@ -856,7 +856,7 @@ export const renderPersonCourtClaimPage = (
                 ✓ CONDITIONS CONFIRMED & VERIFIED
               </span>
               <div style="font-size: 8.5px; color: #64748b; font-weight: 700; margin-top: 3px;">
-                Date: ${dateStr} • Place: ..............................
+                Date: ${dateStr} • Place: ${claim.place || claim.declarationPlace || userProf?.place || '..............................'}
               </div>
             </div>
             <div style="text-align: right;">
@@ -904,12 +904,12 @@ export const renderPersonCourtClaimPage = (
               <div class="audit-sig-caption">Internal Audit & Accounts Department</div>
             </div>
             <div class="audit-sig-col">
-              <div class="audit-sig-role">FOR HIGHRICH ONLINE SHOPPE Pvt. Ltd.</div>
+              <div class="audit-sig-role">FOR HIGHRICH ONLINE SHOPPE PVT. LTD.</div>
               <div style="height: 30px; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 8px; border: 1px dashed #cbd5e1; border-radius: 4px; margin: 2px 0;">
                 [ OFFICIAL CORPORATE SEAL & SIGNATURE ]
               </div>
               <div class="audit-sig-line">Authorized Signatory</div>
-              <div class="audit-sig-caption">TC41/1030/14, Valiyalukkal, Thrissur Dt., Kerala - 680027</div>
+              <div class="audit-sig-caption">TC9/3702/014, Valapad, Thrissur Dt., Kerala - 680567</div>
             </div>
           </div>
         </div>
@@ -961,11 +961,11 @@ export const renderPersonFullAdminClaimPage = (
         <table class="header-table">
           <tr>
             <td style="vertical-align: top;">
-              <div class="org-title">HIGHRICH ONLINE SHOPPE Pvt. Ltd.</div>
+              <div class="org-title">HIGHRICH ONLINE SHOPPE PVT. LTD.</div>
               <div class="org-sub-meta">
                 <span>CIN: U51909KL2019PTC060087</span> • 
-                <span style="font-weight: 800; color: #003366;">Company PAN: AAJCH7065C</span> • 
-                <span>Reg. Office: TC41/1030/14, 2nd Floor, Kanimangalam Tower, Valiyalukkal, Thrissur - 680027</span>
+                <span style="font-weight: 800; color: #003366;">COMPANY PAN: AABCH77066C</span> • 
+                <span>Reg. Office: TC9/3702/014, 2nd Floor, Kanimangalam Tower, Valapad, Thrissur - 680567, Kerala, India</span>
               </div>
               <div class="doc-tag" style="background: #003366; margin-top: 4px;">CONSIGNMENT ADVANCE FINANCIAL STATEMENT & VERIFICATION RECORD</div>
             </td>
@@ -981,7 +981,7 @@ export const renderPersonFullAdminClaimPage = (
         </table>
 
         <!-- Target Authority / Management Line (Cleanly positioned below divider) -->
-        <div style="font-size: 8.5px; color: #003366; font-weight: 800; margin-top: 4px; margin-bottom: 6px; padding: 3px 8px; background: #f1f5f9; border-left: 3px solid #003366; border-radius: 3px; line-height: 1.4;">
+        <div style="font-size: 8.5px; color: #003366; font-weight: 800; margin-top: 4px; margin-bottom: 6px; padding: 3px 8px; background: #f8fafc; border-left: 2px solid #003366; border-radius: 3px; line-height: 1.4;">
           TO: THE MANAGEMENT & LEGAL COUNSELS / ADVOCATES OF HIGHRICH ONLINE SHOPPE PVT. LTD. & BEFORE THE HON'BLE COURT
         </div>
 
