@@ -49,6 +49,7 @@ interface TreasurerLedgerDashboardProps {
   memberAccounts: Record<string, MemberFinancialAccount>;
   onCreateVoucher: (voucher: Omit<LedgerVoucher, 'id' | 'voucherNumber' | 'status' | 'preparedBy'>) => void;
   onAllocateMemberCredit?: (memberId: string, amount: number) => Promise<{ success: boolean; message: string }>;
+  onSetMemberExactAllocation?: (memberId: string, exactAmount: number) => Promise<{ success: boolean; message: string }>;
   onAddBankCredit?: (creditData: Partial<ELedgerBankCredit>) => Promise<{ success: boolean; message: string }>;
   onDeleteBankCredit?: (id: string) => Promise<{ success: boolean; message: string }>;
   onUpdateOpeningBalance?: (amount: number) => Promise<{ success: boolean; message: string }>;
@@ -63,6 +64,7 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
   memberAccounts,
   onCreateVoucher,
   onAllocateMemberCredit,
+  onSetMemberExactAllocation,
   onAddBankCredit,
   onDeleteBankCredit,
   onUpdateOpeningBalance,
@@ -112,9 +114,21 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
   const [isUpdatingOpeningBalance, setIsUpdatingOpeningBalance] = useState(false);
 
   // Member Credit Allocation State
+  const [allocationMode, setAllocationMode] = useState<'set_exact' | 'add'>('set_exact');
   const [selectedMemberId, setSelectedMemberId] = useState<string>('');
   const [memberAllocationAmount, setMemberAllocationAmount] = useState('');
   const [allocationSuccess, setAllocationSuccess] = useState('');
+  const [isSubmittingAllocation, setIsSubmittingAllocation] = useState(false);
+
+  // Edit Single Member Allocation Modal
+  const [editMemberModal, setEditMemberModal] = useState<{
+    member: ELedgerUser;
+    currentAlloc: number;
+    currentExp: number;
+    currentBal: number;
+    newAllocAmount: string;
+  } | null>(null);
+  const [isSavingEditAlloc, setIsSavingEditAlloc] = useState(false);
 
   // Notification Toast
   const [feedbackToast, setFeedbackToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -124,18 +138,42 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
   const [voucherSearch, setVoucherSearch] = useState('');
   const [voucherFilter, setVoucherFilter] = useState<'all' | 'direct' | 'member_wallet'>('all');
 
-  const committeeMembers = useMemo(() => users.filter(u => u.role === 'member'), [users]);
+  const committeeMembers = useMemo(() => {
+    const memberMap = new Map<string, ELedgerUser>();
+    users.filter(u => u.role === 'member').forEach(u => {
+      const key = (u.email || u.membershipId || u.name || u.id).trim().toLowerCase();
+      if (!memberMap.has(key)) {
+        memberMap.set(key, u);
+      } else {
+        const existing = memberMap.get(key)!;
+        if (existing.id.startsWith('usr-') && !u.id.startsWith('usr-')) {
+          memberMap.set(key, u);
+        }
+      }
+    });
+    return Array.from(memberMap.values());
+  }, [users]);
 
   const memberRosterStats = useMemo(() => {
     let totalAllocated = 0;
     let totalExpenses = 0;
     let totalBalance = 0;
     const accountsList = Object.values(memberAccounts) as MemberFinancialAccount[];
+    const processedKeys = new Set<string>();
 
     committeeMembers.forEach((m) => {
+      const memKey = (m.email || m.membershipId || m.name || m.id).trim().toLowerCase();
+      if (processedKeys.has(memKey)) return;
+      processedKeys.add(memKey);
+
+      const emailClean = (m.email || '').trim().toLowerCase();
+      const memIdClean = (m.membershipId || '').trim().toLowerCase();
+      const nameClean = (m.name || '').trim().toLowerCase();
+
       const acc = memberAccounts[m.id] || 
-        accountsList.find(a => m.email && a.email && a.email.toLowerCase().trim() === m.email.toLowerCase().trim()) ||
-        accountsList.find(a => m.name && a.memberName && a.memberName.toLowerCase().trim() === m.name.toLowerCase().trim()) ||
+        (emailClean ? accountsList.find(a => a.email && a.email.toLowerCase().trim() === emailClean) : undefined) ||
+        (memIdClean ? accountsList.find(a => a.membershipId && a.membershipId.toLowerCase().trim() === memIdClean) : undefined) ||
+        (nameClean ? accountsList.find(a => a.memberName && a.memberName.toLowerCase().trim() === nameClean) : undefined) ||
         {
           allocatedCredit: 0,
           expensesClaimed: 0,
@@ -346,25 +384,80 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
     if (!selectedMemberId || !memberAllocationAmount) return;
 
     const parsed = parseFloat(memberAllocationAmount);
-    if (!parsed || parsed <= 0) {
-      showToast('error', 'Please enter a valid allocation amount greater than 0.');
+    if (isNaN(parsed) || parsed < 0) {
+      showToast('error', 'Please enter a valid allocation amount (0 or greater).');
       return;
     }
 
     const memberObj = committeeMembers.find(m => m.id === selectedMemberId);
+    setIsSubmittingAllocation(true);
 
-    if (onAllocateMemberCredit) {
-      const res = await onAllocateMemberCredit(selectedMemberId, parsed);
-      if (res && res.success) {
-        showToast('success', res.message || `₹${parsed.toLocaleString('en-IN')} allocated successfully.`);
-        setAllocationSuccess(res.message || `₹${parsed.toLocaleString('en-IN')} credit assigned to ${memberObj?.name || 'Member'}. Member wallet updated.`);
-        setMemberAllocationAmount('');
-        setTimeout(() => {
-          setAllocationSuccess('');
-        }, 5000);
-      } else {
-        showToast('error', res?.message || 'Failed to allocate credit.');
+    try {
+      if (allocationMode === 'set_exact' && onSetMemberExactAllocation) {
+        const res = await onSetMemberExactAllocation(selectedMemberId, parsed);
+        if (res && res.success) {
+          showToast('success', res.message || `Target allocation set to ₹${parsed.toLocaleString('en-IN')}.`);
+          setAllocationSuccess(res.message || `₹${parsed.toLocaleString('en-IN')} target allocation set for ${memberObj?.name || 'Member'}.`);
+          setMemberAllocationAmount('');
+          setTimeout(() => {
+            setAllocationSuccess('');
+          }, 5000);
+        } else {
+          showToast('error', res?.message || 'Failed to update allocation.');
+        }
+      } else if (onAllocateMemberCredit) {
+        const res = await onAllocateMemberCredit(selectedMemberId, parsed);
+        if (res && res.success) {
+          showToast('success', res.message || `₹${parsed.toLocaleString('en-IN')} allocated successfully.`);
+          setAllocationSuccess(res.message || `₹${parsed.toLocaleString('en-IN')} credit assigned to ${memberObj?.name || 'Member'}. Member wallet updated.`);
+          setMemberAllocationAmount('');
+          setTimeout(() => {
+            setAllocationSuccess('');
+          }, 5000);
+        } else {
+          showToast('error', res?.message || 'Failed to allocate credit.');
+        }
       }
+    } catch (err: any) {
+      showToast('error', err.message || 'Error occurred while updating member allocation.');
+    } finally {
+      setIsSubmittingAllocation(false);
+    }
+  };
+
+  const handleSaveEditMemberAllocation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editMemberModal) return;
+    const parsed = parseFloat(editMemberModal.newAllocAmount);
+    if (isNaN(parsed) || parsed < 0) {
+      showToast('error', 'Please enter a valid allocation amount (0 or greater).');
+      return;
+    }
+
+    setIsSavingEditAlloc(true);
+    try {
+      if (onSetMemberExactAllocation) {
+        const res = await onSetMemberExactAllocation(editMemberModal.member.id, parsed);
+        if (res.success) {
+          showToast('success', res.message);
+          setEditMemberModal(null);
+        } else {
+          showToast('error', res.message);
+        }
+      } else if (onAllocateMemberCredit) {
+        const diff = parsed - editMemberModal.currentAlloc;
+        const res = await onAllocateMemberCredit(editMemberModal.member.id, diff);
+        if (res.success) {
+          showToast('success', `Allocation updated to ₹${parsed.toLocaleString('en-IN')}`);
+          setEditMemberModal(null);
+        } else {
+          showToast('error', res.message);
+        }
+      }
+    } catch (err: any) {
+      showToast('error', err.message || 'Failed to update member allocation.');
+    } finally {
+      setIsSavingEditAlloc(false);
     }
   };
 
@@ -1042,13 +1135,51 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
               </div>
             )}
 
+            <div className="flex items-center gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl w-fit text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setAllocationMode('set_exact')}
+                className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                  allocationMode === 'set_exact'
+                    ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                = Set Exact Total Allocation (തുക നിശ്ചയിക്കുക)
+              </button>
+              <button
+                type="button"
+                onClick={() => setAllocationMode('add')}
+                className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                  allocationMode === 'add'
+                    ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                + Add Additional Credit (കൂടുതൽ തുക ചേർക്കുക)
+              </button>
+            </div>
+
             <form onSubmit={handleMemberCreditSubmit} className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs w-full min-w-0">
               <div className="min-w-0">
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Select Committee Member</label>
                 <select
                   required
                   value={selectedMemberId}
-                  onChange={(e) => setSelectedMemberId(e.target.value)}
+                  onChange={(e) => {
+                    const mId = e.target.value;
+                    setSelectedMemberId(mId);
+                    if (mId && allocationMode === 'set_exact') {
+                      const accountsList = Object.values(memberAccounts) as MemberFinancialAccount[];
+                      const mObj = committeeMembers.find(m => m.id === mId);
+                      const acc = memberAccounts[mId] || 
+                        accountsList.find(a => mObj?.email && a.email && a.email.toLowerCase().trim() === mObj.email.toLowerCase().trim()) ||
+                        accountsList.find(a => mObj?.name && a.memberName && a.memberName.toLowerCase().trim() === mObj.name.toLowerCase().trim());
+                      if (acc && typeof acc.allocatedCredit === 'number') {
+                        setMemberAllocationAmount(acc.allocatedCredit.toString());
+                      }
+                    }
+                  }}
                   className="w-full min-w-0 max-w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold truncate"
                 >
                   <option value="">-- Choose Member --</option>
@@ -1061,11 +1192,13 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
               </div>
 
               <div className="min-w-0">
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Credit Amount (₹ INR)</label>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  {allocationMode === 'set_exact' ? 'Target Total Allocation (₹ INR)' : 'Additional Credit (₹ INR)'}
+                </label>
                 <input
                   type="number"
                   required
-                  placeholder="e.g. 25000"
+                  placeholder={allocationMode === 'set_exact' ? 'e.g. 30000' : 'e.g. 5000'}
                   value={memberAllocationAmount}
                   onChange={(e) => setMemberAllocationAmount(e.target.value)}
                   className="w-full min-w-0 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold"
@@ -1075,9 +1208,14 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
               <div className="flex items-end min-w-0">
                 <button
                   type="submit"
-                  className="w-full py-2.5 px-4 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black shadow-md cursor-pointer transition active:scale-95 text-center justify-center whitespace-nowrap"
+                  disabled={isSubmittingAllocation}
+                  className="w-full py-2.5 px-4 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black shadow-md cursor-pointer transition active:scale-95 text-center justify-center whitespace-nowrap disabled:opacity-50"
                 >
-                  Assign Member Credit
+                  {isSubmittingAllocation 
+                    ? 'Saving...' 
+                    : allocationMode === 'set_exact' 
+                    ? 'Set Target Allocation' 
+                    : 'Add Member Credit'}
                 </button>
               </div>
             </form>
@@ -1151,7 +1289,7 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
                     <th className="py-2.5 px-3 text-right">Allocated Pool</th>
                     <th className="py-2.5 px-3 text-right">Expenses Settled</th>
                     <th className="py-2.5 px-3 text-right">Available Balance</th>
-                    <th className="py-2.5 px-3 text-center">A4 Print</th>
+                    <th className="py-2.5 px-3 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -1164,10 +1302,15 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
                   ) : (
                     committeeMembers.map((m) => {
                       const accountsList = Object.values(memberAccounts) as MemberFinancialAccount[];
+                      const emailClean = (m.email || '').trim().toLowerCase();
+                      const memIdClean = (m.membershipId || '').trim().toLowerCase();
+                      const nameClean = (m.name || '').trim().toLowerCase();
+
                       const acc = memberAccounts[m.id] || 
-                        accountsList.find(a => m.email && a.email && a.email.toLowerCase().trim() === m.email.toLowerCase().trim()) ||
-                        accountsList.find(a => m.name && a.memberName && a.memberName.toLowerCase().trim() === m.name.toLowerCase().trim()) ||
-                        memberAccounts['default-member'] || {
+                        (emailClean ? accountsList.find(a => a.email && a.email.toLowerCase().trim() === emailClean) : undefined) ||
+                        (memIdClean ? accountsList.find(a => a.membershipId && a.membershipId.toLowerCase().trim() === memIdClean) : undefined) ||
+                        (nameClean ? accountsList.find(a => a.memberName && a.memberName.toLowerCase().trim() === nameClean) : undefined) ||
+                        {
                           allocatedCredit: 0,
                           expensesClaimed: 0,
                           availableBalance: 0,
@@ -1185,15 +1328,34 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
                             {formatCurrency(acc.availableBalance)}
                           </td>
                           <td className="py-3 px-3 text-center">
-                            <button
-                              type="button"
-                              onClick={() => openA4Print('single_member', m.id)}
-                              className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-amber-400 hover:text-slate-950 text-slate-700 dark:text-slate-300 text-[11px] font-bold inline-flex items-center gap-1 transition cursor-pointer shrink-0 whitespace-nowrap"
-                              title={`Print A4 Statement for ${m.name}`}
-                            >
-                              <Printer className="w-3 h-3 shrink-0" />
-                              <span>Print A4</span>
-                            </button>
+                            <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditMemberModal({
+                                    member: m,
+                                    currentAlloc: acc.allocatedCredit || 0,
+                                    currentExp: acc.expensesClaimed || 0,
+                                    currentBal: acc.availableBalance || 0,
+                                    newAllocAmount: (acc.allocatedCredit || 0).toString(),
+                                  });
+                                }}
+                                className="px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-400 hover:text-slate-950 text-amber-800 dark:text-amber-300 text-[11px] font-bold inline-flex items-center gap-1 transition cursor-pointer shrink-0 whitespace-nowrap border border-amber-300/40"
+                                title={`Edit Target Allocation for ${m.name}`}
+                              >
+                                <Edit2 className="w-3 h-3 shrink-0" />
+                                <span>Edit / തിരുത്തുക</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => openA4Print('single_member', m.id)}
+                                className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-bold inline-flex items-center gap-1 transition cursor-pointer shrink-0 whitespace-nowrap"
+                                title={`Print A4 Statement for ${m.name}`}
+                              >
+                                <Printer className="w-3 h-3 shrink-0" />
+                                <span>Print A4</span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1607,6 +1769,100 @@ export const TreasurerLedgerDashboard: React.FC<TreasurerLedgerDashboardProps> =
                   className="px-4 sm:px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black shadow-md cursor-pointer transition active:scale-95 disabled:opacity-50 text-xs whitespace-nowrap"
                 >
                   {isUpdatingOpeningBalance ? 'Updating...' : 'Save Opening Balance'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDIT / CORRECT MEMBER ALLOCATION */}
+      {editMemberModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in overflow-y-auto w-full">
+          <div className="max-w-md w-full rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-6 md:p-8 shadow-2xl space-y-4 my-auto min-w-0">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+                  <Coins className="w-4 h-4 sm:w-5 sm:h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-black text-sm sm:text-base md:text-lg text-slate-900 dark:text-white break-words">
+                    Set Member Target Allocation
+                  </h3>
+                  <p className="text-[10px] sm:text-[11px] text-slate-500 truncate">
+                    {editMemberModal.member.name} ({editMemberModal.member.membershipId || 'Member'})
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditMemberModal(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 cursor-pointer shrink-0"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditMemberAllocation} className="space-y-4 text-xs w-full min-w-0">
+              <div className="grid grid-cols-2 gap-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                <div>
+                  <div className="text-[10px] text-slate-500 font-bold uppercase">Current Allocation</div>
+                  <div className="text-sm font-black text-slate-900 dark:text-white">{formatCurrency(editMemberModal.currentAlloc)}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-500 font-bold uppercase">Expenses Claimed</div>
+                  <div className="text-sm font-black text-red-600 dark:text-red-400">{formatCurrency(editMemberModal.currentExp)}</div>
+                </div>
+              </div>
+
+              <div className="min-w-0">
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  New Target Allocated Pool (₹ INR)
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  value={editMemberModal.newAllocAmount}
+                  onChange={(e) => setEditMemberModal({ ...editMemberModal, newAllocAmount: e.target.value })}
+                  placeholder="e.g. 30000"
+                  className="w-full min-w-0 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-black text-base text-slate-900 dark:text-white"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">
+                  ഉദാഹരണത്തിന് ₹30,000 എന്ന് നൽകിയാൽ ഈ മെമ്പറുടെ മൊത്തം അലൊക്കേഷൻ ₹30,000 ആയി മാറും. ചെലവഴിച്ച തുക കഴിച്ച് ബാക്കി തുക വാലറ്റിൽ ലഭ്യമാകും.
+                </p>
+              </div>
+
+              {/* Projected Available Balance */}
+              {(() => {
+                const target = parseFloat(editMemberModal.newAllocAmount) || 0;
+                const projectedBal = Math.max(0, target - editMemberModal.currentExp);
+                return (
+                  <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-amber-900 dark:text-amber-200 text-[11px] space-y-1">
+                    <div className="font-bold flex items-center justify-between">
+                      <span>Projected Wallet Available Balance:</span>
+                      <span className="font-mono font-black text-sm text-emerald-600 dark:text-emerald-400">{formatCurrency(projectedBal)}</span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                      Formula: Target Allocation (₹{target.toLocaleString('en-IN')}) - Expenses (₹{editMemberModal.currentExp.toLocaleString('en-IN')}) = Available (₹{projectedBal.toLocaleString('en-IN')})
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditMemberModal(null)}
+                  className="px-3.5 sm:px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold cursor-pointer text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingEditAlloc}
+                  className="px-4 sm:px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black shadow-md cursor-pointer transition active:scale-95 disabled:opacity-50 text-xs whitespace-nowrap"
+                >
+                  {isSavingEditAlloc ? 'Updating...' : 'Save Target Allocation'}
                 </button>
               </div>
             </form>

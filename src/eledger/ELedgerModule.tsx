@@ -40,6 +40,7 @@ import {
   rejectEledgerVoucher,
   auditEledgerVoucher,
   allocateMemberCreditInDb,
+  setMemberExactAllocationInDb,
   submitMemberBillClaimInDb,
 } from './lib/eledgerService';
 import { Loader2, ShieldCheck, Lock } from 'lucide-react';
@@ -217,6 +218,12 @@ export const ELedgerModule: React.FC<ELedgerModuleProps> = ({ onBackToWebsite })
     return await allocateMemberCreditInDb(memberId, amount, targetAcc, memberUser);
   };
 
+  const handleSetMemberExactAllocation = async (memberId: string, exactAmount: number) => {
+    const targetAcc = memberAccounts[memberId];
+    const memberUser = users.find(u => u.id === memberId);
+    return await setMemberExactAllocationInDb(memberId, exactAmount, targetAcc, memberUser);
+  };
+
   const handleSubmitMemberExpense = async (expense: { 
     description: string; 
     amount: number; 
@@ -373,6 +380,7 @@ export const ELedgerModule: React.FC<ELedgerModuleProps> = ({ onBackToWebsite })
                 memberAccounts={memberAccounts}
                 onCreateVoucher={handleCreateVoucher}
                 onAllocateMemberCredit={handleAllocateMemberCredit}
+                onSetMemberExactAllocation={handleSetMemberExactAllocation}
                 onAddBankCredit={handleAddBankCredit}
                 onDeleteBankCredit={handleDeleteBankCredit}
                 onUpdateOpeningBalance={handleUpdateOpeningBalance}

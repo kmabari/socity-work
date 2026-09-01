@@ -95,10 +95,10 @@ export const ELedgerLogin: React.FC<ELedgerLoginProps> = ({
             <Lock className="w-7 h-7" />
           </div>
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-heading">
-            HCRS eLedger Committee Portal
+            HCRS eledger Committee Portal
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-            Authorized sign-in for 1 Admin, 1 Treasurer, 1 Auditor, and 17 State Committee Members.
+            Authorized sign-in for 1 Admin, 1 Treasurer, 1 Auditor, and 20 State Committee Members.
           </p>
         </div>
 

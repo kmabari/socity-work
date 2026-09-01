@@ -25,9 +25,14 @@ import {
   UserCheck,
   AlertTriangle,
   Info,
-  Lock
+  Lock,
+  RotateCcw,
+  AlertOctagon,
+  Sparkles,
+  X
 } from 'lucide-react';
 import { LedgerVoucher, TreasuryMetrics, CategorySummary, ELedgerUser, ELedgerRole, AccountStatus } from '../types';
+import { resetAllEledgerFinancialsToZero } from '../lib/eledgerService';
 
 interface AdminLedgerDashboardProps {
   metrics: TreasuryMetrics;
@@ -41,6 +46,7 @@ interface AdminLedgerDashboardProps {
   onToggleUserStatus: (id: string) => Promise<{ success: boolean; message: string }> | { success: boolean; message: string } | void;
   onSendPasswordReset: (email: string) => Promise<{ success: boolean; message: string }> | { success: boolean; message: string };
   onDeleteUser: (id: string) => Promise<{ success: boolean; message: string }> | { success: boolean; message: string } | void;
+  onResetFinancialsToZero?: () => Promise<{ success: boolean; message: string }> | { success: boolean; message: string };
 }
 
 export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
@@ -55,6 +61,7 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
   onToggleUserStatus,
   onSendPasswordReset,
   onDeleteUser,
+  onResetFinancialsToZero,
 }) => {
   const [activeAdminTab, setActiveAdminTab] = useState<'users' | 'vouchers' | 'allocations'>('users');
   
@@ -65,6 +72,10 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'treasurer' | 'auditor' | 'member'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'pending_setup'>('all');
+  
+  // Dedicated Testing Reset Modal State
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [isResettingData, setIsResettingData] = useState(false);
   
   // Dedicated Secure Change Password Modal State
   const [passwordResetTargetUser, setPasswordResetTargetUser] = useState<ELedgerUser | null>(null);
@@ -84,7 +95,7 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
   const pendingVouchers = vouchers.filter((v) => v.status === 'pending_approval');
   const approvedVouchers = vouchers.filter((v) => v.status === 'approved' || v.status === 'audited');
 
-  // Committee Seat Counts
+  // Committee Seat Counts (20 State Committee Members + 3 Office Bearers = 23 Total)
   const adminCount = users.filter(u => u.role === 'admin').length;
   const treasurerCount = users.filter(u => u.role === 'treasurer').length;
   const auditorCount = users.filter(u => u.role === 'auditor').length;
@@ -95,7 +106,30 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
     setActionNotification({ type, message });
     setTimeout(() => {
       setActionNotification(null);
-    }, 4000);
+    }, 5000);
+  };
+
+  const handleExecuteResetToZero = async () => {
+    setIsResettingData(true);
+    try {
+      let result;
+      if (onResetFinancialsToZero) {
+        result = await onResetFinancialsToZero();
+      } else {
+        result = await resetAllEledgerFinancialsToZero('Central Administrator');
+      }
+
+      if (result && typeof result === 'object' && 'success' in result && !result.success) {
+        showNotification('error', result.message || 'Failed to reset financial records.');
+      } else {
+        showNotification('success', 'എല്ലാ സാമ്പത്തിക കണക്കുകളും വിജയകരമായി സീറോ (₹0) ആക്കി റീസെറ്റ് ചെയ്തു! All financial records reset to zero.');
+        setShowResetModal(false);
+      }
+    } catch (err: any) {
+      showNotification('error', err.message || 'Error occurred while resetting financial data.');
+    } finally {
+      setIsResettingData(false);
+    }
   };
 
   const handleOpenAddModal = () => {
@@ -103,7 +137,7 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
     setFormName('');
     setFormEmail('');
     setFormMobile('');
-    setFormRole(memberCount < 17 ? 'member' : 'treasurer');
+    setFormRole(memberCount < 20 ? 'member' : 'treasurer');
     setFormDistrict('State Committee HQ');
     setFormMembershipId(`HCRS-SC-${(memberCount + 1).toString().padStart(2, '0')}`);
     setFormError('');
@@ -166,8 +200,8 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
           setFormError('Only 1 Statutory Auditor account is permitted under HCRS State Committee structure.');
           return;
         }
-        if (formRole === 'member' && users.filter(u => u.id !== editingUserId && u.role === 'member').length >= 17) {
-          setFormError('State Committee maximum capacity of 17 Members reached.');
+        if (formRole === 'member' && users.filter(u => u.id !== editingUserId && u.role === 'member').length >= 20) {
+          setFormError('State Committee maximum capacity of 20 Members reached.');
           return;
         }
       }
@@ -218,8 +252,8 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
         setFormError('Only 1 Statutory Auditor account is permitted under HCRS State Committee structure.');
         return;
       }
-      if (formRole === 'member' && memberCount >= 17) {
-        setFormError('State Committee maximum capacity of 17 Members reached.');
+      if (formRole === 'member' && memberCount >= 20) {
+        setFormError('State Committee maximum capacity of 20 Members reached.');
         return;
       }
 
@@ -340,16 +374,37 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
           </div>
           <h1 className="text-xl sm:text-2xl font-black text-white">HCRS State Committee Administration</h1>
           <p className="text-xs text-slate-300 max-w-2xl">
-            Administer committee user accounts (1 Admin, 1 Treasurer, 1 Auditor, 17 Members), enforce role security, and authorize disbursements.
+            Administer committee user accounts (1 Admin, 1 Treasurer, 1 Auditor, 20 Members), enforce role security, and authorize disbursements.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="text-right p-3 rounded-2xl bg-white/5 border border-white/10">
             <div className="text-[10px] text-slate-400 font-bold uppercase">Committee Capacity</div>
-            <div className="text-xl font-black text-amber-400">{totalCount} / 20 Active</div>
+            <div className="text-lg sm:text-xl font-black text-amber-400">{totalCount} / 23 Total <span className="text-xs text-slate-300 font-normal">({memberCount}/20 Members)</span></div>
           </div>
         </div>
+      </div>
+
+      {/* Testing Sandbox Control Bar (Temporary Tool for Testing - Can be removed when real accounts go live) */}
+      <div className="p-4 sm:p-5 rounded-3xl bg-amber-500/10 dark:bg-amber-950/30 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-extrabold text-sm">
+            <RotateCcw className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span>ടെസ്റ്റിംഗ് മോഡ്: കണക്കുകൾ റീസെറ്റ് ചെയ്യുക (Testing Reset Mode)</span>
+          </div>
+          <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed max-w-3xl">
+            ടെസ്റ്റിംഗ് വേളയിൽ എല്ലാ വൗച്ചറുകളും, ബാങ്ക് ക്രെഡിറ്റുകളും, 20 മെമ്പർമാരുടെയും അലോക്കേഷൻ/ചിലവ് ബാലൻസുകളും സീറോ (₹0) ആക്കി പുനഃക്രമീകരിക്കാം. ലോഗിൻ വിവരങ്ങൾ അതേപടി നിലനിൽക്കും.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowResetModal(true)}
+          className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-xs flex items-center gap-2 shadow-md shrink-0 cursor-pointer transition border border-red-500/30"
+        >
+          <RotateCcw className="w-4 h-4" />
+          <span>Reset All Data to ₹0</span>
+        </button>
       </div>
 
       {/* Action Notification Toast */}
@@ -365,41 +420,41 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
       )}
 
       {/* Admin Module Sub-tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 overflow-x-auto no-scrollbar scroll-smooth">
         <button
           onClick={() => setActiveAdminTab('users')}
-          className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 cursor-pointer ${
+          className={`px-3 sm:px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
             activeAdminTab === 'users'
               ? 'bg-amber-400 text-slate-950 shadow-md'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
           }`}
         >
           <Users className="w-4 h-4" />
-          <span>User & Committee Management ({users.length})</span>
+          <span>User & Committee ({users.length})</span>
         </button>
 
         <button
           onClick={() => setActiveAdminTab('vouchers')}
-          className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 cursor-pointer ${
+          className={`px-3 sm:px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
             activeAdminTab === 'vouchers'
               ? 'bg-amber-400 text-slate-950 shadow-md'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
           }`}
         >
           <Clock className="w-4 h-4" />
-          <span>Voucher Approvals ({pendingVouchers.length})</span>
+          <span>Vouchers ({pendingVouchers.length})</span>
         </button>
 
         <button
           onClick={() => setActiveAdminTab('allocations')}
-          className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 cursor-pointer ${
+          className={`px-3 sm:px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
             activeAdminTab === 'allocations'
               ? 'bg-amber-400 text-slate-950 shadow-md'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
           }`}
         >
           <TrendingUp className="w-4 h-4" />
-          <span>Budget Ceilings & Allocations</span>
+          <span>Budget Ceilings</span>
         </button>
       </div>
 
@@ -407,66 +462,104 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
       {activeAdminTab === 'users' && (
         <div className="space-y-6">
           {/* Real User Structure Counters */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                <span className="font-bold uppercase">Central Admin</span>
-                <span className="font-mono font-bold text-amber-500">{adminCount}/1</span>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
+            <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+              <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500">
+                <span className="font-bold uppercase truncate">Central Admin</span>
+                <span className="font-mono font-bold text-amber-500 shrink-0">{adminCount}/1</span>
               </div>
-              <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+              <div className="text-base sm:text-xl font-black text-slate-900 dark:text-white truncate">
                 {adminCount === 1 ? 'Configured' : 'Vacant'}
               </div>
-              <p className="text-[10px] text-slate-400">Full eLedger & User Controls</p>
+              <p className="text-[9px] sm:text-[10px] text-slate-400 truncate">Full eLedger & Controls</p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                <span className="font-bold uppercase">State Treasurer</span>
-                <span className="font-mono font-bold text-blue-500">{treasurerCount}/1</span>
+            <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+              <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500">
+                <span className="font-bold uppercase truncate">Treasurer</span>
+                <span className="font-mono font-bold text-blue-500 shrink-0">{treasurerCount}/1</span>
               </div>
-              <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+              <div className="text-base sm:text-xl font-black text-slate-900 dark:text-white truncate">
                 {treasurerCount === 1 ? 'Configured' : 'Vacant'}
               </div>
-              <p className="text-[10px] text-slate-400">Disbursements & Fund Ops</p>
+              <p className="text-[9px] sm:text-[10px] text-slate-400 truncate">Disbursements & Fund</p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                <span className="font-bold uppercase">Statutory Auditor</span>
-                <span className="font-mono font-bold text-emerald-500">{auditorCount}/1</span>
+            <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+              <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500">
+                <span className="font-bold uppercase truncate">Auditor</span>
+                <span className="font-mono font-bold text-emerald-500 shrink-0">{auditorCount}/1</span>
               </div>
-              <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+              <div className="text-base sm:text-xl font-black text-slate-900 dark:text-white truncate">
                 {auditorCount === 1 ? 'Configured' : 'Vacant'}
               </div>
-              <p className="text-[10px] text-slate-400">CA Audit & Compliance (Read-only)</p>
+              <p className="text-[9px] sm:text-[10px] text-slate-400 truncate">CA Audit & Compliance</p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                <span className="font-bold uppercase">Committee Members</span>
-                <span className="font-mono font-bold text-purple-500">{memberCount}/17</span>
+            <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+              <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500">
+                <span className="font-bold uppercase truncate">Members</span>
+                <span className="font-mono font-bold text-purple-500 shrink-0">{memberCount}/20</span>
               </div>
-              <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
-                {memberCount} / 17 Seats
+              <div className="text-base sm:text-xl font-black text-slate-900 dark:text-white truncate">
+                {memberCount} / 20 Seats
               </div>
-              <p className="text-[10px] text-slate-400">Strict Isolated Self-Ledger</p>
+              <p className="text-[9px] sm:text-[10px] text-slate-400 truncate">Isolated Self-Ledger</p>
             </div>
           </div>
 
           {/* Action Bar & Filters */}
-          <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                <input
-                  type="text"
-                  placeholder="Search by full name, email address, mobile, or membership ID..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                />
+          <div className="p-3.5 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3.5">
+            {/* Search Input */}
+            <div className="relative w-full">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+              <input
+                type="text"
+                placeholder="Search by full name, email, mobile, or ID..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </div>
+
+            {/* Mobile Controls (Vertical Stack with 2-Col Filters + Full-Width Button) */}
+            <div className="flex flex-col gap-2.5 sm:hidden">
+              <div className="grid grid-cols-2 gap-2">
+                <select
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value as any)}
+                  className="w-full px-2.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300"
+                >
+                  <option value="all">All Roles</option>
+                  <option value="admin">Admin</option>
+                  <option value="treasurer">Treasurer</option>
+                  <option value="auditor">Auditor</option>
+                  <option value="member">Member</option>
+                </select>
+
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as any)}
+                  className="w-full px-2.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300"
+                >
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="pending_setup">Pending</option>
+                  <option value="inactive">Inactive</option>
+                </select>
               </div>
 
+              <button
+                onClick={handleOpenAddModal}
+                className="w-full py-2.5 px-4 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black flex items-center justify-center gap-2 shadow-md transition cursor-pointer active:scale-98"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>Add New User Account</span>
+              </button>
+            </div>
+
+            {/* Desktop Controls (Inline row) */}
+            <div className="hidden sm:flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <select
                   value={roleFilter}
@@ -490,27 +583,168 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
                   <option value="pending_setup">Pending Setup</option>
                   <option value="inactive">Inactive</option>
                 </select>
-
-                <button
-                  onClick={handleOpenAddModal}
-                  className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black flex items-center gap-1.5 shadow-md transition shrink-0 cursor-pointer"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  <span>Add New User</span>
-                </button>
               </div>
+
+              <button
+                onClick={handleOpenAddModal}
+                className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black flex items-center gap-1.5 shadow-md transition shrink-0 cursor-pointer"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>Add New User</span>
+              </button>
             </div>
 
             {/* Architecture Info Notice */}
-            <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 flex items-start gap-2.5 text-[11px] text-amber-900 dark:text-amber-300">
+            <div className="p-3 sm:p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 flex items-start gap-2.5 text-[11px] text-amber-900 dark:text-amber-300">
               <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
               <div>
                 <b>Security Architecture:</b> All real users are managed with unique email identifiers and authenticated via Firebase Authentication Email/Password. No passwords or sensitive credentials are ever stored in Firestore or client code.
               </div>
             </div>
 
-            {/* User List Table */}
-            <div className="overflow-x-auto max-h-[360px] overflow-y-auto rounded-2xl border border-slate-100 dark:border-slate-800/60 shadow-inner">
+            {/* MOBILE USER CARDS (Visible on mobile screens) */}
+            <div className="block md:hidden space-y-3">
+              {filteredUsers.length === 0 ? (
+                <div className="p-8 text-center text-slate-500 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50">
+                  No users matching the search criteria.
+                </div>
+              ) : (
+                filteredUsers.map((user) => (
+                  <div
+                    key={user.id}
+                    className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3 shadow-xs"
+                  >
+                    {/* User Header & Badges */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="font-black text-slate-900 dark:text-white text-sm truncate">
+                          {user.name}
+                        </div>
+                        <div className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
+                          <span>{user.district || 'State HQ'}</span>
+                          {user.membershipId && (
+                            <span className="font-mono text-amber-600 dark:text-amber-400 font-bold">
+                              • {user.membershipId}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                          user.role === 'admin'
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700'
+                            : user.role === 'treasurer'
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 dark:border-blue-700'
+                            : user.role === 'auditor'
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
+                            : 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300 dark:border-purple-700'
+                        }`}>
+                          <ShieldCheck className="w-2.5 h-2.5" />
+                          <span>{user.role}</span>
+                        </span>
+
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                          user.status === 'active'
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                            : user.status === 'pending_setup'
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                            : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            user.status === 'active' ? 'bg-emerald-500' : user.status === 'pending_setup' ? 'bg-amber-500' : 'bg-red-500'
+                          }`} />
+                          <span>{user.status.replace('_', ' ')}</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Contact Details */}
+                    <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 space-y-1.5 text-xs">
+                      <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 min-w-0">
+                        <Mail className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                        <span className="font-mono text-[11px] truncate">{user.email}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 min-w-0">
+                        <Phone className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                        <span className="font-mono text-[11px]">{user.mobile}</span>
+                      </div>
+                    </div>
+
+                    {/* Mobile Card Action Buttons */}
+                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-200/60 dark:border-slate-800/60">
+                      <button
+                        onClick={() => handleOpenPasswordResetModal(user)}
+                        className="flex-1 py-2 px-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-300/80 dark:border-amber-700/60 transition cursor-pointer flex items-center justify-center gap-1.5 text-xs font-bold shadow-2xs active:scale-98"
+                      >
+                        <KeyRound className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                        <span>Change Password</span>
+                      </button>
+
+                      <div className="flex items-center gap-1.5">
+                        {/* Toggle Active / Inactive */}
+                        <button
+                          onClick={async () => {
+                            const res = await onToggleUserStatus(user.id);
+                            if (res && typeof res === 'object' && 'success' in res) {
+                              if (res.success) {
+                                showNotification('success', res.message);
+                              } else {
+                                showNotification('error', res.message);
+                              }
+                            }
+                          }}
+                          className={`p-2 rounded-xl transition cursor-pointer border ${
+                            user.status === 'active'
+                              ? 'bg-slate-100 dark:bg-slate-800 hover:bg-red-100 text-slate-600 dark:text-slate-300 hover:text-red-700 border-slate-200 dark:border-slate-700'
+                              : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+                          }`}
+                          title={user.status === 'active' ? 'Deactivate Account' : 'Activate Account'}
+                        >
+                          {user.status === 'active' ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                        </button>
+
+                        {/* Edit User */}
+                        <button
+                          onClick={() => handleOpenEditModal(user)}
+                          className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 transition cursor-pointer border border-slate-200 dark:border-slate-700"
+                          title="Edit User Details"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+
+                        {/* Delete User */}
+                        {user.role !== 'admin' && (
+                          <button
+                            onClick={async () => {
+                              if (window.confirm(`Are you sure you want to remove account for ${user.name}?`)) {
+                                const res = await onDeleteUser(user.id);
+                                if (res && typeof res === 'object' && 'success' in res) {
+                                  if (res.success) {
+                                    showNotification('success', `User account for ${user.name} removed.`);
+                                  } else {
+                                    showNotification('error', res.message);
+                                  }
+                                } else {
+                                  showNotification('success', `User account for ${user.name} removed.`);
+                                }
+                              }
+                            }}
+                            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-red-100 text-slate-400 hover:text-red-600 transition cursor-pointer border border-slate-200 dark:border-slate-700"
+                            title="Remove User"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* DESKTOP USER TABLE (Visible on md+ screens) */}
+            <div className="hidden md:block overflow-x-auto max-h-[360px] overflow-y-auto rounded-2xl border border-slate-100 dark:border-slate-800/60 shadow-inner">
               <table className="w-full text-left text-xs">
                 <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
                   <tr className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
@@ -805,11 +1039,11 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
 
       {/* ADD / EDIT USER MODAL */}
       {showAddUserModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
-          <div className="max-w-md w-full rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-2xl space-y-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in overflow-y-auto">
+          <div className="max-w-md w-full max-h-[92vh] overflow-y-auto rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-7 shadow-2xl space-y-4 sm:space-y-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
                   <UserPlus className="w-5 h-5" />
                 </div>
                 <div>
@@ -823,7 +1057,7 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
               </div>
               <button
                 onClick={() => setShowAddUserModal(false)}
-                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 cursor-pointer"
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 cursor-pointer"
               >
                 ✕
               </button>
@@ -987,12 +1221,12 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
 
       {/* DEDICATED SECURE CHANGE PASSWORD / SEND RESET LINK MODAL */}
       {passwordResetTargetUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in">
-          <div className="max-w-md w-full rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-2xl space-y-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in overflow-y-auto">
+          <div className="max-w-md w-full max-h-[92vh] overflow-y-auto rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-7 shadow-2xl space-y-4 sm:space-y-5">
             {/* Modal Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center shrink-0">
                   <KeyRound className="w-5 h-5" />
                 </div>
                 <div>
@@ -1108,6 +1342,83 @@ export const AdminLedgerDashboard: React.FC<AdminLedgerDashboardProps> = ({
                   <>
                     <Send className="w-3.5 h-3.5" />
                     <span>{resetModalFeedback?.type === 'success' ? 'Resend Password Reset Link' : 'Send Password Reset Link'}</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DEDICATED TESTING MODAL: RESET ALL FINANCIALS TO ZERO */}
+      {showResetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-red-500/40 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-5 animate-in zoom-in-95">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950/60 border border-red-300 dark:border-red-800 flex items-center justify-center text-red-600 dark:text-red-400 shrink-0">
+                  <AlertOctagon className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                    റീസെറ്റ് സ്ഥിരീകരിക്കുക (Reset to ₹0)
+                  </h3>
+                  <p className="text-xs text-red-600 dark:text-red-400 font-bold">
+                    Testing Mode Financial Reset Confirmation
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => !isResettingData && setShowResetModal(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 rounded-lg cursor-pointer transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 space-y-2.5 text-xs">
+              <div className="font-bold text-slate-900 dark:text-slate-200 flex items-center gap-2">
+                <Info className="w-4 h-4 text-amber-500" />
+                <span>ഈ ഓപ്പറേഷൻ ചെയ്യുന്ന കാര്യങ്ങൾ:</span>
+              </div>
+              <ul className="space-y-1.5 text-slate-600 dark:text-slate-400 list-disc list-inside">
+                <li>എല്ലാ <b>വൗച്ചറുകളും (Vouchers)</b> ഡിലീറ്റ് ചെയ്യപ്പെടും.</li>
+                <li>എല്ലാ <b>ബാങ്ക് ക്രെഡിറ്റ് രേഖകളും</b> ഡിലീറ്റ് ചെയ്യപ്പെടും.</li>
+                <li>തുടക്ക ബാങ്ക് ബാലൻസ് (Opening Balance) <b>₹0</b> ആയി മാറും.</li>
+                <li><b>20 മെമ്പർമാരുടെയും</b> അലോക്കേഷൻ, ചിലവുകൾ, ബാലൻസ് എന്നിവ <b>₹0</b> ആകും.</li>
+                <li>എല്ലാ ഫണ്ട് വിഭാഗങ്ങളുടെയും ബാലൻസ് <b>₹0</b> ആകും.</li>
+                <li><b>യൂസർ അക്കൗണ്ടുകളും പാസ്‌വേഡുകളും</b> മാറ്റമില്ലാതെ നിലനിൽക്കും.</li>
+              </ul>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 text-[11px] text-amber-900 dark:text-amber-300 font-medium">
+              💡 <b>കുറിപ്പ്:</b> ടെസ്റ്റിംഗ് പൂർത്തിയായി യഥാർത്ഥ കണക്കുകൾ രേഖപ്പെടുത്തി തുടങ്ങുമ്പോൾ ഈ ബട്ടൺ സുരക്ഷിതമായി ഒഴിവാക്കാവുന്നതാണ്.
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                disabled={isResettingData}
+                onClick={() => setShowResetModal(false)}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer transition disabled:opacity-50"
+              >
+                Cancel (റദ്ദാക്കുക)
+              </button>
+              <button
+                type="button"
+                disabled={isResettingData}
+                onClick={handleExecuteResetToZero}
+                className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 active:scale-95 text-white font-black text-xs shadow-lg cursor-pointer flex items-center gap-2 transition disabled:opacity-50"
+              >
+                {isResettingData ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>റീസെറ്റ് ചെയ്യുന്നു...</span>
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw className="w-4 h-4" />
+                    <span>അതെ, എല്ലാം ₹0 ആക്കുക (Confirm Reset)</span>
                   </>
                 )}
               </button>

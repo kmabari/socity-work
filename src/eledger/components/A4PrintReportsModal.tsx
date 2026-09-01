@@ -72,7 +72,21 @@ export const A4PrintReportsModal: React.FC<A4PrintReportsModalProps> = ({
   const [datePreset, setDatePreset] = useState<'all' | 'this_month' | 'current_fy' | 'last_30_days'>('all');
 
   // Member selection for Single Member Statement
-  const committeeMembers = useMemo(() => users.filter(u => u.role === 'member'), [users]);
+  const committeeMembers = useMemo(() => {
+    const memberMap = new Map<string, ELedgerUser>();
+    users.filter(u => u.role === 'member').forEach(u => {
+      const key = (u.email || u.membershipId || u.name || u.id).trim().toLowerCase();
+      if (!memberMap.has(key)) {
+        memberMap.set(key, u);
+      } else {
+        const existing = memberMap.get(key)!;
+        if (existing.id.startsWith('usr-') && !u.id.startsWith('usr-')) {
+          memberMap.set(key, u);
+        }
+      }
+    });
+    return Array.from(memberMap.values());
+  }, [users]);
   const [selectedMemberId, setSelectedMemberId] = useState<string>(
     initialMemberId || (committeeMembers[0]?.id || '')
   );
@@ -161,21 +175,30 @@ export const A4PrintReportsModal: React.FC<A4PrintReportsModalProps> = ({
 
   // Helper to compile full chronological transactions for a member
   const getMemberDetailedStatement = (member: ELedgerUser) => {
-    const acc = memberAccounts[member.id] || memberAccounts['default-member'] || {
-      userId: member.id,
-      membershipId: member.membershipId || 'HCRS-SC-01',
-      memberName: member.name,
-      email: member.email,
-      mobile: member.mobile,
-      district: member.district || 'State HQ',
-      allocatedCredit: 0,
-      totalContributed: 0,
-      expensesClaimed: 0,
-      availableBalance: 0,
-      billsSubmitted: 0,
-      status: 'active',
-      recentTransactions: [],
-    };
+    const accountsList = Object.values(memberAccounts) as MemberFinancialAccount[];
+    const emailClean = (member.email || '').trim().toLowerCase();
+    const nameClean = (member.name || '').trim().toLowerCase();
+    const memIdClean = (member.membershipId || '').trim().toLowerCase();
+
+    const acc = memberAccounts[member.id] || 
+      (emailClean ? accountsList.find(a => a.email && a.email.toLowerCase().trim() === emailClean) : undefined) ||
+      (memIdClean ? accountsList.find(a => a.membershipId && a.membershipId.toLowerCase().trim() === memIdClean) : undefined) ||
+      (nameClean ? accountsList.find(a => a.memberName && a.memberName.toLowerCase().trim() === nameClean) : undefined) ||
+      {
+        userId: member.id,
+        membershipId: member.membershipId || 'HCRS-SC-01',
+        memberName: member.name,
+        email: member.email,
+        mobile: member.mobile,
+        district: member.district || 'State HQ',
+        allocatedCredit: 0,
+        totalContributed: 0,
+        expensesClaimed: 0,
+        availableBalance: 0,
+        billsSubmitted: 0,
+        status: 'active',
+        recentTransactions: [],
+      };
 
     // Combine raw transactions and any matching vouchers
     const rawTx: MemberTransaction[] = [...(acc.recentTransactions || [])];

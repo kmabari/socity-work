@@ -760,75 +760,63 @@ export default function LandingPage({
                 </InfinityBorderCard>
               </div>
 
-              {/* Dedicated HCRS eLedger Hero Action Card */}
-              <div className="max-w-6xl mx-auto">
-                <InfinityBorderCard
-                  roundedClassName="rounded-2xl sm:rounded-3xl"
-                  innerClassName="p-5 sm:p-7 md:p-8 text-left bg-gradient-to-br from-[#062922] via-[#0b382f] to-[#041d18] text-white shadow-2xl relative overflow-hidden border border-emerald-500/30"
-                  speed={7}
-                  className="shadow-projected"
+              {/* Dedicated HCRS eledger Portal Apple UI Glass Action Button */}
+              <div className="max-w-4xl mx-auto w-full px-2">
+                <motion.div
+                  whileHover={{ scale: 1.015, y: -2 }}
+                  whileTap={{ scale: 0.985 }}
+                  className="relative group cursor-pointer"
+                  onClick={onELedgerClick}
                 >
-                  {/* Ambient backglows */}
-                  <div className="absolute -top-24 -right-24 w-72 h-72 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none" />
-                  <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-[#c9a227]/20 rounded-full blur-3xl pointer-events-none" />
-                  <div className="absolute inset-0 bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
+                  {/* Subtle Apple-style ambient backglow */}
+                  <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/25 via-teal-500/20 to-emerald-600/25 rounded-3xl blur-xl opacity-70 group-hover:opacity-100 transition duration-500" />
 
-                  <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                    <div className="space-y-3 lg:max-w-2xl">
-                      <div className="inline-flex items-center gap-2 bg-emerald-500/20 text-emerald-300 px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-wider border border-emerald-500/30 backdrop-blur-md shadow-xs">
-                        <Lock className="w-3.5 h-3.5 text-emerald-400 stroke-[2.5]" />
-                        <span>Authorized Committee Portal • Restricted Access</span>
+                  {/* Apple UI Glass Button Container */}
+                  <div className="relative overflow-hidden rounded-3xl bg-white/70 dark:bg-slate-900/60 backdrop-blur-2xl border border-white/60 dark:border-white/10 shadow-[0_8px_32px_0_rgba(16,185,129,0.12)] p-4 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6 transition-all duration-300 group-hover:border-emerald-500/40 group-hover:shadow-[0_12px_40px_0_rgba(16,185,129,0.2)]">
+                    {/* Top glass highlight reflection */}
+                    <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/40 to-transparent pointer-events-none rounded-t-3xl" />
+
+                    <div className="flex items-center gap-4 sm:gap-5 w-full sm:w-auto">
+                      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 p-0.5 shadow-lg shadow-emerald-600/25 flex items-center justify-center shrink-0 text-white">
+                        <div className="w-full h-full rounded-[14px] bg-gradient-to-br from-emerald-600 to-teal-800 flex items-center justify-center">
+                          <Lock className="w-6 h-6 stroke-[2.2] text-white" />
+                        </div>
                       </div>
 
-                      <div>
-                        <h3 className="text-2xl sm:text-3xl md:text-4xl font-black text-white uppercase tracking-tight font-heading leading-tight">
-                          HCRS eLedger
+                      <div className="space-y-1 text-left min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            Authorized Portal
+                          </span>
+                          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                            23 Seats
+                          </span>
+                        </div>
+                        <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase font-heading">
+                          Go to eledger portal
                         </h3>
-                        <p className="text-amber-400 font-extrabold text-sm sm:text-base tracking-wide mt-1">
-                          State Committee Financial Operations & Audit Portal
+                        <p className="text-xs text-slate-600 dark:text-slate-400 font-medium line-clamp-1">
+                          {lang === 'ml' 
+                            ? 'സ്റ്റേറ്റ് കമ്മിറ്റി അംഗങ്ങൾ, ട്രഷറർ, ഓഡിറ്റർ എന്നിവർക്കുള്ള പോർട്ടൽ' 
+                            : 'Dedicated portal for State Committee (Admin, Treasurer, Auditor & 20 Members)'}
                         </p>
                       </div>
+                    </div>
 
-                      <p className="text-emerald-100/85 text-xs sm:text-sm font-normal leading-relaxed">
-                        {lang === 'ml'
-                          ? 'സ്റ്റേറ്റ് കമ്മിറ്റി അംഗങ്ങൾ, ട്രഷറർ, ഓഡിറ്റർ എന്നിവർക്കായുള്ള ഔദ്യോഗിക സാമ്പത്തിക മാനേജ്‌മെന്റ് പോർട്ടൽ. ലോഗിൻ ചെയ്ത ശേഷം മാത്രം ലഭ്യമാകും.'
-                          : 'Official financial management portal for authorized State Committee members (1 Admin, 1 Treasurer, 1 Auditor, 17 Members). Access is restricted to authenticated committee accounts.'}
-                      </p>
-
-                      <div className="flex flex-wrap items-center gap-2 pt-1">
-                        <span className="inline-flex items-center gap-1.5 bg-white/10 text-emerald-200 text-[11px] font-bold px-3 py-1 rounded-lg border border-white/10">
-                          <Lock className="w-3 h-3 text-emerald-400" />
-                          20 Authorized Seats
-                        </span>
-                        <span className="inline-flex items-center gap-1.5 bg-white/10 text-emerald-200 text-[11px] font-bold px-3 py-1 rounded-lg border border-white/10">
-                          <ShieldCheck className="w-3 h-3 text-amber-400" />
-                          Role-Based Access
-                        </span>
-                        <span className="inline-flex items-center gap-1.5 bg-white/10 text-emerald-200 text-[11px] font-bold px-3 py-1 rounded-lg border border-white/10">
-                          <span className="w-1.5 h-1.5 rounded-full bg-teal-300" />
-                          Isolated Member Accounts
-                        </span>
+                    {/* Right Action Glass Pill */}
+                    <div className="w-full sm:w-auto shrink-0">
+                      <div className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-600 text-white font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2.5 shadow-lg shadow-emerald-900/20 transition-all group-hover:scale-[1.02] active:scale-95">
+                        <Lock className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <span>Go to eledger portal</span>
+                        <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                       </div>
                     </div>
-
-                    <div className="flex flex-col sm:flex-row lg:flex-col items-stretch sm:items-center lg:items-end gap-3 shrink-0">
-                      <Button
-                        onClick={onELedgerClick}
-                        className="w-full sm:w-auto h-12 sm:h-14 px-8 rounded-xl font-black text-xs sm:text-sm uppercase tracking-widest bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-400 hover:brightness-110 text-slate-950 shadow-xl shadow-emerald-950/50 hover:shadow-emerald-900/60 transition-all flex items-center justify-center gap-2.5 cursor-pointer border border-emerald-200/50"
-                      >
-                        <Lock className="w-4 h-4 stroke-[2.2]" />
-                        <span>eLedger Sign In</span>
-                        <ChevronRight className="w-4 h-4" />
-                      </Button>
-                      <span className="text-[11px] text-emerald-300/80 text-center lg:text-right font-medium">
-                        State Committee Login Required • No Public Access
-                      </span>
-                    </div>
                   </div>
-                </InfinityBorderCard>
+                </motion.div>
               </div>
 
-              {/* Unified Key Services Glass Card (New Membership, Renewal, Finance/Settlement, eLedger in 1 Glass Card) */}
+              {/* Unified Key Services Glass Card (New Membership, Renewal, Settlement in 1 Glass Card) */}
               <div className="max-w-6xl mx-auto">
                 <InfinityBorderCard
                   roundedClassName="rounded-2xl sm:rounded-3xl"
@@ -849,16 +837,16 @@ export default function LandingPage({
                           <span>{t('unified_services_badge', 'Key Membership & Financial Services')}</span>
                         </div>
                         <h3 className="text-xl sm:text-2xl font-black text-[#1a2b5c] uppercase tracking-tight font-heading">
-                          {t('unified_services_title', 'Membership, Renewal, Settlement & eLedger Portals')}
+                          {t('unified_services_title', 'Membership, Renewal & Settlement Portals')}
                         </h3>
                       </div>
                       <p className="text-slate-600 text-xs sm:text-sm font-normal max-w-md">
-                        {t('unified_services_desc', 'Select a service below for New Registration, Annual Card Renewal, Settlement Data Submission, or Audited eLedger.')}
+                        {t('unified_services_desc', 'Select a service below for New Registration, Annual Card Renewal, or Settlement Data Submission.')}
                       </p>
                     </div>
 
-                    {/* 4 Services Inside One Unified Card */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                    {/* 3 Core Services Inside One Unified Card */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                       {/* Service 1: New Membership */}
                       <div className="group relative flex flex-col justify-between p-5 sm:p-6 rounded-2xl bg-gradient-to-b from-white/90 to-slate-50/80 border border-slate-200/70 hover:border-[#c9a227]/50 shadow-sm hover:shadow-md transition-all duration-300 backdrop-blur-md">
                         <div className="space-y-4">
@@ -952,41 +940,6 @@ export default function LandingPage({
                           className="w-full mt-6 h-11 sm:h-12 rounded-xl text-xs font-black bg-gradient-to-r from-[#c9a227] via-[#d4ad2b] to-[#c9a227] hover:brightness-105 text-[#0c1836] transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-md hover:shadow-lg cursor-pointer border border-[#f5d77f]/40"
                         >
                           <span>{t('card_registry_btn', 'Settlement Form')}</span>
-                          <ChevronRight className="w-4 h-4" />
-                        </Button>
-                      </div>
-
-                      {/* Service 4: HCRS eLedger */}
-                      <div className="group relative flex flex-col justify-between p-5 sm:p-6 rounded-2xl bg-gradient-to-b from-emerald-50/90 to-white/90 border border-emerald-200/80 hover:border-emerald-500/60 shadow-sm hover:shadow-md transition-all duration-300 backdrop-blur-md">
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="bg-emerald-600/15 w-12 h-12 rounded-xl flex items-center justify-center text-emerald-700 group-hover:scale-105 transition-transform shadow-xs border border-emerald-500/30">
-                              <Lock className="w-6 h-6 stroke-[2.2]" />
-                            </div>
-                            <span className="inline-flex bg-emerald-100 text-emerald-800 border border-emerald-300 font-black text-[10px] sm:text-[11px] tracking-wider uppercase px-3 py-1 rounded-full shadow-2xs">
-                              Restricted Portal
-                            </span>
-                          </div>
-
-                          <div className="space-y-2">
-                            <h4 className="text-base sm:text-lg font-black text-emerald-950 tracking-tight uppercase font-heading leading-snug">
-                              HCRS eLedger
-                            </h4>
-                            <p className="text-emerald-700 font-extrabold text-xs tracking-wide">
-                              State Committee Portal
-                            </p>
-                            <p className="text-slate-600 text-xs sm:text-sm font-normal leading-relaxed">
-                              Protected financial management system for 20 authorized State Committee accounts (Admin, Treasurer, Auditor, Members).
-                            </p>
-                          </div>
-                        </div>
-
-                        <Button 
-                          onClick={onELedgerClick}
-                          className="w-full mt-6 h-11 sm:h-12 rounded-xl text-xs font-black bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white transition-all flex items-center justify-center gap-2 uppercase tracking-widest shadow-md hover:shadow-lg cursor-pointer border border-emerald-500/30"
-                        >
-                          <Lock className="w-4 h-4" />
-                          <span>eLedger Sign In</span>
                           <ChevronRight className="w-4 h-4" />
                         </Button>
                       </div>

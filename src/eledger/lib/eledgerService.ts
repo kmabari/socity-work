@@ -746,7 +746,7 @@ export async function addEledgerUser(
 
     // If role is member, create their isolated financial account
     if (userData.role === 'member') {
-      const defaultAllocated = 25000;
+      const defaultAllocated = 0;
       const memberAccount: MemberFinancialAccount = {
         userId: newUserId,
         membershipId: userPayload.membershipId || `HCRS-SC-${existingUsers.filter(u => u.role === 'member').length + 1}`,
@@ -754,24 +754,13 @@ export async function addEledgerUser(
         email: cleanEmail,
         mobile: userData.mobile.trim(),
         district: userPayload.district || 'State Committee HQ',
-        allocatedCredit: defaultAllocated,
+        allocatedCredit: 0,
         totalContributed: 0,
         expensesClaimed: 0,
-        availableBalance: defaultAllocated,
+        availableBalance: 0,
         billsSubmitted: 0,
         status: 'active',
-        recentTransactions: [
-          {
-            id: `tx-init-${Date.now()}`,
-            date: new Date().toISOString().split('T')[0],
-            type: 'credit_allocation',
-            description: 'Initial Committee Operational Credit Grant',
-            amount: defaultAllocated,
-            balanceAfterTransaction: defaultAllocated,
-            referenceNo: `INIT-${newUserId.toUpperCase()}`,
-            status: 'verified',
-          }
-        ],
+        recentTransactions: [],
       };
       await setDoc(doc(eledgerDb, MEMBER_ACCOUNTS_COL, newUserId), sanitizeForFirestore(memberAccount));
     }
@@ -948,30 +937,94 @@ export async function syncEledgerMetricsFromVouchers(): Promise<void> {
     let totalMemberAllocations = 0;
     let totalMemberExpenses = 0;
     try {
+      // Fetch registered users to identify genuine committee members
+      let registeredMembers: ELedgerUser[] = [];
+      try {
+        const usersSnap = await getDocs(collection(eledgerDb, USERS_COL));
+        registeredMembers = usersSnap.docs
+          .map(d => ({ ...d.data(), id: d.id } as ELedgerUser))
+          .filter(u => u.role === 'member');
+      } catch (uErr) {
+        console.warn('[eLedger Service] users fetch note in sync:', uErr);
+      }
+
       const memberSnap = await getDocs(collection(eledgerDb, MEMBER_ACCOUNTS_COL));
+      type MemberDocWithId = MemberFinancialAccount & { id: string };
+      const memberDocs: MemberDocWithId[] = memberSnap.docs.map(d => ({ ...(d.data() as MemberFinancialAccount), id: d.id }));
       const uniqueMembersMap = new Map<string, MemberFinancialAccount>();
       const duplicateDocIdsToDelete: string[] = [];
 
-      memberSnap.forEach((docSnap) => {
-        const m = docSnap.data() as MemberFinancialAccount;
-        // Generate unique key for the member
-        const emailKey = m.email ? m.email.trim().toLowerCase() : '';
-        const nameKey = m.memberName ? m.memberName.trim().toLowerCase() : '';
-        const idKey = m.membershipId ? m.membershipId.trim().toLowerCase() : '';
-        const uniqueKey = emailKey || idKey || nameKey || docSnap.id;
+      // If registered members exist, group them by normalized unique key so each committee member is counted EXACTLY once
+      if (registeredMembers.length > 0) {
+        const uniqueUsersMap = new Map<string, ELedgerUser>();
+        for (const u of registeredMembers) {
+          const key = (u.email || u.membershipId || u.name || u.id).trim().toLowerCase();
+          if (!uniqueUsersMap.has(key)) {
+            uniqueUsersMap.set(key, u);
+          } else {
+            const existingUser = uniqueUsersMap.get(key)!;
+            if (existingUser.id.startsWith('usr-') && !u.id.startsWith('usr-')) {
+              uniqueUsersMap.set(key, u);
+            }
+          }
+        }
 
-        if (!uniqueMembersMap.has(uniqueKey)) {
-          uniqueMembersMap.set(uniqueKey, { ...m, userId: docSnap.id });
-        } else {
-          // A record for this member already exists. Merge/choose the most accurate one
-          const existing = uniqueMembersMap.get(uniqueKey)!;
+        for (const [key, user] of uniqueUsersMap.entries()) {
+          const emailClean = (user.email || '').trim().toLowerCase();
+          const nameClean = (user.name || '').trim().toLowerCase();
+          const memIdClean = (user.membershipId || '').trim().toLowerCase();
+
+          let matched = memberDocs.find(d => d.id === user.id || d.userId === user.id);
+          if (!matched && emailClean) {
+            matched = memberDocs.find(d => d.email && d.email.trim().toLowerCase() === emailClean);
+          }
+          if (!matched && memIdClean) {
+            matched = memberDocs.find(d => d.membershipId && d.membershipId.trim().toLowerCase() === memIdClean);
+          }
+          if (!matched && nameClean) {
+            matched = memberDocs.find(d => d.memberName && d.memberName.trim().toLowerCase() === nameClean);
+          }
+
+          if (matched) {
+            uniqueMembersMap.set(key, matched);
+          }
+        }
+
+        // Identify orphan docs to delete
+        for (const docAcc of memberDocs) {
+          if (docAcc.id === 'default-member' || docAcc.id.startsWith('default-')) {
+            duplicateDocIdsToDelete.push(docAcc.id);
+            continue;
+          }
+          const belongsToUser = Array.from(uniqueUsersMap.values()).some(u => 
+            u.id === docAcc.id || 
+            u.id === docAcc.userId ||
+            (u.email && docAcc.email && u.email.trim().toLowerCase() === docAcc.email.trim().toLowerCase()) ||
+            (u.membershipId && docAcc.membershipId && u.membershipId.trim().toLowerCase() === docAcc.membershipId.trim().toLowerCase()) ||
+            (u.name && docAcc.memberName && u.name.trim().toLowerCase() === docAcc.memberName.trim().toLowerCase())
+          );
+          if (!belongsToUser) {
+            duplicateDocIdsToDelete.push(docAcc.id);
+          }
+        }
+      } else {
+        // Fallback deduplication when no users loaded yet
+        memberSnap.forEach((docSnap) => {
+          const m = docSnap.data() as MemberFinancialAccount;
+          const emailKey = m.email ? m.email.trim().toLowerCase() : '';
+          const nameKey = m.memberName ? m.memberName.trim().toLowerCase() : '';
+          const idKey = m.membershipId ? m.membershipId.trim().toLowerCase() : '';
+          const uniqueKey = emailKey || idKey || nameKey || docSnap.id;
+
           if (docSnap.id === 'default-member' || docSnap.id.startsWith('default-')) {
             duplicateDocIdsToDelete.push(docSnap.id);
-          } else if (existing.userId === 'default-member') {
-            duplicateDocIdsToDelete.push(existing.userId);
+            return;
+          }
+
+          if (!uniqueMembersMap.has(uniqueKey)) {
             uniqueMembersMap.set(uniqueKey, { ...m, userId: docSnap.id });
           } else {
-            // Keep the one with max allocated/claimed
+            const existing = uniqueMembersMap.get(uniqueKey)!;
             const maxAlloc = Math.max(existing.allocatedCredit || 0, m.allocatedCredit || 0);
             const maxExp = Math.max(existing.expensesClaimed || 0, m.expensesClaimed || 0);
             const maxBal = Math.max(existing.availableBalance || 0, m.availableBalance || 0);
@@ -981,15 +1034,14 @@ export async function syncEledgerMetricsFromVouchers(): Promise<void> {
               expensesClaimed: maxExp,
               availableBalance: maxBal,
             });
-            // Mark the duplicate doc for deletion if different ID
             if (docSnap.id !== existing.userId) {
               duplicateDocIdsToDelete.push(docSnap.id);
             }
           }
-        }
-      });
+        });
+      }
 
-      // Cleanup redundant duplicate docs in background
+      // Cleanup redundant duplicate/orphan docs in background
       for (const dupId of duplicateDocIdsToDelete) {
         try {
           await deleteDoc(doc(eledgerDb, MEMBER_ACCOUNTS_COL, dupId));
@@ -1244,6 +1296,95 @@ export async function allocateMemberCreditInDb(
 }
 
 /**
+ * Direct Target Member Allocation Set/Correction (Treasurer Operation)
+ * Sets the exact target allocated credit for a committee member (e.g. ₹30,000)
+ */
+export async function setMemberExactAllocationInDb(
+  memberId: string,
+  exactAmount: number,
+  currentAccount?: MemberFinancialAccount,
+  memberUser?: ELedgerUser
+): Promise<{ success: boolean; message: string }> {
+  try {
+    if (exactAmount < 0) {
+      return { success: false, message: 'Please enter a valid non-negative allocation amount.' };
+    }
+    const memberRef = doc(eledgerDb, MEMBER_ACCOUNTS_COL, memberId);
+    const snap = await getDoc(memberRef);
+    
+    const existing = snap.exists() ? (snap.data() as MemberFinancialAccount) : currentAccount;
+    const expensesClaimed = existing?.expensesClaimed || 0;
+    const updatedBalance = Math.max(0, exactAmount - expensesClaimed);
+    
+    const newTx: MemberTransaction = {
+      id: `tx-alloc-set-${Date.now()}`,
+      date: new Date().toISOString().split('T')[0],
+      type: 'credit_allocation',
+      category: 'Operational Advance',
+      description: `Target Allocation Set to ₹${exactAmount.toLocaleString('en-IN')}`,
+      amount: exactAmount,
+      balanceAfterTransaction: updatedBalance,
+      referenceNo: `ALLOC-SET-${Date.now().toString().slice(-4)}`,
+      status: 'verified',
+    };
+
+    const memberPayload: Record<string, any> = {
+      userId: memberId,
+      membershipId: memberUser?.membershipId || existing?.membershipId || currentAccount?.membershipId || `HCRS-MB-${Date.now().toString().slice(-4)}`,
+      memberName: memberUser?.name || existing?.memberName || currentAccount?.memberName || 'Committee Member',
+      email: memberUser?.email || existing?.email || currentAccount?.email || '',
+      mobile: memberUser?.mobile || existing?.mobile || currentAccount?.mobile || '',
+      district: memberUser?.district || existing?.district || currentAccount?.district || 'State HQ',
+      allocatedCredit: exactAmount,
+      totalContributed: existing?.totalContributed || 0,
+      expensesClaimed: expensesClaimed,
+      availableBalance: updatedBalance,
+      billsSubmitted: existing?.billsSubmitted || 0,
+      status: 'active',
+      recentTransactions: [newTx, ...(existing?.recentTransactions || [])],
+      updatedAt: serverTimestamp(),
+    };
+
+    if (snap.exists()) {
+      await updateDoc(memberRef, memberPayload);
+    } else {
+      await setDoc(memberRef, {
+        ...memberPayload,
+        createdAt: serverTimestamp(),
+      });
+    }
+
+    // Clean redundant duplicate docs
+    if (memberUser?.email) {
+      try {
+        const cleanEmail = memberUser.email.trim().toLowerCase();
+        const qEmail = query(collection(eledgerDb, MEMBER_ACCOUNTS_COL));
+        const emailSnap = await getDocs(qEmail);
+        for (const docAcc of emailSnap.docs) {
+          const accData = docAcc.data() as MemberFinancialAccount;
+          if (docAcc.id !== memberId && (docAcc.id === 'default-member' || (accData.email && accData.email.trim().toLowerCase() === cleanEmail))) {
+            await deleteDoc(doc(eledgerDb, MEMBER_ACCOUNTS_COL, docAcc.id));
+          }
+        }
+      } catch (cleanErr) {
+        console.warn('[eLedger Service] Duplicate member cleanup note:', cleanErr);
+      }
+    }
+
+    // Recalculate unified treasury reconciliation
+    await syncEledgerMetricsFromVouchers();
+
+    return { 
+      success: true, 
+      message: `₹${exactAmount.toLocaleString('en-IN')} allocation set for ${memberUser?.name || existing?.memberName || 'Member'}. Available wallet balance: ₹${updatedBalance.toLocaleString('en-IN')}.` 
+    };
+  } catch (err: any) {
+    console.error('[eLedger Service] setMemberExactAllocationInDb error:', err);
+    return { success: false, message: err.message || 'Failed to update member allocation in database.' };
+  }
+}
+
+/**
  * Member Expense Submission (Automatic Member Wallet & Treasury Expense Sync)
  * Deducts from Member Wallet balance and automatically reflects in Treasury Expense
  */
@@ -1362,6 +1503,120 @@ export async function submitMemberExpenseInDb(
 }
 
 /**
+ * Testing System Tool: Reset All Financial Ledger Data to Zero
+ * Retains all user logins and accounts intact, but resets all vouchers, credits,
+ * member balances, category balances, and opening bank balances to ₹0.
+ */
+export async function resetAllEledgerFinancialsToZero(actorName: string = 'Central Administrator'): Promise<{ success: boolean; message: string }> {
+  try {
+    // 1. Delete all vouchers in eledger_vouchers
+    const vouchersSnap = await getDocs(collection(eledgerDb, VOUCHERS_COL));
+    for (const d of vouchersSnap.docs) {
+      await deleteDoc(d.ref);
+    }
+
+    // 2. Delete all bank credit records in eledger_bank_credits
+    const creditsSnap = await getDocs(collection(eledgerDb, BANK_CREDITS_COL));
+    for (const d of creditsSnap.docs) {
+      await deleteDoc(d.ref);
+    }
+
+    // 3. Reset all member financial accounts to zero
+    const membersSnap = await getDocs(collection(eledgerDb, MEMBER_ACCOUNTS_COL));
+    for (const d of membersSnap.docs) {
+      const data = d.data();
+      await setDoc(d.ref, {
+        userId: data.userId || d.id,
+        membershipId: data.membershipId || '',
+        memberName: data.memberName || '',
+        email: data.email || '',
+        mobile: data.mobile || '',
+        district: data.district || '',
+        allocatedCredit: 0,
+        totalContributed: 0,
+        expensesClaimed: 0,
+        availableBalance: 0,
+        billsSubmitted: 0,
+        status: data.status || 'active',
+        recentTransactions: [],
+        updatedAt: serverTimestamp(),
+      });
+    }
+
+    // 4. Reset fund categories
+    const categoriesSnap = await getDocs(collection(eledgerDb, CATEGORIES_COL));
+    if (categoriesSnap.empty) {
+      for (const cat of INITIAL_CATEGORY_SUMMARIES) {
+        const catId = cat.category.toLowerCase().replace(/[^a-z0-9]/g, '_');
+        await setDoc(doc(eledgerDb, CATEGORIES_COL, catId), {
+          ...cat,
+          allocated: 0,
+          spent: 0,
+          balance: 0,
+          updatedAt: serverTimestamp(),
+        });
+      }
+    } else {
+      for (const d of categoriesSnap.docs) {
+        const data = d.data();
+        await updateDoc(d.ref, {
+          allocated: 0,
+          spent: 0,
+          balance: 0,
+          updatedAt: serverTimestamp(),
+        });
+      }
+    }
+
+    // 5. Reset Treasury Metrics Doc
+    const metricsRef = doc(eledgerDb, 'eledger_treasury_metrics', 'current_state');
+    await setDoc(metricsRef, {
+      openingBankBalance: 0,
+      totalBankCredits: 0,
+      totalIncome: 0,
+      totalAllocatedCredit: 0,
+      totalExpensesClaimed: 0,
+      totalUnspentBalance: 0,
+      totalVouchersApproved: 0,
+      totalDisbursed: 0,
+      totalExpense: 0,
+      bankBalance: 0,
+      cashInHand: 0,
+      allocatedToMembers: 0,
+      pendingVouchersCount: 0,
+      auditedVouchersCount: 0,
+      updatedAt: serverTimestamp(),
+    });
+
+    // 6. Log Audit Event
+    try {
+      const auditRef = doc(eledgerDb, AUDIT_LOGS_COL, `audit-reset-${Date.now()}`);
+      await setDoc(auditRef, {
+        id: `audit-reset-${Date.now()}`,
+        action: 'FINANCIAL_SYSTEM_RESET_ZERO',
+        performedBy: actorName,
+        details: 'Full financial reset executed. All vouchers, credits, bank balances, and member allocations reset to zero for testing.',
+        timestamp: new Date().toISOString(),
+        createdAt: serverTimestamp(),
+      });
+    } catch (auditErr) {
+      console.warn('[eLedger Service] Audit log for reset failed:', auditErr);
+    }
+
+    return {
+      success: true,
+      message: 'All financial balances, vouchers, and member allocations have been successfully reset to ₹0 for testing.',
+    };
+  } catch (err: any) {
+    console.error('[eLedger Service] resetAllEledgerFinancialsToZero error:', err);
+    return {
+      success: false,
+      message: err.message || 'Failed to reset financial records.',
+    };
+  }
+}
+
+/**
  * Legacy compatibility wrapper for submitMemberBillClaimInDb
  */
 export async function submitMemberBillClaimInDb(
@@ -1376,3 +1631,4 @@ export async function submitMemberBillClaimInDb(
     invoiceRef: claim.invoiceRef,
   });
 }
+

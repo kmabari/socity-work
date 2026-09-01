@@ -50,7 +50,7 @@ export const ELedgerNavbar: React.FC<ELedgerNavbarProps> = ({
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span className="font-extrabold text-sm sm:text-lg tracking-tight text-white truncate">
-                    HCRS <span className="text-amber-400">eLedger</span>
+                    HCRS <span className="text-amber-400">eledger</span>
                   </span>
                   <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wider">
                     <Lock className="w-2.5 h-2.5" /> Authorized
