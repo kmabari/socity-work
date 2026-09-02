@@ -649,7 +649,7 @@ export default function App() {
       // NOTE: Do not change view to 'loading' prior to signInWithPopup to avoid losing the synchronous user-gesture token in browsers
       const result = await signInWithPopup(auth, googleProvider);
       console.log("[Google Auth] Popup authentication successful:", result.user.email);
-      toast.success('Signed in with Google!', { id: loadingToast });
+      toast.success(`Signed in with Google as ${result.user.email || 'User'}!`, { id: loadingToast });
     } catch (error: any) {
       console.error("[Google Auth Error Details]:", {
         code: error?.code,
@@ -661,30 +661,35 @@ export default function App() {
         error
       });
 
-      if (error?.code === 'auth/popup-closed-by-user' || error?.code === 'auth/cancelled-popup-request' || error?.message?.includes('closed-by-user')) {
-        toast.info('Google sign-in was cancelled (ലോഗിൻ ക്യാൻസൽ ചെയ്തു).', { id: loadingToast });
+      if (error?.code === 'auth/popup-closed-by-user' || error?.message?.includes('closed-by-user')) {
+        toast.info('Google sign-in was closed or cancelled.', { id: loadingToast });
       } else if (error?.code === 'auth/unauthorized-domain' || error?.message?.includes('unauthorized-domain')) {
         toast.error(
-          `ഗൂഗിൾ ലോഗിൻ തടസ്സപ്പെട്ടു: ഈ ഡൊമൈൻ (${currentHost}) Firebase-ൽ ആഡ് ചെയ്തിട്ടില്ല.`, 
+          `Google Sign-In restricted: Domain "${currentHost}" is not in Firebase Authorized Domains.`, 
           { 
             id: loadingToast,
             duration: 15000, 
-            description: `Firebase Console -> Authentication -> Settings -> Authorized Domains-ൽ "${currentHost}" ആഡ് ചെയ്യുക.`
+            description: `Add "${currentHost}" in Firebase Console -> Authentication -> Settings -> Authorized Domains.`
           }
         );
-      } else if (error?.code === 'auth/popup-blocked' || error?.message?.includes('popup-blocked') || error?.code === 'auth/cancelled-popup-request') {
+      } else if (
+        error?.code === 'auth/popup-blocked' || 
+        error?.message?.includes('popup-blocked') || 
+        error?.code === 'auth/cancelled-popup-request' ||
+        error?.code === 'auth/operation-not-supported-in-this-environment'
+      ) {
         try {
           console.log("[Google Auth] Popup was blocked or restricted. Initiating signInWithRedirect fallback...");
-          toast.loading('Redirecting to Google Login (റീഡയറക്റ്റ് ചെയ്യുന്നു)...', { id: loadingToast });
+          toast.loading('Redirecting to Google Login...', { id: loadingToast });
           await signInWithRedirect(auth, googleProvider);
           return;
         } catch (redirErr: any) {
           console.error("[Google Auth Redirect Fallback Error]:", redirErr?.code, redirErr?.message, redirErr);
-          toast.error('Browser Popup തടയപ്പെട്ടു. ദയവായി മൊബൈൽ നമ്പറും പാസ്‌വേഡും ഉപയോഗിച്ച് ലോഗിൻ ചെയ്യുക.', { id: loadingToast, duration: 8000 });
+          toast.error('Browser Popup was blocked. Please use Mobile Number & Password to log in.', { id: loadingToast, duration: 8000 });
         }
       } else {
         const errorMsg = error?.message || 'Google sign-in failed. Please use Mobile Number & Password.';
-        toast.error(`ഗൂഗിൾ ലോഗിൻ പരാജയപ്പെട്ടു (${error?.code || 'Error'}).`, { id: loadingToast, duration: 8000, description: errorMsg });
+        toast.error(`Google sign-in failed (${error?.code || 'Error'}).`, { id: loadingToast, duration: 8000, description: errorMsg });
       }
     } finally {
       setIsGoogleLoggingIn(false);
@@ -1187,9 +1192,40 @@ export default function App() {
             console.error("Error healing UID mismatch:", healErr);
           }
 
-          if (!userData && currentViewRef.current === 'loading' && !isAdminEmail) {
-            setView('register');
-            toast.info('പൂർണ്ണരൂപം ലഭ്യമല്ല. ദയവായി രജിസ്റ്റർ ചെയ്യുക. (Profile not found, please register)', { id: 'profile_not_found_toast' });
+          if (!userData && !isAdminEmail) {
+            console.log("Auto-initializing member profile for Google auth user:", authUser.uid, authUser.email);
+            const newUserDoc: UserProfile = {
+              uid: authUser.uid,
+              name: authUser.displayName || 'Member',
+              email: authUser.email || '',
+              mobile: '',
+              address: '',
+              district: '',
+              state: 'Kerala',
+              pincode: '',
+              postOffice: '',
+              assemblyConstituency: '',
+              bloodGroup: '',
+              membershipId: '',
+              isPaid: false,
+              isApproved: false,
+              isAdmin: false,
+              serialNo: 0,
+              registrationDate: serverTimestamp(),
+              photoUrl: authUser.photoURL || '',
+              role: 'member',
+              status: 'active',
+              membershipType: 'Annual',
+              mustCompleteProfile: true,
+              issueDate: serverTimestamp(),
+            };
+            try {
+              await setDoc(doc(db, 'users', authUser.uid), newUserDoc, { merge: true });
+              userData = newUserDoc;
+            } catch (createErr) {
+              console.error("Failed to auto-create Google member profile:", createErr);
+              userData = newUserDoc;
+            }
           }
         }
 
@@ -1227,7 +1263,7 @@ export default function App() {
             !userData.pin
           );
           const isMustComplete = !isAdmin && !isOperator && !isMustChange && (
-            userData.mustCompleteProfile === true && !userData.name && !userData.membershipId
+            (userData.mustCompleteProfile === true || (!userData.mobile && !userData.membershipId)) && !userData.membershipId
           );
 
           if (currentViewRef.current !== 'janamail' && currentViewRef.current !== 'eledger') {

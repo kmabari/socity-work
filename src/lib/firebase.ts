@@ -5,28 +5,40 @@ import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 // Support external deployment (Vercel, Netlify, custom domain, etc.) with robust fallback merging
+const cleanStr = (val?: string | null): string => {
+  if (!val) return '';
+  return String(val).trim().replace(/^["']+|["']+$/g, '').trim();
+};
+
 const getFirebaseConfig = () => {
   const metaObj = import.meta as any;
   const env = metaObj.env || {};
 
-  const apiKey = (env.VITE_FIREBASE_API_KEY || (firebaseConfig as any).apiKey || '').trim();
-  const projectId = (env.VITE_FIREBASE_PROJECT_ID || (firebaseConfig as any).projectId || '').trim();
+  const apiKey = cleanStr(env.VITE_FIREBASE_API_KEY) || cleanStr((firebaseConfig as any).apiKey);
+  const projectId = cleanStr(env.VITE_FIREBASE_PROJECT_ID) || cleanStr((firebaseConfig as any).projectId) || 'hcrs-membership';
   
   // Intelligent authDomain resolution:
   // 1. env.VITE_FIREBASE_AUTH_DOMAIN
   // 2. firebaseConfig.authDomain
   // 3. Derived from projectId: `${projectId}.firebaseapp.com`
-  let authDomain = (env.VITE_FIREBASE_AUTH_DOMAIN || (firebaseConfig as any).authDomain || '').trim();
+  let authDomain = cleanStr(env.VITE_FIREBASE_AUTH_DOMAIN) || cleanStr((firebaseConfig as any).authDomain);
+  // Strip http:// or https:// and any trailing slashes if accidentally provided in Vercel env settings
+  authDomain = authDomain.replace(/^https?:\/\//i, '').replace(/\/+$/, '').trim();
   if (!authDomain && projectId) {
     authDomain = `${projectId}.firebaseapp.com`;
   }
 
-  const storageBucket = (env.VITE_FIREBASE_STORAGE_BUCKET || (firebaseConfig as any).storageBucket || (projectId ? `${projectId}.firebasestorage.app` : '')).trim();
-  const messagingSenderId = (env.VITE_FIREBASE_MESSAGING_SENDER_ID || (firebaseConfig as any).messagingSenderId || '').trim();
-  const appId = (env.VITE_FIREBASE_APP_ID || (firebaseConfig as any).appId || '').trim();
-  const databaseURL = (env.VITE_FIREBASE_DATABASE_URL || (firebaseConfig as any).databaseURL || '').trim();
-  const measurementId = (env.VITE_FIREBASE_MEASUREMENT_ID || (firebaseConfig as any).measurementId || '').trim();
-  const firestoreDatabaseId = (env.VITE_FIREBASE_DATABASE_ID || (firebaseConfig as any).firestoreDatabaseId || '(default)').trim();
+  let storageBucket = cleanStr(env.VITE_FIREBASE_STORAGE_BUCKET) || cleanStr((firebaseConfig as any).storageBucket);
+  storageBucket = storageBucket.replace(/^https?:\/\//i, '').replace(/\/+$/, '').trim();
+  if (!storageBucket && projectId) {
+    storageBucket = `${projectId}.firebasestorage.app`;
+  }
+
+  const messagingSenderId = cleanStr(env.VITE_FIREBASE_MESSAGING_SENDER_ID) || cleanStr((firebaseConfig as any).messagingSenderId);
+  const appId = cleanStr(env.VITE_FIREBASE_APP_ID) || cleanStr((firebaseConfig as any).appId);
+  const databaseURL = cleanStr(env.VITE_FIREBASE_DATABASE_URL) || cleanStr((firebaseConfig as any).databaseURL);
+  const measurementId = cleanStr(env.VITE_FIREBASE_MEASUREMENT_ID) || cleanStr((firebaseConfig as any).measurementId);
+  const firestoreDatabaseId = cleanStr(env.VITE_FIREBASE_DATABASE_ID) || cleanStr((firebaseConfig as any).firestoreDatabaseId) || '(default)';
 
   const final = {
     apiKey,
