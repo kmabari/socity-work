@@ -8,6 +8,13 @@ import { google } from "googleapis";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import admin from "firebase-admin";
+import { db as clientDb } from "./src/lib/firebase";
+import { collection, getDocs, getDoc, doc, updateDoc, query, where, limit } from "firebase/firestore";
+
+// In-memory cache for fast members retrieval
+let membersMemoryCache: { data: any[]; timestamp: number } | null = null;
+let claimsMemoryCache: { data: any[]; timestamp: number } | null = null;
+const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes cache TTL
 
 dotenv.config();
 
@@ -696,6 +703,11 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     }
   });
 
+  // Health check endpoint
+  app.get(["/api/health", "/health"], (_req, res) => {
+    res.json({ status: "ok", timestamp: Date.now() });
+  });
+
   // API endpoint to serve local extracted old users backup
   app.get(["/api/local-backup-users", "/local-backup-users"], (req, res) => {
     try {
@@ -709,6 +721,353 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
     } catch (err: any) {
       console.error("Failed to read local backup users:", err);
       res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Dedicated high-speed member lookup endpoint that bypasses browser WebChannel delays
+  app.post(["/api/auth/lookup-member", "/api/lookup-member"], async (req, res) => {
+    try {
+      const { identifier, mobile } = req.body || {};
+      const rawInput = String(identifier || mobile || '').trim();
+      if (!rawInput) {
+        return res.status(400).json({ success: false, error: "Identifier required" });
+      }
+
+      let sanitizedMobile = rawInput.replace(/\D/g, '');
+      if (sanitizedMobile.startsWith('91') && sanitizedMobile.length === 12) {
+        sanitizedMobile = sanitizedMobile.slice(2);
+      } else if (sanitizedMobile.startsWith('0') && sanitizedMobile.length === 11) {
+        sanitizedMobile = sanitizedMobile.slice(1);
+      } else if (sanitizedMobile.length > 10) {
+        sanitizedMobile = sanitizedMobile.slice(-10);
+      }
+
+      const isMobile = /^\d{10}$/.test(sanitizedMobile);
+      const isEmail = rawInput.includes('@');
+      const cleanUpper = rawInput.toUpperCase();
+
+      const candidateDocs: any[] = [];
+
+      // 1. Check in-memory cache if available (instant 0ms response)
+      if (membersMemoryCache?.data && membersMemoryCache.data.length > 0) {
+        for (const m of membersMemoryCache.data) {
+          const mMob = String(m.mobile || '').replace(/\D/g, '').slice(-10);
+          const mEmail = String(m.email || '').toLowerCase().trim();
+          const mMemId = String(m.membershipId || '').toUpperCase().trim();
+          const mHrId = String(m.highrichId || '').toUpperCase().trim();
+
+          if (isMobile && mMob === sanitizedMobile) {
+            candidateDocs.push(m);
+          } else if (isEmail && mEmail === rawInput.toLowerCase()) {
+            candidateDocs.push(m);
+          } else if (mMemId && (mMemId === cleanUpper || mMemId.includes(cleanUpper))) {
+            candidateDocs.push(m);
+          } else if (mHrId && mHrId === cleanUpper) {
+            candidateDocs.push(m);
+          }
+        }
+      }
+
+      // 2. Query Firestore if no match in memory cache or cache was empty
+      if (candidateDocs.length === 0) {
+        const usersRef = collection(clientDb, 'users');
+
+        if (isMobile) {
+          const mobileVariations = [
+            sanitizedMobile,
+            `+91${sanitizedMobile}`,
+            `91${sanitizedMobile}`,
+            `0${sanitizedMobile}`,
+            `+91 ${sanitizedMobile}`
+          ];
+          try {
+            const snap = await getDocs(query(usersRef, where('mobile', 'in', mobileVariations), limit(10)));
+            if (!snap.empty) {
+              snap.docs.forEach(d => candidateDocs.push({ id: d.id, uid: d.id, ...d.data() }));
+            }
+          } catch (e) {}
+
+          // Fallback queries for mobile: alternate fields and direct doc IDs
+          if (candidateDocs.length === 0) {
+            const directIds = [sanitizedMobile, `life_${sanitizedMobile}`, `offline_${sanitizedMobile}`, `hcrs_imp_${sanitizedMobile}`];
+            for (const dId of directIds) {
+              try {
+                const dSnap = await getDoc(doc(clientDb, 'users', dId));
+                if (dSnap.exists()) {
+                  candidateDocs.push({ id: dSnap.id, uid: dSnap.id, ...dSnap.data() });
+                  break;
+                }
+              } catch (e) {}
+            }
+          }
+        } else if (isEmail) {
+          try {
+            const snap = await getDocs(query(usersRef, where('email', '==', rawInput.toLowerCase()), limit(10)));
+            if (!snap.empty) {
+              snap.docs.forEach(d => candidateDocs.push({ id: d.id, uid: d.id, ...d.data() }));
+            }
+          } catch (e) {}
+        } else {
+          // Membership ID or custom ID
+          try {
+            const snap = await getDocs(query(usersRef, where('membershipId', '==', rawInput), limit(10)));
+            if (!snap.empty) {
+              snap.docs.forEach(d => candidateDocs.push({ id: d.id, uid: d.id, ...d.data() }));
+            }
+          } catch (e) {}
+
+          if (candidateDocs.length === 0) {
+            try {
+              const snap = await getDocs(query(usersRef, where('membershipId', '==', cleanUpper), limit(10)));
+              if (!snap.empty) {
+                snap.docs.forEach(d => candidateDocs.push({ id: d.id, uid: d.id, ...d.data() }));
+              }
+            } catch (e) {}
+          }
+
+          if (candidateDocs.length === 0) {
+            try {
+              const snap = await getDocs(query(usersRef, where('highrichId', '==', cleanUpper), limit(10)));
+              if (!snap.empty) {
+                snap.docs.forEach(d => candidateDocs.push({ id: d.id, uid: d.id, ...d.data() }));
+              }
+            } catch (e) {}
+          }
+        }
+      }
+
+      if (candidateDocs.length === 0) {
+        return res.json({
+          success: true,
+          found: false,
+          diagnostic: `No matching record found in Firestore users for "${rawInput}"`
+        });
+      }
+
+      // Sort candidate documents to choose the primary active/approved record
+      const sorted = [...candidateDocs].sort((a, b) => {
+        const isActiveA = (a.status === 'active' || a.isApproved === true) && a.status !== 'deleted';
+        const isActiveB = (b.status === 'active' || b.isApproved === true) && b.status !== 'deleted';
+        if (isActiveA && !isActiveB) return -1;
+        if (isActiveB && !isActiveA) return 1;
+
+        const hasNameA = Boolean(a.name && a.name !== 'Member' && String(a.name).trim().length > 1);
+        const hasNameB = Boolean(b.name && b.name !== 'Member' && String(b.name).trim().length > 1);
+        const hasMemIdA = Boolean(a.membershipId && String(a.membershipId).toUpperCase().startsWith('HCRS'));
+        const hasMemIdB = Boolean(b.membershipId && String(b.membershipId).toUpperCase().startsWith('HCRS'));
+        const scoreA = (hasNameA ? 2 : 0) + (hasMemIdA ? 2 : 0);
+        const scoreB = (hasNameB ? 2 : 0) + (hasMemIdB ? 2 : 0);
+        if (scoreA !== scoreB) return scoreB - scoreA;
+
+        const isOfflineA = String(a.id || '').startsWith('offline_');
+        const isOfflineB = String(b.id || '').startsWith('offline_');
+        if (!isOfflineA && isOfflineB) return -1;
+        if (isOfflineA && !isOfflineB) return 1;
+
+        return 0;
+      });
+
+      const best = sorted[0];
+      const docEmail = (best?.email || '').trim();
+      const targetEmail = docEmail.includes('@') ? docEmail : `${best.mobile || sanitizedMobile || 'user'}@hcrs.society`;
+
+      return res.json({
+        success: true,
+        found: true,
+        user: best,
+        targetEmail: targetEmail
+      });
+    } catch (err: any) {
+      console.error("[lookup-member] Error:", err);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // In-flight request deduplication promises to avoid overlapping massive Firestore scans
+  let membersInFlightPromise: Promise<any[]> | null = null;
+  let claimsInFlightPromise: Promise<any[]> | null = null;
+
+  // High-performance database members endpoint with in-memory caching and deduplication
+  app.get(["/api/database/members", "/database/members"], async (req, res) => {
+    try {
+      const now = Date.now();
+      const forceFresh = req.query.fresh === 'true';
+      
+      // If cached data is recent (< CACHE_TTL_MS or 0 when fresh), return immediately
+      const minCacheAge = forceFresh ? 0 : CACHE_TTL_MS;
+      if (membersMemoryCache && (now - membersMemoryCache.timestamp) < minCacheAge) {
+        return res.json({
+          success: true,
+          count: membersMemoryCache.data.length,
+          cached: true,
+          data: membersMemoryCache.data
+        });
+      }
+
+      // If an existing fetch is already running, wait for it rather than starting another
+      if (!membersInFlightPromise) {
+        membersInFlightPromise = (async () => {
+          const timeoutPromise = new Promise<any[]>((_, reject) => 
+            setTimeout(() => reject(new Error("Firestore members fetch timeout")), 20000)
+          );
+          const fetchPromise = (async () => {
+            const snapshot = await getDocs(collection(clientDb, 'users'));
+            return snapshot.docs.map(d => ({ uid: d.id, ...d.data() }));
+          })();
+          const list = await Promise.race([fetchPromise, timeoutPromise]);
+          membersMemoryCache = {
+            data: list,
+            timestamp: Date.now()
+          };
+          return list;
+        })().finally(() => {
+          membersInFlightPromise = null;
+        });
+      }
+
+      const list = await membersInFlightPromise;
+
+      return res.json({
+        success: true,
+        count: list.length,
+        cached: false,
+        data: list
+      });
+    } catch (err: any) {
+      console.error("[server] /api/database/members fetch error:", err);
+      if (membersMemoryCache) {
+        return res.json({
+          success: true,
+          count: membersMemoryCache.data.length,
+          cached: true,
+          stale: true,
+          data: membersMemoryCache.data
+        });
+      }
+      return res.status(500).json({ success: false, error: err?.message || "Failed to query members from database" });
+    }
+  });
+
+  // Fast Database Claims Retrieval with In-Memory Caching and deduplication
+  app.get(["/api/database/claims", "/database/claims"], async (req, res) => {
+    try {
+      const now = Date.now();
+      const forceFresh = req.query.fresh === 'true';
+      const minCacheAge = forceFresh ? 0 : CACHE_TTL_MS;
+      let list: any[] = [];
+      if (claimsMemoryCache && (now - claimsMemoryCache.timestamp) < minCacheAge) {
+        list = claimsMemoryCache.data;
+      } else {
+        if (!claimsInFlightPromise) {
+          claimsInFlightPromise = (async () => {
+            let fetchedList: any[] = [];
+            try {
+              const snap = await getDocs(collection(clientDb, 'claims'));
+              fetchedList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            } catch (clientErr: any) {
+              console.warn("[server] clientDb claims query failed, checking dbAdmin:", clientErr?.message);
+              if (dbAdmin) {
+                const snap = await dbAdmin.collection('claims').get();
+                fetchedList = snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+              } else {
+                throw clientErr;
+              }
+            }
+            claimsMemoryCache = {
+              data: fetchedList,
+              timestamp: Date.now()
+            };
+            return fetchedList;
+          })().finally(() => {
+            claimsInFlightPromise = null;
+          });
+        }
+        list = await claimsInFlightPromise;
+      }
+
+      const { uid, mobile, membershipId } = req.query;
+      if (uid || mobile || membershipId) {
+        const cleanMob = mobile ? String(mobile).replace(/\D/g, '').slice(-10) : '';
+        const targetUid = uid ? String(uid).trim() : '';
+        const targetMemId = membershipId ? String(membershipId).trim().toLowerCase() : '';
+
+        const filtered = list.filter((c: any) => {
+          if (targetUid && (c.uid === targetUid || c.uid === `offline_${cleanMob}`)) return true;
+          if (cleanMob && c.userMobile) {
+            const cMob = String(c.userMobile).replace(/\D/g, '').slice(-10);
+            if (cMob === cleanMob) return true;
+          }
+          if (targetMemId && c.membershipId && String(c.membershipId).toLowerCase() === targetMemId) return true;
+          return false;
+        });
+
+        return res.json({
+          success: true,
+          count: filtered.length,
+          cached: false,
+          data: filtered
+        });
+      }
+
+      return res.json({
+        success: true,
+        count: list.length,
+        cached: false,
+        data: list
+      });
+    } catch (err: any) {
+      console.error("[server] /api/database/claims fetch error:", err);
+      if (claimsMemoryCache) {
+        return res.json({
+          success: true,
+          count: claimsMemoryCache.data.length,
+          cached: true,
+          stale: true,
+          data: claimsMemoryCache.data
+        });
+      }
+      return res.status(500).json({ success: false, error: err?.message || "Failed to query claims from database" });
+    }
+  });
+
+  // Fast Database Life-Members Retrieval
+  app.get(["/api/database/life-members", "/database/life-members"], async (req, res) => {
+    try {
+      const isLife = (u: any) => {
+        if (!u) return false;
+        if (u.membership_type === 'LIFE_MEMBER' || u.membershipType === 'LIFE_MEMBER') return true;
+        if (u.isLifeMember || u.is_life_member) return true;
+        if (typeof u.membershipId === 'string') {
+          const m = u.membershipId.toUpperCase();
+          if (m.includes('-LIFE-') || m.startsWith('HCRS-LIFE') || m.includes('-LM-')) return true;
+        }
+        return false;
+      };
+
+      if (membersMemoryCache && Array.isArray(membersMemoryCache.data) && membersMemoryCache.data.length > 0) {
+        const lifeList = membersMemoryCache.data.filter(isLife);
+        return res.json({
+          success: true,
+          count: lifeList.length,
+          cached: true,
+          data: lifeList
+        });
+      }
+
+      // Query firestore directly
+      const q = query(collection(clientDb, 'users'), where('membership_type', '==', 'LIFE_MEMBER'));
+      const snap = await getDocs(q);
+      const list = snap.docs.map(d => ({ uid: d.id, ...(d.data() as any) }));
+
+      return res.json({
+        success: true,
+        count: list.length,
+        cached: false,
+        data: list
+      });
+    } catch (err: any) {
+      console.error("[server] /api/database/life-members fetch error:", err);
+      return res.status(500).json({ success: false, error: err?.message });
     }
   });
 
@@ -1698,43 +2057,78 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         return res.status(400).json({ error: "മൊബൈൽ നമ്പർ അല്ലെങ്കിൽ ഇമെയിൽ നൽകുക. (Mobile number or email required)" });
       }
 
-      if (!dbAdmin) {
-        return res.status(500).json({ error: "Database service unavailable" });
-      }
+      let matchedDocIds: string[] = [];
 
-      let userDocs: FirebaseFirestore.QueryDocumentSnapshot[] = [];
+      // Query candidate docs using clientDb (which has direct Firestore access and adheres to rules)
+      const usersRef = collection(clientDb, 'users');
 
       if (cleanMobile) {
-        const snap = await dbAdmin.collection('users').where('mobile', '==', cleanMobile).limit(5).get();
-        if (!snap.empty) {
-          userDocs = snap.docs;
+        const mobileVariations = [
+          cleanMobile,
+          `+91${cleanMobile}`,
+          `91${cleanMobile}`,
+          `0${cleanMobile}`,
+          `+91 ${cleanMobile}`
+        ];
+        try {
+          const snap = await getDocs(query(usersRef, where('mobile', 'in', mobileVariations), limit(5)));
+          snap.docs.forEach(d => matchedDocIds.push(d.id));
+        } catch (e) {}
+
+        if (matchedDocIds.length === 0) {
+          const directIds = [cleanMobile, `life_${cleanMobile}`, `offline_${cleanMobile}`, `hcrs_imp_${cleanMobile}`];
+          for (const dId of directIds) {
+            try {
+              const dSnap = await getDoc(doc(clientDb, 'users', dId));
+              if (dSnap.exists()) {
+                matchedDocIds.push(dSnap.id);
+                break;
+              }
+            } catch (e) {}
+          }
         }
       }
 
-      if (userDocs.length === 0 && cleanEmail) {
-        const snap = await dbAdmin.collection('users').where('email', '==', cleanEmail).limit(5).get();
-        if (!snap.empty) {
-          userDocs = snap.docs;
-        }
+      if (matchedDocIds.length === 0 && cleanEmail) {
+        try {
+          const snap = await getDocs(query(usersRef, where('email', '==', cleanEmail), limit(5)));
+          snap.docs.forEach(d => matchedDocIds.push(d.id));
+        } catch (e) {}
       }
 
-      if (userDocs.length === 0) {
+      if (matchedDocIds.length === 0) {
         return res.status(404).json({ error: "ഈ മൊബൈൽ നമ്പർ / ഇമെയിലിൽ രജിസ്റ്റർ ചെയ്ത അക്കൗണ്ട് കണ്ടെത്തിയില്ല. (Account not found with this mobile or email)" });
       }
 
-      // Reset PIN to 123456 and flag mustChangePassword: true
-      const batch = dbAdmin.batch();
-      for (const uDoc of userDocs) {
-        batch.update(uDoc.ref, {
-          pin: '123456',
-          mustChangePassword: true,
-          pinResetRequested: true,
-          mustCompleteProfile: false
-        });
+      // Reset PIN to 123456 and flag mustChangePassword: true via clientDb
+      let updateCount = 0;
+      for (const dId of matchedDocIds) {
+        try {
+          await updateDoc(doc(clientDb, 'users', dId), {
+            pin: '123456',
+            mustChangePassword: true,
+            pinResetRequested: true
+          });
+          updateCount++;
+        } catch (updErr) {
+          console.warn(`[PIN Reset] clientDb update failed for ${dId}, trying admin:`, updErr);
+          if (dbAdmin) {
+            try {
+              await dbAdmin.collection('users').doc(dId).update({
+                pin: '123456',
+                mustChangePassword: true,
+                pinResetRequested: true
+              });
+              updateCount++;
+            } catch (admErr) {}
+          }
+        }
       }
-      await batch.commit();
 
-      console.log(`[PIN Reset] Successfully reset PIN to 123456 for ${cleanMobile || cleanEmail} (${userDocs.length} records updated)`);
+      // Invalidate memory cache so next lookup retrieves fresh PIN
+      membersMemoryCache = null;
+
+      console.log(`[PIN Reset] Successfully reset PIN to 123456 for ${cleanMobile || cleanEmail} (${updateCount} records updated)`);
 
       return res.json({
         success: true,
@@ -1938,51 +2332,55 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         return res.status(400).json({ error: "Member UID or mobile is required" });
       }
 
-      if (!dbAdmin) {
-        return res.json({ success: true, note: "Handled via client Firestore SDK" });
-      }
+      const now = new Date();
+      const expiry = new Date();
+      expiry.setFullYear(now.getFullYear() + 1);
 
-      try {
-        const now = new Date();
-        const expiry = new Date();
-        expiry.setFullYear(now.getFullYear() + 1);
-
-        const updatePayload: any = {
-          status: 'active',
-          isApproved: true,
-          renewalPending: false,
-          expiryDate: admin.firestore.Timestamp.fromDate(expiry),
-          renewalApprovedAt: admin.firestore.FieldValue.serverTimestamp(),
-          renewalDate: admin.firestore.FieldValue.serverTimestamp(),
-          issueDate: admin.firestore.FieldValue.serverTimestamp()
-        };
-
-        let existingMobile = mobile;
-
-        if (uid) {
+      if (dbAdmin && uid) {
+        try {
+          const updatePayload: any = {
+            status: 'active',
+            isApproved: true,
+            renewalPending: false,
+            expiryDate: admin.firestore.Timestamp.fromDate(expiry),
+            renewalApprovedAt: admin.firestore.FieldValue.serverTimestamp(),
+            renewalDate: admin.firestore.FieldValue.serverTimestamp(),
+            issueDate: admin.firestore.FieldValue.serverTimestamp()
+          };
           const userRef = dbAdmin.collection('users').doc(uid);
-          const userSnap = await userRef.get();
-          if (userSnap.exists) {
-            await userRef.update(updatePayload);
-            const uData = userSnap.data();
-            if (!existingMobile && uData?.mobile) {
-              existingMobile = uData.mobile;
-            }
-          } else {
-            await userRef.set(updatePayload, { merge: true });
-          }
+          await userRef.set(updatePayload, { merge: true });
+        } catch (dbErr: any) {
+          console.warn("[Admin Renewal Approval dbAdmin notice]:", dbErr?.message || dbErr);
         }
-
-        return res.json({
-          success: true,
-          uid,
-          status: 'active',
-          isApproved: true
-        });
-      } catch (dbErr: any) {
-        console.warn("[Admin Renewal Approval API Notice - falling back to client Firestore]:", dbErr?.message || dbErr);
-        return res.json({ success: true, note: "Client-side Firestore fallback active" });
       }
+
+      if (clientDb && uid) {
+        try {
+          const { doc, setDoc } = await import("firebase/firestore");
+          const updatePayload: any = {
+            status: 'active',
+            isApproved: true,
+            renewalPending: false,
+            expiryDate: expiry.toISOString(),
+            renewalApprovedAt: now.toISOString(),
+            renewalDate: now.toISOString(),
+            issueDate: now.toISOString()
+          };
+          await setDoc(doc(clientDb, 'users', uid), updatePayload, { merge: true });
+        } catch (cErr: any) {
+          console.warn("[Admin Renewal Approval clientDb notice]:", cErr?.message || cErr);
+        }
+      }
+
+      // Invalidate memory cache so next read is fresh
+      membersMemoryCache = null;
+
+      return res.json({
+        success: true,
+        uid,
+        status: 'active',
+        isApproved: true
+      });
     } catch (err: any) {
       console.warn("[Admin Renewal Approval API Notice]:", err?.message || err);
       return res.json({ success: true, note: "Client-side Firestore fallback active" });
@@ -1996,10 +2394,6 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
         return res.status(400).json({ error: "UID or mobile is required" });
       }
 
-      if (!dbAdmin) {
-        return res.json({ success: true, note: "Handled via client Firestore SDK" });
-      }
-
       const cleanData: any = {};
       if (data && typeof data === 'object') {
         for (const [k, v] of Object.entries(data)) {
@@ -2010,8 +2404,25 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       }
 
       if (uid) {
-        await dbAdmin.collection('users').doc(uid).set(cleanData, { merge: true });
+        if (dbAdmin) {
+          try {
+            await dbAdmin.collection('users').doc(uid).set(cleanData, { merge: true });
+          } catch (dbErr: any) {
+            console.warn("[Admin Update Member dbAdmin notice]:", dbErr?.message || dbErr);
+          }
+        }
+        if (clientDb) {
+          try {
+            const { doc, setDoc } = await import("firebase/firestore");
+            await setDoc(doc(clientDb, 'users', uid), cleanData, { merge: true });
+          } catch (cErr: any) {
+            console.warn("[Admin Update Member clientDb notice]:", cErr?.message || cErr);
+          }
+        }
       }
+
+      // Invalidate cache
+      membersMemoryCache = null;
 
       return res.json({ success: true, uid: uid || mobile, updated: true });
     } catch (err: any) {

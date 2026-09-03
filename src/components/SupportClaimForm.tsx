@@ -1094,6 +1094,21 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
 
       let docsList = Array.from(claimsMap.values());
 
+      // Server database API fallback if client Firestore queries returned empty
+      if (docsList.length === 0) {
+        try {
+          const apiRes = await fetch(`/api/database/claims?mobile=${cleanMobile}&uid=${activeUid}&membershipId=${encodeURIComponent(user.membershipId || '')}&t=${Date.now()}`);
+          if (apiRes.ok) {
+            const apiJson = await apiRes.json();
+            if (apiJson.success && Array.isArray(apiJson.data) && apiJson.data.length > 0) {
+              docsList = apiJson.data;
+            }
+          }
+        } catch (apiErr) {
+          console.warn("SupportClaimForm claims API fallback notice:", apiErr);
+        }
+      }
+
       // --- DYNAMIC CLAIM UID AUTO-HEALING (Non-blocking background) ---
       if (activeUid && !activeUid.startsWith('offline_') && docsList.length > 0) {
         const unhealed = docsList.filter(c => c.uid !== activeUid);

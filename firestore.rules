@@ -237,8 +237,8 @@ service cloud.firestore {
           (isSignedIn() && (isOwner(userId) || isProfileOwner(userId)) && 
            (!incoming().diff(existing()).affectedKeys().hasAny(['isAdmin', 'role', 'quota', 'quotaUsed']))) ||
 
-          // Action 3: General Renewal Submission (Guest / Public or Self)
-          (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'isApproved', 'renewalPending', 'renewalTransactionId', 'renewalDate', 'renewalPaymentDate', 'renewalPaymentTime', 'paymentAmount', 'paymentId', 'orderId', 'transactionId', 'paymentMethod', 'paymentStatus', 'receiptNumber', 'expiryDate', 'paymentTime']) &&
+          // Action 3: General Renewal Submission & Admin Approval
+          (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'isApproved', 'renewalPending', 'renewalTransactionId', 'renewalDate', 'renewalPaymentDate', 'renewalPaymentTime', 'paymentAmount', 'paymentId', 'orderId', 'transactionId', 'paymentMethod', 'paymentStatus', 'receiptNumber', 'expiryDate', 'paymentTime', 'issueDate', 'registrationDate', 'renewalApprovedAt']) &&
            (!incoming().diff(existing()).affectedKeys().hasAny(['isAdmin', 'role', 'pin', 'name', 'mobile', 'quota', 'quotaUsed']))) ||
 
           // Action 4: Member Self/Public PIN Reset Request
@@ -326,7 +326,7 @@ service cloud.firestore {
       );
     }
 
-    // --- Collection: claims ---
+    // --- Collection: claims & potential sub/legacy collections ---
     match /claims/{claimId} {
       allow read: if true;
       allow create: if true;
@@ -338,6 +338,36 @@ service cloud.firestore {
          resource.data.userMobile == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.mobile)
       )) || claimId.matches('^janamail_.*');
       allow delete: if isAdmin() || isOperator();
+    }
+
+    match /life_members/{docId} {
+      allow read: if true;
+      allow write: if isAdmin() || isOperator();
+    }
+
+    match /court_claims/{docId} {
+      allow read: if true;
+      allow write: if isAdmin() || isOperator();
+    }
+
+    match /support_claims/{docId} {
+      allow read: if true;
+      allow write: if isAdmin() || isOperator();
+    }
+
+    match /combo_claims/{docId} {
+      allow read: if true;
+      allow write: if isAdmin() || isOperator();
+    }
+
+    match /member_claims/{docId} {
+      allow read: if true;
+      allow write: if isAdmin() || isOperator();
+    }
+
+    match /claim_requests/{docId} {
+      allow read: if true;
+      allow write: if isAdmin() || isOperator();
     }
 
     // --- Collection: support_tickets ---

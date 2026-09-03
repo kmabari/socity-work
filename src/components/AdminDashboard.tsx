@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import { motion } from 'motion/react';
 import { getWAMessage, sendWAMessage, getWARenewalMessage, sendWARenewalMessage } from '@/src/lib/whatsapp';
@@ -28,6 +28,13 @@ import {
   getHardshipDetail,
   getFuturePreferenceDetail
 } from '../lib/claimPrint';
+import {
+  printCompetentAuthorityClaimReport,
+  downloadCompetentAuthorityClaimPdf,
+  printManagementAndCompetentAuthorityComboReport,
+  downloadManagementAndCompetentAuthorityComboPdf
+} from '../lib/competentAuthorityPrint';
+import CompetentAuthorityModal from './CompetentAuthorityModal';
 import { 
   Crown,
   Users, 
@@ -47,6 +54,7 @@ import {
   Camera,
   Database,
   FileSpreadsheet,
+  FileCheck,
   Receipt,
   Plus,
   Pencil,
@@ -123,6 +131,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { normalizeDistrictCode, isDistrictMatch } from '../lib/districtUtils';
 
 interface AdminDashboardProps {
   user?: UserProfile | null;
@@ -240,7 +249,7 @@ export default function AdminDashboard({
   isSyncingMembers = false
 }: AdminDashboardProps) {
   const getDistrictCode = (nameOrCode: string) => {
-    if (!nameOrCode) return DISTRICTS[0].code;
+    if (!nameOrCode) return '';
     const normalized = nameOrCode.trim().toUpperCase();
     
     // 1. Exact code match
@@ -513,15 +522,17 @@ export default function AdminDashboard({
   };
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [districtFilter, setDistrictFilter] = useState(() => {
-    if (user?.district && !isSuperAdmin) {
-      return user.district;
-    }
-    return 'all';
-  });
+  const [districtFilter, setDistrictFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sourceFilter, setSourceFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+
+  // Auto-sync members from database if table is empty on mount
+  useEffect(() => {
+    if (members.length === 0 && onRefreshMembers && !isSyncingMembers) {
+      onRefreshMembers();
+    }
+  }, [members.length, onRefreshMembers, isSyncingMembers]);
 
   const searchDigits = useMemo(() => {
     return searchTerm.replace(/\D/g, '');
@@ -533,7 +544,7 @@ export default function AdminDashboard({
     return members.find(m => 
       m.status !== 'deleted' && 
       (m.mobile || '').replace(/\D/g, '').includes(searchDigits) && 
-      m.district !== user.district
+      !isDistrictMatch(m.district, user.district)
     );
   }, [members, searchDigits, isSecondary, user?.district]);
 
@@ -608,6 +619,11 @@ export default function AdminDashboard({
   const [deletingClaimId, setDeletingClaimId] = useState<string | null>(null);
   const [claimsViewMode, setClaimsViewMode] = useState<'individual' | 'combo'>('individual');
   const [comboSubView, setComboSubView] = useState<'groups' | 'all_persons'>('groups');
+
+  // Competent Authority Claim Form Modal States
+  const [isCompetentAuthorityModalOpen, setIsCompetentAuthorityModalOpen] = useState(false);
+  const [competentModalInitialClaim, setCompetentModalInitialClaim] = useState<any>(null);
+  const [competentModalInitialMember, setCompetentModalInitialMember] = useState<UserProfile | undefined>(undefined);
 
   // Claims Bulk Import States
   const [isClaimsImportOpen, setIsClaimsImportOpen] = useState(false);
@@ -1158,58 +1174,92 @@ export default function AdminDashboard({
     }
   };
 
-  useEffect(() => {
-    if (!user) return;
-    setClaimsError(null);
-    if (user.uid === 'offline_admin') {
-      try {
-        const cached = localStorage.getItem('hcrs_cached_claims');
-        if (cached) {
-          setClaims(JSON.parse(cached));
-        } else {
-          setClaims([]);
+  const [isSyncingClaims, setIsSyncingClaims] = useState(false);
+
+  const refreshClaimsList = useCallback(async (isManual = false) => {
+    setIsSyncingClaims(true);
+    const toastId = isManual ? toast.loading('ഡാറ്റാബേസിൽ നിന്ന് ക്ലെയിമുകൾ സിങ്ക് ചെയ്യുന്നു...') : undefined;
+    try {
+      const res = await fetch(`/api/database/claims?fresh=true&t=${Date.now()}`);
+      if (res.ok) {
+        const resData = await res.json();
+        if (resData.success && Array.isArray(resData.data)) {
+          const sorted = [...resData.data].sort((a: any, b: any) => {
+            const timeA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+            const timeB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+            return timeB - timeA;
+          });
+          setClaims(sorted);
+          try {
+            localStorage.setItem('hcrs_cached_claims', JSON.stringify(sorted));
+          } catch (e) {}
+          setClaimsError(null);
+          setClaimsLoading(false);
+          if (isManual) {
+            toast.success(`ഡാറ്റാബേസിൽ നിന്ന് ${sorted.length} ക്ലെയിമുകൾ വിജയകരമായി സിങ്ക് ചെയ്തു.`, { id: toastId });
+          }
+          return sorted;
         }
-      } catch (e) {
-        setClaims([]);
       }
-      setClaimsLoading(false);
-      return;
-    }
-    
-    const q = query(collection(db, 'claims'));
-    const unsubscribe = onSnapshot(q, (snapshot: any) => {
-      const data = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
-      // Sort client-side so that old claims without 'createdAt' are still included and displayed
+      
+      const snap = await getDocs(collection(db, 'claims'));
+      const data = snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
       data.sort((a: any, b: any) => {
         const timeA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
         const timeB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
         return timeB - timeA;
       });
+      setClaims(data);
       try {
         localStorage.setItem('hcrs_cached_claims', JSON.stringify(data));
-      } catch (e) {
-        console.warn("localStorage set claims failed:", e);
-      }
-      setClaims(data);
+      } catch (e) {}
       setClaimsError(null);
       setClaimsLoading(false);
-    }, (err: any) => {
-      console.error("Claims fetch error:", err);
-      setClaimsError(err.code || err.message || "permission-denied");
-      try {
-        const cached = localStorage.getItem('hcrs_cached_claims');
-        if (cached) {
-          setClaims(JSON.parse(cached));
-          setClaimsLoading(false);
-          return;
-        }
-      } catch (e) {
-        console.warn("localStorage read claims failed:", e);
+      if (isManual) {
+        toast.success(`ഡാറ്റാബേസിൽ നിന്ന് ${data.length} ക്ലെയിമുകൾ വിജയകരമായി സിങ്ക് ചെയ്തു.`, { id: toastId });
       }
-      setClaimsLoading(false);
-    });
-    return () => unsubscribe();
-  }, [user]);
+      return data;
+    } catch (err: any) {
+      console.error("Claims sync error:", err);
+      if (isManual) {
+        toast.error('ക്ലെയിം സിങ്ക് പരാജയപ്പെട്ടു: ' + (err.message || 'Error'), { id: toastId });
+      }
+    } finally {
+      setIsSyncingClaims(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    setClaimsError(null);
+    
+    // Always trigger immediate fetch from server database claims API
+    refreshClaimsList(false);
+
+    // Set up real-time listener when available
+    if (user.uid !== 'offline_admin') {
+      const q = query(collection(db, 'claims'));
+      const unsubscribe = onSnapshot(q, (snapshot: any) => {
+        const data = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+        data.sort((a: any, b: any) => {
+          const timeA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+          const timeB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+          return timeB - timeA;
+        });
+        try {
+          localStorage.setItem('hcrs_cached_claims', JSON.stringify(data));
+        } catch (e) {
+          console.warn("localStorage set claims failed:", e);
+        }
+        setClaims(data);
+        setClaimsError(null);
+        setClaimsLoading(false);
+      }, (err: any) => {
+        console.warn("Claims real-time listener notice:", err);
+      });
+      return () => unsubscribe();
+    }
+  }, [user, refreshClaimsList]);
 
   const handleSaveClaim = async () => {
     if (!editingClaim) return;
@@ -1336,15 +1386,10 @@ export default function AdminDashboard({
   };
 
   const handleApproveRenewal = async (member: UserProfile) => {
-    if (approvingRenewalUid || approvedRenewalUids.includes(member.uid) || member.renewalPending === false) return;
+    if (approvingRenewalUid === member.uid || member.renewalPending === false) return;
     const cleanMob = member.mobile ? String(member.mobile).replace(/\D/g, '') : '';
 
     setApprovingRenewalUid(member.uid);
-    setApprovedRenewalUids(prev => {
-      const newUids = new Set(prev);
-      newUids.add(member.uid);
-      return Array.from(newUids);
-    });
     const loadingToast = toast.loading(`റിന്യൂവൽ അപ്രൂവ് ചെയ്യുന്നു... (${member.name})`);
     
     const now = new Date();
@@ -1365,11 +1410,14 @@ export default function AdminDashboard({
 
     try {
       try {
-        await fetch('/api/admin/approve-renewal', {
+        const srvRes = await fetch('/api/admin/approve-renewal', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ uid: member.uid, mobile: cleanMob })
         });
+        if (srvRes.ok) {
+          console.log("[Renewal Approval API success for]:", member.uid);
+        }
       } catch (srvErr) {
         console.warn("[Renewal Approval API note]:", srvErr);
       }
@@ -1386,6 +1434,12 @@ export default function AdminDashboard({
         renewalDate: now, // Store renewal date permanently
         expiryDate: expiry,
         paymentTime: safePaymentTime
+      });
+
+      setApprovedRenewalUids(prev => {
+        const newUids = new Set(prev);
+        newUids.add(member.uid);
+        return Array.from(newUids);
       });
 
       // Synchronize viewingMember if open
@@ -1559,17 +1613,17 @@ export default function AdminDashboard({
     const approvedSet = new Set(approvedRenewalUids);
     
     for (const m of actualMembers) {
-      const matchesDistrict = districtFilter === 'all' || m.district === districtFilter;
+      const matchesDistrict = districtFilter === 'all' || isDistrictMatch(m.district, districtFilter);
       if (!matchesDistrict) continue;
 
       const isApprovedRenewal = approvedSet.has(m.uid);
       const isRenewalPending = !!m.renewalPending && !isApprovedRenewal;
 
+      total++;
       if (m.status === 'pending' && !isRenewalPending) {
         pending++;
       } else if (m.status === 'active' || isRenewalPending || isApprovedRenewal) {
         active++;
-        total++; // Verified active/renewal members only
       }
       
       if (isRenewalPending) renewals++;
@@ -1588,6 +1642,7 @@ export default function AdminDashboard({
       const isAnyAdmin = [...MAIN_ADMINS, ...SECOND_ADMINS].some(adminEmail => m.email?.toLowerCase() === adminEmail.toLowerCase());
       if (isAnyAdmin) return false;
 
+      const normMDist = normalizeDistrictCode(m.district);
       const matchesSearch = !term || 
                            (m.name && m.name.toLowerCase().includes(term)) || 
                            (m.mobile && String(m.mobile).includes(term)) ||
@@ -1596,9 +1651,10 @@ export default function AdminDashboard({
                            (m.constituencyCode && m.constituencyCode.toLowerCase().includes(term)) ||
                            (m.assemblyConstituency && m.assemblyConstituency.toLowerCase().includes(term)) ||
                            (m.assemblyConstituency && getAssemblyCode(m.assemblyConstituency).toLowerCase().includes(term)) ||
-                           (m.district && districtMap.get(m.district)?.includes(term));
-      const matchesDistrict = districtFilter === 'all' || m.district === districtFilter;
-      const matchesStatus = statusFilter === 'all' ? (m.status !== 'deleted' && m.status !== 'pending') : m.status === statusFilter;
+                           (normMDist && districtMap.get(normMDist)?.includes(term)) ||
+                           (m.district && m.district.toLowerCase().includes(term));
+      const matchesDistrict = districtFilter === 'all' || isDistrictMatch(m.district, districtFilter);
+      const matchesStatus = statusFilter === 'all' ? (m.status !== 'deleted') : m.status === statusFilter;
       
       let matchesSource = true;
       if (sourceFilter === 'online') {
@@ -1610,10 +1666,12 @@ export default function AdminDashboard({
       let matchesCategory = true;
       if (categoryFilter !== 'all') {
         const typeStr = String(m.membership_type || m.membershipType || '').toUpperCase();
+        const memId = String(m.membershipId || '').toUpperCase();
+        const isLife = typeStr.includes('LIFE') || memId.includes('-LIFE-') || memId.startsWith('HCRS-LIFE') || memId.includes('-LM-') || !!(m as any).isLifeMember;
         if (categoryFilter === 'LIFE_MEMBER') {
-          matchesCategory = typeStr.includes('LIFE');
+          matchesCategory = isLife;
         } else if (categoryFilter === 'ADHOC_MEMBER') {
-          matchesCategory = !typeStr.includes('LIFE');
+          matchesCategory = !isLife;
         }
       }
       
@@ -1681,16 +1739,18 @@ export default function AdminDashboard({
     const filtered = members.filter(m => {
       const isAnyAdmin = [...MAIN_ADMINS, ...SECOND_ADMINS].some(adminEmail => m.email?.toLowerCase() === adminEmail.toLowerCase());
       if (isAnyAdmin) return false;
-      const matchesDistrict = districtFilter === 'all' || m.district === districtFilter;
+      const matchesDistrict = districtFilter === 'all' || isDistrictMatch(m.district, districtFilter);
       if (!matchesDistrict) return false;
 
       let matchesCategory = true;
       if (categoryFilter !== 'all') {
         const typeStr = String(m.membership_type || m.membershipType || '').toUpperCase();
+        const memId = String(m.membershipId || '').toUpperCase();
+        const isLife = typeStr.includes('LIFE') || memId.includes('-LIFE-') || memId.startsWith('HCRS-LIFE') || memId.includes('-LM-') || !!(m as any).isLifeMember;
         if (categoryFilter === 'LIFE_MEMBER') {
-          matchesCategory = typeStr.includes('LIFE');
+          matchesCategory = isLife;
         } else if (categoryFilter === 'ADHOC_MEMBER') {
-          matchesCategory = !typeStr.includes('LIFE');
+          matchesCategory = !isLife;
         }
       }
       return matchesCategory && hasValidity(m);
@@ -1734,10 +1794,12 @@ export default function AdminDashboard({
       let matchesCategory = true;
       if (categoryFilter !== 'all') {
         const typeStr = String(m.membership_type || m.membershipType || '').toUpperCase();
+        const memId = String(m.membershipId || '').toUpperCase();
+        const isLife = typeStr.includes('LIFE') || memId.includes('-LIFE-') || memId.startsWith('HCRS-LIFE') || memId.includes('-LM-') || !!(m as any).isLifeMember;
         if (categoryFilter === 'LIFE_MEMBER') {
-          matchesCategory = typeStr.includes('LIFE');
+          matchesCategory = isLife;
         } else if (categoryFilter === 'ADHOC_MEMBER') {
-          matchesCategory = !typeStr.includes('LIFE');
+          matchesCategory = !isLife;
         }
       }
       
@@ -1832,9 +1894,12 @@ export default function AdminDashboard({
                            (c.userName && c.userName.toLowerCase().includes(term)) || 
                            (c.userMobile && String(c.userMobile).includes(term)) ||
                            (c.membershipId && c.membershipId.toLowerCase().includes(term)) ||
-                           (c.highrichId && c.highrichId.toLowerCase().includes(term));
+                           (c.highrichId && c.highrichId.toLowerCase().includes(term)) ||
+                           (c.tokenNo && String(c.tokenNo).toLowerCase().includes(term)) ||
+                           (c.serialNo && String(c.serialNo).toLowerCase().includes(term));
       
-      const matchesDistrict = claimDistrictFilter === 'all' || getDistrictCode(c.userDistrict) === claimDistrictFilter;
+      const cDist = c.userDistrict || c.district || '';
+      const matchesDistrict = claimDistrictFilter === 'all' || getDistrictCode(cDist) === claimDistrictFilter;
       const matchesPriority = claimPriorityFilter === 'all' || c.priorityStatus === claimPriorityFilter;
       const matchesCategory = claimCategoryFilter === 'all' || 
                               (claimCategoryFilter === 'consignment' 
@@ -2085,6 +2150,30 @@ export default function AdminDashboard({
             )}
           </button>
 
+          {/* Pending Renewals */}
+          <button
+            onClick={() => setActiveTab2('requests')}
+            className={cn(
+              "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all group tracking-tight",
+              activeTab === 'requests' && pendingRenewals.length > 0
+                ? "bg-amber-500 text-white shadow-md shadow-amber-500/15" 
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <RefreshCw className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'requests' && pendingRenewals.length > 0 ? 'text-white animate-spin-slow' : 'text-amber-500')} />
+              <span>Pending Renewals (റിന്യൂവൽ)</span>
+            </div>
+            {pendingRenewals.length > 0 && (
+              <span className={cn(
+                "px-2 py-0.5 rounded-full text-[8px] font-black min-w-5",
+                activeTab === 'requests' ? 'bg-white/25 text-white' : 'bg-amber-100 text-amber-800'
+              )}>
+                {pendingRenewals.length}
+              </span>
+            )}
+          </button>
+
           {/* Individual Claims */}
           <button
             onClick={() => {
@@ -2100,7 +2189,7 @@ export default function AdminDashboard({
           >
             <div className="flex items-center gap-3">
               <FileText className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'claims' && claimsViewMode === 'individual' ? 'text-white' : 'text-blue-600')} />
-              <span>Common Claims (ക്ലെയിംസ്)</span>
+              <span>Individual Claims (ഇൻഡിവിജ്വൽ)</span>
             </div>
             {claims.length > 0 && (
               <span className={cn(
@@ -2112,7 +2201,7 @@ export default function AdminDashboard({
             )}
           </button>
 
-          {/* Combo Claims */}
+          {/* Common / Combo Claims */}
           <button
             onClick={() => {
               setActiveTab2('claims');
@@ -2127,7 +2216,7 @@ export default function AdminDashboard({
           >
             <div className="flex items-center gap-3">
               <Users className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'claims' && claimsViewMode === 'combo' ? 'text-white' : 'text-brand-magenta')} />
-              <span>COMBO Claims (കോംബോ)</span>
+              <span>Common Claims (കോമൺ / കോംബോ)</span>
             </div>
             {comboGroups.length > 0 && (
               <span className={cn(
@@ -2419,6 +2508,20 @@ export default function AdminDashboard({
               </button>
 
               <button 
+                onClick={() => { setActiveTab2('requests'); setMobileSidebarOpen(false); }} 
+                className={cn(
+                  "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors",
+                  activeTab === 'requests' && pendingRenewals.length > 0 ? 'bg-amber-100 text-amber-900 font-black' : 'text-slate-600 hover:bg-slate-50'
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <RefreshCw className="w-4 h-4 text-amber-500" />
+                  <span>Pending Renewals (റിന്യൂവൽ)</span>
+                </div>
+                {pendingRenewals.length > 0 && <span className="px-1.5 py-0.5 rounded text-[8px] font-black bg-amber-500 text-white">{pendingRenewals.length}</span>}
+              </button>
+
+              <button 
                 onClick={() => { setActiveTab2('claims'); setClaimsViewMode('individual'); setMobileSidebarOpen(false); }} 
                 className={cn(
                   "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors",
@@ -2427,7 +2530,7 @@ export default function AdminDashboard({
               >
                 <div className="flex items-center gap-3">
                   <FileText className="w-4 h-4 text-blue-600" />
-                  <span>Common Claims (ക്ലെയിംസ്)</span>
+                  <span>Individual Claims (ഇൻഡിവിജ്വൽ)</span>
                 </div>
                 {claims.length > 0 && <span className="px-1.5 py-0.5 rounded text-[8px] font-black bg-blue-100 text-blue-800">{claims.length}</span>}
               </button>
@@ -2441,7 +2544,7 @@ export default function AdminDashboard({
               >
                 <div className="flex items-center gap-3">
                   <Users className="w-4 h-4 text-brand-magenta" />
-                  <span>COMBO Claims (കോംബോ)</span>
+                  <span>Common Claims (കോമൺ / കോംബോ)</span>
                 </div>
                 {comboGroups.length > 0 && <span className="px-1.5 py-0.5 rounded text-[8px] font-black bg-pink-100 text-brand-magenta">{comboGroups.length}</span>}
               </button>
@@ -2724,6 +2827,21 @@ export default function AdminDashboard({
                 എന്റെ ഐഡി കാർഡ് (My Card)
               </Button>
             )}
+            {onRefreshMembers && (
+              <Button 
+                onClick={async () => {
+                  onRefreshMembers();
+                  await refreshClaimsList(false);
+                }} 
+                disabled={isSyncingMembers || isSyncingClaims}
+                variant="outline" 
+                className="flex-1 md:flex-none h-10 border-emerald-500/40 bg-emerald-50/60 hover:bg-emerald-100/70 text-emerald-800 font-bold rounded-xl px-4 text-[9px] uppercase tracking-wider flex items-center justify-center gap-1.5"
+                title="ഡാറ്റാബേസിൽ നിന്ന് എല്ലാ അംഗങ്ങളുടെയും ക്ലെയിമുകളുടെയും വിവരങ്ങൾ പുതുക്കുക"
+              >
+                <RefreshCw className={cn("w-4 h-4 text-emerald-600", (isSyncingMembers || isSyncingClaims) && "animate-spin")} />
+                {(isSyncingMembers || isSyncingClaims) ? 'സിങ്ക് ചെയ്യുന്നു...' : 'ഡാറ്റാബേസ് സിങ്ക് (Sync DB)'}
+              </Button>
+            )}
             <Button onClick={handleLogout} variant="outline" className="flex-1 md:flex-none h-10 border-red-100 hover:bg-red-50/50 text-red-500 font-bold rounded-xl px-4 text-[9px] uppercase tracking-wider">
               <LogOut className="w-4 h-4 mr-1 text-red-400" />
               Logout
@@ -2769,6 +2887,24 @@ export default function AdminDashboard({
             )}
           </button>
 
+          {pendingRenewals.length > 0 && (
+            <button
+              onClick={() => setActiveTab2('requests')}
+              className={cn(
+                "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+                activeTab === 'requests'
+                  ? "bg-amber-500 text-white shadow-sm"
+                  : "text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/70"
+              )}
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-amber-600 animate-spin-slow" />
+              <span>🔄 Pending Renewals (റിന്യൂവൽ)</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-amber-500 text-white">
+                {pendingRenewals.length}
+              </span>
+            </button>
+          )}
+
           <button
             onClick={() => {
               setActiveTab2('claims');
@@ -2782,7 +2918,7 @@ export default function AdminDashboard({
             )}
           >
             <FileText className="w-3.5 h-3.5" />
-            <span>⚖️ Common Claims (ക്ലെയിമുകൾ)</span>
+            <span>📄 Individual Claims (ഇൻഡിവിജ്വൽ)</span>
             {claims.length > 0 && (
               <span className={cn("px-1.5 py-0.2 rounded-full text-[9px] font-black", activeTab === 'claims' && claimsViewMode === 'individual' ? 'bg-white/25 text-white' : 'bg-blue-200 text-blue-900')}>
                 {claims.length}
@@ -2803,7 +2939,7 @@ export default function AdminDashboard({
             )}
           >
             <Users className="w-3.5 h-3.5" />
-            <span>👥 COMBO Section (കോംബോ)</span>
+            <span>👥 Common Claims (കോമൺ / കോംബോ)</span>
             {comboGroups.length > 0 && (
               <span className={cn("px-1.5 py-0.2 rounded-full text-[9px] font-black", activeTab === 'claims' && claimsViewMode === 'combo' ? 'bg-white/25 text-white' : 'bg-pink-200 text-pink-900')}>
                 {comboGroups.length}
@@ -3053,10 +3189,49 @@ export default function AdminDashboard({
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {paginatedMembers.length === 0 ? (
+                        {isSyncingMembers && members.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={6} className="text-center py-12 text-slate-400 font-bold text-xs">
-                              അംഗങ്ങളെ കണ്ടെത്തിയില്ല (No members found matching filters)
+                            <TableCell colSpan={6} className="text-center py-16 text-slate-500">
+                              <div className="flex flex-col items-center justify-center gap-3">
+                                <Loader2 className="w-8 h-8 animate-spin text-brand-blue" />
+                                <p className="font-bold text-slate-800 text-sm">ഡാറ്റാബേസിൽ നിന്ന് അംഗങ്ങളുടെ വിവരങ്ങൾ ശേഖരിക്കുന്നു...</p>
+                                <p className="text-slate-400 text-xs">Loading database records (~8,000 members). Please wait...</p>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ) : members.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center py-16 text-slate-500">
+                              <div className="flex flex-col items-center justify-center gap-3">
+                                <Users className="w-10 h-10 text-slate-300" />
+                                <p className="font-bold text-slate-800 text-sm">ഡാറ്റാബേസ് എൻട്രികൾ ലോഡ് ചെയ്തിട്ടില്ല</p>
+                                <p className="text-slate-400 text-xs">താഴെയുള്ള ബട്ടൺ ക്ലിക്ക് ചെയ്ത് ഡാറ്റാബേസ് വിവരങ്ങൾ വീണ്ടും ലോഡ് ചെയ്യുക.</p>
+                                {onRefreshMembers && (
+                                  <Button 
+                                    size="sm" 
+                                    onClick={onRefreshMembers}
+                                    className="bg-brand-blue hover:bg-brand-blue/90 text-white font-bold rounded-xl text-xs mt-1"
+                                  >
+                                    <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                                    ഡാറ്റാബേസ് ലോഡ് ചെയ്യുക (Load Database)
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ) : paginatedMembers.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center py-12 text-slate-500 font-medium text-xs">
+                              <p className="font-bold text-slate-700 text-sm mb-1">തിരഞ്ഞെടുത്ത ഫിൽട്ടറുകൾ പ്രകാരം അംഗങ്ങളെ കണ്ടെത്തിയില്ല</p>
+                              <p className="text-slate-400 text-xs mb-3">ആകെ {members.length} അംഗങ്ങൾ ഡാറ്റാബേസിലുണ്ട്. ഫിൽട്ടറുകൾ മാറ്റുകയോ റീസെറ്റ് ചെയ്യുകയോ ചെയ്യുക.</p>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => { setSearchTerm(''); setDistrictFilter('all'); setStatusFilter('all'); setCategoryFilter('all'); setSourceFilter('all'); }} 
+                                className="text-xs font-bold text-brand-blue border-brand-blue/30 rounded-xl"
+                              >
+                                ഫിൽട്ടറുകൾ റീസെറ്റ് ചെയ്യുക (Reset Filters)
+                              </Button>
                             </TableCell>
                           </TableRow>
                         ) : (
@@ -3283,9 +3458,11 @@ export default function AdminDashboard({
                           </div>
                           <Button 
                             size="sm" 
+                            disabled={approvingRenewalUid === m.uid}
                             onClick={() => handleApproveRenewal(m)} 
-                            className="rounded-xl text-xs font-black uppercase bg-brand-blue text-white"
+                            className="rounded-xl text-xs font-black uppercase bg-brand-blue hover:bg-brand-blue/90 text-white shadow-sm"
                           >
+                            {approvingRenewalUid === m.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />}
                             Approve Renewal
                           </Button>
                         </div>
@@ -3309,7 +3486,7 @@ export default function AdminDashboard({
                       className={cn("rounded-lg text-xs font-black uppercase", claimsViewMode === 'individual' && "bg-brand-blue text-white shadow-xs")}
                     >
                       <FileText className="w-3.5 h-3.5 mr-1.5" />
-                      Individual Claims ({claims.length})
+                      Individual Claims (ഇൻഡിവിജ്വൽ) ({claims.length})
                     </Button>
                     <Button
                       variant={claimsViewMode === 'combo' ? 'default' : 'ghost'}
@@ -3318,11 +3495,36 @@ export default function AdminDashboard({
                       className={cn("rounded-lg text-xs font-black uppercase", claimsViewMode === 'combo' && "bg-brand-magenta text-white shadow-xs")}
                     >
                       <Users className="w-3.5 h-3.5 mr-1.5" />
-                      COMBO Section ({comboGroups.length} Groups)
+                      Common Claims (കോമൺ / കോംബോ) ({comboGroups.length} Groups)
                     </Button>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setCompetentModalInitialClaim(null);
+                        setCompetentModalInitialMember(undefined);
+                        setIsCompetentAuthorityModalOpen(true);
+                      }}
+                      className="h-9 rounded-xl font-black text-xs uppercase border-indigo-600/40 text-indigo-900 bg-indigo-50 hover:bg-indigo-100 shadow-2xs"
+                      title="Open Competent Authority Claim Form Center (Print & PDF)"
+                    >
+                      <FileCheck className="w-3.5 h-3.5 mr-1.5 text-indigo-600" />
+                      Competent Authority Claim Form
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => refreshClaimsList(true)}
+                      disabled={isSyncingClaims}
+                      className="h-9 rounded-xl font-black text-xs uppercase border-emerald-600/30 text-emerald-800 bg-emerald-50/50 hover:bg-emerald-100/70"
+                      title="ഡാറ്റാബേസിൽ നിന്ന് ക്ലെയിം പെറ്റീഷനുകൾ നേരിട്ട് സിങ്ക് ചെയ്യുക"
+                    >
+                      <RefreshCw className={cn("w-3.5 h-3.5 mr-1.5 text-emerald-600", isSyncingClaims && "animate-spin")} />
+                      {isSyncingClaims ? 'സിങ്ക് ചെയ്യുന്നു...' : 'Sync Claims from DB'}
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -3412,31 +3614,38 @@ export default function AdminDashboard({
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {claims.length === 0 ? (
+                            {filteredClaims.length === 0 ? (
                               <TableRow>
                                 <TableCell colSpan={6} className="text-center py-12 text-slate-400 font-bold text-xs">
-                                  ക്ലെയിം വിവരങ്ങൾ ലഭ്യമല്ല (No claims submitted yet)
+                                  ക്ലെയിം വിവരങ്ങൾ ലഭ്യമല്ല (No claims found matching filters)
                                 </TableCell>
                               </TableRow>
                             ) : (
-                              claims.filter(c => {
-                                const term = claimSearchTerm.toLowerCase().trim();
-                                const matchesSearch = !term || 
-                                  (c.userName && c.userName.toLowerCase().includes(term)) ||
-                                  (c.userMobile && String(c.userMobile).includes(term)) ||
-                                  (c.highrichId && c.highrichId.toLowerCase().includes(term));
-                                const matchesDistrict = claimDistrictFilter === 'all' || c.userDistrict === claimDistrictFilter;
-                                const matchesCategory = claimCategoryFilter === 'all' || (c.categories && c.categories.includes(claimCategoryFilter));
-                                return matchesSearch && matchesDistrict && matchesCategory;
-                              }).map((c, idx) => {
+                              filteredClaims.map((c, idx) => {
                                 const memberObj = members.find(m => m.uid === c.uid || compareMobiles(m.mobile, c.userMobile));
                                 return (
                                   <TableRow key={c.id || idx} className="hover:bg-slate-50/50">
                                     <TableCell className="font-mono text-xs text-slate-400">{idx + 1}</TableCell>
                                     <TableCell>
                                       <div>
-                                        <p className="font-extrabold text-xs text-slate-800">{c.userName || 'N/A'}</p>
-                                        <p className="text-[10px] font-mono text-slate-500 font-bold">{c.userMobile} • {c.userDistrict || 'N/A'}</p>
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                          <p className="font-extrabold text-xs text-slate-800">{c.userName || 'N/A'}</p>
+                                          {c.relationLabel && c.relation !== 'Self' && (
+                                            <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200/60">
+                                              {c.relationLabel}
+                                            </span>
+                                          )}
+                                          {(c.membershipId?.toUpperCase().includes('-LIFE-') || c.membershipId?.toUpperCase().includes('-LM-') || memberObj?.membership_type === 'LIFE_MEMBER' || (memberObj as any)?.isLifeMember) && (
+                                            <span className="text-[9px] font-black px-1.5 py-0.5 bg-amber-500/10 text-amber-700 rounded border border-amber-500/30 flex items-center gap-0.5">
+                                              <Crown className="w-2.5 h-2.5 text-amber-500 fill-amber-400" /> Life Member
+                                            </span>
+                                          )}
+                                        </div>
+                                        <p className="text-[10px] font-mono text-slate-500 font-bold mt-0.5">
+                                          {c.tokenNo ? <span className="text-brand-magenta font-black mr-1">[{c.tokenNo}]</span> : null}
+                                          {c.membershipId ? <span className="text-slate-600 mr-1">{c.membershipId}</span> : null}
+                                          {c.userMobile} • {c.userDistrict || 'N/A'}
+                                        </p>
                                       </div>
                                     </TableCell>
                                     <TableCell>
@@ -3462,6 +3671,20 @@ export default function AdminDashboard({
                                     </TableCell>
                                     <TableCell className="text-right">
                                       <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                                        {/* Competent Authority Claim Form */}
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => {
+                                            setCompetentModalInitialClaim(c);
+                                            setCompetentModalInitialMember(memberObj);
+                                            setIsCompetentAuthorityModalOpen(true);
+                                          }}
+                                          className="h-7 px-2 text-[8.5px] font-black uppercase text-indigo-700 border-indigo-600/30 hover:bg-indigo-50 rounded-lg"
+                                          title="Preview, Print or Download Competent Authority Claim Form"
+                                        >
+                                          <FileCheck className="w-3 h-3 mr-1" /> Competent Form
+                                        </Button>
                                         {/* Court Print */}
                                         <Button
                                           variant="outline"
@@ -3598,6 +3821,40 @@ export default function AdminDashboard({
                                     <p className="text-base font-black text-brand-magenta">₹{(grp.totalPending || 0).toLocaleString('en-IN')}</p>
                                   </div>
                                   <div className="flex items-center gap-1.5 flex-wrap">
+                                    {/* Competent Authority Claim Form Center */}
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        setCompetentModalInitialClaim(grp.claims[0]);
+                                        setCompetentModalInitialMember(grp.memberObj);
+                                        setIsCompetentAuthorityModalOpen(true);
+                                      }}
+                                      className="h-8 px-2.5 text-[9px] font-black uppercase text-indigo-700 border-indigo-600/30 hover:bg-indigo-50 rounded-xl"
+                                      title="Open Competent Authority Claim Form (Print / Download / Combo)"
+                                    >
+                                      <FileCheck className="w-3.5 h-3.5 mr-1" /> Competent Form
+                                    </Button>
+                                    {/* Management + Competent Authority Combo Print */}
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => printManagementAndCompetentAuthorityComboReport(grp.memberObj, grp.claims)}
+                                      className="h-8 px-2.5 text-[9px] font-black uppercase text-emerald-800 border-emerald-600/40 bg-emerald-50/60 hover:bg-emerald-100 rounded-xl"
+                                      title="Print Management Form + Competent Authority Claim Form Combo"
+                                    >
+                                      <Printer className="w-3.5 h-3.5 mr-1 text-emerald-600" /> Mgmt + Comp Combo
+                                    </Button>
+                                    {/* Management + Competent Authority Combo PDF */}
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => downloadManagementAndCompetentAuthorityComboPdf(grp.memberObj, grp.claims)}
+                                      className="h-8 px-2.5 text-[9px] font-black uppercase text-slate-800 border-slate-300 bg-slate-50 hover:bg-slate-100 rounded-xl"
+                                      title="Download Management Form + Competent Authority Claim Form Combo PDF"
+                                    >
+                                      <Download className="w-3.5 h-3.5 mr-1 text-slate-700" /> Combo PDF
+                                    </Button>
                                     {/* Court Combo Print */}
                                     <Button
                                       variant="outline"
@@ -4039,6 +4296,21 @@ export default function AdminDashboard({
 
                 <DialogFooter className="flex flex-wrap items-center justify-between gap-2 pt-4 border-t">
                   <div className="flex items-center gap-2 flex-wrap">
+                    {/* Competent Authority Claim Form */}
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        const memberObj = claimUser || members.find(m => m.uid === selectedClaim.uid || compareMobiles(m.mobile, selectedClaim.userMobile));
+                        setCompetentModalInitialClaim(selectedClaim);
+                        setCompetentModalInitialMember(memberObj);
+                        setIsCompetentAuthorityModalOpen(true);
+                      }}
+                      className="rounded-xl font-black uppercase text-xs px-2.5 border-indigo-600/40 text-indigo-900 bg-indigo-50 hover:bg-indigo-100 flex items-center gap-1.5 shadow-2xs"
+                      title="Open Competent Authority Claim Form (Print, PDF, Combo)"
+                    >
+                      <FileCheck className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Competent Form</span>
+                    </Button>
                     <Button
                       variant="outline"
                       onClick={() => {
@@ -4507,6 +4779,20 @@ export default function AdminDashboard({
           <AdminReceiptsModal 
             member={selectedReceiptsMember} 
             onClose={() => setSelectedReceiptsMember(null)} 
+          />
+        )}
+        {isCompetentAuthorityModalOpen && (
+          <CompetentAuthorityModal
+            isOpen={isCompetentAuthorityModalOpen}
+            onClose={() => {
+              setIsCompetentAuthorityModalOpen(false);
+              setCompetentModalInitialClaim(null);
+              setCompetentModalInitialMember(undefined);
+            }}
+            claims={claims}
+            members={members}
+            initialClaim={competentModalInitialClaim}
+            initialMember={competentModalInitialMember}
           />
         )}
     </div>

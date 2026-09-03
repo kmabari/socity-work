@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { auth, db } from '../lib/firebase';
 import { sendPasswordResetEmail } from 'firebase/auth';
-import { collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, updateDoc, doc, getDoc, getDocsFromServer, getDocFromServer, limit } from 'firebase/firestore';
 import {
   Form,
   FormControl,
@@ -39,7 +39,7 @@ interface LoginFormProps {
   onLogin: (values: { email: string; pin: string }) => Promise<{ success: boolean; error?: string } | boolean> | void;
   onGoogleLogin: () => void;
   onBack: () => void;
-  onRegisterClick?: () => void;
+  onRegisterClick?: (mobile?: string) => void;
   isLoading?: boolean;
 }
 
@@ -103,7 +103,7 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
         toast.success('പാസ്‌വേഡ് റീസെറ്റ് ലിങ്ക് ഇമെയിലിലേക്ക് അയച്ചു.', { id: loadingToast });
         setResetSuccessMessage('പാസ്‌വേഡ് റീസെറ്റ് ലിങ്ക് നിങ്ങളുടെ ഇമെയിലിലേക്ക് അയച്ചിട്ടുണ്ട്. ഇൻബോക്സ് പരിശോധിക്കുക.');
       } catch (error: any) {
-        console.error('Reset email error:', error);
+        console.warn('Reset email notice:', error);
         toast.error(error?.message || 'Failed to send reset email.', { id: loadingToast });
       } finally {
         setIsResettingPin(false);
@@ -138,14 +138,72 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
       }
 
       if (!resetDone) {
-        // Direct Firestore Reset
+        // Direct Firestore Reset with server-first retrieval with timeout safeguard
+        const fetchDocsServer = async (q: any, timeoutMs = 2500) => {
+          try {
+            const serverPromise = getDocsFromServer(q);
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeoutMs));
+            const s: any = await Promise.race([serverPromise, timeoutPromise]);
+            if (s && !s.empty) return s;
+          } catch (e) {}
+          return await getDocs(q);
+        };
+        const fetchDocServer = async (ref: any, timeoutMs = 2500) => {
+          try {
+            const serverPromise = getDocFromServer(ref);
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeoutMs));
+            const s: any = await Promise.race([serverPromise, timeoutPromise]);
+            if (s && s.exists()) return s;
+          } catch (e) {}
+          return await getDoc(ref);
+        };
+
         const usersRef = collection(db, 'users');
-        const q = query(usersRef, where('mobile', '==', cleanMobile));
-        const snap = await getDocs(q);
-        if (snap.empty) {
+        let docsToUpdate: any[] = [];
+
+        const mobileVariations = [
+          cleanMobile,
+          `+91${cleanMobile}`,
+          `91${cleanMobile}`,
+          `0${cleanMobile}`,
+          `+91 ${cleanMobile}`
+        ];
+
+        const snap = await fetchDocsServer(query(usersRef, where('mobile', 'in', mobileVariations), limit(10)));
+        if (snap && !snap.empty) docsToUpdate.push(...snap.docs);
+
+        if (docsToUpdate.length === 0) {
+          const directIds = [cleanMobile, `hcrs_imp_${cleanMobile}`, `offline_${cleanMobile}`, `life_${cleanMobile}`];
+          for (const dId of directIds) {
+            try {
+              const dSnap = await fetchDocServer(doc(db, 'users', dId), 1500);
+              if (dSnap && dSnap.exists()) {
+                docsToUpdate.push(dSnap);
+                break;
+              }
+            } catch (e) {}
+          }
+        }
+
+        if (docsToUpdate.length === 0 && !isNaN(Number(cleanMobile))) {
+          const snapNum = await fetchDocsServer(query(usersRef, where('mobile', '==', Number(cleanMobile))), 1500);
+          if (snapNum && !snapNum.empty) docsToUpdate.push(...snapNum.docs);
+        }
+
+        if (docsToUpdate.length === 0) {
+          for (const altField of ['cleanMobile', 'phone', 'whatsapp', 'sponsorMobile']) {
+            const snapAlt = await fetchDocsServer(query(usersRef, where(altField, '==', cleanMobile)), 1500);
+            if (snapAlt && !snapAlt.empty) {
+              docsToUpdate.push(...snapAlt.docs);
+              break;
+            }
+          }
+        }
+
+        if (docsToUpdate.length === 0) {
           throw new Error('ഈ മൊബൈൽ നമ്പറിൽ രജിസ്റ്റർ ചെയ്ത അക്കൗണ്ട് കണ്ടെത്തിയില്ല. (Account not found with this mobile)');
         }
-        for (const docSnap of snap.docs) {
+        for (const docSnap of docsToUpdate) {
           await updateDoc(docSnap.ref, {
             pin: '123456',
             mustChangePassword: true,
@@ -300,33 +358,32 @@ export default function LoginForm({ onLogin, onGoogleLogin, onBack, onRegisterCl
                     </div>
                   </div>
 
-                  {/* If error is related to wrong password or already changed password, provide instant Reset PIN trigger */}
-                  {(authError.includes('പാസ്‌വേഡ്') || authError.includes('Password') || authError.includes('മാറ്റിയിട്ടുണ്ട്') || authError.includes('അക്ക')) && (
-                    <div className="pt-2 border-t border-red-200/80 flex flex-col sm:flex-row gap-2 mt-1">
-                      <button
-                        type="button"
-                        onClick={openResetModal}
-                        className="flex-1 py-2 px-3 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-colors cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
-                      >
-                        <RefreshCw className="w-3.5 h-3.5" />
-                        <span>പാസ്‌വേഡ് റീസെറ്റ് ചെയ്യുക (Reset PIN)</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleWhatsAppHelp}
-                        className="py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-colors cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
-                      >
-                        <MessageCircle className="w-3.5 h-3.5" />
-                        <span>WhatsApp Help</span>
-                      </button>
-                    </div>
-                  )}
+                  {/* Helpful Quick Actions: Reset PIN and WhatsApp Help */}
+                  <div className="pt-2 border-t border-red-200/80 flex flex-col sm:flex-row gap-2 mt-1">
+                    <button
+                      type="button"
+                      onClick={openResetModal}
+                      className="flex-1 py-2 px-3 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-colors cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>പാസ്‌വേഡ് റീസെറ്റ് ചെയ്യുക (Reset PIN)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleWhatsAppHelp}
+                      className="py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-colors cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>WhatsApp Help</span>
+                    </button>
+                  </div>
 
                   {onRegisterClick && (authError.includes('രജിസ്റ്റർ') || authError.includes('not registered') || authError.includes('അംഗത്വം')) && (
                     <button
+                      id="login-register-cta-btn"
                       type="button"
-                      onClick={onRegisterClick}
-                      className="w-full py-2 px-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-colors cursor-pointer shadow-sm flex items-center justify-center gap-1.5 mt-1"
+                      onClick={() => onRegisterClick(form.getValues('mobile'))}
+                      className="w-full py-2.5 px-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-colors cursor-pointer shadow-sm flex items-center justify-center gap-1.5 mt-1"
                     >
                       <span>ഇവിടെ ക്ലിക്ക് ചെയ്ത് പുതിയ അംഗത്വം എടുക്കുക (Register Now)</span>
                     </button>

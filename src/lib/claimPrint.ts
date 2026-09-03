@@ -2278,5 +2278,18 @@ export const printCustomerComboReport = printFullAdminComboReport;
 export const printMemberComboReport = printCourtComboReport;
 export const printMemberClaimReport = printCourtClaimReport;
 
+export {
+  renderPersonCompetentAuthorityClaimPage,
+  getCompetentAuthorityStyles,
+  getCompetentAuthorityClaimFullHtml,
+  printCompetentAuthorityClaimReport,
+  generateCompetentAuthorityClaimPdf,
+  downloadCompetentAuthorityClaimPdf,
+  printManagementAndCompetentAuthorityComboReport,
+  generateManagementAndCompetentAuthorityComboPdf,
+  downloadManagementAndCompetentAuthorityComboPdf,
+  numberToWordsIndian
+} from './competentAuthorityPrint';
+
 
 

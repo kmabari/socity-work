@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Crown, UserPlus, Upload, ShieldCheck, Mail, Phone, MapPin, AlertCircle, Trash2, Camera, Sparkles } from 'lucide-react';
+import { Crown, UserPlus, Upload, ShieldCheck, Mail, Phone, MapPin, AlertCircle, Trash2, Camera, Sparkles, RefreshCw } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import MembershipCard from './MembershipCard';
 
 interface LifeMembersPanelProps {
@@ -94,8 +95,72 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
 
   // Load ALL life members globally from firestore in real-time
   const [globalLifeMembers, setGlobalLifeMembers] = useState<UserProfile[]>([]);
+  const [isSyncingLife, setIsSyncingLife] = useState(false);
+
+  // Helper to accurately identify a Life Member record
+  const isLifeMemberRecord = (m: any) => {
+    if (!m) return false;
+    if (m.membership_type === 'LIFE_MEMBER' || m.membershipType === 'LIFE_MEMBER') return true;
+    if (m.isLifeMember || m.is_life_member) return true;
+    if (typeof m.membershipId === 'string') {
+      const mid = m.membershipId.toUpperCase();
+      if (mid.includes('-LIFE-') || mid.startsWith('HCRS-LIFE') || mid.includes('-LM-')) return true;
+    }
+    return false;
+  };
+
+  const handleSyncLifeMembers = async (isManual = true) => {
+    setIsSyncingLife(true);
+    const toastId = isManual ? toast.loading('ഡാറ്റാബേസിൽ നിന്ന് ലൈഫ് മെമ്പർമാരെ സിങ്ക് ചെയ്യുന്നു...') : undefined;
+    try {
+      // 1. Try dedicated life-members API
+      const res = await fetch(`/api/database/life-members?fresh=true&t=${Date.now()}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          setGlobalLifeMembers(json.data);
+          if (isManual) {
+            toast.success(`ഡാറ്റാബേസിൽ നിന്ന് ${json.data.length} ലൈഫ് മെമ്പർമാരെ വിജയകരമായി സിങ്ക് ചെയ്തു.`, { id: toastId });
+          }
+          return;
+        }
+      }
+      
+      // 2. Direct Firestore query fallback
+      const q = query(
+        collection(db, 'users'),
+        where('membership_type', '==', 'LIFE_MEMBER')
+      );
+      const snapshot = await getDocs(q);
+      const list: UserProfile[] = [];
+      snapshot.forEach(docSnap => {
+        list.push({ uid: docSnap.id, ...(docSnap.data() as any) });
+      });
+      setGlobalLifeMembers(list);
+      if (isManual) {
+        toast.success(`ഡാറ്റാബേസിൽ നിന്ന് ${list.length} ലൈഫ് മെമ്പർമാരെ വിജയകരമായി സിങ്ക് ചെയ്തു.`, { id: toastId });
+      }
+    } catch (e: any) {
+      console.error("Life members sync error:", e);
+      if (isManual) {
+        toast.error('ലൈഫ് മെമ്പേഴ്സ് സിങ്ക് പരാജയപ്പെട്ടു: ' + (e.message || 'Error'), { id: toastId });
+      }
+    } finally {
+      setIsSyncingLife(false);
+    }
+  };
 
   useEffect(() => {
+    // Initial fetch from API
+    fetch('/api/database/life-members')
+      .then(res => res.json())
+      .then(json => {
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          setGlobalLifeMembers(json.data);
+        }
+      })
+      .catch(err => console.warn("[life-members API fetch notice]:", err));
+
     const q = query(
       collection(db, 'users'),
       where('membership_type', '==', 'LIFE_MEMBER')
@@ -112,19 +177,44 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
     return () => unsubscribe();
   }, []);
 
-  // Filter for currently active Life Members (using global list)
+  // Filter for currently active Life Members (merging global API/Firestore list + members prop)
   const lifeMembers = useMemo(() => {
-    return globalLifeMembers;
-  }, [globalLifeMembers]);
+    const map = new Map<string, UserProfile>();
+    
+    // Ingest from the comprehensive members prop (populated from master member sync)
+    if (Array.isArray(members)) {
+      members.forEach(m => {
+        if (isLifeMemberRecord(m)) {
+          map.set(m.uid, m);
+        }
+      });
+    }
+
+    // Merge with globalLifeMembers (realtime onSnapshot or dedicated API)
+    if (Array.isArray(globalLifeMembers)) {
+      globalLifeMembers.forEach(m => {
+        const existing = map.get(m.uid);
+        map.set(m.uid, existing ? { ...existing, ...m } : m);
+      });
+    }
+
+    const list = Array.from(map.values());
+    return list.sort((a, b) => {
+      const sA = a.serialNo || 999;
+      const sB = b.serialNo || 999;
+      if (sA !== sB) return sA - sB;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  }, [members, globalLifeMembers]);
 
   // Outstanding count
-  const lifeCount = globalLifeMembers.length;
+  const lifeCount = lifeMembers.length;
   const isLimitReached = lifeCount >= 23;
 
   // Set of occupied serials parsed from membershipId (last 3 digits) or custom serialNo field
   const occupiedSerials = useMemo(() => {
     const serials = new Set<number>();
-    globalLifeMembers.forEach(m => {
+    lifeMembers.forEach(m => {
       if (m.serialNo && typeof m.serialNo === 'number') {
         serials.add(m.serialNo);
       } else if (m.membershipId) {
@@ -135,7 +225,7 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
       }
     });
     return serials;
-  }, [globalLifeMembers]);
+  }, [lifeMembers]);
 
   // Form States
   const [name, setName] = useState('');
@@ -400,14 +490,28 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
           <div className="absolute right-0 top-0 text-amber-100/40 pointer-events-none translate-x-6 -translate-y-6">
             <Crown size={150} />
           </div>
-          <CardHeader className="pb-2 relative z-10">
-            <CardTitle className="text-amber-800 flex items-center gap-2">
-              <Crown className="w-5 h-5 text-amber-500 animate-pulse" />
-              Life Members Category (ലൈഫ് മെമ്പർഷിപ്പ്)
-            </CardTitle>
-            <CardDescription className="text-amber-700 font-medium">
-              നിർദ്ദിഷ്ട ലൈഫ് മെമ്പർമാർക്കുള്ള പ്രീമിയം ലേഔട്ട്. ഇവർക്ക് വാർഷിക പുതുക്കലുകളോ പെയ്‌മെന്റ് പരിശോധനകളോ ആവശ്യമില്ല.
-            </CardDescription>
+          <CardHeader className="pb-2 relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <CardTitle className="text-amber-800 flex items-center gap-2">
+                <Crown className="w-5 h-5 text-amber-500 animate-pulse" />
+                Life Members Category (ലൈഫ് മെമ്പർഷിപ്പ്)
+              </CardTitle>
+              <CardDescription className="text-amber-700 font-medium">
+                നിർദ്ദിഷ്ട ലൈഫ് മെമ്പർമാർക്കുള്ള പ്രീമിയം ലേഔട്ട്. ഇവർക്ക് വാർഷിക പുതുക്കലുകളോ പെയ്‌മെന്റ് പരിശോധനകളോ ആവശ്യമില്ല.
+              </CardDescription>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handleSyncLifeMembers(true)}
+              disabled={isSyncingLife}
+              className="border-amber-400 bg-amber-100/80 hover:bg-amber-200 text-amber-950 font-black text-xs rounded-xl shadow-xs shrink-0 self-start sm:self-auto"
+              title="ഡാറ്റാബേസിൽ നിന്ന് ലൈഫ് മെമ്പർമാരുടെ വിവരങ്ങൾ സിങ്ക് ചെയ്യുക"
+            >
+              <RefreshCw className={cn("w-3.5 h-3.5 mr-1.5 text-amber-700", isSyncingLife && "animate-spin")} />
+              {isSyncingLife ? 'സിങ്ക് ചെയ്യുന്നു...' : 'ഡാറ്റാബേസ് സിങ്ക് (Sync DB)'}
+            </Button>
           </CardHeader>
           <CardContent className="text-xs text-amber-900/80 leading-relaxed relative z-10">
             ലഭ്യമാകുന്ന തനത് ഐഡി ഫോർമാറ്റ്: <strong className="font-mono bg-amber-150 p-1 px-1.5 rounded text-[11px] text-amber-950 font-black">HCRS-LIFE-KL-MLP-KTK-001</strong> മുതൽ <strong className="font-mono bg-amber-150 p-1 px-1.5 rounded text-[11px] text-amber-950 font-black">HCRS-LIFE-KL-MLP-KTK-023</strong> വരെ.
