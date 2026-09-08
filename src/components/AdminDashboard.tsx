@@ -2074,7 +2074,7 @@ export default function AdminDashboard({
   };
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-brand-blue/10">
+    <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-brand-blue/10 w-full max-w-full overflow-x-hidden">
       {/* LEFT SIDEBAR (Desktop) - Stripe/Notion Minimalist Glassmorphism */}
       <aside className="hidden lg:flex flex-col w-72 bg-white/70 backdrop-blur-xl border-r border-slate-200/50 h-screen sticky top-0 shrink-0 select-none z-30 shadow-[4px_0_24px_rgba(0,0,0,0.01)]">
         {/* Brand Header */}
@@ -2703,31 +2703,31 @@ export default function AdminDashboard({
       )}
 
       {/* RIGHT SIDE WORKSPACE */}
-      <div className="flex-1 min-w-0 flex flex-col h-screen overflow-y-auto bg-slate-50">
+      <div className="flex-1 min-w-0 flex flex-col h-screen overflow-y-auto overflow-x-hidden bg-slate-50 w-full max-w-full">
         {/* MOBILE HEADER */}
-        <header className="lg:hidden flex items-center justify-between bg-white border-b border-slate-200/50 px-5 h-14 sticky top-0 z-40 shadow-sm">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => setMobileSidebarOpen(true)} className="text-slate-700 h-9 w-9 rounded-full">
+        <header className="lg:hidden flex items-center justify-between bg-white border-b border-slate-200/50 px-4 sm:px-5 h-14 sticky top-0 z-40 shadow-sm w-full min-w-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <Button variant="ghost" size="icon" onClick={() => setMobileSidebarOpen(true)} className="text-slate-700 h-9 w-9 rounded-full shrink-0">
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </Button>
-            <Logo size="sm" className="h-[20px] w-auto" />
-            <span className="font-black text-[9px] uppercase tracking-widest text-slate-400">Admin Console</span>
+            <Logo size="sm" className="h-[20px] w-auto shrink-0" />
+            <span className="font-black text-[9px] uppercase tracking-widest text-slate-400 truncate">Admin Console</span>
           </div>
         </header>
 
         {/* CENTRAL CONTAINER */}
-        <div className="p-4 md:p-8 space-y-6 max-w-[1500px] w-full mx-auto pb-24">
-          <div className="max-w-7xl mx-auto space-y-6">
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-slate-200/50 pb-8">
-          <div className="flex items-center gap-4.5">
+        <div className="p-3 sm:p-4 md:p-8 space-y-6 max-w-[1500px] w-full mx-auto pb-24 min-w-0 overflow-x-hidden">
+          <div className="max-w-7xl mx-auto space-y-6 w-full min-w-0">
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-slate-200/50 pb-8 w-full min-w-0">
+          <div className="flex items-center gap-3.5 sm:gap-4.5 min-w-0 w-full md:w-auto">
              <div className="bg-white p-1.5 rounded-xl shadow-xs border border-slate-100 shrink-0">
                <Logo size="sm" className="h-8 w-auto" />
              </div>
-              <div>
-                <div className="flex items-center gap-3">
-                  <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight leading-none">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl font-black text-slate-800 uppercase tracking-tight leading-none break-words">
                     {isSecondary ? 'District Executive' : 'Admin Console'}
                   </h1>
                   {user && (
@@ -2735,7 +2735,7 @@ export default function AdminDashboard({
                       variant="outline"
                       size="sm"
                       onClick={() => setViewingMember(user)}
-                      className="rounded-lg h-7 px-2.5 border-slate-200 text-[8px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all shadow-xs"
+                      className="rounded-lg h-7 px-2.5 border-slate-200 text-[8px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all shadow-xs shrink-0"
                     >
                       <Eye className="w-3 h-3 mr-1 text-brand-blue" />
                       View Card
@@ -2743,18 +2743,18 @@ export default function AdminDashboard({
                   )}
                 </div>
                 {isSecondary ? (
-                  <p className="text-brand-magenta mt-1.5 text-[9px] font-bold tracking-widest uppercase flex items-center gap-1.5 leading-none">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                  <p className="text-brand-magenta mt-1.5 text-[9px] font-bold tracking-widest uppercase flex items-center gap-1.5 leading-none break-words">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />
                     Operator: {manualFormData.certAdminName || user?.name || 'Administrator'}
                   </p>
                 ) : (
-                  <p className="text-slate-400 mt-1.5 text-[9px] font-bold tracking-widest uppercase leading-none">
+                  <p className="text-slate-400 mt-1.5 text-[9px] font-bold tracking-widest uppercase leading-none break-words">
                     Highrich Community Revival Society Kerala
                   </p>
                 )}
               </div>
           </div>
-          <div className="flex flex-wrap gap-2.5 w-full md:w-auto">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full md:w-auto min-w-0">
             <div className="hidden lg:flex flex-col items-end gap-0.5 px-4 border-r border-slate-250">
                <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest">Public registration address</p>
                <p className="text-[9px] font-black text-brand-blue truncate max-w-[200px] font-mono select-all">
@@ -2767,22 +2767,22 @@ export default function AdminDashboard({
                     toast.success('Public Registration Address copied!');
                 }}
                 variant="outline" 
-                className="flex-1 md:flex-none h-10 border border-slate-200 bg-white shadow-xs font-black rounded-xl px-4 hover:bg-slate-50 text-[9px] uppercase tracking-wider"
+                className="w-full sm:w-auto flex-1 sm:flex-none min-h-10 h-auto py-2 px-3 md:h-10 md:py-0 md:px-4 border border-slate-200 bg-white shadow-xs font-black rounded-xl hover:bg-slate-50 text-[9px] uppercase tracking-wider text-center whitespace-normal break-words max-w-full"
             >
               Copy link
             </Button>
             {!isSecondary && (
-              <Button onClick={exportToExcel} variant="outline" className="flex-1 md:flex-none h-10 border border-slate-200 bg-white shadow-xs font-black rounded-xl px-4 hover:bg-slate-50 text-[9px] uppercase tracking-wider">
-                <Download className="w-4 h-4 mr-1 text-slate-500" />
+              <Button onClick={exportToExcel} variant="outline" className="w-full sm:w-auto flex-1 sm:flex-none min-h-10 h-auto py-2 px-3 md:h-10 md:py-0 md:px-4 border border-slate-200 bg-white shadow-xs font-black rounded-xl hover:bg-slate-50 text-[9px] uppercase tracking-wider text-center whitespace-normal break-words max-w-full">
+                <Download className="w-4 h-4 mr-1 text-slate-500 shrink-0 inline" />
                 Export
               </Button>
             )}
             {!isSecondary && (
               <Button 
                 onClick={() => setIsManualEntryOpen(true)}
-                className="flex-1 md:flex-none h-10 font-bold rounded-xl px-5 shadow-sm transition-all text-[9px] uppercase tracking-wider bg-brand-magenta text-white hover:bg-brand-magenta/95"
+                className="w-full sm:w-auto flex-1 sm:flex-none min-h-10 h-auto py-2 px-3 md:h-10 md:py-0 md:px-5 font-bold rounded-xl shadow-sm transition-all text-[9px] uppercase tracking-wider bg-brand-magenta text-white hover:bg-brand-magenta/95 text-center whitespace-normal break-words max-w-full"
               >
-                <UserPlus className="w-4 h-4 mr-1" />
+                <UserPlus className="w-4 h-4 mr-1 shrink-0 inline" />
                 Add Member
               </Button>
             )}
@@ -2790,17 +2790,17 @@ export default function AdminDashboard({
               <Button 
                 onClick={() => setIsDomainKeyModalOpen(true)}
                 variant="outline"
-                className="flex-1 md:flex-none h-10 border-brand-blue/35 text-brand-blue hover:bg-brand-blue/5 font-black rounded-xl px-4 text-[9px] uppercase tracking-wider flex items-center justify-center gap-1.5"
+                className="w-full sm:w-auto flex-1 sm:flex-none min-h-10 h-auto py-2 px-3 md:h-10 md:py-0 md:px-4 border-brand-blue/35 text-brand-blue hover:bg-brand-blue/5 font-black rounded-xl text-[9px] uppercase tracking-wider flex items-center justify-center gap-1.5 text-center whitespace-normal break-words max-w-full"
               >
-                <KeyRound className="w-4 h-4 text-brand-blue" />
-                Set Domain PIN (പാസ്‌വേഡ്)
+                <KeyRound className="w-4 h-4 text-brand-blue shrink-0 inline" />
+                <span>Set Domain PIN (പാസ്‌വേഡ്)</span>
               </Button>
             )}
             {!isSecondary && (
               <Button 
                 onClick={() => setActiveTab2('campaign_templates')}
                 variant="outline"
-                className="flex-1 md:flex-none h-10 border-brand-blue/35 text-brand-blue hover:bg-brand-blue/5 font-black rounded-xl px-4 text-[9px] uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer animate-pulse"
+                className="w-full sm:w-auto flex-1 sm:flex-none min-h-10 h-auto py-2 px-3 md:h-10 md:py-0 md:px-4 border-brand-blue/35 text-brand-blue hover:bg-brand-blue/5 font-black rounded-xl text-[9px] uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer animate-pulse text-center whitespace-normal break-words max-w-full"
               >
                 <span>📧 Operation Janamail</span>
               </Button>
@@ -2809,10 +2809,10 @@ export default function AdminDashboard({
               <Button 
                 onClick={onViewCard} 
                 variant="outline" 
-                className="flex-1 md:flex-none h-10 border border-brand-magenta/30 bg-brand-magenta/5 text-brand-magenta font-black rounded-xl px-4 hover:bg-brand-magenta/10 text-[9px] uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer animate-pulse"
+                className="w-full sm:w-auto flex-1 sm:flex-none min-h-10 h-auto py-2 px-3 md:h-10 md:py-0 md:px-4 border border-brand-magenta/30 bg-brand-magenta/5 text-brand-magenta font-black rounded-xl hover:bg-brand-magenta/10 text-[9px] uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer animate-pulse text-center whitespace-normal break-words max-w-full"
               >
-                <Smartphone className="w-4 h-4 text-brand-magenta" />
-                എന്റെ ഐഡി കാർഡ് (My Card)
+                <Smartphone className="w-4 h-4 text-brand-magenta shrink-0 inline" />
+                <span>എന്റെ ഐഡി കാർഡ് (My Card)</span>
               </Button>
             )}
             {onRefreshMembers && (
@@ -2823,26 +2823,27 @@ export default function AdminDashboard({
                 }} 
                 disabled={isSyncingMembers || isSyncingClaims}
                 variant="outline" 
-                className="flex-1 md:flex-none h-10 border-emerald-500/40 bg-emerald-50/60 hover:bg-emerald-100/70 text-emerald-800 font-bold rounded-xl px-4 text-[9px] uppercase tracking-wider flex items-center justify-center gap-1.5"
+                className="w-full sm:w-auto flex-1 sm:flex-none min-h-10 h-auto py-2 px-3 md:h-10 md:py-0 md:px-4 border-emerald-500/40 bg-emerald-50/60 hover:bg-emerald-100/70 text-emerald-800 font-bold rounded-xl text-[9px] uppercase tracking-wider flex items-center justify-center gap-1.5 text-center whitespace-normal break-words max-w-full"
                 title="ഡാറ്റാബേസിൽ നിന്ന് എല്ലാ അംഗങ്ങളുടെയും ക്ലെയിമുകളുടെയും വിവരങ്ങൾ പുതുക്കുക"
               >
-                <RefreshCw className={cn("w-4 h-4 text-emerald-600", (isSyncingMembers || isSyncingClaims) && "animate-spin")} />
-                {(isSyncingMembers || isSyncingClaims) ? 'സിങ്ക് ചെയ്യുന്നു...' : 'ഡാറ്റാബേസ് സിങ്ക് (Sync DB)'}
+                <RefreshCw className={cn("w-4 h-4 text-emerald-600 shrink-0 inline", (isSyncingMembers || isSyncingClaims) && "animate-spin")} />
+                <span>{(isSyncingMembers || isSyncingClaims) ? 'സിങ്ക് ചെയ്യുന്നു...' : 'ഡാറ്റാബേസ് സിങ്ക് (Sync DB)'}</span>
               </Button>
             )}
-            <Button onClick={handleLogout} variant="outline" className="flex-1 md:flex-none h-10 border-red-100 hover:bg-red-50/50 text-red-500 font-bold rounded-xl px-4 text-[9px] uppercase tracking-wider">
-              <LogOut className="w-4 h-4 mr-1 text-red-400" />
+            <Button onClick={handleLogout} variant="outline" className="w-full sm:w-auto flex-1 sm:flex-none min-h-10 h-auto py-2 px-3 md:h-10 md:py-0 md:px-4 border-red-100 hover:bg-red-50/50 text-red-500 font-bold rounded-xl text-[9px] uppercase tracking-wider text-center whitespace-normal break-words max-w-full">
+              <LogOut className="w-4 h-4 mr-1 text-red-400 shrink-0 inline" />
               Logout
             </Button>
           </div>
         </header>
 
         {/* TOP QUICK NAVIGATION TABS BAR - Always accessible on all screen sizes */}
-        <div className="flex items-center gap-2 overflow-x-auto py-2.5 px-1 scrollbar-none border-b border-slate-200/70 bg-white/60 backdrop-blur-md rounded-2xl shadow-xs">
-          <button
-            onClick={() => setActiveTab2('list')}
-            className={cn(
-              "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+        <div className="w-full min-w-0 max-w-full overflow-x-auto py-2.5 px-1 scrollbar-thin border-b border-slate-200/70 bg-white/60 backdrop-blur-md rounded-2xl shadow-xs">
+          <div className="flex items-center gap-2 w-max min-w-full">
+            <button
+              onClick={() => setActiveTab2('list')}
+              className={cn(
+                "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
               activeTab === 'list'
                 ? "bg-brand-blue text-white shadow-sm"
                 : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
@@ -3090,6 +3091,7 @@ export default function AdminDashboard({
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>Backup</span>
           </button>
+          </div>
         </div>
 
         {/* MAIN ADMIN WORKSPACE TABS */}
@@ -3106,8 +3108,8 @@ export default function AdminDashboard({
                 </div>
 
                 {/* Filter and Search Bar */}
-                <Card className="border border-slate-200/60 bg-white rounded-2xl shadow-xs p-4">
-                  <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
+                <Card className="border border-slate-200/60 bg-white rounded-2xl shadow-xs p-4 w-full min-w-0 max-w-full">
+                  <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between w-full min-w-0">
                     <div className="relative w-full md:w-80">
                       <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                       <Input
@@ -3115,12 +3117,12 @@ export default function AdminDashboard({
                         placeholder="Search name, mobile, ID, assembly..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-9 h-10 rounded-xl text-xs font-bold"
+                        className="pl-9 h-10 rounded-xl text-xs font-bold w-full"
                       />
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                    <div className="flex flex-wrap items-center gap-2 w-full md:w-auto min-w-0">
                       <Select value={districtFilter} onValueChange={setDistrictFilter}>
-                        <SelectTrigger className="h-10 text-xs font-bold rounded-xl min-w-[130px] bg-slate-50">
+                        <SelectTrigger className="h-10 text-xs font-bold rounded-xl w-full sm:w-auto sm:min-w-[130px] bg-slate-50 flex-1 sm:flex-none">
                           <SelectValue placeholder="All Districts" />
                         </SelectTrigger>
                         <SelectContent>
@@ -3132,7 +3134,7 @@ export default function AdminDashboard({
                       </Select>
 
                       <Select value={statusFilter} onValueChange={setStatusFilter}>
-                        <SelectTrigger className="h-10 text-xs font-bold rounded-xl min-w-[110px] bg-slate-50">
+                        <SelectTrigger className="h-10 text-xs font-bold rounded-xl w-full sm:w-auto sm:min-w-[110px] bg-slate-50 flex-1 sm:flex-none">
                           <SelectValue placeholder="All Status" />
                         </SelectTrigger>
                         <SelectContent>
@@ -3144,7 +3146,7 @@ export default function AdminDashboard({
                       </Select>
 
                       <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                        <SelectTrigger className="h-10 text-xs font-bold rounded-xl min-w-[110px] bg-slate-50">
+                        <SelectTrigger className="h-10 text-xs font-bold rounded-xl w-full sm:w-auto sm:min-w-[110px] bg-slate-50 flex-1 sm:flex-none">
                           <SelectValue placeholder="All Sources" />
                         </SelectTrigger>
                         <SelectContent>
@@ -3154,7 +3156,7 @@ export default function AdminDashboard({
                         </SelectContent>
                       </Select>
 
-                      <Button onClick={exportToExcel} variant="outline" size="sm" className="h-10 rounded-xl font-bold text-xs">
+                      <Button onClick={exportToExcel} variant="outline" size="sm" className="h-10 rounded-xl font-bold text-xs w-full sm:w-auto flex-1 sm:flex-none">
                         <Download className="w-4 h-4 mr-1 text-slate-500" />
                         Excel Export
                       </Button>
@@ -3163,8 +3165,8 @@ export default function AdminDashboard({
                 </Card>
 
                 {/* Member Table */}
-                <Card className="border border-slate-200/60 bg-white rounded-2xl shadow-xs overflow-hidden">
-                  <div className="overflow-x-auto">
+                <Card className="border border-slate-200/60 bg-white rounded-2xl shadow-xs overflow-hidden w-full min-w-0 max-w-full">
+                  <div className="overflow-x-auto w-full min-w-0 max-w-full">
                     <Table>
                       <TableHeader className="bg-slate-50">
                         <TableRow>
@@ -3198,10 +3200,10 @@ export default function AdminDashboard({
                                   <Button 
                                     size="sm" 
                                     onClick={onRefreshMembers}
-                                    className="bg-brand-blue hover:bg-brand-blue/90 text-white font-bold rounded-xl text-xs mt-1"
+                                    className="bg-brand-blue hover:bg-brand-blue/90 text-white font-bold rounded-xl text-xs mt-1 max-w-full whitespace-normal break-words h-auto py-2 px-3 text-center"
                                   >
-                                    <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-                                    ഡാറ്റാബേസ് ലോഡ് ചെയ്യുക (Load Database)
+                                    <RefreshCw className="w-3.5 h-3.5 mr-1.5 shrink-0 inline" />
+                                    <span>ഡാറ്റാബേസ് ലോഡ് ചെയ്യുക (Load Database)</span>
                                   </Button>
                                 )}
                               </div>
@@ -3216,7 +3218,7 @@ export default function AdminDashboard({
                                 size="sm" 
                                 variant="outline" 
                                 onClick={() => { setSearchTerm(''); setDistrictFilter('all'); setStatusFilter('all'); setCategoryFilter('all'); setSourceFilter('all'); }} 
-                                className="text-xs font-bold text-brand-blue border-brand-blue/30 rounded-xl"
+                                className="text-xs font-bold text-brand-blue border-brand-blue/30 rounded-xl max-w-full whitespace-normal break-words h-auto py-2 px-3 text-center"
                               >
                                 ഫിൽട്ടറുകൾ റീസെറ്റ് ചെയ്യുക (Reset Filters)
                               </Button>
@@ -3439,19 +3441,19 @@ export default function AdminDashboard({
                     </div>
                     <div className="space-y-3">
                       {pendingRenewals.map(m => (
-                        <div key={m.uid} className="flex items-center justify-between p-4 bg-amber-50/40 rounded-2xl border border-amber-100">
-                          <div>
-                            <p className="font-extrabold text-sm text-slate-800">{m.name} ({m.membershipId})</p>
-                            <p className="text-xs text-slate-500 font-bold">{m.mobile} • {m.district}</p>
+                        <div key={m.uid} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-amber-50/40 rounded-2xl border border-amber-100 gap-3 w-full min-w-0">
+                          <div className="min-w-0">
+                            <p className="font-extrabold text-sm text-slate-800 break-words">{m.name} ({m.membershipId})</p>
+                            <p className="text-xs text-slate-500 font-bold break-words">{m.mobile} • {m.district}</p>
                           </div>
                           <Button 
                             size="sm" 
                             disabled={approvingRenewalUid === m.uid}
                             onClick={() => handleApproveRenewal(m)} 
-                            className="rounded-xl text-xs font-black uppercase bg-brand-blue hover:bg-brand-blue/90 text-white shadow-sm"
+                            className="w-full sm:w-auto min-h-9 h-auto py-1.5 px-3 rounded-xl text-xs font-black uppercase bg-brand-blue hover:bg-brand-blue/90 text-white shadow-sm shrink-0 whitespace-normal break-words max-w-full text-center"
                           >
-                            {approvingRenewalUid === m.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />}
-                            Approve Renewal
+                            {approvingRenewalUid === m.uid ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5 shrink-0 inline" /> : <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 shrink-0 inline" />}
+                            <span>Approve Renewal</span>
                           </Button>
                         </div>
                       ))}
@@ -3465,57 +3467,63 @@ export default function AdminDashboard({
             {activeTab === 'claims' && (
               <div className="space-y-6">
                 {/* Claims View Switcher & Top Bar */}
-                <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between bg-white p-4 rounded-2xl border border-slate-200/60 shadow-xs">
-                  <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
+                <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between bg-white p-4 rounded-2xl border border-slate-200/60 shadow-xs w-full min-w-0 max-w-full">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-slate-100 p-1 rounded-xl w-full md:w-auto min-w-0">
                     <Button
                       variant={claimsViewMode === 'individual' ? 'default' : 'ghost'}
                       size="sm"
                       onClick={() => setClaimsViewMode('individual')}
-                      className={cn("rounded-lg text-xs font-black uppercase", claimsViewMode === 'individual' && "bg-brand-blue text-white shadow-xs")}
+                      className={cn(
+                        "rounded-lg text-xs font-black uppercase text-center whitespace-normal break-words max-w-full min-h-9 h-auto py-1.5 px-3 w-full sm:w-auto",
+                        claimsViewMode === 'individual' && "bg-brand-blue text-white shadow-xs"
+                      )}
                     >
-                      <FileText className="w-3.5 h-3.5 mr-1.5" />
-                      Individual Claims (ഇൻഡിവിജ്വൽ) ({claims.length})
+                      <FileText className="w-3.5 h-3.5 mr-1.5 shrink-0 inline" />
+                      <span>Individual Claims (ഇൻഡിവിജ്വൽ) ({claims.length})</span>
                     </Button>
                     <Button
                       variant={claimsViewMode === 'combo' ? 'default' : 'ghost'}
                       size="sm"
                       onClick={() => setClaimsViewMode('combo')}
-                      className={cn("rounded-lg text-xs font-black uppercase", claimsViewMode === 'combo' && "bg-brand-magenta text-white shadow-xs")}
+                      className={cn(
+                        "rounded-lg text-xs font-black uppercase text-center whitespace-normal break-words max-w-full min-h-9 h-auto py-1.5 px-3 w-full sm:w-auto",
+                        claimsViewMode === 'combo' && "bg-brand-magenta text-white shadow-xs"
+                      )}
                     >
-                      <Users className="w-3.5 h-3.5 mr-1.5" />
-                      Common Claims (കോമൺ / കോംബോ) ({comboGroups.length} Groups)
+                      <Users className="w-3.5 h-3.5 mr-1.5 shrink-0 inline" />
+                      <span>Common Claims (കോമൺ / കോംബോ) ({comboGroups.length} Groups)</span>
                     </Button>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                  <div className="flex flex-wrap items-center gap-2 w-full md:w-auto min-w-0">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => refreshClaimsList(true)}
                       disabled={isSyncingClaims}
-                      className="h-9 rounded-xl font-black text-xs uppercase border-emerald-600/30 text-emerald-800 bg-emerald-50/50 hover:bg-emerald-100/70"
+                      className="w-full sm:w-auto min-h-9 h-auto py-1.5 px-3 md:h-9 md:py-0 rounded-xl font-black text-xs uppercase border-emerald-600/30 text-emerald-800 bg-emerald-50/50 hover:bg-emerald-100/70 text-center whitespace-normal break-words max-w-full"
                       title="ഡാറ്റാബേസിൽ നിന്ന് ക്ലെയിം പെറ്റീഷനുകൾ നേരിട്ട് സിങ്ക് ചെയ്യുക"
                     >
-                      <RefreshCw className={cn("w-3.5 h-3.5 mr-1.5 text-emerald-600", isSyncingClaims && "animate-spin")} />
-                      {isSyncingClaims ? 'സിങ്ക് ചെയ്യുന്നു...' : 'Sync Claims from DB'}
+                      <RefreshCw className={cn("w-3.5 h-3.5 mr-1.5 text-emerald-600 shrink-0 inline", isSyncingClaims && "animate-spin")} />
+                      <span>{isSyncingClaims ? 'സിങ്ക് ചെയ്യുന്നു...' : 'Sync Claims from DB'}</span>
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setIsClaimsImportOpen(true)}
-                      className="h-9 rounded-xl font-black text-xs uppercase border-brand-blue/30 text-brand-blue hover:bg-brand-blue/5"
+                      className="w-full sm:w-auto min-h-9 h-auto py-1.5 px-3 md:h-9 md:py-0 rounded-xl font-black text-xs uppercase border-brand-blue/30 text-brand-blue hover:bg-brand-blue/5 text-center whitespace-normal break-words max-w-full"
                     >
-                      <Upload className="w-3.5 h-3.5 mr-1.5 text-brand-blue" />
-                      Import Old Site Claims
+                      <Upload className="w-3.5 h-3.5 mr-1.5 text-brand-blue shrink-0 inline" />
+                      <span>Import Old Site Claims</span>
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={handleSyncClaimsCounter}
-                      className="h-9 rounded-xl font-bold text-xs text-slate-600"
+                      className="w-full sm:w-auto min-h-9 h-auto py-1.5 px-3 md:h-9 md:py-0 rounded-xl font-bold text-xs text-slate-600 text-center whitespace-normal break-words max-w-full"
                     >
-                      <RefreshCw className="w-3.5 h-3.5 mr-1" />
-                      Sync Counters
+                      <RefreshCw className="w-3.5 h-3.5 mr-1 shrink-0 inline" />
+                      <span>Sync Counters</span>
                     </Button>
                   </div>
                 </div>
@@ -3532,8 +3540,8 @@ export default function AdminDashboard({
                 {claimsViewMode === 'individual' && (
                   <div className="space-y-4">
                     {/* Search & Filters */}
-                    <Card className="p-4 border border-slate-200/60 bg-white rounded-2xl shadow-xs">
-                      <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
+                    <Card className="p-4 border border-slate-200/60 bg-white rounded-2xl shadow-xs w-full min-w-0 max-w-full">
+                      <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between w-full min-w-0">
                         <div className="relative w-full md:w-80">
                           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                           <Input
@@ -3541,12 +3549,12 @@ export default function AdminDashboard({
                             placeholder="Search name, mobile, Highrich ID..."
                             value={claimSearchTerm}
                             onChange={(e) => setClaimSearchTerm(e.target.value)}
-                            className="pl-9 h-10 rounded-xl text-xs font-bold"
+                            className="pl-9 h-10 rounded-xl text-xs font-bold w-full"
                           />
                         </div>
-                        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto min-w-0">
                           <Select value={claimDistrictFilter} onValueChange={setClaimDistrictFilter}>
-                            <SelectTrigger className="h-10 text-xs font-bold rounded-xl min-w-[130px] bg-slate-50">
+                            <SelectTrigger className="h-10 text-xs font-bold rounded-xl w-full sm:w-auto sm:min-w-[130px] bg-slate-50 flex-1 sm:flex-none">
                               <SelectValue placeholder="All Districts" />
                             </SelectTrigger>
                             <SelectContent>
@@ -3557,7 +3565,7 @@ export default function AdminDashboard({
                             </SelectContent>
                           </Select>
                           <Select value={claimCategoryFilter} onValueChange={setClaimCategoryFilter}>
-                            <SelectTrigger className="h-10 text-xs font-bold rounded-xl min-w-[130px] bg-slate-50">
+                            <SelectTrigger className="h-10 text-xs font-bold rounded-xl w-full sm:w-auto sm:min-w-[130px] bg-slate-50 flex-1 sm:flex-none">
                               <SelectValue placeholder="All Categories" />
                             </SelectTrigger>
                             <SelectContent>
@@ -3574,8 +3582,8 @@ export default function AdminDashboard({
                     </Card>
 
                     {/* Claims Table */}
-                    <Card className="border border-slate-200/60 bg-white rounded-2xl shadow-xs overflow-hidden">
-                      <div className="overflow-x-auto">
+                    <Card className="border border-slate-200/60 bg-white rounded-2xl shadow-xs overflow-hidden w-full min-w-0 max-w-full">
+                      <div className="overflow-x-auto w-full min-w-0 max-w-full">
                         <Table>
                           <TableHeader className="bg-slate-50">
                             <TableRow>
@@ -3728,17 +3736,17 @@ export default function AdminDashboard({
                 {/* COMBO CLAIMS VIEW */}
                 {claimsViewMode === 'combo' && (
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-200/60">
-                      <div>
-                        <h4 className="text-sm font-black text-slate-800 uppercase">Consolidated Family / ID Groups</h4>
-                        <p className="text-[11px] text-slate-400 font-bold">ഒന്നിൽ കൂടുതൽ ഐഡികൾ ഉള്ള അംഗങ്ങളുടെ സംയുക്ത റിപ്പോർട്ട്</p>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/60 w-full min-w-0 max-w-full">
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-black text-slate-800 uppercase break-words">Consolidated Family / ID Groups</h4>
+                        <p className="text-[11px] text-slate-400 font-bold break-words">ഒന്നിൽ കൂടുതൽ ഐഡികൾ ഉള്ള അംഗങ്ങളുടെ സംയുക്ത റിപ്പോർട്ട്</p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                         <Button
                           variant={comboSubView === 'groups' ? 'default' : 'outline'}
                           size="sm"
                           onClick={() => setComboSubView('groups')}
-                          className="rounded-xl text-xs font-bold"
+                          className="flex-1 sm:flex-none rounded-xl text-xs font-bold whitespace-normal break-words max-w-full min-h-8 h-auto py-1 px-3 text-center"
                         >
                           Groups ({comboGroups.length})
                         </Button>
@@ -3746,7 +3754,7 @@ export default function AdminDashboard({
                           variant={comboSubView === 'all_persons' ? 'default' : 'outline'}
                           size="sm"
                           onClick={() => setComboSubView('all_persons')}
-                          className="rounded-xl text-xs font-bold"
+                          className="flex-1 sm:flex-none rounded-xl text-xs font-bold whitespace-normal break-words max-w-full min-h-8 h-auto py-1 px-3 text-center"
                         >
                           All Person Records ({allComboIndividualClaims.length})
                         </Button>
@@ -3761,85 +3769,85 @@ export default function AdminDashboard({
                           </Card>
                         ) : (
                           comboGroups.map((grp, gidx) => (
-                            <Card key={grp.primaryMobile || gidx} className="border border-slate-200/80 bg-white rounded-2xl p-5 shadow-xs space-y-4">
-                              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-3">
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <h4 className="text-sm font-black text-slate-900">{grp.primaryName || 'Unknown Member'}</h4>
-                                    <Badge className="bg-brand-magenta/10 text-brand-magenta border-brand-magenta/20 text-[9px] font-black">
+                            <Card key={grp.primaryMobile || gidx} className="border border-slate-200/80 bg-white rounded-2xl p-4 sm:p-5 shadow-xs space-y-4 w-full min-w-0 max-w-full">
+                              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-3 w-full min-w-0">
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h4 className="text-sm font-black text-slate-900 break-words">{grp.primaryName || 'Unknown Member'}</h4>
+                                    <Badge className="bg-brand-magenta/10 text-brand-magenta border-brand-magenta/20 text-[9px] font-black shrink-0">
                                       {grp.claimsCount} Claims
                                     </Badge>
                                   </div>
-                                  <p className="text-xs font-mono text-slate-500 font-bold mt-0.5">
+                                  <p className="text-xs font-mono text-slate-500 font-bold mt-0.5 break-words">
                                     Mobile: {grp.primaryMobile} • District: {grp.district || 'N/A'}
                                   </p>
                                 </div>
 
-                                <div className="flex items-center gap-4">
-                                  <div className="text-right font-mono">
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full lg:w-auto min-w-0">
+                                  <div className="text-left sm:text-right font-mono">
                                     <p className="text-[9px] font-bold text-slate-400 uppercase">Group Total Pending</p>
                                     <p className="text-base font-black text-brand-magenta">₹{(grp.totalPending || 0).toLocaleString('en-IN')}</p>
                                   </div>
-                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                  <div className="flex items-center gap-1.5 flex-wrap w-full sm:w-auto">
                                     {/* Court Combo Print */}
                                     <Button
                                       variant="outline"
                                       size="sm"
                                       onClick={() => printCourtComboReport(grp.claims, grp.memberObj)}
-                                      className="h-8 px-2.5 text-[9px] font-black uppercase text-emerald-700 border-emerald-600/30 hover:bg-emerald-50 rounded-xl"
+                                      className="min-h-8 h-auto py-1 px-2.5 text-[9px] font-black uppercase text-emerald-700 border-emerald-600/30 hover:bg-emerald-50 rounded-xl whitespace-normal break-words max-w-full flex-1 sm:flex-none text-center"
                                       title="Print Court / Legal Statement (1 Page A4)"
                                     >
-                                      <Printer className="w-3.5 h-3.5 mr-1" /> Court Combo Print
+                                      <Printer className="w-3.5 h-3.5 mr-1 shrink-0 inline" /> Court Combo Print
                                     </Button>
                                     {/* Court Combo PDF Download */}
                                     <Button
                                       variant="outline"
                                       size="sm"
                                       onClick={() => downloadCourtComboPdf(grp.memberObj, grp.claims)}
-                                      className="h-8 px-2.5 text-[9px] font-black uppercase text-emerald-700 border-emerald-600/30 hover:bg-emerald-50 rounded-xl"
+                                      className="min-h-8 h-auto py-1 px-2.5 text-[9px] font-black uppercase text-emerald-700 border-emerald-600/30 hover:bg-emerald-50 rounded-xl whitespace-normal break-words max-w-full flex-1 sm:flex-none text-center"
                                       title="Download Court / Legal Statement PDF"
                                     >
-                                      <Download className="w-3.5 h-3.5 mr-1" /> Court Combo PDF
+                                      <Download className="w-3.5 h-3.5 mr-1 shrink-0 inline" /> Court Combo PDF
                                     </Button>
                                     {/* Admin Combo Print */}
                                     <Button
                                       variant="outline"
                                       size="sm"
                                       onClick={() => printFullAdminComboReport(grp.memberObj, grp.claims)}
-                                      className="h-8 px-2.5 text-[9px] font-black uppercase text-brand-magenta border-brand-magenta/30 hover:bg-brand-magenta/5 rounded-xl"
+                                      className="min-h-8 h-auto py-1 px-2.5 text-[9px] font-black uppercase text-brand-magenta border-brand-magenta/30 hover:bg-brand-magenta/5 rounded-xl whitespace-normal break-words max-w-full flex-1 sm:flex-none text-center"
                                       title="Print Full Admin Record"
                                     >
-                                      <FileSpreadsheet className="w-3.5 h-3.5 mr-1" /> Admin Combo Print
+                                      <FileSpreadsheet className="w-3.5 h-3.5 mr-1 shrink-0 inline" /> Admin Combo Print
                                     </Button>
                                     {/* Admin Combo PDF Download */}
                                     <Button
                                       variant="outline"
                                       size="sm"
                                       onClick={() => downloadFullAdminComboPdf(grp.memberObj, grp.claims)}
-                                      className="h-8 px-2.5 text-[9px] font-black uppercase text-brand-magenta border-brand-magenta/30 hover:bg-brand-magenta/5 rounded-xl"
+                                      className="min-h-8 h-auto py-1 px-2.5 text-[9px] font-black uppercase text-brand-magenta border-brand-magenta/30 hover:bg-brand-magenta/5 rounded-xl whitespace-normal break-words max-w-full flex-1 sm:flex-none text-center"
                                       title="Download Full Admin Record PDF"
                                     >
-                                      <Download className="w-3.5 h-3.5 mr-1" /> Admin Combo PDF
+                                      <Download className="w-3.5 h-3.5 mr-1 shrink-0 inline" /> Admin Combo PDF
                                     </Button>
                                   </div>
                                 </div>
                               </div>
 
                               {/* Nested Claims Rows */}
-                              <div className="bg-slate-50 rounded-xl p-3 space-y-2">
+                              <div className="bg-slate-50 rounded-xl p-3 space-y-2 w-full min-w-0 max-w-full">
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Individual Accounts in this Group:</p>
                                 <div className="grid grid-cols-1 gap-2">
                                   {grp.claims.map((clm: any, cidx: number) => (
-                                    <div key={clm.id || cidx} className="flex items-center justify-between bg-white p-2.5 rounded-lg border border-slate-100 text-xs">
-                                      <div className="flex items-center gap-3">
-                                        <span className="font-mono text-slate-400">#{cidx + 1}</span>
-                                        <span className="font-extrabold text-slate-800">{clm.userName}</span>
-                                        <span className="font-mono text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded text-[10px]">{clm.highrichId || 'N/A'}</span>
+                                    <div key={clm.id || cidx} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white p-2.5 rounded-lg border border-slate-100 text-xs gap-2 min-w-0">
+                                      <div className="flex items-center gap-2 sm:gap-3 flex-wrap min-w-0">
+                                        <span className="font-mono text-slate-400 shrink-0">#{cidx + 1}</span>
+                                        <span className="font-extrabold text-slate-800 break-words">{clm.userName}</span>
+                                        <span className="font-mono text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded text-[10px] shrink-0">{clm.highrichId || 'N/A'}</span>
                                       </div>
-                                      <div className="flex items-center gap-3 font-mono font-bold">
+                                      <div className="flex items-center justify-between sm:justify-end gap-3 font-mono font-bold">
                                         <span className="text-slate-600">₹{(clm.totalPaid || 0).toLocaleString('en-IN')}</span>
                                         <span className="text-brand-magenta">₹{(clm.totalPending || 0).toLocaleString('en-IN')}</span>
-                                        <div className="flex items-center gap-1">
+                                        <div className="flex items-center gap-1 shrink-0">
                                           <Button variant="ghost" size="sm" onClick={() => setSelectedClaim(clm)} className="h-6 w-6 p-0">
                                             <Eye className="w-3 h-3 text-slate-500" />
                                           </Button>
@@ -3858,33 +3866,35 @@ export default function AdminDashboard({
                       </div>
                     ) : (
                       /* ALL PERSONS VIEW */
-                      <Card className="border border-slate-200/60 bg-white rounded-2xl shadow-xs overflow-hidden">
-                        <Table>
-                          <TableHeader className="bg-slate-50">
-                            <TableRow>
-                              <TableHead className="text-[10px] font-black uppercase text-slate-400">Person Name</TableHead>
-                              <TableHead className="text-[10px] font-black uppercase text-slate-400">Mobile</TableHead>
-                              <TableHead className="text-[10px] font-black uppercase text-slate-400">Highrich ID</TableHead>
-                              <TableHead className="text-[10px] font-black uppercase text-slate-400">Pending</TableHead>
-                              <TableHead className="text-right text-[10px] font-black uppercase text-slate-400">Action</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {allComboIndividualClaims.map((ac, idx) => (
-                              <TableRow key={ac.id || idx}>
-                                <TableCell className="font-extrabold text-xs text-slate-800">{ac.userName}</TableCell>
-                                <TableCell className="font-mono text-xs text-slate-600 font-bold">{ac.userMobile}</TableCell>
-                                <TableCell className="font-mono text-xs text-slate-700">{ac.highrichId || 'N/A'}</TableCell>
-                                <TableCell className="font-mono text-xs font-black text-brand-magenta">₹{(ac.totalPending || 0).toLocaleString('en-IN')}</TableCell>
-                                <TableCell className="text-right">
-                                  <Button variant="outline" size="sm" onClick={() => setSelectedClaim(ac)} className="h-7 text-xs font-bold">
-                                    <Eye className="w-3 h-3 mr-1" /> View
-                                  </Button>
-                                </TableCell>
+                      <Card className="border border-slate-200/60 bg-white rounded-2xl shadow-xs overflow-hidden w-full min-w-0 max-w-full">
+                        <div className="overflow-x-auto w-full min-w-0 max-w-full">
+                          <Table>
+                            <TableHeader className="bg-slate-50">
+                              <TableRow>
+                                <TableHead className="text-[10px] font-black uppercase text-slate-400">Person Name</TableHead>
+                                <TableHead className="text-[10px] font-black uppercase text-slate-400">Mobile</TableHead>
+                                <TableHead className="text-[10px] font-black uppercase text-slate-400">Highrich ID</TableHead>
+                                <TableHead className="text-[10px] font-black uppercase text-slate-400">Pending</TableHead>
+                                <TableHead className="text-right text-[10px] font-black uppercase text-slate-400">Action</TableHead>
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                            </TableHeader>
+                            <TableBody>
+                              {allComboIndividualClaims.map((ac, idx) => (
+                                <TableRow key={ac.id || idx}>
+                                  <TableCell className="font-extrabold text-xs text-slate-800">{ac.userName}</TableCell>
+                                  <TableCell className="font-mono text-xs text-slate-600 font-bold">{ac.userMobile}</TableCell>
+                                  <TableCell className="font-mono text-xs text-slate-700">{ac.highrichId || 'N/A'}</TableCell>
+                                  <TableCell className="font-mono text-xs font-black text-brand-magenta">₹{(ac.totalPending || 0).toLocaleString('en-IN')}</TableCell>
+                                  <TableCell className="text-right">
+                                    <Button variant="outline" size="sm" onClick={() => setSelectedClaim(ac)} className="h-7 text-xs font-bold">
+                                      <Eye className="w-3 h-3 mr-1" /> View
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
                       </Card>
                     )}
                   </div>
@@ -4747,15 +4757,15 @@ function StatsCard({ title, value, icon, color }: { title: string, value: number
   };
 
   return (
-    <Card className="border border-slate-200/40 bg-white/80 backdrop-blur-md rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.015)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.025)] transition-all duration-300">
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1.5">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{title}</p>
-            <h3 className="text-3xl font-black text-slate-800 leading-none tracking-tight font-mono">{value}</h3>
+    <Card className="border border-slate-200/40 bg-white/80 backdrop-blur-md rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.015)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.025)] transition-all duration-300 min-w-0 w-full max-w-full">
+      <CardContent className="p-3.5 sm:p-6">
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <div className="space-y-1.5 min-w-0 flex-1">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">{title}</p>
+            <h3 className="text-xl sm:text-3xl font-black text-slate-800 leading-none tracking-tight font-mono truncate">{value}</h3>
           </div>
-          <div className={cn("p-3 rounded-xl border flex items-center justify-center shrink-0", bgColors[color])}>
-            {React.cloneElement(icon as React.ReactElement, { className: 'w-6 h-6' })}
+          <div className={cn("p-2 sm:p-3 rounded-xl border flex items-center justify-center shrink-0", bgColors[color])}>
+            {React.cloneElement(icon as React.ReactElement, { className: 'w-4 h-4 sm:w-6 sm:h-6' })}
           </div>
         </div>
       </CardContent>

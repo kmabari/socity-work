@@ -299,48 +299,48 @@ export default function DistrictQuotaManager({
   });
 
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-6 pb-20 w-full min-w-0 max-w-full">
       {/* Top Header Card */}
-      <div className="bg-linear-to-br from-slate-900 via-brand-blue to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+      <div className="bg-linear-to-br from-slate-900 via-brand-blue to-slate-900 rounded-3xl p-5 sm:p-8 text-white shadow-xl relative overflow-hidden w-full min-w-0 max-w-full">
         <div className="absolute right-0 top-0 w-96 h-96 bg-brand-magenta/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-bold text-brand-magenta mb-3 border border-white/10">
-              <Sliders className="w-3.5 h-3.5" />
-              <span>District Quotas & Distinct Registration Links</span>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6 min-w-0">
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-bold text-brand-magenta mb-3 border border-white/10 max-w-full">
+              <Sliders className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">District Quotas & Distinct Registration Links</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
+            <h2 className="text-xl sm:text-3xl font-black tracking-tight break-words">
               District Quota & Link Management
             </h2>
-            <p className="text-sm text-slate-300 font-medium mt-1 max-w-xl">
+            <p className="text-xs sm:text-sm text-slate-300 font-medium mt-1 max-w-xl break-words">
               Manage registration quotas across all 14 districts in Kerala and generate distinct direct registration links (Distinct URLs) with QR codes.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full md:w-auto">
             <Button
               onClick={handleTriggerSync}
               disabled={isSyncing}
               variant="outline"
-              className="bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-md text-xs font-bold rounded-xl h-11 cursor-pointer transition-all"
+              className="bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-md text-xs font-bold rounded-xl min-h-11 h-auto py-2 px-3.5 cursor-pointer transition-all flex-1 sm:flex-none whitespace-normal break-words text-center"
             >
-              <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 mr-2 shrink-0 inline ${isSyncing ? 'animate-spin' : ''}`} />
               <span>Sync Used Counts</span>
             </Button>
 
             <Button
               onClick={() => setBulkModalOpen(true)}
-              className="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl h-11 shadow-lg shadow-amber-500/20 cursor-pointer transition-all"
+              className="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl min-h-11 h-auto py-2 px-3.5 shadow-lg shadow-amber-500/20 cursor-pointer transition-all flex-1 sm:flex-none whitespace-normal break-words text-center"
             >
-              <Sliders className="w-4 h-4 mr-2" />
+              <Sliders className="w-4 h-4 mr-2 shrink-0 inline" />
               <span>Bulk Set Quota</span>
             </Button>
 
             <Button
               onClick={handleCopyAllUrls}
-              className="bg-brand-magenta hover:bg-brand-magenta/90 text-white text-xs font-bold rounded-xl h-11 shadow-lg shadow-brand-magenta/20 cursor-pointer transition-all"
+              className="bg-brand-magenta hover:bg-brand-magenta/90 text-white text-xs font-bold rounded-xl min-h-11 h-auto py-2 px-3.5 shadow-lg shadow-brand-magenta/20 cursor-pointer transition-all flex-1 sm:flex-none whitespace-normal break-words text-center"
             >
-              <Copy className="w-4 h-4 mr-2" />
+              <Copy className="w-4 h-4 mr-2 shrink-0 inline" />
               <span>Copy All 14 Links</span>
             </Button>
           </div>
@@ -348,7 +348,7 @@ export default function DistrictQuotaManager({
       </div>
 
       {/* Overview Statistics Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 w-full min-w-0 max-w-full">
         <Card className="border border-slate-200/80 bg-white rounded-3xl shadow-xs p-5">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total State Quota</span>

@@ -483,7 +483,7 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full min-w-0 max-w-full">
       {/* Top statistics and info bar */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="border border-amber-200 bg-amber-50/50 shadow-xs relative overflow-hidden md:col-span-2">
@@ -506,15 +506,15 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
               size="sm"
               onClick={() => handleSyncLifeMembers(true)}
               disabled={isSyncingLife}
-              className="border-amber-400 bg-amber-100/80 hover:bg-amber-200 text-amber-950 font-black text-xs rounded-xl shadow-xs shrink-0 self-start sm:self-auto"
+              className="border-amber-400 bg-amber-100/80 hover:bg-amber-200 text-amber-950 font-black text-xs rounded-xl shadow-xs shrink-0 self-start sm:self-auto min-h-8 h-auto py-1.5 px-3 whitespace-normal break-words max-w-full text-center"
               title="ഡാറ്റാബേസിൽ നിന്ന് ലൈഫ് മെമ്പർമാരുടെ വിവരങ്ങൾ സിങ്ക് ചെയ്യുക"
             >
-              <RefreshCw className={cn("w-3.5 h-3.5 mr-1.5 text-amber-700", isSyncingLife && "animate-spin")} />
-              {isSyncingLife ? 'സിങ്ക് ചെയ്യുന്നു...' : 'ഡാറ്റാബേസ് സിങ്ക് (Sync DB)'}
+              <RefreshCw className={cn("w-3.5 h-3.5 mr-1.5 text-amber-700 shrink-0 inline", isSyncingLife && "animate-spin")} />
+              <span>{isSyncingLife ? 'സിങ്ക് ചെയ്യുന്നു...' : 'ഡാറ്റാബേസ് സിങ്ക് (Sync DB)'}</span>
             </Button>
           </CardHeader>
-          <CardContent className="text-xs text-amber-900/80 leading-relaxed relative z-10">
-            ലഭ്യമാകുന്ന തനത് ഐഡി ഫോർമാറ്റ്: <strong className="font-mono bg-amber-150 p-1 px-1.5 rounded text-[11px] text-amber-950 font-black">HCRS-LIFE-KL-MLP-KTK-001</strong> മുതൽ <strong className="font-mono bg-amber-150 p-1 px-1.5 rounded text-[11px] text-amber-950 font-black">HCRS-LIFE-KL-MLP-KTK-023</strong> വരെ.
+          <CardContent className="text-xs text-amber-900/80 leading-relaxed relative z-10 break-words">
+            ലഭ്യമാകുന്ന തനത് ഐഡി ഫോർമാറ്റ്: <strong className="font-mono bg-amber-150 p-1 px-1.5 rounded text-[11px] text-amber-950 font-black inline-block break-all">HCRS-LIFE-KL-MLP-KTK-001</strong> മുതൽ <strong className="font-mono bg-amber-150 p-1 px-1.5 rounded text-[11px] text-amber-950 font-black inline-block break-all">HCRS-LIFE-KL-MLP-KTK-023</strong> വരെ.
           </CardContent>
         </Card>
 
@@ -741,7 +741,7 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
                   .map((m) => {
                     const distName = DISTRICTS.find(d => d.code === m.district)?.name || m.district;
                     return (
-                      <div key={m.uid} className="p-4 flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors">
+                      <div key={m.uid} className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50 transition-colors w-full min-w-0">
                         <div className="flex items-center gap-3 min-w-0">
                           {/* Avatar picture */}
                           <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 border border-amber-300 p-0.5 bg-amber-50">
@@ -755,20 +755,20 @@ export default function LifeMembersPanel({ members, adminUser, onUpdatePhoto }: 
                           </div>
 
                           <div className="min-w-0">
-                            <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-tight truncate max-w-[170px] flex items-center gap-1">
+                            <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-tight break-words flex items-center gap-1">
                               {m.name}
                               <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0 inline" />
                             </h4>
-                            <p className="text-[10px] font-black font-mono text-amber-700 mt-0.5">
+                            <p className="text-[10px] font-black font-mono text-amber-700 mt-0.5 break-all">
                               {m.membershipId}
                             </p>
-                            <p className="text-[9px] text-slate-400 font-bold block mt-0.5">
+                            <p className="text-[9px] text-slate-400 font-bold block mt-0.5 break-words">
                               District: {distName} ({m.assemblyConstituency})
                             </p>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1.5 flex-wrap w-full sm:w-auto justify-end">
                           {isMainAdmin && (
                             <Button
                               variant="outline"
