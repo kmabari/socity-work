@@ -27,7 +27,7 @@ import { setDoc, doc, updateDoc, deleteDoc, collection, onSnapshot, query, getDo
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from './lib/imageUtils';
 import { googleProvider } from './lib/firebase';
-import { printCourtComboReport, printCourtClaimReport, shareCourtComboPdf, downloadCourtComboPdf, getCourtComboHtml, getSingleCourtClaimHtml } from './lib/claimPrint';
+import { printCourtComboReport, printCourtClaimReport, shareCourtComboPdf, downloadCourtComboPdf, downloadCourtClaimPdf, getCourtComboHtml, getSingleCourtClaimHtml } from './lib/claimPrint';
 import { sendWAMessage } from './lib/whatsapp';
 import OperationJanamail from "./components/OperationJanamail";
 import { ELedgerModule } from "./eledger";
@@ -282,7 +282,51 @@ export default function App() {
   const [userSubmittedClaims, setUserSubmittedClaims] = useState<any[]>([]);
   const [selectedCardClaimTab, setSelectedCardClaimTab] = useState<number>(-1);
   const [isPreviewingClaim, setIsPreviewingClaim] = useState(false);
+  const [previewModalClaimIndex, setPreviewModalClaimIndex] = useState<number>(-1);
   const [showInlineClaimPreview, setShowInlineClaimPreview] = useState(false);
+
+  // Dedicated handlers for Individual and Combined Claim actions on Profile Page
+  const handleViewSingleClaim = (claim: any) => {
+    if (!claim) return;
+    const idx = userSubmittedClaims.findIndex(c => 
+      (c.id && claim.id && c.id === claim.id) || 
+      (c.relation && claim.relation && c.relation.toLowerCase() === claim.relation.toLowerCase())
+    );
+    const targetIdx = idx >= 0 ? idx : 0;
+    setPreviewModalClaimIndex(targetIdx);
+    setSelectedCardClaimTab(targetIdx);
+    setShowInlineClaimPreview(true);
+    setIsPreviewingClaim(true);
+    setTimeout(() => {
+      document.getElementById('court-record-card')?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
+  const handlePrintSingleClaim = (claim: any) => {
+    if (!claim) return;
+    printCourtClaimReport(claim, user);
+  };
+
+  const handleDownloadSingleClaimPdf = (claim: any) => {
+    if (!claim) return;
+    downloadCourtClaimPdf(claim, user);
+  };
+
+  const handleViewAllClaims = () => {
+    setPreviewModalClaimIndex(-1);
+    setSelectedCardClaimTab(-1);
+    setIsPreviewingClaim(true);
+  };
+
+  const handlePrintAllClaims = () => {
+    if (!userSubmittedClaims || userSubmittedClaims.length === 0) return;
+    printCourtComboReport(user, userSubmittedClaims);
+  };
+
+  const handleDownloadAllClaimsPdf = () => {
+    if (!userSubmittedClaims || userSubmittedClaims.length === 0) return;
+    downloadCourtComboPdf(user, userSubmittedClaims);
+  };
   const [claimRefreshTrigger, setClaimRefreshTrigger] = useState(0);
   const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
   const [isSyncingDocs, setIsSyncingDocs] = useState(false);
@@ -1376,7 +1420,8 @@ export default function App() {
             !userData.pin
           );
           const isMustComplete = !isAdmin && !isOperator && !isMustChange && (
-            (userData.mustCompleteProfile === true || (!userData.mobile && !userData.membershipId)) && !userData.membershipId
+            userData.mustCompleteProfile === true ||
+            (userData.profileCompleted !== true && (!userData.address || !userData.pincode || !userData.dob || !userData.gender || !userData.bloodGroup))
           );
 
           if (currentViewRef.current !== 'janamail' && currentViewRef.current !== 'eledger') {
@@ -2077,7 +2122,8 @@ export default function App() {
           !finalUser.pin
         );
         const isMustComplete = !isAdm && !isOp && !isMustChange && (
-          (finalUser.mustCompleteProfile === true || (!finalUser.mobile && !finalUser.membershipId)) && !finalUser.membershipId
+          finalUser.mustCompleteProfile === true ||
+          (finalUser.profileCompleted !== true && (!finalUser.address || !finalUser.pincode || !finalUser.dob || !finalUser.gender || !finalUser.bloodGroup))
         );
 
         if (isAdm) {
@@ -3798,12 +3844,8 @@ export default function App() {
             <ProfileEditForm 
               user={user} 
               onSave={handleSaveProfile} 
-              onCancel={() => {
-                currentViewRef.current = 'card';
-                setView('card');
-                setIsEditingProfile(false);
-              }} 
-              isMandatory={false}
+              onCancel={handleLogout} 
+              isMandatory={true}
             />
           </div>
         </div>
@@ -3978,144 +4020,89 @@ export default function App() {
                     </InfinityBorderCard>
                   ) : (
                     <>
-                      {/* Dynamic Color Banner for Settlement Petition / Claim Form */}
+                      {/* Dynamic Progress Color Banner: Main FINANCIAL VERIFICATION FORM Button */}
                       {(() => {
-                        if (submittedClaimsCount === 0) {
-                          // Stage 0: 0 Claims Submitted -> Pure RED (റെഡ്) with White Text
-                          return (
-                            <div className="rounded-3xl p-4 sm:p-6 text-center lg:text-left flex flex-col gap-4 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-800 shadow-md max-w-full overflow-hidden">
-                              <Button 
-                                onClick={() => setView('support')}
-                                className="w-full h-14 rounded-2xl font-black bg-red-600 hover:bg-red-700 active:bg-red-800 text-white shadow-md hover:scale-[1.01] active:scale-95 transition-all uppercase tracking-wider flex items-center justify-center gap-2.5 border-b-4 border-red-900 cursor-pointer"
-                              >
-                                <FileText className="w-6 h-6 shrink-0 text-white" />
-                                <span className="text-base sm:text-lg font-black tracking-wider uppercase text-white">SETTLEMENT CLAIM FORM</span>
-                              </Button>
-                              <Button
-                                onClick={() => setView('support')}
-                                variant="outline"
-                                className="w-full min-h-[44px] h-auto py-2.5 px-2 sm:px-3.5 rounded-xl font-black border-2 border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20 text-red-700 dark:text-red-300 hover:bg-red-100 text-[11px] sm:text-xs uppercase tracking-normal sm:tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-xs whitespace-normal break-words text-center leading-snug max-w-full"
-                              >
-                                <Eye className="w-4 h-4 text-red-600 shrink-0" />
-                                <span className="whitespace-normal break-words text-center leading-snug">നിലവിലെ ഫോം കാണുക / പൂരിപ്പിക്കുക</span>
-                              </Button>
-                              <div className="text-center lg:text-left space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-black border border-slate-200 dark:border-slate-700">
-                                  <Info className="w-4 h-4 text-red-600 shrink-0" />
-                                  <span>സെറ്റിൽമെന്റ് പെറ്റീഷൻ നൽകുക (4 എണ്ണം ബാക്കി • 0/4 Complete)</span>
-                                </div>
-                                <p className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 leading-relaxed">
-                                  ക്ലെയിം വിവരങ്ങൾ രേഖപ്പെടുത്താൻ മുകളിലെ റെഡ് ബട്ടണിൽ ക്ലിക്ക് ചെയ്ത് ഫോം പൂരിപ്പിക്കുക.
-                                </p>
+                        const count = submittedClaimsCount; // 0 to 4
+                        const isRed = count <= 1; // 0/4 or 1/4 -> Red / urgent / incomplete
+                        const isOrange = count === 2 || count === 3; // 2/4 or 3/4 -> Orange / partially completed
+                        const isGreen = count >= 4; // 4/4 -> Green / completed
+
+                        const statusBadge = `${Math.min(count, 4)}/4 Complete`;
+
+                        // Button colors:
+                        const btnBg = isGreen
+                          ? 'bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 active:bg-emerald-800 border-emerald-950 text-white'
+                          : isOrange
+                          ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 active:bg-orange-700 border-orange-950 text-white'
+                          : 'bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 active:bg-red-800 border-red-950 text-white';
+
+                        // Card borders / shadows (Deep Navy background):
+                        const cardBorder = isGreen
+                          ? 'border-emerald-500/80 shadow-[0_12px_36px_rgba(0,0,0,0.5),0_0_20px_rgba(16,185,129,0.22)]'
+                          : isOrange
+                          ? 'border-amber-500/80 shadow-[0_12px_36px_rgba(0,0,0,0.5),0_0_20px_rgba(245,158,11,0.22)]'
+                          : 'border-red-500/80 shadow-[0_12px_36px_rgba(0,0,0,0.5),0_0_20px_rgba(239,68,68,0.22)]';
+
+                        const badgeStyle = isGreen
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
+                          : isOrange
+                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
+                          : 'bg-red-500/20 text-red-300 border-red-500/50';
+
+                        return (
+                          <div className={`rounded-3xl p-6 sm:p-7 text-left flex flex-col gap-4.5 sm:gap-5 bg-gradient-to-br from-[#061426] via-[#0a1f3d] to-[#040e1c] text-white ${cardBorder} border-2 max-w-full overflow-hidden transition-all`}>
+                            {/* Header row with status & badge */}
+                            <div className="flex items-center justify-between gap-3 flex-wrap">
+                              <div className="flex items-center gap-2.5">
+                                <span className={`w-2.5 h-2.5 rounded-full shrink-0 animate-pulse ${
+                                  isGreen ? 'bg-emerald-400' : isOrange ? 'bg-amber-400' : 'bg-red-400'
+                                }`} />
+                                <span className="text-xs sm:text-[13px] font-black uppercase tracking-wider text-white">
+                                  {isGreen
+                                    ? 'പൂർത്തിയായി / COMPLETED'
+                                    : 'അപൂർണ്ണം / INCOMPLETE'}
+                                </span>
                               </div>
+                              <Badge className={`text-[11px] font-black uppercase px-3 py-1 tracking-wider rounded-lg border ${badgeStyle}`}>
+                                {statusBadge}
+                              </Badge>
                             </div>
-                          );
-                        } else if (submittedClaimsCount === 1) {
-                          // Stage 1: 1 Claim Submitted -> Pure ORANGE (ഓറഞ്ച്) with Dark Text
-                          return (
-                            <div className="rounded-3xl p-4 sm:p-6 text-center lg:text-left flex flex-col gap-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-800 shadow-md max-w-full overflow-hidden">
-                              <Button 
-                                onClick={() => setView('support')}
-                                className="w-full h-14 rounded-2xl font-black bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-slate-950 shadow-md hover:scale-[1.01] active:scale-95 transition-all uppercase tracking-wider flex items-center justify-center gap-2.5 border-b-4 border-orange-800 cursor-pointer"
-                              >
-                                <FileText className="w-6 h-6 shrink-0 text-slate-950" />
-                                <span className="text-base sm:text-lg font-black tracking-wider uppercase text-slate-950">SETTLEMENT CLAIM FORM</span>
-                              </Button>
-                              <Button
-                                onClick={() => {
-                                  if (userSubmittedClaims.length > 0) {
-                                    setIsPreviewingClaim(true);
-                                  } else {
-                                    setView('support');
-                                  }
-                                }}
-                                className="w-full min-h-[44px] h-auto py-2.5 px-2 sm:px-3.5 rounded-xl font-black bg-[#003366] hover:bg-[#002244] text-white uppercase tracking-normal sm:tracking-wider text-[11px] sm:text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer border border-blue-400/30 whitespace-normal break-words text-center leading-snug max-w-full"
-                              >
-                                <Eye className="w-4 h-4 text-amber-300 shrink-0" />
-                                <span className="whitespace-normal break-words text-center leading-snug">നിലവിലെ ഫോം കാണുക (View Submitted Form)</span>
-                              </Button>
-                              <div className="text-center lg:text-left space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-black border border-slate-200 dark:border-slate-700">
-                                  <ShieldCheck className="w-4 h-4 text-orange-600 shrink-0" />
-                                  <span>1 ക്ലെയിം സമർപ്പിച്ചു (3 എണ്ണം ബാക്കി • 1/4 Complete)</span>
-                                </div>
-                                <p className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 leading-relaxed">
-                                  സ്വന്തം ക്ലെയിം രേഖപ്പെടുത്തിയിട്ടുണ്ട്. ബാക്കി കുടുംബാംഗങ്ങളുടെ ക്ലെയിം കൂടി ചേർക്കാൻ മുകളിൽ ക്ലിക്ക് ചെയ്യുക.
-                                </p>
+
+                            {/* Large Main FINANCIAL VERIFICATION FORM Button */}
+                            <Button 
+                              onClick={() => setView('support')}
+                              className={`w-full min-h-[56px] h-14 sm:h-15 py-3.5 px-4 rounded-2xl font-black shadow-lg hover:scale-[1.01] active:scale-[0.98] transition-all uppercase tracking-wider flex items-center justify-center gap-2.5 border-b-4 cursor-pointer text-white ${btnBg}`}
+                            >
+                              <FileText className="w-5 h-5 shrink-0 text-white" />
+                              <span className="text-xs sm:text-sm md:text-base font-black tracking-wider uppercase text-white text-center leading-snug">
+                                FINANCIAL VERIFICATION FORM
+                              </span>
+                            </Button>
+
+                            {/* Subtitle / guidance description text with spacious line height */}
+                            <p className="text-xs sm:text-[13px] font-normal text-slate-200/95 leading-relaxed sm:leading-6">
+                              {count === 0 ? (
+                                'കുടുംബാംഗങ്ങളുടെ ഫിനാൻഷ്യൽ വെരിഫിക്കേഷൻ ഫോം സമർപ്പിക്കാൻ മുകളിലെ ബട്ടൺ ക്ലിക്ക് ചെയ്യുക (പരമാവധി 4 അംഗങ്ങൾ).'
+                              ) : isGreen ? (
+                                '✓ കുടുംബത്തിലെ 4 അംഗങ്ങളുടെയും ഫോമുകൾ പൂർണ്ണമായി സമർപ്പിച്ചു. വിവരങ്ങൾ പരിശോധിക്കാൻ മുകളിലെ ബട്ടൺ ക്ലിക്ക് ചെയ്യാം.'
+                              ) : (
+                                `✓ ${count}/4 ഫോം സമർപ്പിച്ചു. ബാക്കി ${4 - count} കുടുംബാംഗങ്ങളുടെ ഫോം കൂടി ചേർക്കാം.`
+                              )}
+                            </p>
+
+                            {/* Financial Pending Balance summary if claims submitted */}
+                            {count > 0 && (
+                              <div className="pt-3.5 sm:pt-4 border-t border-white/15 flex items-center justify-between text-xs sm:text-sm font-bold text-slate-200">
+                                <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-slate-300">
+                                  PENDING BALANCE:
+                                </span>
+                                <span className="font-mono font-black text-amber-300 text-base sm:text-lg tracking-tight">
+                                  ₹{userSubmittedClaims.reduce((s, c) => s + (Number(c.totalPending) || 0), 0).toLocaleString('en-IN')}
+                                </span>
                               </div>
-                            </div>
-                          );
-                        } else if (submittedClaimsCount === 2 || submittedClaimsCount === 3) {
-                          // Stage 2: 2 or 3 Claims Submitted -> Pure YELLOW/AMBER (യെല്ലോ / മഞ്ഞ) with Dark Text
-                          return (
-                            <div className="rounded-3xl p-4 sm:p-6 text-center lg:text-left flex flex-col gap-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-800 shadow-md max-w-full overflow-hidden">
-                              <Button 
-                                onClick={() => setView('support')}
-                                className="w-full h-14 rounded-2xl font-black bg-amber-400 hover:bg-amber-500 active:bg-amber-600 text-slate-950 shadow-md hover:scale-[1.01] active:scale-95 transition-all uppercase tracking-wider flex items-center justify-center gap-2.5 border-b-4 border-amber-600 cursor-pointer"
-                              >
-                                <FileText className="w-6 h-6 shrink-0 text-slate-950" />
-                                <span className="text-base sm:text-lg font-black tracking-wider uppercase text-slate-950">SETTLEMENT CLAIM FORM</span>
-                              </Button>
-                              <Button
-                                onClick={() => {
-                                  if (userSubmittedClaims.length > 0) {
-                                    setIsPreviewingClaim(true);
-                                  } else {
-                                    setView('support');
-                                  }
-                                }}
-                                className="w-full min-h-[44px] h-auto py-2.5 px-2 sm:px-3.5 rounded-xl font-black bg-[#003366] hover:bg-[#002244] text-white uppercase tracking-normal sm:tracking-wider text-[11px] sm:text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer border border-blue-400/30 whitespace-normal break-words text-center leading-snug max-w-full"
-                              >
-                                <Eye className="w-4 h-4 text-amber-300 shrink-0" />
-                                <span className="whitespace-normal break-words text-center leading-snug">നിലവിലെ ഫോം കാണുക (View Submitted Form)</span>
-                              </Button>
-                              <div className="text-center lg:text-left space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-black border border-slate-200 dark:border-slate-700">
-                                  <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
-                                  <span>{submittedClaimsCount} ക്ലെയിം വിവരങ്ങൾ സമർപ്പിച്ചു ({4 - submittedClaimsCount} എണ്ണം ബാക്കി • {submittedClaimsCount}/4 Complete)</span>
-                                </div>
-                                <p className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 leading-relaxed">
-                                  {submittedClaimsCount} വ്യക്തികളുടെ ക്ലെയിം വിജയകരമായി രേഖപ്പെടുത്തി. ബാക്കി അംഗങ്ങളെ കൂടി ചേർക്കാനോ തിരുത്താനോ മുകളിൽ ക്ലിക്ക് ചെയ്യുക.
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        } else {
-                          // Stage 3: 4 Claims Submitted -> Pure GREEN (പച്ച / Emerald) with White Text
-                          return (
-                            <div className="rounded-3xl p-4 sm:p-6 text-center lg:text-left flex flex-col gap-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-800 shadow-md max-w-full overflow-hidden">
-                              <Button 
-                                onClick={() => setView('support')}
-                                className="w-full h-14 rounded-2xl font-black bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-md hover:scale-[1.01] active:scale-95 transition-all uppercase tracking-wider flex items-center justify-center gap-2.5 border-b-4 border-emerald-900 cursor-pointer"
-                              >
-                                <FileText className="w-6 h-6 shrink-0 text-white" />
-                                <span className="text-base sm:text-lg font-black tracking-wider uppercase text-white">SETTLEMENT CLAIM FORM</span>
-                              </Button>
-                              <Button
-                                onClick={() => {
-                                  if (userSubmittedClaims.length > 0) {
-                                    setIsPreviewingClaim(true);
-                                  } else {
-                                    setView('support');
-                                  }
-                                }}
-                                className="w-full min-h-[44px] h-auto py-2.5 px-2 sm:px-3.5 rounded-xl font-black bg-[#003366] hover:bg-[#002244] text-white uppercase tracking-normal sm:tracking-wider text-[11px] sm:text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer border border-blue-400/30 whitespace-normal break-words text-center leading-snug max-w-full"
-                              >
-                                <Eye className="w-4 h-4 text-amber-300 shrink-0" />
-                                <span className="whitespace-normal break-words text-center leading-snug">നിലവിലെ ഫോം കാണുക (View Submitted Form)</span>
-                              </Button>
-                              <div className="text-center lg:text-left space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs font-black border border-emerald-200 dark:border-emerald-800/60">
-                                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                                  <span>എല്ലാ 4 ക്ലെയിം വിവരങ്ങളും സമർപ്പിച്ചു (4/4 Complete) ✅</span>
-                                </div>
-                                <p className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 leading-relaxed">
-                                  എല്ലാ ക്ലെയിം വിവരങ്ങളും രജിസ്റ്റർ ചെയ്തിട്ടുണ്ട്. ഔദ്യോഗിക കോർട്ട് സ്റ്റേറ്റ്‌മെന്റ് റെക്കോർഡ് കാണാൻ മുകളിലെ ബട്ടൺ ക്ലിക്ക് ചെയ്യുക.
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        }
+                            )}
+                          </div>
+                        );
                       })()}
                     </>
                   )}
@@ -4191,7 +4178,7 @@ export default function App() {
                 {!isScreenshotMode && (
                   <div className="w-full mt-6 space-y-4">
                     {/* Consignment Advance Refund Form Section (Above Billing) */}
-                    <div className="w-full bg-white dark:bg-slate-900 border-2 border-[#003366]/35 dark:border-blue-800/50 rounded-2xl shadow-md overflow-hidden">
+                    <div id="court-record-card" className="w-full bg-white dark:bg-slate-900 border-2 border-[#003366]/35 dark:border-blue-800/50 rounded-2xl shadow-md overflow-hidden">
                       {/* Card Header Bar */}
                       <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-900 via-[#003366] to-[#002244] text-white flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                         <div className="flex items-center gap-3 min-w-0">
@@ -4211,36 +4198,26 @@ export default function App() {
                           </div>
                         </div>
 
-                        {/* Action Buttons */}
+                        {/* Action Buttons: Combined Actions */}
                         {userSubmittedClaims.length > 0 && (
                           <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
                             <Button
                               size="sm"
-                              onClick={() => printCourtComboReport(user, userSubmittedClaims)}
+                              onClick={handlePrintAllClaims}
                               className="h-9 px-2.5 sm:px-3.5 bg-blue-500 hover:bg-blue-600 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer border border-blue-300/40 w-full sm:w-auto"
-                              title="Print A4 Copy / Save as PDF"
+                              title={`Print All Family Members (${userSubmittedClaims.length} Pages)`}
                             >
                               <Printer className="w-3.5 h-3.5" />
-                              <span>പ്രിന്റ് (A4)</span>
+                              <span>എല്ലാ അംഗങ്ങളും ഒരുമിച്ച് Print ചെയ്യുക ({userSubmittedClaims.length} പേജ്)</span>
                             </Button>
                             <Button
                               size="sm"
-                              onClick={() => downloadCourtComboPdf(user, userSubmittedClaims)}
+                              onClick={handleDownloadAllClaimsPdf}
                               className="h-9 px-2.5 sm:px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer border border-emerald-400 w-full sm:w-auto"
-                              title="Download PDF"
+                              title={`Download All Family Members PDF (${userSubmittedClaims.length} Pages)`}
                             >
                               <Download className="w-3.5 h-3.5 text-white" />
-                              <span className="text-white font-black">ഡൗൺലോഡ് (PDF)</span>
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => setIsPreviewingClaim(true)}
-                              variant="outline"
-                              className="col-span-2 sm:col-span-1 h-9 px-3 border-white/20 bg-white/10 hover:bg-white/20 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 cursor-pointer w-full sm:w-auto"
-                              title="Full Screen View"
-                            >
-                              <Eye className="w-3.5 h-3.5 text-amber-300" />
-                              <span>ഫുൾ വ്യൂ</span>
+                              <span className="text-white font-black">എല്ലാ അംഗങ്ങളും PDF Download ചെയ്യുക ({userSubmittedClaims.length} പേജ്)</span>
                             </Button>
                           </div>
                         )}
@@ -4280,7 +4257,7 @@ export default function App() {
                               ) : (
                                 <>
                                   <Eye className="w-4 h-4 text-amber-300 shrink-0" />
-                                  <span className="text-white font-black whitespace-normal break-words text-center leading-snug">പൂരിപ്പിച്ച ഫോം ഇവിടെ കാണുക (View Form)</span>
+                                  <span className="text-white font-black whitespace-normal break-words text-center leading-snug">പൂരിപ്പിച്ച ഫോം കാണുക (View Form)</span>
                                 </>
                               )}
                             </Button>
@@ -4336,7 +4313,7 @@ export default function App() {
                                   srcDoc={
                                     selectedCardClaimTab === -1
                                       ? getCourtComboHtml(user, userSubmittedClaims)
-                                      : getSingleCourtClaimHtml(user, userSubmittedClaims[selectedCardClaimTab], selectedCardClaimTab + 1, userSubmittedClaims.length)
+                                      : getSingleCourtClaimHtml(user, userSubmittedClaims[selectedCardClaimTab], 1, 1)
                                   }
                                   title="Official Court Statement Document"
                                   className="w-full h-full border-0 bg-white"
@@ -4368,11 +4345,494 @@ export default function App() {
                       )}
                     </div>
 
+                    {/* FAMILY / COMBO MULTI-CLAIM FORMS SECTION (കുടുംബാംഗങ്ങളുടെ ക്ലെയിം ഫോമുകൾ - പരമാവധി 4 പേർ) */}
+                    <div className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden text-left">
+                      {/* Header */}
+                      <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60 flex items-center justify-center shrink-0">
+                            <Users className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h4 className="text-xs sm:text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
+                              <span>കുടുംബാംഗങ്ങളുടെ ക്ലെയിം ഫോമുകൾ</span>
+                              <Badge className={`text-[10px] font-black uppercase px-2 py-0.5 tracking-wider ${
+                                userSubmittedClaims.length === 4
+                                  ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+                                  : userSubmittedClaims.length > 0
+                                  ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
+                                  : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                              }`}>
+                                {userSubmittedClaims.length === 4
+                                  ? '4/4 Complete ✅'
+                                  : `${userSubmittedClaims.length}/4 Complete`}
+                              </Badge>
+                            </h4>
+                            <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                              Family / Combo Claims • Max 4 Persons
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Header quick actions: Combined Actions & Add Family Member */}
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                          {userSubmittedClaims.length > 0 && (
+                            <>
+                              <Button
+                                size="sm"
+                                onClick={handlePrintAllClaims}
+                                className="h-8 sm:h-9 px-2.5 sm:px-3 bg-blue-600 hover:bg-blue-700 text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer border border-blue-400/40"
+                                title={`Print All Family Members (${userSubmittedClaims.length} Pages)`}
+                              >
+                                <Printer className="w-3.5 h-3.5 text-white" />
+                                <span>എല്ലാ അംഗങ്ങളും ഒരുമിച്ച് Print ({userSubmittedClaims.length}P)</span>
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={handleDownloadAllClaimsPdf}
+                                className="h-8 sm:h-9 px-2.5 sm:px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer border border-emerald-400"
+                                title={`Download All Family Members PDF (${userSubmittedClaims.length} Pages)`}
+                              >
+                                <Download className="w-3.5 h-3.5 text-white" />
+                                <span className="text-white font-black">എല്ലാ അംഗങ്ങളും PDF Download ({userSubmittedClaims.length}P)</span>
+                              </Button>
+                            </>
+                          )}
+                          {userSubmittedClaims.length > 0 && userSubmittedClaims.length < 4 && (
+                            <Button
+                              size="sm"
+                              onClick={() => setView('support')}
+                              className="h-8 sm:h-9 px-3 rounded-xl font-black bg-[#003366] hover:bg-[#002244] text-white text-[10px] sm:text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm cursor-pointer border border-blue-400/30"
+                            >
+                              <Plus className="w-3.5 h-3.5 text-amber-300" />
+                              <span>ചേർക്കുക ({4 - userSubmittedClaims.length} ബാക്കി)</span>
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 4 Family Member Slots Grid */}
+                      <div className="p-4 sm:p-5 space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {/* Slot 1: Self */}
+                          {(() => {
+                            const claim = userSubmittedClaims.find(c => c.relation === 'Self') || (userSubmittedClaims.length > 0 && !userSubmittedClaims.some(c => c.relation === 'Self') ? userSubmittedClaims[0] : null);
+                            const isSubmitted = !!claim;
+                            const claimantName = claim?.userName || claim?.claimantName || claim?.name || (isSubmitted ? user.name : '');
+                            const token = claim?.tokenNo || claim?.serialNo || (isSubmitted ? '#1' : '');
+                            const pending = claim ? Number(claim.totalPending) || 0 : 0;
+
+                            return (
+                              <div className={`p-3.5 rounded-xl border transition-all ${
+                                isSubmitted
+                                  ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60'
+                                  : 'bg-slate-50 dark:bg-slate-800/40 border-dashed border-slate-300 dark:border-slate-700'
+                              }`}>
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
+                                      isSubmitted ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
+                                    }`}>
+                                      1
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="text-xs font-black text-slate-900 dark:text-white">സ്വന്തം (Self)</span>
+                                        {isSubmitted ? (
+                                          <Badge className="bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-[9px] font-black px-1.5 py-0.2">
+                                            സമർപ്പിച്ചു ✓
+                                          </Badge>
+                                        ) : (
+                                          <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">ബാക്കി</span>
+                                        )}
+                                      </div>
+                                      {isSubmitted && claimantName && (
+                                        <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300 truncate mt-0.5">
+                                          {claimantName}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {isSubmitted && token && (
+                                    <span className="text-[10px] font-mono font-black px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/50 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 shrink-0">
+                                      {token}
+                                    </span>
+                                  )}
+                                </div>
+                                {isSubmitted && pending > 0 && (
+                                  <div className="mt-2 pt-2 border-t border-emerald-200/60 dark:border-emerald-800/40 flex items-center justify-between text-[11px]">
+                                    <span className="text-slate-500 dark:text-slate-400 font-bold">മിച്ച ക്ലെയിം:</span>
+                                    <span className="font-mono font-black text-[#003366] dark:text-blue-400">₹{pending.toLocaleString('en-IN')}</span>
+                                  </div>
+                                )}
+
+                                {/* Individual Actions for Self */}
+                                {isSubmitted && claim && (
+                                  <div className="mt-3 pt-2.5 border-t border-emerald-200/80 dark:border-emerald-800/60 flex flex-wrap items-center gap-1.5">
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => handleViewSingleClaim(claim)}
+                                      className="h-7 sm:h-8 px-2 sm:px-2.5 bg-[#003366] hover:bg-[#002244] text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider rounded-lg flex items-center gap-1 shadow-xs cursor-pointer active:scale-95 transition-all"
+                                      title={`View Form - ${claimantName}`}
+                                    >
+                                      <Eye className="w-3 h-3 text-amber-300" />
+                                      <span>View Form</span>
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => handlePrintSingleClaim(claim)}
+                                      className="h-7 sm:h-8 px-2 sm:px-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider rounded-lg flex items-center gap-1 shadow-xs cursor-pointer active:scale-95 transition-all border border-blue-400/40"
+                                      title={`Print A4 - ${claimantName}`}
+                                    >
+                                      <Printer className="w-3 h-3 text-white" />
+                                      <span>Print A4</span>
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => handleDownloadSingleClaimPdf(claim)}
+                                      className="h-7 sm:h-8 px-2 sm:px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider rounded-lg flex items-center gap-1 shadow-xs cursor-pointer active:scale-95 transition-all border border-emerald-400"
+                                      title={`Download PDF - ${claimantName}`}
+                                    >
+                                      <Download className="w-3 h-3 text-white" />
+                                      <span className="font-black text-white">Download PDF</span>
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          {/* Slot 2: Spouse */}
+                          {(() => {
+                            const claim = userSubmittedClaims.find(c => ['Wife', 'Husband', 'Spouse'].includes(c.relation));
+                            const isSubmitted = !!claim;
+                            const relLabel = claim?.relation === 'Husband' ? 'ഭർത്താവ് (Husband)' : 'ഭാര്യ (Wife)';
+                            const claimantName = claim?.claimantName || claim?.spouseName || claim?.userName || claim?.name;
+                            const token = claim?.tokenNo || claim?.serialNo;
+                            const pending = claim ? Number(claim.totalPending) || 0 : 0;
+
+                            return (
+                              <div className={`p-3.5 rounded-xl border transition-all ${
+                                isSubmitted
+                                  ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60'
+                                  : 'bg-slate-50 dark:bg-slate-800/40 border-dashed border-slate-300 dark:border-slate-700'
+                              }`}>
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
+                                      isSubmitted ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
+                                    }`}>
+                                      2
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="text-xs font-black text-slate-900 dark:text-white">
+                                          {isSubmitted ? relLabel : 'ഭാര്യ / ഭർത്താവ് (Spouse)'}
+                                        </span>
+                                        {isSubmitted ? (
+                                          <Badge className="bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-[9px] font-black px-1.5 py-0.2">
+                                            സമർപ്പിച്ചു ✓
+                                          </Badge>
+                                        ) : (
+                                          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">ചേർക്കാൻ സാധ്യമാണ്</span>
+                                        )}
+                                      </div>
+                                      {isSubmitted && claimantName && (
+                                        <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300 truncate mt-0.5">
+                                          {claimantName}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {isSubmitted && token && (
+                                    <span className="text-[10px] font-mono font-black px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/50 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 shrink-0">
+                                      {token}
+                                    </span>
+                                  )}
+                                </div>
+                                {isSubmitted && pending > 0 && (
+                                  <div className="mt-2 pt-2 border-t border-emerald-200/60 dark:border-emerald-800/40 flex items-center justify-between text-[11px]">
+                                    <span className="text-slate-500 dark:text-slate-400 font-bold">മിച്ച ക്ലെയിം:</span>
+                                    <span className="font-mono font-black text-[#003366] dark:text-blue-400">₹{pending.toLocaleString('en-IN')}</span>
+                                  </div>
+                                )}
+
+                                {/* Individual Actions for Spouse */}
+                                {isSubmitted && claim && (
+                                  <div className="mt-3 pt-2.5 border-t border-emerald-200/80 dark:border-emerald-800/60 flex flex-wrap items-center gap-1.5">
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => handleViewSingleClaim(claim)}
+                                      className="h-7 sm:h-8 px-2 sm:px-2.5 bg-[#003366] hover:bg-[#002244] text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider rounded-lg flex items-center gap-1 shadow-xs cursor-pointer active:scale-95 transition-all"
+                                      title={`View Form - ${claimantName}`}
+                                    >
+                                      <Eye className="w-3 h-3 text-amber-300" />
+                                      <span>View Form</span>
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => handlePrintSingleClaim(claim)}
+                                      className="h-7 sm:h-8 px-2 sm:px-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider rounded-lg flex items-center gap-1 shadow-xs cursor-pointer active:scale-95 transition-all border border-blue-400/40"
+                                      title={`Print A4 - ${claimantName}`}
+                                    >
+                                      <Printer className="w-3 h-3 text-white" />
+                                      <span>Print A4</span>
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => handleDownloadSingleClaimPdf(claim)}
+                                      className="h-7 sm:h-8 px-2 sm:px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider rounded-lg flex items-center gap-1 shadow-xs cursor-pointer active:scale-95 transition-all border border-emerald-400"
+                                      title={`Download PDF - ${claimantName}`}
+                                    >
+                                      <Download className="w-3 h-3 text-white" />
+                                      <span className="font-black text-white">Download PDF</span>
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          {/* Slot 3: Parent */}
+                          {(() => {
+                            const claim = userSubmittedClaims.find(c => ['Mother', 'Father', 'Parent'].includes(c.relation));
+                            const isSubmitted = !!claim;
+                            const relLabel = claim?.relation === 'Father' ? 'അച്ഛൻ (Father)' : claim?.relation === 'Mother' ? 'അമ്മ (Mother)' : 'മാതാവ്/പിതാവ് (Parent)';
+                            const claimantName = claim?.claimantName || claim?.parentName || claim?.userName || claim?.name;
+                            const token = claim?.tokenNo || claim?.serialNo;
+                            const pending = claim ? Number(claim.totalPending) || 0 : 0;
+
+                            return (
+                              <div className={`p-3.5 rounded-xl border transition-all ${
+                                isSubmitted
+                                  ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60'
+                                  : 'bg-slate-50 dark:bg-slate-800/40 border-dashed border-slate-300 dark:border-slate-700'
+                              }`}>
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
+                                      isSubmitted ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
+                                    }`}>
+                                      3
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="text-xs font-black text-slate-900 dark:text-white">
+                                          {isSubmitted ? relLabel : 'മാതാവ് / പിതാവ് (Parent)'}
+                                        </span>
+                                        {isSubmitted ? (
+                                          <Badge className="bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-[9px] font-black px-1.5 py-0.2">
+                                            സമർപ്പിച്ചു ✓
+                                          </Badge>
+                                        ) : (
+                                          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">ചേർക്കാൻ സാധ്യമാണ്</span>
+                                        )}
+                                      </div>
+                                      {isSubmitted && claimantName && (
+                                        <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300 truncate mt-0.5">
+                                          {claimantName}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {isSubmitted && token && (
+                                    <span className="text-[10px] font-mono font-black px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/50 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 shrink-0">
+                                      {token}
+                                    </span>
+                                  )}
+                                </div>
+                                {isSubmitted && pending > 0 && (
+                                  <div className="mt-2 pt-2 border-t border-emerald-200/60 dark:border-emerald-800/40 flex items-center justify-between text-[11px]">
+                                    <span className="text-slate-500 dark:text-slate-400 font-bold">മിച്ച ക്ലെയിം:</span>
+                                    <span className="font-mono font-black text-[#003366] dark:text-blue-400">₹{pending.toLocaleString('en-IN')}</span>
+                                  </div>
+                                )}
+
+                                {/* Individual Actions for Parent */}
+                                {isSubmitted && claim && (
+                                  <div className="mt-3 pt-2.5 border-t border-emerald-200/80 dark:border-emerald-800/60 flex flex-wrap items-center gap-1.5">
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => handleViewSingleClaim(claim)}
+                                      className="h-7 sm:h-8 px-2 sm:px-2.5 bg-[#003366] hover:bg-[#002244] text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider rounded-lg flex items-center gap-1 shadow-xs cursor-pointer active:scale-95 transition-all"
+                                      title={`View Form - ${claimantName}`}
+                                    >
+                                      <Eye className="w-3 h-3 text-amber-300" />
+                                      <span>View Form</span>
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => handlePrintSingleClaim(claim)}
+                                      className="h-7 sm:h-8 px-2 sm:px-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider rounded-lg flex items-center gap-1 shadow-xs cursor-pointer active:scale-95 transition-all border border-blue-400/40"
+                                      title={`Print A4 - ${claimantName}`}
+                                    >
+                                      <Printer className="w-3 h-3 text-white" />
+                                      <span>Print A4</span>
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => handleDownloadSingleClaimPdf(claim)}
+                                      className="h-7 sm:h-8 px-2 sm:px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider rounded-lg flex items-center gap-1 shadow-xs cursor-pointer active:scale-95 transition-all border border-emerald-400"
+                                      title={`Download PDF - ${claimantName}`}
+                                    >
+                                      <Download className="w-3 h-3 text-white" />
+                                      <span className="font-black text-white">Download PDF</span>
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          {/* Slot 4: Child */}
+                          {(() => {
+                            const claim = userSubmittedClaims.find(c => ['Son', 'Daughter', 'Child'].includes(c.relation));
+                            const isSubmitted = !!claim;
+                            const relLabel = claim?.relation === 'Daughter' ? 'മകൾ (Daughter)' : claim?.relation === 'Son' ? 'മകൻ (Son)' : 'മകൻ/മകൾ (Child)';
+                            const claimantName = claim?.claimantName || claim?.childName || claim?.userName || claim?.name;
+                            const token = claim?.tokenNo || claim?.serialNo;
+                            const pending = claim ? Number(claim.totalPending) || 0 : 0;
+
+                            return (
+                              <div className={`p-3.5 rounded-xl border transition-all ${
+                                isSubmitted
+                                  ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60'
+                                  : 'bg-slate-50 dark:bg-slate-800/40 border-dashed border-slate-300 dark:border-slate-700'
+                              }`}>
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
+                                      isSubmitted ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
+                                    }`}>
+                                      4
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="text-xs font-black text-slate-900 dark:text-white">
+                                          {isSubmitted ? relLabel : 'മകൻ / മകൾ (Child)'}
+                                        </span>
+                                        {isSubmitted ? (
+                                          <Badge className="bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-[9px] font-black px-1.5 py-0.2">
+                                            സമർപ്പിച്ചു ✓
+                                          </Badge>
+                                        ) : (
+                                          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">ചേർക്കാൻ സാധ്യമാണ്</span>
+                                        )}
+                                      </div>
+                                      {isSubmitted && claimantName && (
+                                        <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300 truncate mt-0.5">
+                                          {claimantName}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {isSubmitted && token && (
+                                    <span className="text-[10px] font-mono font-black px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/50 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 shrink-0">
+                                      {token}
+                                    </span>
+                                  )}
+                                </div>
+                                {isSubmitted && pending > 0 && (
+                                  <div className="mt-2 pt-2 border-t border-emerald-200/60 dark:border-emerald-800/40 flex items-center justify-between text-[11px]">
+                                    <span className="text-slate-500 dark:text-slate-400 font-bold">മിച്ച ക്ലെയിം:</span>
+                                    <span className="font-mono font-black text-[#003366] dark:text-blue-400">₹{pending.toLocaleString('en-IN')}</span>
+                                  </div>
+                                )}
+
+                                {/* Individual Actions for Child */}
+                                {isSubmitted && claim && (
+                                  <div className="mt-3 pt-2.5 border-t border-emerald-200/80 dark:border-emerald-800/60 flex flex-wrap items-center gap-1.5">
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => handleViewSingleClaim(claim)}
+                                      className="h-7 sm:h-8 px-2 sm:px-2.5 bg-[#003366] hover:bg-[#002244] text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider rounded-lg flex items-center gap-1 shadow-xs cursor-pointer active:scale-95 transition-all"
+                                      title={`View Form - ${claimantName}`}
+                                    >
+                                      <Eye className="w-3 h-3 text-amber-300" />
+                                      <span>View Form</span>
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => handlePrintSingleClaim(claim)}
+                                      className="h-7 sm:h-8 px-2 sm:px-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider rounded-lg flex items-center gap-1 shadow-xs cursor-pointer active:scale-95 transition-all border border-blue-400/40"
+                                      title={`Print A4 - ${claimantName}`}
+                                    >
+                                      <Printer className="w-3 h-3 text-white" />
+                                      <span>Print A4</span>
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => handleDownloadSingleClaimPdf(claim)}
+                                      className="h-7 sm:h-8 px-2 sm:px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider rounded-lg flex items-center gap-1 shadow-xs cursor-pointer active:scale-95 transition-all border border-emerald-400"
+                                      title={`Download PDF - ${claimantName}`}
+                                    >
+                                      <Download className="w-3 h-3 text-white" />
+                                      <span className="font-black text-white">Download PDF</span>
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
+
+                        {/* Action Buttons & Guidance */}
+                        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                          <p className="text-[11px] text-slate-600 dark:text-slate-400 font-semibold leading-relaxed">
+                            {userSubmittedClaims.length === 4
+                              ? '✓ ഒരു കുടുംബത്തിലെ പരമാവധി 4 ക്ലെയിമുകളും വിജയകരമായി രേഖപ്പെടുത്തിയിട്ടുണ്ട്.'
+                              : userSubmittedClaims.length > 0
+                              ? `✓ ${userSubmittedClaims.length} ക്ലെയിം സമർപ്പിച്ചു. ഇനിയും ${4 - userSubmittedClaims.length} കുടുംബാംഗങ്ങളുടെ ഫോമുകൾ കൂടി ചേർക്കാവുന്നതാണ്.`
+                              : '✓ കുടുംബത്തിലെ 4 അംഗങ്ങളുടെ വരെ ക്ലെയിം വിവരങ്ങൾ ഓരോരുത്തർക്കും പ്രത്യേകമായി ഇതിലൂടെ സമർപ്പിക്കാം.'}
+                          </p>
+
+                          {userSubmittedClaims.length === 0 ? (
+                            <Button
+                              onClick={() => setView('support')}
+                              className="h-11 px-5 rounded-xl font-black bg-[#003366] hover:bg-[#002244] text-white text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer shrink-0"
+                            >
+                              <FileText className="w-4 h-4 text-amber-300" />
+                              <span>സെറ്റിൽമെന്റ് ഫോം പൂരിപ്പിക്കുക</span>
+                            </Button>
+                          ) : userSubmittedClaims.length < 4 ? (
+                            <Button
+                              onClick={() => setView('support')}
+                              className="h-11 px-5 rounded-xl font-black bg-[#003366] hover:bg-[#002244] text-white text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer shrink-0"
+                            >
+                              <Plus className="w-4 h-4 text-amber-300" />
+                              <span>ബാക്കി ഫോമുകൾ ചേർക്കുക ({4 - userSubmittedClaims.length}/4)</span>
+                            </Button>
+                          ) : (
+                            <Button
+                              onClick={() => setView('support')}
+                              variant="outline"
+                              className="h-10 px-4 rounded-xl font-black border-2 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                            >
+                              <Pencil className="w-3.5 h-3.5 text-amber-600" />
+                              <span>ക്ലെയിം വിവരങ്ങൾ തിരുത്തുക</span>
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
                     {/* COMBINED TOTALS & FINANCIAL SUMMARY CARD (മുഴുവൻ തുകയുടെയും വിവരങ്ങൾ) */}
                     <div className="w-full bg-gradient-to-br from-[#002244] via-[#003366] to-slate-900 rounded-3xl p-5 sm:p-6 text-white space-y-5 shadow-xl relative overflow-hidden border border-white/10">
                       <div className="absolute top-0 right-0 w-36 h-36 bg-amber-400/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl pointer-events-none" />
                       
-                      {/* Section Header */}
+                      {/* Section Header - Summary Only */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-2xl bg-amber-400/20 text-amber-300 border border-amber-400/30 flex items-center justify-center shrink-0 shadow-inner">
@@ -4389,33 +4849,6 @@ export default function App() {
                               Combined Totals & Financial Statement Breakdown
                             </p>
                           </div>
-                        </div>
-
-                        {/* Top Action Buttons inside Totals Tab */}
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              if (userSubmittedClaims.length > 0) {
-                                setIsPreviewingClaim(true);
-                              } else {
-                                setView('support');
-                              }
-                            }}
-                            className="h-auto min-h-[36px] py-1.5 px-2.5 sm:px-3 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-[11px] sm:text-xs uppercase tracking-normal sm:tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-sm cursor-pointer whitespace-normal text-center leading-tight max-w-full"
-                          >
-                            <Eye className="w-3.5 h-3.5 shrink-0" />
-                            <span className="whitespace-normal leading-tight">നിലവിലെ ഫോം കാണുക</span>
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => setView('support')}
-                            variant="outline"
-                            className="h-auto min-h-[36px] py-1.5 px-2.5 sm:px-3 border-white/20 bg-white/10 hover:bg-white/20 text-white font-black text-[11px] sm:text-xs uppercase tracking-normal sm:tracking-wider rounded-xl flex items-center justify-center gap-1.5 cursor-pointer whitespace-normal text-center leading-tight max-w-full"
-                          >
-                            <Pencil className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                            <span className="whitespace-normal leading-tight">എഡിറ്റ് / കൂടുതൽ ചേർക്കുക</span>
-                          </Button>
                         </div>
                       </div>
 
@@ -4551,31 +4984,11 @@ export default function App() {
                         </div>
                       )}
 
-                      {/* Footer Actions inside the Totals Tab */}
-                      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/10">
-                        <div className="text-[10px] text-slate-300 font-bold">
+                      {/* Financial Note Footer */}
+                      <div className="pt-2 border-t border-white/10">
+                        <p className="text-[10px] text-slate-300 font-bold">
                           ✓ അഡ്മിൻ പാനലിലും കോടതി സ്റ്റേറ്റ്‌മെന്റിലും ഉൾപ്പെടുത്തിയ തുക വിവരങ്ങൾ
-                        </div>
-                        {userSubmittedClaims.length > 0 && (
-                          <div className="flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => printCourtComboReport(user, userSubmittedClaims)}
-                              className="h-8 px-2.5 bg-blue-500 hover:bg-blue-600 text-white font-black text-[11px] uppercase tracking-wider rounded-lg flex items-center gap-1 cursor-pointer"
-                            >
-                              <Printer className="w-3 h-3" />
-                              <span>പ്രിന്റ്</span>
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => downloadCourtComboPdf(user, userSubmittedClaims)}
-                              className="h-8 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[11px] uppercase tracking-wider rounded-lg flex items-center gap-1 cursor-pointer"
-                            >
-                              <Download className="w-3 h-3" />
-                              <span>PDF</span>
-                            </Button>
-                          </div>
-                        )}
+                        </p>
                       </div>
                     </div>
 
@@ -4588,66 +5001,162 @@ export default function App() {
           )}
 
           {/* Claim Form Live Preview Modal */}
-          {isPreviewingClaim && user && userSubmittedClaims.length > 0 && (
-            <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center p-2 sm:p-4">
-              <div className="bg-white dark:bg-slate-900 w-full max-w-5xl h-[94vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-slate-800">
-                {/* Modal Header */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between px-3 sm:px-6 py-3 sm:py-3.5 bg-slate-900 text-white border-b border-slate-800 shrink-0 gap-2 sm:gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-lg bg-blue-600/30 flex items-center justify-center text-blue-400 shrink-0">
-                      <FileText className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="text-xs sm:text-sm font-black uppercase tracking-tight text-white flex items-center gap-1.5 sm:gap-2 truncate">
-                        <span className="truncate">കൺസൈൻമെന്റ് അഡ്വാൻസ് റീഫണ്ട് ഫോം</span>
-                        <Badge className="bg-blue-600 text-white text-[9px] font-bold px-2 py-0.5 uppercase shrink-0">
-                          {userSubmittedClaims.length} {userSubmittedClaims.length === 1 ? 'പേജ്' : 'പേജുകൾ'}
-                        </Badge>
-                      </h3>
-                      <p className="text-[10px] text-slate-400 font-semibold truncate">
-                        Official A4 Record • {user.name}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-end gap-1.5 sm:gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => printCourtComboReport(user, userSubmittedClaims)}
-                      className="h-8 sm:h-9 px-2.5 sm:px-3.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm"
-                    >
-                      <Printer className="w-3.5 h-3.5" />
-                      <span>പ്രിന്റ് (A4)</span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => downloadCourtComboPdf(user, userSubmittedClaims)}
-                      className="h-8 sm:h-9 px-2.5 sm:px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm border border-emerald-500"
-                    >
-                      <Download className="w-3.5 h-3.5 text-white" />
-                      <span className="text-white font-black">ഡൗൺലോഡ് (PDF)</span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setIsPreviewingClaim(false)}
-                      className="h-8 sm:h-9 px-2.5 sm:px-3 text-slate-400 hover:text-white hover:bg-slate-800 text-sm font-black rounded-xl cursor-pointer"
-                    >
-                      ✕
-                    </Button>
-                  </div>
-                </div>
+          {isPreviewingClaim && user && userSubmittedClaims.length > 0 && (() => {
+            const isSingle = previewModalClaimIndex >= 0 && previewModalClaimIndex < userSubmittedClaims.length;
+            const activeClaim = isSingle ? userSubmittedClaims[previewModalClaimIndex] : null;
+            const isSelf = !activeClaim?.relation || activeClaim?.relation === 'Self';
+            const claimantName = isSingle
+              ? (activeClaim.userName || activeClaim.claimantName || activeClaim.name || activeClaim.spouseName || activeClaim.parentName || activeClaim.childName || (isSelf ? user.name : '') || 'Claimant')
+              : user.name;
+            const relBadge = isSingle
+              ? (activeClaim.relation === 'Self' ? 'Self (സ്വന്തം)' :
+                 activeClaim.relation === 'Wife' ? 'Wife (ഭാര്യ)' :
+                 activeClaim.relation === 'Husband' ? 'Husband (ഭർത്താവ്)' :
+                 activeClaim.relation === 'Father' ? 'Father (പിതാവ്)' :
+                 activeClaim.relation === 'Mother' ? 'Mother (മാതാവ്)' :
+                 activeClaim.relation === 'Son' ? 'Son (മകൻ)' :
+                 activeClaim.relation === 'Daughter' ? 'Daughter (മകൾ)' : (activeClaim.relation || 'Claimant'))
+              : `All Family Members (${userSubmittedClaims.length})`;
 
-                {/* Preview Content (Rendered Iframe displaying the exact court statement) */}
-                <div className="flex-1 bg-slate-100 dark:bg-slate-950 p-2 sm:p-4 overflow-hidden">
-                  <iframe
-                    srcDoc={getCourtComboHtml(user, userSubmittedClaims)}
-                    title="Consignment Advance Statement Preview"
-                    className="w-full h-full rounded-xl border border-slate-300 dark:border-slate-800 bg-white shadow-inner"
-                  />
+            return (
+              <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center p-2 sm:p-4">
+                <div className="bg-white dark:bg-slate-900 w-full max-w-5xl h-[94vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-slate-800">
+                  {/* Modal Header */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between px-3 sm:px-6 py-3 sm:py-3.5 bg-slate-900 text-white border-b border-slate-800 shrink-0 gap-2 sm:gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-blue-600/30 flex items-center justify-center text-blue-400 shrink-0">
+                        <FileText className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-xs sm:text-sm font-black uppercase tracking-tight text-white flex items-center gap-1.5 sm:gap-2 truncate">
+                          <span className="truncate">{isSingle ? claimantName : 'കൺസൈൻമെന്റ് അഡ്വാൻസ് റീഫണ്ട് ഫോം'}</span>
+                          <Badge className="bg-blue-600 text-white text-[9px] font-bold px-2 py-0.5 uppercase shrink-0">
+                            {isSingle ? '1 പേജ് (Single A4)' : `${userSubmittedClaims.length} പേജുകൾ (Combo)`}
+                          </Badge>
+                          {isSingle && (
+                            <Badge className="bg-indigo-600/80 text-white text-[9px] font-bold px-2 py-0.5 uppercase shrink-0">
+                              {relBadge}
+                            </Badge>
+                          )}
+                        </h3>
+                        <p className="text-[10px] text-slate-400 font-semibold truncate">
+                          {isSingle ? `Individual Official A4 Record • Token: ${activeClaim?.tokenNo || activeClaim?.serialNo || 'N/A'}` : `Official Family Record • ${user.name}`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-end gap-1.5 sm:gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          if (isSingle && activeClaim) {
+                            printCourtClaimReport(activeClaim, user);
+                          } else {
+                            printCourtComboReport(user, userSubmittedClaims);
+                          }
+                        }}
+                        className="h-8 sm:h-9 px-2.5 sm:px-3.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm"
+                        title={isSingle ? `Print ${claimantName} A4` : `Print All Family Members (${userSubmittedClaims.length} Pages)`}
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        <span>{isSingle ? 'പ്രിന്റ് A4' : `പ്രിന്റ് (${userSubmittedClaims.length}P)`}</span>
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          if (isSingle && activeClaim) {
+                            downloadCourtClaimPdf(activeClaim, user);
+                          } else {
+                            downloadCourtComboPdf(user, userSubmittedClaims);
+                          }
+                        }}
+                        className="h-8 sm:h-9 px-2.5 sm:px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm border border-emerald-500"
+                        title={isSingle ? `Download ${claimantName} PDF` : `Download All Family Members PDF (${userSubmittedClaims.length} Pages)`}
+                      >
+                        <Download className="w-3.5 h-3.5 text-white" />
+                        <span className="text-white font-black">{isSingle ? 'ഡൗൺലോഡ് PDF' : `ഡൗൺലോഡ് (${userSubmittedClaims.length}P)`}</span>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setIsPreviewingClaim(false)}
+                        className="h-8 sm:h-9 px-2.5 sm:px-3 text-slate-400 hover:text-white hover:bg-slate-800 text-sm font-black rounded-xl cursor-pointer"
+                      >
+                        ✕
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Navigation Switcher inside Modal if multiple claims */}
+                  {userSubmittedClaims.length > 1 && (
+                    <div className="px-3 sm:px-6 py-2 bg-slate-800 border-b border-slate-700 flex items-center gap-2 overflow-x-auto shrink-0">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1">
+                        ഫോം തിരഞ്ഞെടുക്കുക:
+                      </span>
+                      {userSubmittedClaims.map((claimItem, cIdx) => {
+                        const isClaimSelf = !claimItem.relation || claimItem.relation === 'Self';
+                        const cName = claimItem.userName || claimItem.claimantName || claimItem.name || claimItem.spouseName || claimItem.parentName || claimItem.childName || (isClaimSelf ? user.name : '') || `Claimant ${cIdx + 1}`;
+                        const cRel = claimItem.relation === 'Self' ? 'Self' :
+                          claimItem.relation === 'Wife' ? 'Wife' :
+                          claimItem.relation === 'Husband' ? 'Husband' :
+                          claimItem.relation === 'Father' ? 'Father' :
+                          claimItem.relation === 'Mother' ? 'Mother' :
+                          claimItem.relation === 'Son' ? 'Son' :
+                          claimItem.relation === 'Daughter' ? 'Daughter' : (claimItem.relation || 'Member');
+                        const isSelected = previewModalClaimIndex === cIdx;
+                        return (
+                          <button
+                            key={claimItem.id || cIdx}
+                            type="button"
+                            onClick={() => {
+                              setPreviewModalClaimIndex(cIdx);
+                              setSelectedCardClaimTab(cIdx);
+                            }}
+                            className={`px-2.5 py-1 text-xs font-black rounded-lg transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer ${
+                              isSelected
+                                ? 'bg-blue-600 text-white shadow-sm'
+                                : 'bg-slate-700/60 text-slate-300 hover:bg-slate-700 hover:text-white'
+                            }`}
+                          >
+                            <span>{cIdx + 1}. {cName} ({cRel})</span>
+                            <span className="text-[9px] opacity-75 font-semibold">1P</span>
+                          </button>
+                        );
+                      })}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPreviewModalClaimIndex(-1);
+                          setSelectedCardClaimTab(-1);
+                        }}
+                        className={`px-2.5 py-1 text-xs font-black rounded-lg transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer ml-auto ${
+                          previewModalClaimIndex === -1
+                            ? 'bg-amber-600 text-white shadow-sm'
+                            : 'bg-slate-700/40 text-slate-400 hover:bg-slate-700 hover:text-white'
+                        }`}
+                      >
+                        <Users className="w-3 h-3" />
+                        <span>എല്ലാ അംഗങ്ങളും ({userSubmittedClaims.length}P)</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Preview Content (Rendered Iframe displaying the exact court statement) */}
+                  <div className="flex-1 bg-slate-100 dark:bg-slate-950 p-2 sm:p-4 overflow-hidden">
+                    <iframe
+                      key={`preview-frame-${previewModalClaimIndex}`}
+                      srcDoc={
+                        isSingle && activeClaim
+                          ? getSingleCourtClaimHtml(user, activeClaim, 1, 1)
+                          : getCourtComboHtml(user, userSubmittedClaims)
+                      }
+                      title="Consignment Advance Statement Preview"
+                      className="w-full h-full rounded-xl border border-slate-300 dark:border-slate-800 bg-white shadow-inner"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       )}
 

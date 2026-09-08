@@ -28,13 +28,6 @@ import {
   getHardshipDetail,
   getFuturePreferenceDetail
 } from '../lib/claimPrint';
-import {
-  printCompetentAuthorityClaimReport,
-  downloadCompetentAuthorityClaimPdf,
-  printManagementAndCompetentAuthorityComboReport,
-  downloadManagementAndCompetentAuthorityComboPdf
-} from '../lib/competentAuthorityPrint';
-import CompetentAuthorityModal from './CompetentAuthorityModal';
 import { 
   Crown,
   Users, 
@@ -54,7 +47,6 @@ import {
   Camera,
   Database,
   FileSpreadsheet,
-  FileCheck,
   Receipt,
   Plus,
   Pencil,
@@ -619,11 +611,6 @@ export default function AdminDashboard({
   const [deletingClaimId, setDeletingClaimId] = useState<string | null>(null);
   const [claimsViewMode, setClaimsViewMode] = useState<'individual' | 'combo'>('individual');
   const [comboSubView, setComboSubView] = useState<'groups' | 'all_persons'>('groups');
-
-  // Competent Authority Claim Form Modal States
-  const [isCompetentAuthorityModalOpen, setIsCompetentAuthorityModalOpen] = useState(false);
-  const [competentModalInitialClaim, setCompetentModalInitialClaim] = useState<any>(null);
-  const [competentModalInitialMember, setCompetentModalInitialMember] = useState<UserProfile | undefined>(undefined);
 
   // Claims Bulk Import States
   const [isClaimsImportOpen, setIsClaimsImportOpen] = useState(false);
@@ -1296,6 +1283,7 @@ export default function AdminDashboard({
       
       let priorityStatus = 'PENDING';
       if (isEmergency) priorityStatus = 'EMERGENCY RED';
+      else if (editClaimFuturePreference === 'urgent') priorityStatus = 'EMERGENCY RED';
       else if (editClaimFuturePreference === 'settlement') priorityStatus = 'RED';
       else if (editClaimFuturePreference === 'wait') priorityStatus = 'ORANGE';
       else if (editClaimFuturePreference === 'continue') priorityStatus = 'GREEN';
@@ -3503,20 +3491,6 @@ export default function AdminDashboard({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => {
-                        setCompetentModalInitialClaim(null);
-                        setCompetentModalInitialMember(undefined);
-                        setIsCompetentAuthorityModalOpen(true);
-                      }}
-                      className="h-9 rounded-xl font-black text-xs uppercase border-indigo-600/40 text-indigo-900 bg-indigo-50 hover:bg-indigo-100 shadow-2xs"
-                      title="Open Competent Authority Claim Form Center (Print & PDF)"
-                    >
-                      <FileCheck className="w-3.5 h-3.5 mr-1.5 text-indigo-600" />
-                      Competent Authority Claim Form
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
                       onClick={() => refreshClaimsList(true)}
                       disabled={isSyncingClaims}
                       className="h-9 rounded-xl font-black text-xs uppercase border-emerald-600/30 text-emerald-800 bg-emerald-50/50 hover:bg-emerald-100/70"
@@ -3671,20 +3645,6 @@ export default function AdminDashboard({
                                     </TableCell>
                                     <TableCell className="text-right">
                                       <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                                        {/* Competent Authority Claim Form */}
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => {
-                                            setCompetentModalInitialClaim(c);
-                                            setCompetentModalInitialMember(memberObj);
-                                            setIsCompetentAuthorityModalOpen(true);
-                                          }}
-                                          className="h-7 px-2 text-[8.5px] font-black uppercase text-indigo-700 border-indigo-600/30 hover:bg-indigo-50 rounded-lg"
-                                          title="Preview, Print or Download Competent Authority Claim Form"
-                                        >
-                                          <FileCheck className="w-3 h-3 mr-1" /> Competent Form
-                                        </Button>
                                         {/* Court Print */}
                                         <Button
                                           variant="outline"
@@ -3821,40 +3781,6 @@ export default function AdminDashboard({
                                     <p className="text-base font-black text-brand-magenta">₹{(grp.totalPending || 0).toLocaleString('en-IN')}</p>
                                   </div>
                                   <div className="flex items-center gap-1.5 flex-wrap">
-                                    {/* Competent Authority Claim Form Center */}
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => {
-                                        setCompetentModalInitialClaim(grp.claims[0]);
-                                        setCompetentModalInitialMember(grp.memberObj);
-                                        setIsCompetentAuthorityModalOpen(true);
-                                      }}
-                                      className="h-8 px-2.5 text-[9px] font-black uppercase text-indigo-700 border-indigo-600/30 hover:bg-indigo-50 rounded-xl"
-                                      title="Open Competent Authority Claim Form (Print / Download / Combo)"
-                                    >
-                                      <FileCheck className="w-3.5 h-3.5 mr-1" /> Competent Form
-                                    </Button>
-                                    {/* Management + Competent Authority Combo Print */}
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => printManagementAndCompetentAuthorityComboReport(grp.memberObj, grp.claims)}
-                                      className="h-8 px-2.5 text-[9px] font-black uppercase text-emerald-800 border-emerald-600/40 bg-emerald-50/60 hover:bg-emerald-100 rounded-xl"
-                                      title="Print Management Form + Competent Authority Claim Form Combo"
-                                    >
-                                      <Printer className="w-3.5 h-3.5 mr-1 text-emerald-600" /> Mgmt + Comp Combo
-                                    </Button>
-                                    {/* Management + Competent Authority Combo PDF */}
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => downloadManagementAndCompetentAuthorityComboPdf(grp.memberObj, grp.claims)}
-                                      className="h-8 px-2.5 text-[9px] font-black uppercase text-slate-800 border-slate-300 bg-slate-50 hover:bg-slate-100 rounded-xl"
-                                      title="Download Management Form + Competent Authority Claim Form Combo PDF"
-                                    >
-                                      <Download className="w-3.5 h-3.5 mr-1 text-slate-700" /> Combo PDF
-                                    </Button>
                                     {/* Court Combo Print */}
                                     <Button
                                       variant="outline"
@@ -4279,13 +4205,33 @@ export default function AdminDashboard({
                   </div>
                 )}
 
-                {selectedClaim.futurePreference && (
-                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Future Preference (ഭാവിയിലെ തീരുമാനം)</p>
-                    <p className="text-xs font-bold text-slate-700">{getFuturePreferenceDetail(selectedClaim.futurePreference).ml}</p>
-                    <p className="text-[10px] text-slate-500">{getFuturePreferenceDetail(selectedClaim.futurePreference).en}</p>
-                  </div>
-                )}
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Future Preference (ഭാവിയിലെ തീരുമാനം)</p>
+                  {selectedClaim.futurePreference ? (
+                    <>
+                      <p className="text-xs font-bold text-slate-700">{getFuturePreferenceDetail(selectedClaim.futurePreference).ml}</p>
+                      <p className="text-[10px] text-slate-500">{getFuturePreferenceDetail(selectedClaim.futurePreference).en}</p>
+                    </>
+                  ) : (
+                    <p className="text-xs font-semibold text-slate-400 italic">Not provided by customer (കസ്റ്റമർ രേഖപ്പെടുത്തിയിട്ടില്ല)</p>
+                  )}
+                </div>
+
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Hardship Declarations (പ്രതിസന്ധികൾ)</p>
+                  {Array.isArray(selectedClaim.hardshipStatus) && selectedClaim.hardshipStatus.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {getHardshipList(selectedClaim.hardshipStatus).map((h, i) => (
+                        <span key={i} className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold ${h.isEmergency ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-slate-200 text-slate-700'}`}>
+                          <span>{h.icon}</span>
+                          <span>{h.titleMl} ({h.titleEn})</span>
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs font-semibold text-slate-400 italic">Not provided by customer (കസ്റ്റമർ രേഖപ്പെടുത്തിയിട്ടില്ല)</p>
+                  )}
+                </div>
 
                 {selectedClaim.notes && (
                   <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
@@ -4296,21 +4242,6 @@ export default function AdminDashboard({
 
                 <DialogFooter className="flex flex-wrap items-center justify-between gap-2 pt-4 border-t">
                   <div className="flex items-center gap-2 flex-wrap">
-                    {/* Competent Authority Claim Form */}
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        const memberObj = claimUser || members.find(m => m.uid === selectedClaim.uid || compareMobiles(m.mobile, selectedClaim.userMobile));
-                        setCompetentModalInitialClaim(selectedClaim);
-                        setCompetentModalInitialMember(memberObj);
-                        setIsCompetentAuthorityModalOpen(true);
-                      }}
-                      className="rounded-xl font-black uppercase text-xs px-2.5 border-indigo-600/40 text-indigo-900 bg-indigo-50 hover:bg-indigo-100 flex items-center gap-1.5 shadow-2xs"
-                      title="Open Competent Authority Claim Form (Print, PDF, Combo)"
-                    >
-                      <FileCheck className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>Competent Form</span>
-                    </Button>
                     <Button
                       variant="outline"
                       onClick={() => {
@@ -4522,75 +4453,96 @@ export default function AdminDashboard({
                   </div>
                 )}
 
-                {/* Future Preference */}
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black text-slate-500 uppercase">ഭാവിയിലെ തീരുമാനങ്ങൾ (Future Preference)</Label>
-                  <Select value={editClaimFuturePreference} onValueChange={setEditClaimFuturePreference}>
-                     <SelectTrigger className="w-full min-h-[44px] h-auto py-2 border bg-white rounded-xl text-xs font-bold text-slate-700 text-left">
-                        <SelectValue placeholder="മുൻഗണന തിരഞ്ഞെടുക്കുക / Select preference" />
-                     </SelectTrigger>
-                     <SelectContent>
-                        <SelectItem value="settlement" className="text-xs py-2">
-                          <span className="font-bold text-slate-800">ബാക്കി തുക ലഭിച്ച ശേഷം സെറ്റിൽമെന്റും അക്കൗണ്ട് ക്ലോസ് ചെയ്യലും</span>
-                          <span className="block text-[10px] text-slate-500 font-normal">(Prefer settlement and closure after receiving balance)</span>
-                        </SelectItem>
-                        <SelectItem value="wait" className="text-xs py-2">
-                          <span className="font-bold text-slate-800">1/4 ഭാഗം ലഭിച്ചാൽ കാത്തിരിക്കാൻ സാധിക്കും</span>
-                          <span className="block text-[10px] text-slate-500 font-normal">(Willing to wait if company continues, provided 1/4th received)</span>
-                        </SelectItem>
-                        <SelectItem value="continue" className="text-xs py-2">
-                          <span className="font-bold text-slate-800">കമ്പനിയുമായി തുടർന്നു പോകാൻ തയ്യാറാണ്</span>
-                          <span className="block text-[10px] text-slate-500 font-normal">(Ready to continue based on future plans & commitments)</span>
-                        </SelectItem>
-                     </SelectContent>
-                  </Select>
-                </div>
+                {/* AREA 3 — ADMIN INTERNAL FOLLOW-UP FORM */}
+                <div className="p-4 bg-amber-50/60 rounded-2xl border-2 border-amber-300 space-y-4 shadow-sm">
+                  <div className="flex items-center justify-between border-b pb-2.5 border-amber-200 gap-2 flex-wrap">
+                    <div className="space-y-0.5">
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-800 text-white text-[10px] font-black uppercase tracking-wider">
+                        🛡️ <span>AREA 3: ADMIN INTERNAL FOLLOW-UP FORM</span>
+                      </div>
+                      <p className="text-[10px] font-bold text-amber-900">
+                        അഡ്മിൻ ഇന്റേണൽ ഫോളോ-അപ്പ് • Internal Admin Use Only • Excluded from Advocate Print/PDF
+                      </p>
+                    </div>
+                    <Badge className="bg-amber-200 text-amber-950 font-black text-[9px] uppercase">
+                      🔒 Admin Exclusive
+                    </Badge>
+                  </div>
 
-                {/* Remarks/Notes Input */}
-                <div className="space-y-1.5 font-sans">
-                  <Label className="text-[10px] font-black text-slate-500 uppercase">Remarks / Notes (അധിക വിവരങ്ങൾ / നോട്ട്)</Label>
-                  <textarea 
-                    value={editClaimNotes} 
-                    onChange={(e) => setEditClaimNotes(e.target.value)} 
-                    placeholder="Enter notes or explanation..."
-                    className="w-full text-xs font-semibold p-3 border border-slate-200 rounded-xl focus:border-brand-magenta/85 focus:ring-0 focus:outline-none min-h-20 bg-slate-50/20"
-                  />
-                </div>
+                  {/* Future Preference */}
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black text-slate-700 uppercase">ഭാവിയിലെ തീരുമാനങ്ങൾ (Future Preference)</Label>
+                    <Select value={editClaimFuturePreference} onValueChange={setEditClaimFuturePreference}>
+                       <SelectTrigger className="w-full min-h-[44px] h-auto py-2 border bg-white rounded-xl text-xs font-bold text-slate-700 text-left">
+                          <SelectValue placeholder="മുൻഗണന തിരഞ്ഞെടുക്കുക / Select preference" />
+                       </SelectTrigger>
+                       <SelectContent>
+                          <SelectItem value="settlement" className="text-xs py-2">
+                            <span className="font-bold text-slate-800">ബാലൻസ് തുക ലഭിച്ചാൽ settlement ചെയ്ത് account closure ചെയ്യാൻ താൽപര്യപ്പെടുന്നു</span>
+                            <span className="block text-[10px] text-slate-500 font-normal">(Settlement and closure after receiving pending balance)</span>
+                          </SelectItem>
+                          <SelectItem value="wait" className="text-xs py-2">
+                            <span className="font-bold text-slate-800">ബാലൻസ് തുകയിൽ നിന്ന് ഒരു ഭാഗം / 1/4 amount ലഭിച്ചാൽ ബാക്കി തുകയ്ക്കായി കാത്തിരിക്കാം</span>
+                            <span className="block text-[10px] text-slate-500 font-normal">(Willing to wait if part payment / 1/4th amount is received)</span>
+                          </SelectItem>
+                          <SelectItem value="continue" className="text-xs py-2">
+                            <span className="font-bold text-slate-800">കമ്പനി പ്രവർത്തനം പുനരാരംഭിച്ചാൽ കമ്പനിക്കൊപ്പം തുടർന്നു പോകാൻ തയ്യാറാണ്</span>
+                            <span className="block text-[10px] text-slate-500 font-normal">(Ready to continue with the company if business operations restart)</span>
+                          </SelectItem>
+                          <SelectItem value="urgent" className="text-xs py-2">
+                            <span className="font-bold text-slate-800">നിലവിലെ സാഹചര്യത്തിൽ എത്രയും വേഗം payment ലഭിക്കണം</span>
+                            <span className="block text-[10px] text-slate-500 font-normal">(Need urgent payment due to personal/financial situation)</span>
+                          </SelectItem>
+                       </SelectContent>
+                    </Select>
+                  </div>
 
-                {/* Hardship declaration */}
-                <div className="space-y-2">
-                   <Label className="text-[10px] font-black text-slate-500 uppercase">ആളുടെ ഇപ്പോഴത്തെ അവസ്ഥ (Hardship Declarations)</Label>
-                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-bold">
-                      {[
-                        { id: 'bank', ml: 'ബാങ്ക് ജപ്തി ഭീഷണി നേരിടുന്നു', en: 'Bank seizure pressure' },
-                        { id: 'crisis', ml: 'ഗുരുതരമായ സാമ്പത്തിക പ്രതിസന്ധി', en: 'Financial crisis' },
-                        { id: 'medical', ml: 'ചികിത്സാ ആവശ്യങ്ങൾ / അത്യാഹിതങ്ങൾ', en: 'Medical emergency' },
-                        { id: 'none', ml: 'അടിയന്തിര പ്രാധാന്യമില്ല', en: 'No emergency' }
-                      ].map(h => (
-                        <div key={h.id} className="flex items-start gap-2.5 p-3 bg-slate-50 rounded-xl border border-slate-100 hover:bg-slate-100/70 transition-colors">
-                          <Checkbox 
-                            id={`admin-edit-claim-hardship-${h.id}`}
-                            checked={editClaimHardshipStatus.includes(h.id)} 
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                if (h.id === 'none') {
-                                  setEditClaimHardshipStatus(['none']);
+                  {/* Remarks/Notes Input */}
+                  <div className="space-y-1.5 font-sans">
+                    <Label className="text-[10px] font-black text-slate-700 uppercase">Remarks / Notes (അഡ്മിൻ നോട്ട് / നിരീക്ഷണങ്ങൾ)</Label>
+                    <textarea 
+                      value={editClaimNotes} 
+                      onChange={(e) => setEditClaimNotes(e.target.value)} 
+                      placeholder="Enter internal follow-up notes, investigator remarks, or explanation..."
+                      className="w-full text-xs font-semibold p-3 border border-slate-200 rounded-xl focus:border-amber-600 focus:ring-0 focus:outline-none min-h-20 bg-white"
+                    />
+                  </div>
+
+                  {/* Hardship declaration */}
+                  <div className="space-y-2">
+                     <Label className="text-[10px] font-black text-slate-700 uppercase">ആളുടെ ഇപ്പോഴത്തെ അവസ്ഥ (Hardship Declarations)</Label>
+                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-bold">
+                        {[
+                          { id: 'bank', ml: 'ബാങ്ക് ജപ്തി / loan recovery pressure നേരിടുന്നു', en: 'Bank recovery / seizure pressure' },
+                          { id: 'crisis', ml: 'ഗുരുതരമായ സാമ്പത്തിക പ്രതിസന്ധി നേരിടുന്നു', en: 'Serious financial crisis' },
+                          { id: 'medical', ml: 'ചികിത്സാ ആവശ്യങ്ങൾ / medical emergency ഉണ്ട്', en: 'Medical emergency / treatment need' },
+                          { id: 'none', ml: 'അടിയന്തിര പ്രാധാന്യമില്ല', en: 'No urgent emergency' }
+                        ].map(h => (
+                          <div key={h.id} className="flex items-start gap-2.5 p-3 bg-white rounded-xl border border-amber-200 hover:bg-amber-50/50 transition-colors">
+                            <Checkbox 
+                              id={`admin-edit-claim-hardship-${h.id}`}
+                              checked={editClaimHardshipStatus.includes(h.id)} 
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  if (h.id === 'none') {
+                                    setEditClaimHardshipStatus(['none']);
+                                  } else {
+                                    setEditClaimHardshipStatus(prev => [...prev.filter(x => x !== 'none'), h.id]);
+                                  }
                                 } else {
-                                  setEditClaimHardshipStatus(prev => [...prev.filter(x => x !== 'none'), h.id]);
+                                  setEditClaimHardshipStatus(prev => prev.filter(x => x !== h.id));
                                 }
-                              } else {
-                                setEditClaimHardshipStatus(prev => prev.filter(x => x !== h.id));
-                              }
-                            }} 
-                            className="mt-0.5"
-                          />
-                          <Label htmlFor={`admin-edit-claim-hardship-${h.id}`} className="text-xs font-bold text-slate-700 cursor-pointer select-none leading-snug">
-                            <span className="block">{h.ml}</span>
-                            <span className="text-[10px] font-medium text-slate-400">({h.en})</span>
-                          </Label>
-                        </div>
-                      ))}
-                   </div>
+                              }} 
+                              className="mt-0.5"
+                            />
+                            <Label htmlFor={`admin-edit-claim-hardship-${h.id}`} className="text-xs font-bold text-slate-700 cursor-pointer select-none leading-snug">
+                              <span className="block">{h.ml}</span>
+                              <span className="text-[10px] font-medium text-slate-400">({h.en})</span>
+                            </Label>
+                          </div>
+                        ))}
+                     </div>
+                  </div>
                 </div>
 
                 <DialogFooter className="gap-2 pt-4 border-t">
@@ -4779,20 +4731,6 @@ export default function AdminDashboard({
           <AdminReceiptsModal 
             member={selectedReceiptsMember} 
             onClose={() => setSelectedReceiptsMember(null)} 
-          />
-        )}
-        {isCompetentAuthorityModalOpen && (
-          <CompetentAuthorityModal
-            isOpen={isCompetentAuthorityModalOpen}
-            onClose={() => {
-              setIsCompetentAuthorityModalOpen(false);
-              setCompetentModalInitialClaim(null);
-              setCompetentModalInitialMember(undefined);
-            }}
-            claims={claims}
-            members={members}
-            initialClaim={competentModalInitialClaim}
-            initialMember={competentModalInitialMember}
           />
         )}
     </div>

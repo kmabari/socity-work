@@ -2,6 +2,7 @@ import { DISTRICTS, CONSTITUENCIES } from '../constants';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { html2canvasOklchOnClone } from './imageUtils';
+import { sanitizeMemberAddress } from './utils';
 import { toast } from 'sonner';
 
 export const formatClaimDateTime = (ts: any): string => {
@@ -29,13 +30,26 @@ export const formatClaimDateTime = (ts: any): string => {
 };
 
 export const formatClaimDateOnly = (ts: any): string => {
-  if (!ts) return new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  if (!ts) return '';
   try {
     let d: Date;
     if (typeof ts.toDate === 'function') {
       d = ts.toDate();
     } else if (ts.seconds) {
       d = new Date(ts.seconds * 1000);
+    } else if (typeof ts === 'string') {
+      const parts = ts.trim().split(/[-/]/);
+      if (parts.length === 3) {
+        if (parts[0].length === 4) {
+          d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        } else if (parts[2].length === 4) {
+          d = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+        } else {
+          d = new Date(ts);
+        }
+      } else {
+        d = new Date(ts);
+      }
     } else {
       d = new Date(ts);
     }
@@ -48,6 +62,48 @@ export const formatClaimDateOnly = (ts: any): string => {
   } catch {
     return String(ts);
   }
+};
+
+export const numberToWordsINR = (num: number): string => {
+  if (isNaN(num) || num === 0) return 'Zero';
+  num = Math.floor(Math.abs(num));
+  const ones = [
+    '', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+    'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'
+  ];
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+  const convertLessThanOneThousand = (n: number): string => {
+    let str = '';
+    if (n >= 100) {
+      str += ones[Math.floor(n / 100)] + ' Hundred ';
+      n %= 100;
+    }
+    if (n >= 20) {
+      str += tens[Math.floor(n / 10)] + ' ';
+      n %= 10;
+    }
+    if (n > 0) {
+      str += ones[n] + ' ';
+    }
+    return str.trim();
+  };
+
+  let result = '';
+  const crore = Math.floor(num / 10000000);
+  num %= 10000000;
+  const lakh = Math.floor(num / 100000);
+  num %= 100000;
+  const thousand = Math.floor(num / 1000);
+  num %= 1000;
+  const remainder = num;
+
+  if (crore > 0) result += convertLessThanOneThousand(crore) + ' Crore ';
+  if (lakh > 0) result += convertLessThanOneThousand(lakh) + ' Lakh ';
+  if (thousand > 0) result += convertLessThanOneThousand(thousand) + ' Thousand ';
+  if (remainder > 0) result += convertLessThanOneThousand(remainder);
+
+  return result.trim();
 };
 
 export const getCategoryLabel = (cat: string): string => {
@@ -89,37 +145,37 @@ export const HARDSHIP_OPTIONS_META: Record<string, {
 }> = {
   bank: {
     id: 'bank',
-    titleMl: 'ബാങ്ക് ജപ്തി ഭീഷണി',
-    titleEn: 'Bank Seizure Pressure',
-    fullMl: 'ബാങ്ക് ജപ്തി ഭീഷണി നേരിടുന്നു',
-    fullEn: 'Under bank loan seizure / revenue recovery pressure',
+    titleMl: 'ബാങ്ക് ജപ്തി / loan recovery pressure',
+    titleEn: 'Bank recovery / seizure pressure',
+    fullMl: 'ബാങ്ക് ജപ്തി / loan recovery pressure നേരിടുന്നു',
+    fullEn: 'Bank recovery / seizure pressure',
     icon: '🏦',
     isEmergency: true
   },
   crisis: {
     id: 'crisis',
     titleMl: 'ഗുരുതരമായ സാമ്പത്തിക പ്രതിസന്ധി',
-    titleEn: 'Severe Financial Crisis',
+    titleEn: 'Serious financial crisis',
     fullMl: 'ഗുരുതരമായ സാമ്പത്തിക പ്രതിസന്ധി നേരിടുന്നു',
-    fullEn: 'Serious financial crisis and acute distress',
+    fullEn: 'Serious financial crisis',
     icon: '⚠️',
     isEmergency: true
   },
   medical: {
     id: 'medical',
-    titleMl: 'ചികിത്സാ ആവശ്യങ്ങൾ / അത്യാഹിതം',
-    titleEn: 'Medical Emergency',
-    fullMl: 'ചികിത്സാ ആവശ്യങ്ങൾ / അത്യാഹിതങ്ങൾ നേരിടുന്നു',
-    fullEn: 'Medical emergency / critical ongoing treatment expenses',
+    titleMl: 'ചികിത്സാ ആവശ്യങ്ങൾ / medical emergency',
+    titleEn: 'Medical emergency / treatment need',
+    fullMl: 'ചികിത്സാ ആവശ്യങ്ങൾ / medical emergency ഉണ്ട്',
+    fullEn: 'Medical emergency / treatment need',
     icon: '🏥',
     isEmergency: true
   },
   none: {
     id: 'none',
     titleMl: 'അടിയന്തിര പ്രാധാന്യമില്ല',
-    titleEn: 'No Emergency',
+    titleEn: 'No urgent emergency',
     fullMl: 'അടിയന്തിര പ്രാധാന്യമില്ല',
-    fullEn: 'No urgent emergency situation',
+    fullEn: 'No urgent emergency',
     icon: '✓',
     isEmergency: false
   }
@@ -151,29 +207,36 @@ export const getFuturePreferenceDetail = (pref: string) => {
   const p = (pref || '').trim().toLowerCase();
   if (p === 'settlement') {
     return {
-      ml: 'ബാക്കി തുക ലഭിച്ച ശേഷം സെറ്റിൽമെന്റും അക്കൗണ്ട് ക്ലോസ് ചെയ്യാനും ഞാൻ താല്പര്യപ്പെടുന്നു.',
-      en: 'Prefer settlement and closure after receiving the balance amount.',
+      ml: 'ബാലൻസ് തുക ലഭിച്ചാൽ settlement ചെയ്ത് account closure ചെയ്യാൻ താൽപര്യപ്പെടുന്നു',
+      en: 'Settlement and closure after receiving pending balance',
       short: 'സെറ്റിൽമെന്റും അക്കൗണ്ട് ക്ലോസ് ചെയ്യലും (Settlement & Closure)'
     };
   }
   if (p === 'wait') {
     return {
-      ml: 'കമ്പനി തുടർന്നു പ്രവർത്തിക്കുകയാണെങ്കിൽ, തരാനുള്ള ബാലൻസ് തുകയുടെ നാലിൽ ഒരു ഭാഗം ലഭിച്ചാൽ എനിക്ക് കാത്തിരിക്കാൻ സാധിക്കും.',
-      en: 'Willing to wait if company continues and grows, provided 1/4th balance received.',
-      short: '1/4 ഭാഗം ലഭിച്ചാൽ കാത്തിരിക്കാം (Willing to wait if 1/4th balance given)'
+      ml: 'ബാലൻസ് തുകയിൽ നിന്ന് ഒരു ഭാഗം / 1/4 amount ലഭിച്ചാൽ ബാക്കി തുകയ്ക്കായി കാത്തിരിക്കാം',
+      en: 'Willing to wait if part payment / 1/4th amount is received',
+      short: '1/4 ഭാഗം ലഭിച്ചാൽ കാത്തിരിക്കാം (Wait if 1/4th received)'
     };
   }
   if (p === 'continue') {
     return {
-      ml: 'കമ്പനിയുടെ ബിസിനസ് പ്ലാനിൽ പറഞ്ഞതുപോലെ ഭാവി പ്ലാനുകൾക്കും പുതിയ പ്രൊജക്ടുകൾക്കും ഒപ്പം ചേർന്നും കമ്പനിയുമായി തുടർന്നു പോകാൻ ഞാൻ തയ്യാറാണ്.',
-      en: 'Ready to continue based on future business plans & commitments.',
-      short: 'കമ്പനിയുമായി തുടർന്നു പോകാൻ തയ്യാറാണ് (Continue with Company)'
+      ml: 'കമ്പനി പ്രവർത്തനം പുനരാരംഭിച്ചാൽ കമ്പനിക്കൊപ്പം തുടർന്നു പോകാൻ തയ്യാറാണ്',
+      en: 'Ready to continue with the company if business operations restart',
+      short: 'കമ്പനിക്കൊപ്പം തുടർന്നു പോകാൻ തയ്യാറാണ് (Continue with Company)'
+    };
+  }
+  if (p === 'urgent') {
+    return {
+      ml: 'നിലവിലെ സാഹചര്യത്തിൽ എത്രയും വേഗം payment ലഭിക്കണം',
+      en: 'Need urgent payment due to personal/financial situation',
+      short: 'എത്രയും വേഗം പേയ്മെന്റ് വേണം (Urgent Payment Needed)'
     };
   }
   return {
-    ml: pref || 'രേഖപ്പെടുത്തിയിട്ടില്ല',
-    en: pref || 'Not specified',
-    short: pref || 'Not specified'
+    ml: pref ? pref : 'ഉപഭോക്താവ് നൽകിയിട്ടില്ല (Not provided by customer)',
+    en: pref ? pref : 'Not provided by customer',
+    short: pref ? pref : 'Not provided by customer'
   };
 };
 
@@ -326,7 +389,7 @@ export const getCourtReportBaseStyles = (): string => `
     color: #ffffff;
     font-weight: 800;
     text-transform: uppercase;
-    padding: 7px 10px;
+    padding: 8px 12px;
     text-align: left;
     font-size: 9.5px;
     border: 1px solid #003366;
@@ -335,7 +398,7 @@ export const getCourtReportBaseStyles = (): string => `
   }
   table.claim-table td {
     border: 1px solid #cbd5e1;
-    padding: 6.5px 10px;
+    padding: 7px 12px;
     font-size: 11.5px;
     line-height: 1.45;
     vertical-align: middle;
@@ -348,7 +411,7 @@ export const getCourtReportBaseStyles = (): string => `
     font-weight: 900;
     color: #003366;
     font-size: 12.5px;
-    padding: 8px 10px !important;
+    padding: 9px 12px !important;
     border-top: 1.2px solid #003366 !important;
     line-height: 1.4;
   }
@@ -356,10 +419,10 @@ export const getCourtReportBaseStyles = (): string => `
     border: 1px solid #94a3b8;
     background: #ffffff;
     border-radius: 6px;
-    padding: 9px 12px;
+    padding: 10px 14px;
     margin-top: 5px;
     color: #1e293b;
-    line-height: 1.6;
+    line-height: 1.55;
   }
   .signatures-grid-2 {
     display: grid;
@@ -378,11 +441,11 @@ export const getCourtReportBaseStyles = (): string => `
     background: #f8fafc;
     border: 1px solid #cbd5e1;
     border-radius: 6px;
-    padding: 8px 10px 7px 10px;
+    padding: 9px 12px 8px 12px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    min-height: 110px;
+    min-height: 125px;
   }
   .sig-title-main {
     font-size: 9.5px;
@@ -407,8 +470,8 @@ export const getCourtReportBaseStyles = (): string => `
     border: 1.2px solid #cbd5e1;
     background: #f8fafc;
     border-radius: 6px;
-    padding: 8px 12px 7px 12px;
-    margin-top: 6px;
+    padding: 9px 12px 8px 12px;
+    margin-top: 5px;
   }
   .audit-table {
     width: 100%;
@@ -416,8 +479,8 @@ export const getCourtReportBaseStyles = (): string => `
     margin-bottom: 6px;
   }
   .audit-table td {
-    padding: 4.5px 6px;
-    font-size: 9.5px;
+    padding: 5px 7px;
+    font-size: 10px;
     vertical-align: middle;
     line-height: 1.4;
   }
@@ -435,7 +498,7 @@ export const getCourtReportBaseStyles = (): string => `
     font-weight: 900;
     color: #0f172a;
     width: 18%;
-    font-size: 10.5px;
+    font-size: 11px;
     padding-bottom: 2px;
     line-height: 1.4;
   }
@@ -443,7 +506,7 @@ export const getCourtReportBaseStyles = (): string => `
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 5px 10px;
+    padding: 5.5px 10px;
     background: #ffffff;
     border: 1.2px solid #cbd5e1;
     border-radius: 5px;
@@ -466,11 +529,11 @@ export const getCourtReportBaseStyles = (): string => `
     background: #ffffff;
     border: 1.2px solid #cbd5e1;
     border-radius: 5px;
-    padding: 7px 10px 6px 10px;
+    padding: 8px 10px 7px 10px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    min-height: 86px;
+    min-height: 98px;
   }
   .audit-sig-role {
     font-size: 9px;
@@ -666,36 +729,61 @@ export const renderPersonCourtClaimPage = (
   pageNum: number = 1,
   totalPages: number = 1
 ): string => {
-  const districtObj = DISTRICTS.find(d => d.code === (claim.userDistrict || userProf?.district));
-  const districtName = districtObj?.name || claim.userDistrict || userProf?.district || 'Kerala';
-  const asslyName = claim.userConstituency || claim.constituency || userProf?.assemblyConstituency || 'N/A';
-  const addressStr = claim.userAddress || claim.address || userProf?.address || 'N/A';
-  const postOfficeStr = claim.postOffice || userProf?.postOffice || '';
-  const pinStr = claim.pincode || userProf?.pincode || '';
-  const fullAddress = `${addressStr}${postOfficeStr ? ', P.O. ' + postOfficeStr : ''}${pinStr ? ', PIN: ' + pinStr : ''}`;
+  const isSelf = !claim.relation || claim.relation === 'Self';
+
+  // District & Assembly Constituency
+  const ownDist = claim.userDistrict || claim.district;
+  const mainDist = userProf?.district || userProf?.userDistrict;
+  const distCode = ownDist || mainDist;
+  const districtObj = DISTRICTS.find(d => d.code === distCode);
+  const districtName = districtObj?.name || distCode || 'Kerala';
+
+  const ownConsti = claim.userConstituency || claim.constituency;
+  const mainConsti = userProf?.assemblyConstituency || userProf?.constituency;
+  const asslyName = ownConsti || mainConsti || 'N/A';
+
+  // Residential address: must come from claimant address or synced main claimant address only.
+  // Never use HCRS text or membership status.
+  const ownAddress = sanitizeMemberAddress(claim.residentialAddress || claim.userAddress || claim.houseName || claim.address);
+  const mainAddress = sanitizeMemberAddress(userProf?.residentialAddress || userProf?.userAddress || userProf?.houseName || userProf?.address);
+  const addressStr = ownAddress || mainAddress || '';
+
+  const ownPO = claim.postOffice || claim.po;
+  const mainPO = userProf?.postOffice || userProf?.po;
+  const postOfficeStr = (ownPO || mainPO || '').toString().trim();
+
+  const ownPin = claim.pincode || claim.pin || claim.postalCode;
+  const mainPin = userProf?.pincode || userProf?.pin || userProf?.postalCode;
+  const pinStr = String(ownPin || mainPin || '').replace(/\D/g, '').slice(0, 6);
+
+  let fullAddress = addressStr;
+  if (fullAddress) {
+    if (postOfficeStr && !fullAddress.toLowerCase().includes(postOfficeStr.toLowerCase())) {
+      fullAddress += `, P.O. ${postOfficeStr}`;
+    }
+    if (pinStr && !fullAddress.includes(pinStr)) {
+      fullAddress += `, PIN: ${pinStr}`;
+    }
+  } else {
+    fullAddress = '................................';
+  }
+
   const tokenDisplay = claim.tokenNo ?? claim.serialNo ?? 'N/A';
   const dateStr = formatClaimDateTime(claim.createdAt);
-  const memberName = claim.userName || claim.claimantName || claim.name || claim.spouseName || claim.parentName || claim.childName || claim.selfName || userProf?.name || 'N/A';
+  const memberName = claim.userName || claim.claimantName || claim.name || claim.spouseName || claim.parentName || claim.childName || claim.selfName || (isSelf ? userProf?.name : '') || 'N/A';
   const individualMobile = claim.individualMobile || (claim.memberMobile && claim.memberMobile !== claim.userMobile ? claim.memberMobile : '');
   const primaryMobile = claim.userMobile || userProf?.mobile || '';
   const mobileStr = (individualMobile && individualMobile !== primaryMobile)
     ? `${individualMobile} (Primary: ${primaryMobile})`
     : (individualMobile || primaryMobile || 'N/A');
-  const panStr = claim.panNumber || userProf?.panNumber || userProf?.pan || '';
+  const panStr = (claim.panNumber || claim.pan || (isSelf ? (userProf?.panNumber || userProf?.pan || '') : '')).toString().trim();
+  
+  const paidVal = Number(claim.totalPaid) || 0;
+  const receivedVal = Number(claim.totalReceived) || 0;
+  const pendingBalance = paidVal - receivedVal;
 
-  // Bank Particulars (Payment Made to Company)
-  const paidBankName = claim.paidFromBank || userProf?.paidFromBank || '';
-  const paidBranch = claim.paidFromBranch || userProf?.paidFromBranch || '';
-  const paidAccount = claim.paidFromAccount || userProf?.paidFromAccount || '';
-  const paidIfsc = claim.paidFromIfsc || userProf?.paidFromIfsc || '';
-  const transRef = claim.transactionRef || claim.transactionId || '';
-
-  // Settlement Bank Details (Account Provided to the Company for Settlement)
-  const settlementBankName = claim.settlementBankName || userProf?.settlementBankName || userProf?.bankName || '';
-  const settlementBranch = claim.settlementBranch || userProf?.settlementBranch || userProf?.branch || '';
-  const settlementAccount = claim.settlementAccountNumber || userProf?.settlementAccountNumber || userProf?.accountNumber || '';
-  const settlementIfsc = claim.settlementIfsc || userProf?.settlementIfsc || userProf?.ifscCode || '';
-  const settlementHolder = claim.settlementAccountHolder || memberName || '';
+  const joiningDateRaw = claim.joiningDate || (isSelf ? (userProf?.joiningDate || claim.registrationDate || userProf?.registrationDate) : '');
+  const joiningDateStr = joiningDateRaw ? formatClaimDateOnly(joiningDateRaw) : '................................';
 
   return `
     <div class="page-container">
@@ -710,7 +798,7 @@ export const renderPersonCourtClaimPage = (
                 <span style="font-weight: 800; color: #003366;">COMPANY PAN: AABCH77066C</span> • 
                 <span>Reg. Office: TC9/3702/014, 2nd Floor, Kanimangalam Tower, Valapad, Thrissur - 680567, Kerala, India</span>
               </div>
-              <div class="doc-tag" style="margin-top: 4px;">CONSIGNMENT ADVANCE FINANCIAL STATEMENT & VERIFICATION FORM</div>
+              <div class="doc-tag" style="margin-top: 4px;">CUSTOMER FINANCIAL STATEMENT & VERIFICATION FORM</div>
             </td>
             <td style="vertical-align: top; text-align: right; width: 205px;">
               <div style="font-size: 8.5px; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.3px;">STATEMENT DATE</div>
@@ -722,175 +810,132 @@ export const renderPersonCourtClaimPage = (
           </tr>
         </table>
 
-        <!-- Target Authority / Management Line (Cleanly positioned below divider) -->
+        <!-- Target Authority / Management Line -->
         <div style="font-size: 9px; color: #003366; font-weight: 800; margin-top: 4px; margin-bottom: 6px; padding: 3px 8px; background: #f8fafc; border-left: 2px solid #003366; border-radius: 3px; line-height: 1.4;">
           TO: THE MANAGEMENT OF HIGHRICH ONLINE SHOPPE PVT. LTD.
         </div>
 
-        <!-- 1. Customer & Declarant Information -->
-        <div class="section-heading">1. Customer & Declarant Information</div>
-        <div class="meta-box">
-          <div class="grid-2">
-            <div>
-              <span class="meta-label">Customer / Declarant Name</span>
-              <span class="meta-val" style="font-size: 12px; color: #003366;">${memberName}</span>
-            </div>
-            <div>
-              <span class="meta-label">Registered Mobile Number</span>
-              <span class="meta-val font-mono" style="font-size: 12px;">${mobileStr}</span>
-            </div>
-            <div>
-              <span class="meta-label">Customer ID</span>
-              <span class="meta-val font-mono" style="color: #003366; font-size: 12px;">${claim.highrichId || 'N/A'}</span>
-            </div>
-            <div>
-              <span class="meta-label">Customer PAN Card Number</span>
-              <span class="meta-val font-mono" style="font-size: 12px; color: #003366;">${panStr || 'N/A'}</span>
-            </div>
-            <div style="grid-column: span 2;">
-              <span class="meta-label">District & Assembly Constituency</span>
-              <span class="meta-val">${districtName} • ${asslyName}</span>
-            </div>
-            <div style="grid-column: span 2;">
-              <span class="meta-label">Full Residential Address</span>
-              <span class="meta-val" style="font-size: 11px; line-height: 1.35;">${fullAddress}</span>
-            </div>
-          </div>
+        <!-- 1. CUSTOMER INFORMATION -->
+        <div class="section-heading">1. CUSTOMER INFORMATION</div>
+        <div class="meta-box" style="padding: 0; overflow: hidden;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+            <tr>
+              <td style="width: 52%; vertical-align: top; padding: 7px 12px; border-right: 1.2px solid #cbd5e1;">
+                <div style="margin-bottom: 6.5px;">
+                  <div style="font-size: 8.5px; font-weight: 800; color: #475569; text-transform: uppercase;">CUSTOMER / DECLARANT NAME:</div>
+                  <div style="font-size: 12px; font-weight: 900; color: #003366; margin-top: 1px;">${memberName}</div>
+                </div>
+                <div style="margin-bottom: 6.5px;">
+                  <div style="font-size: 8.5px; font-weight: 800; color: #475569; text-transform: uppercase;">CUSTOMER ID (PROVIDED BY THE COMPANY):</div>
+                  <div style="font-size: 12px; font-weight: 900; color: #003366; font-family: monospace; margin-top: 1px;">${claim.highrichId || '................................'}</div>
+                </div>
+                <div style="margin-bottom: 6.5px;">
+                  <div style="font-size: 8.5px; font-weight: 800; color: #475569; text-transform: uppercase;">DISTRICT & ASSEMBLY CONSTITUENCY:</div>
+                  <div style="font-size: 11px; font-weight: 800; color: #0f172a; margin-top: 1px;">${districtName} • ${asslyName}</div>
+                </div>
+                <div>
+                  <div style="font-size: 8.5px; font-weight: 800; color: #475569; text-transform: uppercase;">FULL RESIDENTIAL ADDRESS:</div>
+                  <div style="font-size: 10.5px; font-weight: 700; color: #0f172a; line-height: 1.4; margin-top: 1px;">${fullAddress}</div>
+                </div>
+              </td>
+              <td style="width: 48%; vertical-align: top; padding: 7px 12px;">
+                <div style="margin-bottom: 8px;">
+                  <div style="font-size: 8.5px; font-weight: 800; color: #475569; text-transform: uppercase;">REGISTERED MOBILE NUMBER</div>
+                  <div style="font-size: 12px; font-weight: 900; color: #0f172a; font-family: monospace; margin-top: 1px;">${mobileStr}</div>
+                </div>
+                <div style="margin-bottom: 8px;">
+                  <div style="font-size: 8.5px; font-weight: 800; color: #475569; text-transform: uppercase;">CUSTOMER PAN CARD NUMBER</div>
+                  <div style="font-size: 12px; font-weight: 900; color: #003366; font-family: monospace; margin-top: 1px;">${panStr || '................................'}</div>
+                </div>
+                <div>
+                  <div style="font-size: 8.5px; font-weight: 800; color: #475569; text-transform: uppercase;">JOINING DATE</div>
+                  <div style="font-size: 11.5px; font-weight: 900; color: #003366; font-family: monospace; margin-top: 1px;">${joiningDateStr}</div>
+                </div>
+              </td>
+            </tr>
+          </table>
         </div>
 
-        <!-- 2. Consignment Advance Financial Summary -->
-        <div class="section-heading">2. Consignment Advance Financial Statement</div>
+        <!-- 2. FINANCIAL STATEMENT – AMOUNT RECEIVED IN THE COURSE OF BUSINESS FOR SUPPLY OF GOODS & PROVISION OF SERVICES -->
+        <div class="section-heading" style="line-height: 1.35;">2. FINANCIAL STATEMENT – AMOUNT RECEIVED IN THE COURSE OF BUSINESS FOR SUPPLY OF<br/>GOODS & PROVISION OF SERVICES</div>
         <table class="claim-table">
           <thead>
             <tr>
-              <th style="width: 38%;">Particulars / Head of Account</th>
-              <th style="text-align: right; width: 20%;">Consignment Advance Paid (₹)</th>
-              <th style="text-align: right; width: 20%;">Amount Received (₹)</th>
-              <th style="text-align: right; width: 22%;">Pending Balance (₹)</th>
+              <th style="width: 38%;">PARTICULARS / ACCOUNT HEAD</th>
+              <th style="text-align: right; width: 20%;">ADVANCE PAID (₹)</th>
+              <th style="text-align: right; width: 20%;">AMOUNT RECEIVED (₹)</th>
+              <th style="text-align: right; width: 22%;">PENDING BALANCE (₹)</th>
             </tr>
           </thead>
           <tbody>
-            ${!claim.noBreakup && claim.categoryDetails && Object.keys(claim.categoryDetails).length > 0 ? (
-              Object.entries(claim.categoryDetails).map(([catKey, details]: [string, any]) => `
-                <tr>
-                  <td style="font-weight: 800; font-size: 11px;">${getCategoryLabel(catKey)}</td>
-                  <td style="text-align: right; font-family: monospace; font-weight: 700; font-size: 11.5px;">₹${(details.paid || 0).toLocaleString('en-IN')}</td>
-                  <td style="text-align: right; font-family: monospace; font-weight: 700; color: #16a34a; font-size: 11.5px;">₹${(details.received || 0).toLocaleString('en-IN')}</td>
-                  <td style="text-align: right; font-family: monospace; font-weight: 900; color: #003366; font-size: 12px;">₹${(details.pending || 0).toLocaleString('en-IN')}</td>
-                </tr>
-              `).join('')
-            ) : (
-              `
-                <tr>
-                  <td style="font-weight: 800; font-size: 11px;">Consignment Advance Account (${claim.categories ? formatClaimCategories(claim.categories) : 'General'})</td>
-                  <td style="text-align: right; font-family: monospace; font-weight: 700; font-size: 11.5px;">₹${(claim.totalPaid || 0).toLocaleString('en-IN')}</td>
-                  <td style="text-align: right; font-family: monospace; font-weight: 700; color: #16a34a; font-size: 11.5px;">₹${(claim.totalReceived || 0).toLocaleString('en-IN')}</td>
-                  <td style="text-align: right; font-family: monospace; font-weight: 900; color: #003366; font-size: 12px;">₹${(claim.totalPending || 0).toLocaleString('en-IN')}</td>
-                </tr>
-              `
-            )}
-            <tr class="total-row">
-              <td style="font-size: 11.5px;">NET PENDING BALANCE</td>
-              <td style="text-align: right; font-family: monospace; font-size: 12px;">₹${(claim.totalPaid || 0).toLocaleString('en-IN')}</td>
-              <td style="text-align: right; font-family: monospace; color: #16a34a; font-size: 12px;">₹${(claim.totalReceived || 0).toLocaleString('en-IN')}</td>
-              <td style="text-align: right; font-family: monospace; color: #003366; font-size: 13px; font-weight: 900;">₹${(claim.totalPending || 0).toLocaleString('en-IN')}</td>
+            <tr>
+              <td style="font-weight: 800; font-size: 11.5px;">ADVANCE ACCOUNT (നൽകിയ തുക)</td>
+              <td style="text-align: right; font-family: monospace; font-weight: 700; font-size: 12px;">₹ ${paidVal.toLocaleString('en-IN')}</td>
+              <td style="text-align: right; font-family: monospace; font-size: 11.5px; color: #94a3b8;">—</td>
+              <td style="text-align: right; font-family: monospace; font-size: 11.5px; color: #94a3b8;">—</td>
+            </tr>
+            <tr>
+              <td style="font-weight: 800; font-size: 11.5px;">PAYMENT RECEIVED FROM COMPANY (ലഭിച്ച തുക)</td>
+              <td style="text-align: right; font-family: monospace; font-size: 11.5px; color: #94a3b8;">—</td>
+              <td style="text-align: right; font-family: monospace; font-weight: 700; color: #16a34a; font-size: 12px;">₹ ${receivedVal.toLocaleString('en-IN')}</td>
+              <td style="text-align: right; font-family: monospace; font-size: 11.5px; color: #94a3b8;">—</td>
+            </tr>
+            <tr style="background: #f8fafc;">
+              <td style="font-weight: 900; font-size: 12px; color: #003366;">BALANCE PAYABLE BY THE COMPANY (മിച്ച തുക)</td>
+              <td style="text-align: right; font-family: monospace; font-size: 11.5px; color: #94a3b8;">—</td>
+              <td style="text-align: right; font-family: monospace; font-size: 11.5px; color: #94a3b8;">—</td>
+              <td style="text-align: right; font-family: monospace; font-weight: 900; color: #003366; font-size: 13.5px;">₹ ${pendingBalance.toLocaleString('en-IN')}</td>
             </tr>
           </tbody>
         </table>
 
-        <!-- 3. Payment Made to Company -->
-        <div class="section-heading">3. Payment Made to Company</div>
-        <div class="meta-box">
-          <div class="grid-2">
-            <div>
-              <span class="meta-label">Bank Account No. / Receipt / UTR No.</span>
-              <span class="meta-val font-mono" style="font-size: 11.5px;">${paidAccount || transRef || '—'}</span>
-            </div>
-            <div>
-              <span class="meta-label">Bank to which payment was transferred & Branch</span>
-              <span class="meta-val">${paidBankName ? `${paidBankName}${paidBranch ? ' (' + paidBranch + ')' : ''}` : '—'}</span>
-            </div>
-            <div>
-              <span class="meta-label">IFSC Code</span>
-              <span class="meta-val font-mono" style="font-size: 11.5px;">${paidIfsc || '—'}</span>
-            </div>
-            <div>
-              <span class="meta-label">Payment Date</span>
-              <span class="meta-val font-mono" style="font-size: 11.5px;">${claim.paymentDate ? formatClaimDateOnly(claim.paymentDate) : '—'}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 4. ACCOUNT & PAN CARD DETAILS PROVIDED TO COMPANY -->
-        <div class="section-heading">4. ACCOUNT & PAN CARD DETAILS PROVIDED TO COMPANY</div>
-        <div class="meta-box">
-          <div class="grid-4" style="grid-template-columns: 1.1fr 1.15fr 1.2fr 1.05fr;">
-            <div>
-              <span class="meta-label">Account Holder Name</span>
-              <span class="meta-val" style="font-size: 11px;">${settlementHolder || memberName}</span>
-            </div>
-            <div>
-              <span class="meta-label">Bank Name & Branch</span>
-              <span class="meta-val" style="font-size: 11px;">${settlementBankName ? `${settlementBankName}${settlementBranch ? ' (' + settlementBranch + ')' : ''}` : 'Primary Bank'}</span>
-            </div>
-            <div>
-              <span class="meta-label">Account Number Provided to Company</span>
-              <span class="meta-val font-mono" style="font-size: 12px; color: #003366; font-weight: 900;">${settlementAccount || 'As per Profile'}</span>
-            </div>
-            <div>
-              <span class="meta-label">Customer PAN & IFSC</span>
-              <span class="meta-val font-mono" style="font-size: 10.5px; color: #003366; font-weight: 800; line-height: 1.45;">PAN: ${panStr || 'N/A'}<br/>IFSC: ${settlementIfsc || 'Verified'}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 5. Customer Declaration & Confirmation -->
-        <div class="section-heading">5. Customer Declaration & Confirmation</div>
+        <!-- 3. CUSTOMER DECLARATION & CONFIRMATION -->
+        <div class="section-heading">3. CUSTOMER DECLARATION & CONFIRMATION</div>
         <div class="declaration-box">
-          <div style="font-size: 8.8px; line-height: 1.5; color: #0f172a; font-weight: 600; text-align: justify;">
-            “I acknowledge that data pertaining to consignment advance paid by me are not readily available with the company, in order ascertain the true facts. I hereby certify and declare that the financial figures and particulars stated in this statement are true, accurate, and correct to the best of my knowledge and records. The Consignment Advance paid, cumulative returns received, and the final net pending balance claimed herein are subject to verification and final reconciliation with the official corporate accounts books and bank ledgers of HIGHRICH ONLINE SHOPPE PVT. LTD. For the filing before the Hon’ble Court. In the event of ongoing legal proceedings, this statement and verification claim is submitted to facilitate disbursement funds deposited before the Hon’ble Court/Competent Authority, subject to formal reconciliation by the Company and approval by the Hon’ble Court. I also affirm and submit that this form is submitted out of my own interest and with my full consent.”
+          <div style="font-size: 9px; line-height: 1.5; color: #0f172a; font-weight: 600; text-align: justify;">
+            I acknowledge that data pertaining to the advance paid by me to HIGHRICH ONLINE SHOPPE PVT. LTD are not readily available with the company as on date due to the pending litigation. In order to ascertain the true facts and figures, I am furnishing the data available with me. I hereby certify and declare that the financial figures and particulars stated in this statement are true, accurate, and correct to the best of my knowledge and records maintained by me. The Advance paid, cumulative returns received, and the final net balance which is claimed herein are subject to verification and final reconciliation with the official corporate books of accounts and bank reconciliation exercise of HIGHRICH ONLINE SHOPPE PVT. LTD. In the event of ongoing legal proceedings, due to the ongoing litigation, this statement and verification claim is submitted to facilitate disbursement of funds deposited before the Hon’ble Court/Competent Authority, subject to formal reconciliation by the Company and approval by the Hon’ble Court. I also affirm and submit that this form is submitted out of my free will and consent. I understand that the action arising out of the verification form is subject to verification and pending litigation in various Forums & Courts of Law.
           </div>
-          <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 8px; padding-top: 6px; border-top: 1.2px dashed #cbd5e1;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 10px; padding-top: 7px; border-top: 1.2px dashed #cbd5e1;">
             <div>
-              <span style="font-size: 8.5px; color: #059669; font-weight: 900; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 3px 8px; border-radius: 4px; display: inline-block;">
-                ✓ CONDITIONS CONFIRMED & VERIFIED
+              <span style="font-size: 8.5px; color: #059669; font-weight: 900; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 3.5px 8px; border-radius: 4px; display: inline-block;">
+                [√] CONDITIONS CONFIRMED & VERIFIED
               </span>
               <div style="font-size: 8.5px; color: #64748b; font-weight: 700; margin-top: 3px;">
-                Date: ${dateStr} • Place: ${claim.place || claim.declarationPlace || userProf?.place || '..............................'}
+                Date: ${dateStr} • Place: ${claim.place || claim.declarationPlace || userProf?.place || '____________________'}
               </div>
             </div>
-            <div style="text-align: right;">
-              <div style="font-size: 10px; font-weight: 900; color: #003366; line-height: 1.35;">${memberName}</div>
-              <div style="font-size: 8px; color: #64748b; font-weight: 700; margin-top: 2px;">(Signature of the Customer / Declarant)</div>
+            <div style="text-align: right; min-width: 220px;">
+              <div style="font-size: 10.5px; font-weight: 900; color: #003366; line-height: 1.35;">${memberName}</div>
+              <div style="border-top: 1.2px dotted #003366; margin-top: 22px; padding-top: 3px; font-size: 8px; color: #475569; font-weight: 700;">(Signature of the Customer / Declarant)</div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- 6. HIGHRICH ONLINE SHOPPE Pvt. Ltd. Official Audit & Accounts Verification Record -->
+      <!-- 4. HIGHRICH ONLINE SHOPPE PVT. LTD. — OFFICIAL ACCOUNTS VERIFICATION RECORD -->
       <div>
-        <div class="section-heading">6. HIGHRICH ONLINE SHOPPE Pvt. Ltd. — Official Audit & Accounts Verification Record</div>
+        <div class="section-heading">4. HIGHRICH ONLINE SHOPPE PVT. LTD. — OFFICIAL ACCOUNTS VERIFICATION RECORD</div>
         <div class="company-audit-box">
           <table class="audit-table">
             <tr>
-              <td class="audit-cell-label">1. Verified Consignment Advance Amount:</td>
-              <td class="audit-cell-val">₹ .........................</td>
-              <td class="audit-cell-label">3. Final Net Balance Payable:</td>
-              <td class="audit-cell-val font-bold" style="color: #003366;">₹ .........................</td>
+              <td class="audit-cell-label">1. ADVANCE AMOUNT:</td>
+              <td class="audit-cell-val">₹ _____________</td>
+              <td class="audit-cell-label">3. FINAL NET BALANCE PAYABLE:</td>
+              <td class="audit-cell-val font-bold" style="color: #003366;">₹ ______________</td>
             </tr>
             <tr>
-              <td class="audit-cell-label">2. Verified Cumulative Return Received:</td>
-              <td class="audit-cell-val">₹ .........................</td>
-              <td class="audit-cell-label">4. Bank Ledger Folio / UTR Verification Ref:</td>
-              <td class="audit-cell-val">.................................</td>
+              <td class="audit-cell-label">2. VERIFIED CUMULATIVE RETURN RECEIVED:</td>
+              <td class="audit-cell-val">₹ _____________</td>
+              <td class="audit-cell-label">4. BANK LEDGER FOLIO / UTR VERIFICATION REF:</td>
+              <td class="audit-cell-val">_______________</td>
             </tr>
           </table>
 
           <div class="audit-status-row">
-            <span class="audit-tag">[ ✔ ] Records Verified</span>
-            <span class="audit-tag">[ ✔ ] Accounts Reconciled</span>
-            <span class="audit-tag">[ ✔ ] Passed for Settlement</span>
-            <span style="font-size: 8px; color: #64748b; font-weight: 700; margin-left: auto;">
+            <span class="audit-tag">[√] RECORDS VERIFIED</span>
+            <span class="audit-tag">[√] ACCOUNTS RECONCILED</span>
+            <span class="audit-tag">[√] PASSED FOR SETTLEMENT</span>
+            <span style="font-size: 8.5px; color: #64748b; font-weight: 700; margin-left: auto;">
               Head Office Reconciliation • Thrissur, Kerala
             </span>
           </div>
@@ -898,18 +943,16 @@ export const renderPersonCourtClaimPage = (
           <div class="audit-sig-grid">
             <div class="audit-sig-col">
               <div class="audit-sig-role">AUDITED & RECONCILED BY</div>
-              <div class="audit-field-line">Verification Officer: .................................................</div>
-              <div class="audit-field-line">Signature: ...................................................................</div>
-              <div class="audit-field-line">Audit Date: ...... / ...... / 202...</div>
-              <div class="audit-sig-caption">Internal Audit & Accounts Department</div>
+              <div class="audit-field-line">Verification Officer: __________________________</div>
+              <div class="audit-field-line">Signature: __________________________________</div>
+              <div class="audit-field-line">Audit Date: ______ / ______ / 202____</div>
             </div>
-            <div class="audit-sig-col">
-              <div class="audit-sig-role">FOR HIGHRICH ONLINE SHOPPE PVT. LTD.</div>
-              <div style="height: 30px; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 8px; border: 1px dashed #cbd5e1; border-radius: 4px; margin: 2px 0;">
-                [ OFFICIAL CORPORATE SEAL & SIGNATURE ]
+            <div class="audit-sig-col" style="text-align: center; justify-content: space-between;">
+              <div class="audit-sig-role" style="text-align: left;">FOR HIGHRICH ONLINE SHOPPE PVT. LTD.</div>
+              <div style="font-size: 8.5px; font-weight: 800; color: #475569; letter-spacing: 0.3px; margin: 10px 0;">
+                OFFICIAL CORPORATE SEAL & SIGNATURE
               </div>
-              <div class="audit-sig-line">Authorized Signatory</div>
-              <div class="audit-sig-caption">TC9/3702/014, Valapad, Thrissur Dt., Kerala - 680567</div>
+              <div class="audit-sig-line">AUTHORIZED SIGNATORY</div>
             </div>
           </div>
         </div>
@@ -928,23 +971,77 @@ export const renderPersonFullAdminClaimPage = (
   pageNum: number = 1,
   totalPages: number = 1
 ): string => {
-  const districtObj = DISTRICTS.find(d => d.code === (claim.userDistrict || userProf?.district));
-  const districtName = districtObj?.name || claim.userDistrict || userProf?.district || 'Kerala';
-  const asslyName = userProf?.assemblyConstituency || claim.constituency || 'N/A';
-  const addressStr = userProf?.address || claim.address || claim.userAddress || 'N/A';
-  const postOfficeStr = userProf?.postOffice || '';
-  const pinStr = userProf?.pincode || '';
-  const fullAddress = `${addressStr}${postOfficeStr ? ', P.O. ' + postOfficeStr : ''}${pinStr ? ', PIN: ' + pinStr : ''}`;
+  const isSelf = !claim.relation || claim.relation === 'Self';
+
+  const ownDist = claim.userDistrict || claim.district;
+  const mainDist = userProf?.district || userProf?.userDistrict;
+  const distCode = ownDist || mainDist;
+  const districtObj = DISTRICTS.find(d => d.code === distCode);
+  const districtName = districtObj?.name || distCode || 'Kerala';
+
+  const ownConsti = claim.userConstituency || claim.constituency;
+  const mainConsti = userProf?.assemblyConstituency || userProf?.constituency;
+  const asslyName = ownConsti || mainConsti || 'N/A';
+
+  // Residential address: must come from claimant address or synced main claimant address only.
+  // Never use HCRS text or membership status.
+  const ownAddress = sanitizeMemberAddress(claim.residentialAddress || claim.userAddress || claim.houseName || claim.address);
+  const mainAddress = sanitizeMemberAddress(userProf?.residentialAddress || userProf?.userAddress || userProf?.houseName || userProf?.address);
+  const addressStr = ownAddress || mainAddress || '';
+
+  const ownPO = claim.postOffice || claim.po;
+  const mainPO = userProf?.postOffice || userProf?.po;
+  const postOfficeStr = (ownPO || mainPO || '').toString().trim();
+
+  const ownPin = claim.pincode || claim.pin || claim.postalCode;
+  const mainPin = userProf?.pincode || userProf?.pin || userProf?.postalCode;
+  const pinStr = String(ownPin || mainPin || '').replace(/\D/g, '').slice(0, 6);
+
+  let fullAddress = addressStr;
+  if (fullAddress) {
+    if (postOfficeStr && !fullAddress.toLowerCase().includes(postOfficeStr.toLowerCase())) {
+      fullAddress += `, P.O. ${postOfficeStr}`;
+    }
+    if (pinStr && !fullAddress.includes(pinStr)) {
+      fullAddress += `, PIN: ${pinStr}`;
+    }
+  } else {
+    fullAddress = 'Not provided by customer';
+  }
+
   const tokenDisplay = claim.tokenNo ?? claim.serialNo ?? 'N/A';
   const dateStr = formatClaimDateTime(claim.createdAt);
-  const memberName = claim.userName || userProf?.name || 'N/A';
+  const memberName = claim.userName || claim.claimantName || claim.name || claim.spouseName || claim.parentName || claim.childName || claim.selfName || (isSelf ? userProf?.name : '') || 'N/A';
   const individualMobile = claim.individualMobile || (claim.memberMobile && claim.memberMobile !== claim.userMobile ? claim.memberMobile : '');
   const primaryMobile = claim.userMobile || userProf?.mobile || '';
   const mobileStr = (individualMobile && individualMobile !== primaryMobile)
     ? `${individualMobile} (Primary: ${primaryMobile})`
     : (individualMobile || primaryMobile || 'N/A');
   const membershipIdStr = claim.membershipId || userProf?.membershipId || 'PENDING';
-  const panStr = claim.panNumber || userProf?.panNumber || userProf?.pan || 'N/A';
+  const panStr = (claim.panNumber || claim.pan || (isSelf ? (userProf?.panNumber || userProf?.pan || '') : '')).toString().trim() || 'N/A';
+
+  const relStr = (claim.relation || '').toLowerCase();
+  const isSpouse = relStr === 'spouse' || relStr === 'wife' || relStr === 'husband';
+  const isParent = relStr === 'parent' || relStr === 'mother' || relStr === 'father';
+  const isChild = relStr === 'child' || relStr === 'son' || relStr === 'daughter';
+
+  const joiningDateRaw = claim.joiningDate ||
+    claim.customerJoiningDate ||
+    (isSelf ? claim.selfJoiningDate : (
+      isSpouse ? claim.spouseJoiningDate :
+      isParent ? claim.parentJoiningDate :
+      isChild ? claim.childJoiningDate : ''
+    )) ||
+    userProf?.joiningDate ||
+    claim.registrationDate ||
+    userProf?.registrationDate ||
+    userProf?.regDate ||
+    '';
+  const joiningDateStr = joiningDateRaw ? formatClaimDateOnly(joiningDateRaw) : 'N/A';
+
+  const adminPaid = Number(claim.totalPaid) || 0;
+  const adminReceived = Number(claim.totalReceived) || 0;
+  const adminPending = adminPaid - adminReceived;
 
   const priorityLabel = claim.priorityStatus || 'GENERAL';
   const priorityBg = priorityLabel === 'EMERGENCY RED' ? '#dc2626' :
@@ -986,9 +1083,10 @@ export const renderPersonFullAdminClaimPage = (
         </div>
 
         <!-- Member & Administrative Profile -->
+        <!-- 1. Member Profile & Relationship -->
         <div class="section-heading">1. Member Profile & Relationship</div>
-        <div class="meta-box">
-          <div class="grid-3">
+        <div class="meta-box" style="padding: 9px 12px;">
+          <div class="grid-3" style="gap: 6px 14px;">
             <div>
               <span class="meta-label">Claimant Name</span>
               <span class="meta-val" style="font-size: 12px; color: #003366;">${memberName}</span>
@@ -1013,13 +1111,17 @@ export const renderPersonFullAdminClaimPage = (
               <span class="meta-label">PAN Card Number</span>
               <span class="meta-val font-mono" style="font-size: 12px;">${panStr}</span>
             </div>
+            <div>
+              <span class="meta-label">Joining Date</span>
+              <span class="meta-val font-mono" style="font-size: 11.5px; color: #003366;">${joiningDateStr}</span>
+            </div>
             <div style="grid-column: span 2;">
               <span class="meta-label">District & Assembly</span>
               <span class="meta-val">${districtName} (${asslyName})</span>
             </div>
             <div style="grid-column: span 3;">
               <span class="meta-label">Full Address</span>
-              <span class="meta-val" style="font-size: 10.5px; line-height: 1.35;">${fullAddress}</span>
+              <span class="meta-val" style="font-size: 10.5px; line-height: 1.4;">${fullAddress}</span>
             </div>
           </div>
         </div>
@@ -1039,27 +1141,27 @@ export const renderPersonFullAdminClaimPage = (
             ${!claim.noBreakup && claim.categoryDetails && Object.keys(claim.categoryDetails).length > 0 ? (
               Object.entries(claim.categoryDetails).map(([catKey, details]: [string, any]) => `
                 <tr>
-                  <td style="font-weight: 800; font-size: 11px;">${getCategoryLabel(catKey)}</td>
-                  <td style="text-align: right; font-family: monospace; font-weight: 700; font-size: 11.5px;">₹${(details.paid || 0).toLocaleString('en-IN')}</td>
-                  <td style="text-align: right; font-family: monospace; font-weight: 700; color: #16a34a; font-size: 11.5px;">₹${(details.received || 0).toLocaleString('en-IN')}</td>
-                  <td style="text-align: right; font-family: monospace; font-weight: 900; color: #7e22ce; font-size: 12px;">₹${(details.pending || 0).toLocaleString('en-IN')}</td>
+                  <td style="font-weight: 800; font-size: 11.5px;">${getCategoryLabel(catKey)}</td>
+                  <td style="text-align: right; font-family: monospace; font-weight: 700; font-size: 12px;">₹${(details.paid || 0).toLocaleString('en-IN')}</td>
+                  <td style="text-align: right; font-family: monospace; font-weight: 700; color: #16a34a; font-size: 12px;">₹${(details.received || 0).toLocaleString('en-IN')}</td>
+                  <td style="text-align: right; font-family: monospace; font-weight: 900; color: #7e22ce; font-size: 12.5px;">₹${((Number(details.paid) || 0) - (Number(details.received) || 0)).toLocaleString('en-IN')}</td>
                 </tr>
               `).join('')
             ) : (
               `
                 <tr>
-                  <td style="font-weight: 800; font-size: 11px;">Consignment Advance Account (${claim.categories ? formatClaimCategories(claim.categories) : 'General'})</td>
-                  <td style="text-align: right; font-family: monospace; font-weight: 700; font-size: 11.5px;">₹${(claim.totalPaid || 0).toLocaleString('en-IN')}</td>
-                  <td style="text-align: right; font-family: monospace; font-weight: 700; color: #16a34a; font-size: 11.5px;">₹${(claim.totalReceived || 0).toLocaleString('en-IN')}</td>
-                  <td style="text-align: right; font-family: monospace; font-weight: 900; color: #7e22ce; font-size: 12px;">₹${(claim.totalPending || 0).toLocaleString('en-IN')}</td>
+                  <td style="font-weight: 800; font-size: 11.5px;">Consignment Advance Account (${claim.categories ? formatClaimCategories(claim.categories) : 'General'})</td>
+                  <td style="text-align: right; font-family: monospace; font-weight: 700; font-size: 12px;">₹${adminPaid.toLocaleString('en-IN')}</td>
+                  <td style="text-align: right; font-family: monospace; font-weight: 700; color: #16a34a; font-size: 12px;">₹${adminReceived.toLocaleString('en-IN')}</td>
+                  <td style="text-align: right; font-family: monospace; font-weight: 900; color: #7e22ce; font-size: 12.5px;">₹${adminPending.toLocaleString('en-IN')}</td>
                 </tr>
               `
             )}
             <tr class="total-row">
-              <td style="font-size: 11.5px;">NET PENDING BALANCE</td>
-              <td style="text-align: right; font-family: monospace; font-size: 12px;">₹${(claim.totalPaid || 0).toLocaleString('en-IN')}</td>
-              <td style="text-align: right; font-family: monospace; color: #16a34a; font-size: 12px;">₹${(claim.totalReceived || 0).toLocaleString('en-IN')}</td>
-              <td style="text-align: right; font-family: monospace; color: #7e22ce; font-size: 13px; font-weight: 900;">₹${(claim.totalPending || 0).toLocaleString('en-IN')}</td>
+              <td style="font-size: 12px;">NET PENDING BALANCE</td>
+              <td style="text-align: right; font-family: monospace; font-size: 12px;">₹${adminPaid.toLocaleString('en-IN')}</td>
+              <td style="text-align: right; font-family: monospace; color: #16a34a; font-size: 12px;">₹${adminReceived.toLocaleString('en-IN')}</td>
+              <td style="text-align: right; font-family: monospace; color: #7e22ce; font-size: 13.5px; font-weight: 900;">₹${adminPending.toLocaleString('en-IN')}</td>
             </tr>
           </tbody>
         </table>
@@ -1099,74 +1201,66 @@ export const renderPersonFullAdminClaimPage = (
                   `).join('')}
                 </div>
               ` : `
-                <div style="font-size: 10px; color: #64748b; font-style: italic;">പ്രതിസന്ധികൾ രേഖപ്പെടുത്തിയിട്ടില്ല (No specific hardship recorded)</div>
+                <div style="font-size: 10px; color: #64748b; font-style: italic;">Not provided by customer (കസ്റ്റമർ രേഖപ്പെടുത്തിയിട്ടില്ല)</div>
               `}
             </div>
 
             <!-- Future Preference with Full Detail -->
             <div style="border-top: 1px dashed #cbd5e1; padding-top: 6px;">
-              <span class="meta-label" style="margin-bottom: 2px; display: block;">Future Preference (ഭാവിയിലെ തീരുമാനം):</span>
-              <div style="font-size: 10.5px; font-weight: 700; color: #003366; line-height: 1.4;">
-                ${prefDetail.ml}
-                <div style="font-size: 9.5px; color: #64748b; font-weight: 600;">(${prefDetail.en})</div>
-              </div>
+              <span class="meta-label" style="margin-bottom: 3px; display: block;">Future Preference (ഭാവിയിലെ തീരുമാനം):</span>
+              ${claim.futurePreference ? `
+                <div style="font-size: 10.5px; font-weight: 700; color: #003366; line-height: 1.4; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 5px; padding: 5px 9px;">
+                  ${prefDetail.ml}
+                  <div style="font-size: 9.5px; color: #166534; font-weight: 600;">(${prefDetail.en})</div>
+                </div>
+              ` : `
+                <div style="font-size: 10px; color: #64748b; font-style: italic;">Not provided by customer (കസ്റ്റമർ രേഖപ്പെടുത്തിയിട്ടില്ല)</div>
+              `}
             </div>
           </div>
         </div>
 
         ${claim.notes ? `
           <div class="section-heading">4. Notes & Remarks</div>
-          <div class="meta-box">
-            <span class="meta-val" style="font-size: 9.5px; color: #334155;">${claim.notes}</span>
+          <div class="meta-box" style="padding: 8px 12px;">
+            <span class="meta-val" style="font-size: 10px; color: #334155;">${claim.notes}</span>
           </div>
         ` : ''}
-
-        <!-- Banking Information -->
-        <div class="section-heading">${claim.notes ? '5' : '4'}. ACCOUNT & PAN CARD DETAILS PROVIDED TO COMPANY</div>
-        <div class="meta-box">
-          <div class="grid-4">
-            <div>
-              <span class="meta-label">Account Holder</span>
-              <span class="meta-val" style="font-size: 11px;">${claim.settlementAccountHolder || memberName}</span>
-            </div>
-            <div>
-              <span class="meta-label">Bank Name</span>
-              <span class="meta-val" style="font-size: 11px;">${claim.settlementBankName || userProf?.bankName || 'N/A'}</span>
-            </div>
-            <div>
-              <span class="meta-label">ACCOUNT NUMBER PROVIDED TO COMPANY</span>
-              <span class="meta-val font-mono" style="font-size: 12px; font-weight: 900; color: #003366;">${claim.settlementAccountNumber || userProf?.accountNumber || 'N/A'}</span>
-            </div>
-            <div>
-              <span class="meta-label">IFSC Code</span>
-              <span class="meta-val font-mono" style="font-size: 11px;">${claim.settlementIfsc || userProf?.ifscCode || 'N/A'}</span>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- Signatures Grid -->
       <div class="signatures-grid-3">
         <div class="sig-box">
           <div class="sig-title-main">1. CLAIMANT / DECLARANT</div>
-          <div class="sig-space" style="display:flex; flex-direction:column; justify-content:center; align-items:center;">
-            <span style="font-size:8px; color:#059669; font-weight:800; background:#ecfdf5; padding: 2px 6px; border-radius:3px;">✓ CONDITIONS CONFIRMED</span>
-            <span style="font-size:7px; color:#475569; font-weight:700; margin-top:2px;">${dateStr}</span>
+          <div class="sig-space" style="display:flex; flex-direction:column; justify-content:center; align-items:center; margin: 8px 0;">
+            <span style="font-size:8.5px; color:#059669; font-weight:900; background:#ecfdf5; border: 1px solid #a7f3d0; padding: 3px 8px; border-radius:4px;">✓ CONDITIONS CONFIRMED</span>
+            <span style="font-size:7.5px; color:#64748b; font-weight:700; margin-top:3px;">${dateStr}</span>
           </div>
-          <div class="sig-line">${memberName}</div>
-          <div class="sig-sub">(Declaration Confirmed by Declarant)</div>
+          <div style="border-top: 1.2px dotted #003366; padding-top: 4px;">
+            <div class="sig-line" style="font-size: 10px; border-top: none;">${memberName}</div>
+            <div class="sig-sub">(Declaration Confirmed by Declarant)</div>
+          </div>
         </div>
         <div class="sig-box">
           <div class="sig-title-main">2. VERIFYING OFFICER (ACCOUNTS)</div>
-          <div class="sig-space"></div>
-          <div class="sig-line">INTERNAL AUDIT & ACCOUNTS</div>
-          <div class="sig-sub">Authorized Verification Officer</div>
+          <div class="sig-space" style="margin: 8px 0; font-size: 8px; color: #64748b; text-align: left; line-height: 1.6;">
+            <div>Verification: __________________</div>
+            <div>Date: _____ / _____ / 202___</div>
+          </div>
+          <div style="border-top: 1.2px solid #003366; padding-top: 4px;">
+            <div class="sig-line" style="font-size: 9px; border-top: none;">INTERNAL AUDIT & ACCOUNTS</div>
+            <div class="sig-sub">Authorized Verification Officer</div>
+          </div>
         </div>
         <div class="sig-box">
           <div class="sig-title-main">3. LEGAL COUNSEL / COMPANY SIGNATORY</div>
-          <div class="sig-space"></div>
-          <div class="sig-line">AUTHORIZED SIGNATORY</div>
-          <div class="sig-sub">For HIGHRICH ONLINE SHOPPE Pvt. Ltd.</div>
+          <div class="sig-space" style="margin: 8px 0; font-size: 8px; font-weight: 800; color: #64748b;">
+            OFFICIAL CORPORATE SEAL
+          </div>
+          <div style="border-top: 1.2px solid #003366; padding-top: 4px;">
+            <div class="sig-line" style="font-size: 9px; border-top: none;">AUTHORIZED SIGNATORY</div>
+            <div class="sig-sub">For HIGHRICH ONLINE SHOPPE Pvt. Ltd.</div>
+          </div>
         </div>
       </div>
     </div>
@@ -1179,7 +1273,7 @@ export const renderPersonFullAdminClaimPage = (
 export const printCourtClaimReport = (claim: any, memberProfile?: any) => {
   if (!claim) return;
   const tokenDisplay = claim.tokenNo ?? claim.serialNo ?? 'N/A';
-  const name = claim.userName || memberProfile?.name || 'Member';
+  const name = claim.userName || claim.claimantName || claim.name || claim.spouseName || claim.parentName || claim.childName || (claim.relation === 'Self' ? memberProfile?.name : '') || memberProfile?.name || 'Member';
 
   const printWin = window.open('', '_blank');
   if (!printWin) {
@@ -1792,23 +1886,41 @@ export const printCourtComboReport = (primaryMember: any, memberClaims: any[]) =
  * Generate Multi-page or Single-page high-quality A4 PDF Document
  */
 export const generateCourtComboPdf = async (primaryMember: any, memberClaims: any[]) => {
-  if (!memberClaims || memberClaims.length === 0) {
+  // Support flexible argument order: (claims, memberProfile) or (memberProfile, claims)
+  let profile = primaryMember;
+  let claimsList = memberClaims;
+  if (Array.isArray(primaryMember) && (!memberClaims || !Array.isArray(memberClaims))) {
+    claimsList = primaryMember;
+    profile = memberClaims;
+  }
+  if (!Array.isArray(claimsList) && claimsList) {
+    claimsList = [claimsList];
+  }
+  if (!claimsList || claimsList.length === 0) {
     throw new Error('No claim records available to generate PDF');
   }
 
   // Deduplicate claims
   const uniqueMap = new Map<string, any>();
-  for (const c of memberClaims) {
+  for (const c of claimsList) {
+    if (!c) continue;
     const key = c.id || `${c.userMobile || ''}_${c.userName || ''}_${c.highrichId || ''}_${c.relation || ''}`;
     if (!uniqueMap.has(key)) {
       uniqueMap.set(key, c);
     }
   }
   const cleanClaims = Array.from(uniqueMap.values());
+  if (cleanClaims.length === 0) {
+    throw new Error('No valid claim records to render in PDF');
+  }
   const totalCount = cleanClaims.length;
-  const primeName = primaryMember?.name || cleanClaims[0]?.userName || 'Member';
+  const singleClaim = cleanClaims[0];
+  const singleName = singleClaim?.userName || singleClaim?.claimantName || singleClaim?.name || singleClaim?.spouseName || singleClaim?.parentName || singleClaim?.childName || (singleClaim?.relation === 'Self' ? profile?.name : '') || profile?.name || 'Member';
+  const primeName = totalCount === 1 ? singleName : (profile?.name || cleanClaims[0]?.userName || 'Member');
   const safeName = primeName.replace(/[^a-zA-Z0-9]/g, '_');
-  const fileName = `Consignment_Advance_Refund_Form_${safeName}.pdf`;
+  const fileName = totalCount === 1
+    ? `Consignment_Advance_Refund_Form_${safeName}.pdf`
+    : `Consignment_Advance_Refund_Form_${safeName}_Combo_${totalCount}P.pdf`;
 
   const totalPaid = cleanClaims.reduce((sum, c) => sum + (Number(c.totalPaid) || 0), 0);
   const totalReceived = cleanClaims.reduce((sum, c) => sum + (Number(c.totalReceived) || 0), 0);
@@ -1826,7 +1938,7 @@ export const generateCourtComboPdf = async (primaryMember: any, memberClaims: an
 
   // Create temporary container off-screen strictly containing only the clean A4 page without toolbar
   const container = document.createElement('div');
-  container.id = 'pdf-render-offscreen';
+  container.id = 'pdf-render-offscreen-' + Date.now();
   container.style.position = 'fixed';
   container.style.top = '0';
   container.style.left = '0';
@@ -1866,7 +1978,7 @@ export const generateCourtComboPdf = async (primaryMember: any, memberClaims: an
   const wrapper = document.createElement('div');
   wrapper.innerHTML = cleanClaims.map((claim, idx) => {
     return `<div class="pdf-single-page">
-      ${renderPersonCourtClaimPage(claim, primaryMember, idx + 1, totalCount)}
+      ${renderPersonCourtClaimPage(claim, profile, idx + 1, totalCount)}
     </div>`;
   }).join('');
   container.appendChild(wrapper);
@@ -1877,7 +1989,14 @@ export const generateCourtComboPdf = async (primaryMember: any, memberClaims: an
     // Give browser time to settle DOM & web fonts
     await new Promise(r => setTimeout(r, 250));
 
-    const pageElements = container.querySelectorAll('.pdf-single-page');
+    let pageElements = container.querySelectorAll('.pdf-single-page');
+    if (!pageElements || pageElements.length === 0) {
+      pageElements = container.querySelectorAll('.page-container');
+    }
+    if (!pageElements || pageElements.length === 0) {
+      throw new Error('Court Form elements could not be found for PDF rendering');
+    }
+
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
@@ -1931,26 +2050,70 @@ export const generateCourtComboPdf = async (primaryMember: any, memberClaims: an
  * Direct .PDF File Download
  */
 export const downloadCourtComboPdf = async (primaryMember: any, memberClaims: any[]) => {
-  if (!memberClaims || memberClaims.length === 0) {
+  // Support both (claims, profile) and (profile, claims) call signatures, single claim or array
+  let profile = primaryMember;
+  let claimsList = memberClaims;
+
+  if (Array.isArray(primaryMember) && (!memberClaims || !Array.isArray(memberClaims))) {
+    claimsList = primaryMember;
+    profile = memberClaims;
+  }
+  if (!Array.isArray(claimsList) && claimsList) {
+    claimsList = [claimsList];
+  }
+
+  if (!claimsList || claimsList.length === 0) {
     toast.error('ഡൗൺലോഡ് ചെയ്യാനുള്ള ക്ലെയിം വിവരങ്ങൾ ലഭ്യമല്ല');
     return;
   }
 
   const loadingToast = toast.loading('ഔദ്യോഗിക PDF തയ്യാറാക്കുന്നു... (Generating PDF File...)');
   try {
-    const { pdf, fileName } = await generateCourtComboPdf(primaryMember, memberClaims);
+    const { pdf, fileName } = await generateCourtComboPdf(profile, claimsList);
     
-    // Direct blob trigger to guarantee native download across all devices
+    // 1. Ensure real PDF generation completed and output is a valid Blob
     const blob = pdf.output('blob');
+    if (!blob || blob.size === 0) {
+      throw new Error('Generated PDF blob is empty');
+    }
+
+    // 2. Direct blob trigger to guarantee native download across all devices
     const blobUrl = URL.createObjectURL(blob);
     const downloadAnchor = document.createElement('a');
     downloadAnchor.href = blobUrl;
     downloadAnchor.download = fileName;
+    downloadAnchor.target = '_blank';
+    downloadAnchor.rel = 'noopener noreferrer';
+    downloadAnchor.style.display = 'none';
     document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    document.body.removeChild(downloadAnchor);
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
 
+    // Dispatch real click event for full browser compatibility
+    const clickEvt = new MouseEvent('click', {
+      bubbles: true,
+      cancelable: true,
+      view: window
+    });
+    downloadAnchor.dispatchEvent(clickEvt);
+    downloadAnchor.click();
+
+    // Also trigger jsPDF built-in save as secondary guarantee where available
+    try {
+      if (typeof pdf.save === 'function') {
+        pdf.save(fileName);
+      }
+    } catch {
+      // Ignore if pdf.save is redundant with anchor click
+    }
+
+    // Clean up without revoking URL too early
+    setTimeout(() => {
+      if (document.body.contains(downloadAnchor)) {
+        document.body.removeChild(downloadAnchor);
+      }
+      URL.revokeObjectURL(blobUrl);
+    }, 60000);
+
+    // 3. Success message shows ONLY after the download trigger actually runs
     toast.success('PDF ഫയൽ വിജയകരമായി ഡൗൺലോഡ് ചെയ്തു!', { id: loadingToast });
   } catch (err: any) {
     console.error('Error downloading PDF:', err);
@@ -2021,8 +2184,18 @@ export const shareCourtComboPdf = async (primaryMember: any, memberClaims: any[]
  */
 export const shareCourtComboReport = shareCourtComboPdf;
 export const downloadCourtComboHtml = downloadCourtComboPdf;
-export const downloadCourtClaimPdf = (claim: any, memberProfile?: any) => downloadCourtComboPdf(memberProfile, [claim]);
-export const shareCourtClaimPdf = (claim: any, memberProfile?: any) => shareCourtComboPdf(memberProfile, [claim]);
+export const downloadCourtClaimPdf = (claim: any, memberProfile?: any) => {
+  if (!claim) return Promise.resolve();
+  if (Array.isArray(claim)) {
+    return downloadCourtComboPdf(memberProfile, claim);
+  }
+  if (Array.isArray(memberProfile)) {
+    return downloadCourtComboPdf(claim, memberProfile);
+  }
+  const prof = memberProfile || (claim?.userProfile ? claim.userProfile : claim);
+  return downloadCourtComboPdf(prof, [claim]);
+};
+export const shareCourtClaimPdf = (claim: any, memberProfile?: any) => shareCourtComboPdf(memberProfile || claim, Array.isArray(claim) ? claim : [claim]);
 
 
 /**

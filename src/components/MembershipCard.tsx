@@ -735,10 +735,10 @@ export default function MembershipCard({ member, onUpdatePhoto, showCelebration 
 
       {showCelebration && !isScreenshotMode && (
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center space-y-2 mt-2">
-          <div className="bg-brand-blue/20 text-blue-200 px-5 py-1.5 rounded-full text-[11px] font-black border border-blue-400/30 inline-flex items-center gap-1.5 uppercase tracking-widest">
+          <div className="bg-brand-blue text-blue-200 px-5 py-1.5 rounded-full text-[11px] font-black border border-blue-400 inline-flex items-center gap-1.5 uppercase tracking-widest">
              <PartyPopper className="w-3.5 h-3.5 text-amber-300" /> Registered Member
           </div>
-          <h2 className="text-2xl sm:text-3xl font-black text-[#ffd700] uppercase tracking-tighter leading-none italic mt-1 drop-shadow-[0_2px_12px_rgba(255,215,0,0.6)]">
+          <h2 className="text-2xl sm:text-3xl font-black text-[#ffd700] uppercase tracking-tighter leading-none italic mt-1 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
             Welcome to highrich family
           </h2>
         </motion.div>
