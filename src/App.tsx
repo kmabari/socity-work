@@ -4200,24 +4200,26 @@ export default function App() {
 
                         {/* Action Buttons: Combined Actions */}
                         {userSubmittedClaims.length > 0 && (
-                          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                             <Button
                               size="sm"
                               onClick={handlePrintAllClaims}
-                              className="h-9 px-2.5 sm:px-3.5 bg-blue-500 hover:bg-blue-600 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer border border-blue-300/40 w-full sm:w-auto"
+                              className="min-h-[38px] sm:h-9 py-2 sm:py-0 px-3 sm:px-3.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer border border-blue-300/40 w-full sm:w-auto whitespace-normal break-words max-w-full text-center"
                               title={`Print All Family Members (${userSubmittedClaims.length} Pages)`}
                             >
-                              <Printer className="w-3.5 h-3.5" />
-                              <span>എല്ലാ അംഗങ്ങളും ഒരുമിച്ച് Print ചെയ്യുക ({userSubmittedClaims.length} പേജ്)</span>
+                              <Printer className="w-3.5 h-3.5 shrink-0" />
+                              <span className="inline sm:hidden font-black">പ്രിന്റ്</span>
+                              <span className="hidden sm:inline font-black">എല്ലാ അംഗങ്ങളും ഒരുമിച്ച് Print ചെയ്യുക ({userSubmittedClaims.length} പേജ്)</span>
                             </Button>
                             <Button
                               size="sm"
                               onClick={handleDownloadAllClaimsPdf}
-                              className="h-9 px-2.5 sm:px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] sm:text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer border border-emerald-400 w-full sm:w-auto"
+                              className="min-h-[38px] sm:h-9 py-2 sm:py-0 px-3 sm:px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer border border-emerald-400 w-full sm:w-auto whitespace-normal break-words max-w-full text-center"
                               title={`Download All Family Members PDF (${userSubmittedClaims.length} Pages)`}
                             >
-                              <Download className="w-3.5 h-3.5 text-white" />
-                              <span className="text-white font-black">എല്ലാ അംഗങ്ങളും PDF Download ചെയ്യുക ({userSubmittedClaims.length} പേജ്)</span>
+                              <Download className="w-3.5 h-3.5 text-white shrink-0" />
+                              <span className="inline sm:hidden font-black text-white">PDF ഡൗൺലോഡ്</span>
+                              <span className="hidden sm:inline font-black text-white">എല്ലാ അംഗങ്ങളും PDF Download ചെയ്യുക ({userSubmittedClaims.length} പേജ്)</span>
                             </Button>
                           </div>
                         )}
@@ -4375,26 +4377,28 @@ export default function App() {
                         </div>
 
                         {/* Header quick actions: Combined Actions & Add Family Member */}
-                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                        <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
                           {userSubmittedClaims.length > 0 && (
                             <>
                               <Button
                                 size="sm"
                                 onClick={handlePrintAllClaims}
-                                className="h-8 sm:h-9 px-2.5 sm:px-3 bg-blue-600 hover:bg-blue-700 text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer border border-blue-400/40"
+                                className="min-h-[36px] sm:h-9 py-1.5 sm:py-0 px-2.5 sm:px-3 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer border border-blue-400/40 w-full sm:w-auto whitespace-normal break-words max-w-full text-center"
                                 title={`Print All Family Members (${userSubmittedClaims.length} Pages)`}
                               >
-                                <Printer className="w-3.5 h-3.5 text-white" />
-                                <span>എല്ലാ അംഗങ്ങളും ഒരുമിച്ച് Print ({userSubmittedClaims.length}P)</span>
+                                <Printer className="w-3.5 h-3.5 text-white shrink-0" />
+                                <span className="inline sm:hidden font-black">പ്രിന്റ്</span>
+                                <span className="hidden sm:inline font-black">എല്ലാ അംഗങ്ങളും ഒരുമിച്ച് Print ({userSubmittedClaims.length}P)</span>
                               </Button>
                               <Button
                                 size="sm"
                                 onClick={handleDownloadAllClaimsPdf}
-                                className="h-8 sm:h-9 px-2.5 sm:px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer border border-emerald-400"
+                                className="min-h-[36px] sm:h-9 py-1.5 sm:py-0 px-2.5 sm:px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer border border-emerald-400 w-full sm:w-auto whitespace-normal break-words max-w-full text-center"
                                 title={`Download All Family Members PDF (${userSubmittedClaims.length} Pages)`}
                               >
-                                <Download className="w-3.5 h-3.5 text-white" />
-                                <span className="text-white font-black">എല്ലാ അംഗങ്ങളും PDF Download ({userSubmittedClaims.length}P)</span>
+                                <Download className="w-3.5 h-3.5 text-white shrink-0" />
+                                <span className="inline sm:hidden font-black text-white">PDF ഡൗൺലോഡ്</span>
+                                <span className="hidden sm:inline font-black text-white">എല്ലാ അംഗങ്ങളും PDF Download ({userSubmittedClaims.length}P)</span>
                               </Button>
                             </>
                           )}
@@ -4402,9 +4406,9 @@ export default function App() {
                             <Button
                               size="sm"
                               onClick={() => setView('support')}
-                              className="h-8 sm:h-9 px-3 rounded-xl font-black bg-[#003366] hover:bg-[#002244] text-white text-[10px] sm:text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm cursor-pointer border border-blue-400/30"
+                              className="min-h-[36px] sm:h-9 py-1.5 sm:py-0 px-3 rounded-xl font-black bg-[#003366] hover:bg-[#002244] text-white text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm cursor-pointer border border-blue-400/30 w-full sm:w-auto whitespace-normal break-words max-w-full text-center"
                             >
-                              <Plus className="w-3.5 h-3.5 text-amber-300" />
+                              <Plus className="w-3.5 h-3.5 text-amber-300 shrink-0" />
                               <span>ചേർക്കുക ({4 - userSubmittedClaims.length} ബാക്കി)</span>
                             </Button>
                           )}
