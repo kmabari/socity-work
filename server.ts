@@ -33,6 +33,7 @@ if (!admin.apps.length) {
 const dbAdmin = admin.apps.length ? admin.firestore() : null;
 
 export const app = express();
+export const handler = (req: any, res: any) => app(req, res);
 const PORT = 3000;
 
 app.use(express.json());
