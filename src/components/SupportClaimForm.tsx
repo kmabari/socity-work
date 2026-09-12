@@ -3205,43 +3205,47 @@ export function SupportClaimForm({ user, initialClaims, onClose, onBack, onSubmi
             {/* Auto-filled Place & Date Information Cards (Read-only) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
               {/* Place of Declaration (Auto-filled from Profile: Post Office -> District -> Fallback) */}
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3 shadow-2xs">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center text-sm shrink-0 font-bold border border-amber-200">
+              <div className="p-3 sm:p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 shadow-2xs">
+                <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+                  <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center text-sm shrink-0 font-bold border border-amber-200 mt-0.5 sm:mt-0">
                     📍
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
                       {t('Place of Declaration', 'സാക്ഷ്യപ്പെടുത്തുന്ന സ്ഥലം')}
                     </div>
-                    <div className="text-xs sm:text-sm font-black text-slate-900 truncate">
+                    <div className="text-xs sm:text-sm font-black text-slate-900 break-words leading-tight mt-0.5">
                       {curPlace || t('(Profile Location)', '(പ്രൊഫൈൽ സ്ഥലം)')}
                     </div>
                   </div>
                 </div>
-                <Badge className="bg-slate-200/80 text-slate-700 text-[9px] font-bold border-0 shrink-0 px-2 py-0.5">
-                  {t('Auto-filled', 'ഓട്ടോമാറ്റിക്')}
-                </Badge>
+                <div className="pl-12 sm:pl-0 shrink-0 self-start sm:self-center">
+                  <Badge className="bg-slate-200/80 text-slate-700 text-[9px] font-bold border-0 px-2 py-0.5 whitespace-nowrap">
+                    {t('Auto-filled', 'ഓട്ടോമാറ്റിക്')}
+                  </Badge>
+                </div>
               </div>
 
               {/* Statement Date (Auto-filled with Current Date) */}
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3 shadow-2xs">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-blue-100 text-[#003366] flex items-center justify-center text-sm shrink-0 font-bold border border-blue-200">
+              <div className="p-3 sm:p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 shadow-2xs">
+                <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+                  <div className="w-9 h-9 rounded-xl bg-blue-100 text-[#003366] flex items-center justify-center text-sm shrink-0 font-bold border border-blue-200 mt-0.5 sm:mt-0">
                     📅
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
                       {t('Statement Date', 'തീയതി')}
                     </div>
-                    <div className="text-xs sm:text-sm font-black text-slate-900 font-mono">
+                    <div className="text-xs sm:text-sm font-black text-slate-900 font-mono leading-tight mt-0.5">
                       {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                     </div>
                   </div>
                 </div>
-                <Badge className="bg-blue-50 text-[#003366] text-[9px] font-bold border border-blue-200 shrink-0 px-2 py-0.5">
-                  {t('Current Date', 'ഇന്നത്തെ തീയതി')}
-                </Badge>
+                <div className="pl-12 sm:pl-0 shrink-0 self-start sm:self-center">
+                  <Badge className="bg-blue-50 text-[#003366] text-[9px] font-bold border border-blue-200 px-2 py-0.5 whitespace-nowrap">
+                    {t('Current Date', 'ഇന്നത്തെ തീയതി')}
+                  </Badge>
+                </div>
               </div>
             </div>
           </CardContent>
