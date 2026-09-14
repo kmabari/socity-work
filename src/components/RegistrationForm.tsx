@@ -934,44 +934,55 @@ export default function RegistrationForm({
                     </div>
 
                     {/* QR Code and Account Info Card */}
-                    <div className="flex flex-col sm:flex-row items-center gap-5 bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800">
-                      <div className="bg-white p-3 rounded-2xl shadow-lg shrink-0">
-                        <img
-                          src={orgSettings.qrCodeImageUrl || `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=${encodeURIComponent(orgSettings.upiId || 'hcrs.kerala@okaxis')}%26pn=${encodeURIComponent(orgSettings.upiAccountName || 'HIGHRICH COMMUNITY REVIVAL SOCIETY')}%26cu=INR`}
-                          alt="HCRS Official UPI QR Code"
-                          className="w-32 h-32 sm:w-36 sm:h-36 object-contain"
-                          referrerPolicy="no-referrer"
-                        />
-                      </div>
-                      <div className="space-y-2 text-center sm:text-left flex-1 min-w-0">
-                        <div className="flex items-center justify-center sm:justify-start gap-2">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Official Society UPI ID:</span>
-                        </div>
-                        <div className="flex items-center justify-center sm:justify-start gap-2 bg-slate-900 p-2.5 rounded-xl border border-slate-800">
-                          <span className="font-mono font-black text-xs sm:text-sm text-emerald-400 select-all truncate">
-                            {orgSettings.upiId || 'hcrs.kerala@okaxis'}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => copyToClipboard(orgSettings.upiId || 'hcrs.kerala@okaxis', 'UPI ID')}
-                            className="text-[10px] font-black text-brand-blue hover:text-white bg-blue-500/20 px-2 py-1 rounded-lg flex items-center gap-1 cursor-pointer shrink-0"
-                          >
-                            <Copy className="w-3 h-3" /> Copy
-                          </button>
-                        </div>
-                        <p className="text-xs font-extrabold text-slate-200">
-                          {orgSettings.upiAccountName || 'HIGHRICH COMMUNITY REVIVAL SOCIETY'}
-                        </p>
-                        {orgSettings.bankName && (
-                          <div className="text-[10px] text-slate-400 font-medium space-y-0.5 pt-1 border-t border-slate-800/80">
-                            <p><span className="text-slate-300 font-bold">Bank:</span> {orgSettings.bankName}</p>
-                            {orgSettings.accountNumber && (
-                              <p><span className="text-slate-300 font-bold">A/C:</span> {orgSettings.accountNumber} {orgSettings.ifscCode && `(IFSC: ${orgSettings.ifscCode})`}</p>
+                    {(() => {
+                      const activeUpiId = (orgSettings.upiId && !orgSettings.upiId.includes('hcrs.kerala@okaxis'))
+                        ? orgSettings.upiId
+                        : 'gpay-11261967768@okbizaxis';
+                      const activeQrImg = (orgSettings.qrCodeImageUrl && !orgSettings.qrCodeImageUrl.includes('hcrs.kerala@okaxis'))
+                        ? orgSettings.qrCodeImageUrl
+                        : '/hcrs-renewal-qr.svg';
+
+                      return (
+                        <div className="flex flex-col sm:flex-row items-center gap-5 bg-slate-950 p-4 sm:p-5 rounded-2xl border border-slate-800">
+                          <div className="bg-white p-3 rounded-2xl shadow-lg shrink-0">
+                            <img
+                              src={activeQrImg}
+                              onError={(e) => {
+                                e.currentTarget.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=gpay-11261967768@okbizaxis%26pn=HIGHRICH%20COMMUNITY%20REVIVAL%20SOCIETY%26cu=INR`;
+                              }}
+                              alt="HCRS Official UPI QR Code"
+                              className="w-32 h-32 sm:w-36 sm:h-36 object-contain"
+                              referrerPolicy="no-referrer"
+                            />
+                          </div>
+                          <div className="space-y-2 text-center sm:text-left flex-1 min-w-0">
+                            <div className="flex items-center justify-center sm:justify-start gap-2">
+                              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Official Society UPI ID:</span>
+                            </div>
+                            <div className="flex items-center justify-center sm:justify-start gap-2 bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+                              <span className="font-mono font-black text-xs sm:text-sm text-emerald-400 select-all truncate">
+                                {activeUpiId}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(activeUpiId, 'UPI ID')}
+                                className="text-[10px] font-black text-brand-blue hover:text-white bg-blue-500/20 px-2 py-1 rounded-lg flex items-center gap-1 cursor-pointer shrink-0"
+                              >
+                                <Copy className="w-3 h-3" /> Copy
+                              </button>
+                            </div>
+                            <p className="text-xs font-extrabold text-slate-200">
+                              {orgSettings.upiAccountName || 'HIGHRICH COMMUNITY REVIVAL SOCIETY'}
+                            </p>
+                            {orgSettings.bankName && (
+                              <p className="text-[11px] text-slate-400">
+                                {orgSettings.bankName} • A/C: {orgSettings.accountNumber} • IFSC: {orgSettings.ifscCode}
+                              </p>
                             )}
                           </div>
-                        )}
-                      </div>
-                    </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* Step-by-step instruction notice */}
                     <div className="bg-black/40 p-3.5 rounded-2xl border border-white/10 text-xs text-slate-200 space-y-1">

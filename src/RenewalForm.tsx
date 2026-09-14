@@ -573,39 +573,53 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
                   </div>
 
                   {/* QR Image and UPI details */}
-                  <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-950 p-4 rounded-2xl border border-slate-800">
-                    <div className="bg-white p-2.5 rounded-2xl shadow-lg shrink-0">
-                      <img
-                        src={orgSettings.qrCodeImageUrl || `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=${encodeURIComponent(orgSettings.upiId || 'hcrs.kerala@okaxis')}%26pn=${encodeURIComponent(orgSettings.upiAccountName || 'HIGHRICH COMMUNITY REVIVAL SOCIETY')}%26cu=INR`}
-                        alt="HCRS Official UPI QR Code"
-                        className="w-28 h-28 sm:w-32 sm:h-32 object-contain"
-                        referrerPolicy="no-referrer"
-                      />
-                    </div>
-                    <div className="space-y-1.5 text-center sm:text-left flex-1 min-w-0">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">UPI ID:</span>
-                      <div className="flex items-center justify-center sm:justify-start gap-2 bg-slate-900 p-2 rounded-xl border border-slate-800">
-                        <span className="font-mono font-black text-xs text-emerald-400 select-all truncate">
-                          {orgSettings.upiId || 'hcrs.kerala@okaxis'}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(orgSettings.upiId || 'hcrs.kerala@okaxis', 'UPI ID')}
-                          className="text-[10px] font-black text-brand-blue hover:text-white bg-blue-500/20 px-2 py-0.5 rounded-lg flex items-center gap-1 cursor-pointer shrink-0"
-                        >
-                          <Copy className="w-3 h-3" /> Copy
-                        </button>
+                  {(() => {
+                    const activeUpiId = (orgSettings.upiId && !orgSettings.upiId.includes('hcrs.kerala@okaxis'))
+                      ? orgSettings.upiId
+                      : 'gpay-11261967768@okbizaxis';
+                    const activeQrImg = (orgSettings.qrCodeImageUrl && !orgSettings.qrCodeImageUrl.includes('hcrs.kerala@okaxis'))
+                      ? orgSettings.qrCodeImageUrl
+                      : '/hcrs-renewal-qr.svg';
+
+                    return (
+                      <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-950 p-4 rounded-2xl border border-slate-800">
+                        <div className="bg-white p-2.5 rounded-2xl shadow-lg shrink-0">
+                          <img
+                            src={activeQrImg}
+                            onError={(e) => {
+                              e.currentTarget.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=gpay-11261967768@okbizaxis%26pn=HIGHRICH%20COMMUNITY%20REVIVAL%20SOCIETY%26cu=INR`;
+                            }}
+                            alt="HCRS Official UPI QR Code"
+                            className="w-28 h-28 sm:w-32 sm:h-32 object-contain"
+                            referrerPolicy="no-referrer"
+                          />
+                        </div>
+                        <div className="space-y-1.5 text-center sm:text-left flex-1 min-w-0">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">UPI ID:</span>
+                          <div className="flex items-center justify-center sm:justify-start gap-2 bg-slate-900 p-2 rounded-xl border border-slate-800">
+                            <span className="font-mono font-black text-xs text-emerald-400 select-all truncate">
+                              {activeUpiId}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(activeUpiId, 'UPI ID')}
+                              className="text-[10px] font-black text-brand-blue hover:text-white bg-blue-500/20 px-2 py-0.5 rounded-lg flex items-center gap-1 cursor-pointer shrink-0"
+                            >
+                              <Copy className="w-3 h-3" /> Copy
+                            </button>
+                          </div>
+                          <p className="text-[11px] font-bold text-slate-300">
+                            {orgSettings.upiAccountName || 'HIGHRICH COMMUNITY REVIVAL SOCIETY'}
+                          </p>
+                          {orgSettings.bankName && (
+                            <p className="text-[10px] text-slate-400">
+                              {orgSettings.bankName} • {orgSettings.accountNumber}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-[11px] font-bold text-slate-300">
-                        {orgSettings.upiAccountName || 'HIGHRICH COMMUNITY REVIVAL SOCIETY'}
-                      </p>
-                      {orgSettings.bankName && (
-                        <p className="text-[10px] text-slate-400">
-                          {orgSettings.bankName} • {orgSettings.accountNumber}
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                    );
+                  })()}
 
                   {/* UTR input */}
                   <div className="space-y-1.5 text-left bg-slate-950 p-3.5 rounded-2xl border border-slate-800">

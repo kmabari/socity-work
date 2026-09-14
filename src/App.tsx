@@ -3031,6 +3031,8 @@ export default function App() {
       });
 
       // 1. Server API update (reliable backend fallback)
+      let serverSuccess = false;
+      let serverErrorMsg = '';
       try {
         const apiData = { ...cleanData };
         if (apiData.issueDate instanceof Date) apiData.issueDate = apiData.issueDate.toISOString();
@@ -3038,20 +3040,36 @@ export default function App() {
         if (apiData.expiryDate instanceof Date) apiData.expiryDate = apiData.expiryDate.toISOString();
         if (apiData.registrationDate instanceof Date) apiData.registrationDate = apiData.registrationDate.toISOString();
 
-        await fetch('/api/admin/update-member', {
+        const res = await fetch('/api/admin/update-member', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ uid, data: apiData, mobile: targetMobile })
         });
-      } catch (apiErr) {
+        const json = await res.json().catch(() => null);
+        if (res.ok && json && json.success) {
+          serverSuccess = true;
+        } else if (json && json.error) {
+          serverErrorMsg = json.error;
+        }
+      } catch (apiErr: any) {
         console.warn("[handleUpdateMember API note]:", apiErr);
+        serverErrorMsg = apiErr?.message || '';
       }
 
       // 2. Client Firestore SDK update
+      let clientSuccess = false;
+      let clientError: any = null;
       try {
         await setDoc(doc(db, 'users', uid), cleanData, { merge: true });
-      } catch (fsErr) {
+        clientSuccess = true;
+      } catch (fsErr: any) {
         console.warn("[handleUpdateMember Firestore note]:", fsErr);
+        clientError = fsErr;
+      }
+
+      if (!serverSuccess && !clientSuccess) {
+        const detailMsg = clientError?.message || serverErrorMsg || 'ഡാറ്റാബേസിൽ വിവരങ്ങൾ മാറ്റാൻ സാധിച്ചില്ല. ദയവായി അഡ്മിൻ പെർമിഷൻ പരിശോധിക്കുക. (Failed to save member details to Firestore)';
+        throw new Error(detailMsg);
       }
 
       // Automatically generate or update renewal receipt when renewal is approved
@@ -3145,10 +3163,19 @@ export default function App() {
         } catch (e) {}
       }
 
-      toast.success('Successfully updated.', { id: loadingToast });
-    } catch (error) {
-      toast.error('Update failed.', { id: loadingToast });
+      // Synchronize cached member lists in storage
+      try {
+        const nextList = members.map(m => m.uid === uid ? { ...m, ...cleanData } : m);
+        localStorage.setItem('hcrs_cached_members_list', JSON.stringify(nextList));
+        await idbSet('hcrs_cached_members_list', nextList);
+      } catch (e) {}
+
+      toast.success('അംഗത്തിന്റെ വിവരങ്ങൾ വിജയകരമായി സേവ് ചെയ്തു (Successfully saved to Firestore)', { id: loadingToast });
+    } catch (error: any) {
+      console.error("[handleUpdateMember Error]:", error);
+      toast.error(error?.message || 'Update failed / വിവരങ്ങൾ സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല.', { id: loadingToast });
       handleFirestoreError(error, OperationType.UPDATE, `users/${uid}`);
+      throw error;
     }
   };
 

@@ -117,9 +117,9 @@ Our society operates across all 14 districts of Kerala, with a strong network of
   // Default Payment Operations Configuration
   razorpayEnabled: false, // Default false while verification is pending
   qrCodePaymentEnabled: true, // Default true to maintain active QR payments
-  upiId: 'hcrs.kerala@okaxis',
+  upiId: 'gpay-11261967768@okbizaxis',
   upiAccountName: 'HIGHRICH COMMUNITY REVIVAL SOCIETY',
-  qrCodeImageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=hcrs.kerala@okaxis%26pn=HIGHRICH%20COMMUNITY%20REVIVAL%20SOCIETY%26cu=INR',
+  qrCodeImageUrl: '/hcrs-renewal-qr.svg',
   bankName: 'State Bank of India (SBI)',
   accountNumber: '41235678901',
   ifscCode: 'SBIN0070123',
@@ -132,6 +132,7 @@ Our society operates across all 14 districts of Kerala, with a strong network of
 };
 
 export async function getOrgSettings(): Promise<OrgSettings> {
+  // 1. Try client Firestore
   try {
     const docRef = doc(db, 'settings', SETTINGS_DOC_ID);
     const docSnap = await getDoc(docRef);
@@ -144,28 +145,126 @@ export async function getOrgSettings(): Promise<OrgSettings> {
       }
       return data;
     }
-    return defaultSettings;
   } catch (error) {
-    // Gracefully fallback to cached settings or defaults if offline
-    try {
-      const cached = localStorage.getItem('hcrs_cached_org_settings');
-      if (cached) {
-        return JSON.parse(cached) as OrgSettings;
+    console.warn("[getOrgSettings] Firestore client getDoc notice:", error);
+  }
+
+  // 2. Try Server API
+  try {
+    const apiRes = await fetch('/api/settings');
+    if (apiRes.ok) {
+      const apiData = await apiRes.json();
+      if (apiData && apiData.success && apiData.settings) {
+        const data = apiData.settings as OrgSettings;
+        try {
+          localStorage.setItem('hcrs_cached_org_settings', JSON.stringify(data));
+        } catch (e) {}
+        return data;
       }
-    } catch (e) {
-      console.warn("localStorage read failed:", e);
     }
-    return defaultSettings;
+  } catch (apiErr) {
+    console.warn("[getOrgSettings] Server API fallback notice:", apiErr);
+  }
+
+  // 3. Gracefully fallback to cached settings if offline
+  try {
+    const cached = localStorage.getItem('hcrs_cached_org_settings');
+    if (cached) {
+      return JSON.parse(cached) as OrgSettings;
+    }
+  } catch (e) {
+    console.warn("localStorage read failed:", e);
+  }
+
+  return defaultSettings;
+}
+
+export async function saveOrgSettings(settings: Partial<OrgSettings>): Promise<OrgSettings> {
+  let savedSuccessfully = false;
+  let lastError: any = null;
+  let serverSettings: any = null;
+
+  // 1. High-reliability Server API write (with master admin privileges)
+  try {
+    const res = await fetch('/api/admin/save-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ settings })
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json && json.success) {
+        savedSuccessfully = true;
+        serverSettings = json.settings;
+        console.log('[saveOrgSettings] Successfully persisted via Server API:', json);
+      } else {
+        lastError = new Error(json?.error || 'Server rejected settings update');
+      }
+    } else {
+      const errText = await res.text();
+      lastError = new Error(`Server returned status ${res.status}: ${errText}`);
+    }
+  } catch (apiErr: any) {
+    console.warn('[saveOrgSettings] Server API attempt notice:', apiErr);
+    lastError = apiErr;
+  }
+
+  // 2. Parallel / Fallback Client Firestore write
+  try {
+    const docRef = doc(db, 'settings', SETTINGS_DOC_ID);
+    await setDoc(docRef, { ...settings, updatedAt: serverTimestamp() }, { merge: true });
+    savedSuccessfully = true;
+    console.log('[saveOrgSettings] Successfully persisted via Client Firestore');
+  } catch (fsErr: any) {
+    console.warn('[saveOrgSettings] Client Firestore setDoc note:', fsErr);
+    if (!savedSuccessfully) {
+      lastError = fsErr;
+    }
+  }
+
+  // If neither succeeded, throw explicit persistent write failure error
+  if (!savedSuccessfully) {
+    console.error('[saveOrgSettings] CRITICAL: Both Server API and Client Firestore writes failed!', lastError);
+    throw new Error(lastError?.message || 'Database write failed. Settings could not be persisted.');
+  }
+
+  // 3. Update local cache immediately so refresh never reverts
+  try {
+    const cachedStr = localStorage.getItem('hcrs_cached_org_settings');
+    const prev = cachedStr ? JSON.parse(cachedStr) : defaultSettings;
+    const merged: OrgSettings = { ...prev, ...settings, ...(serverSettings || {}) };
+    localStorage.setItem('hcrs_cached_org_settings', JSON.stringify(merged));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('hcrs_org_settings_updated', { detail: merged }));
+    }
+    return merged;
+  } catch (storageErr) {
+    console.warn('[saveOrgSettings] localStorage update warning:', storageErr);
+    return { ...defaultSettings, ...settings } as OrgSettings;
   }
 }
 
-export async function saveOrgSettings(settings: Partial<OrgSettings>) {
-  const docRef = doc(db, 'settings', SETTINGS_DOC_ID);
-  await setDoc(docRef, { ...settings, updatedAt: serverTimestamp() }, { merge: true });
-}
-
 export function subscribeToOrgSettings(callback: (settings: OrgSettings) => void) {
-  return onSnapshot(doc(db, 'settings', SETTINGS_DOC_ID), (docSnap) => {
+  // 1. Initial cached value callback if available
+  try {
+    const cached = localStorage.getItem('hcrs_cached_org_settings');
+    if (cached) {
+      callback(JSON.parse(cached) as OrgSettings);
+    }
+  } catch (e) {}
+
+  // 2. Custom event listener for instant local sync across tabs/components
+  const handleLocalUpdate = (e: any) => {
+    if (e && e.detail) {
+      callback(e.detail as OrgSettings);
+    }
+  };
+  if (typeof window !== 'undefined') {
+    window.addEventListener('hcrs_org_settings_updated', handleLocalUpdate);
+  }
+
+  // 3. Firestore onSnapshot for real-time remote sync
+  const unsubSnapshot = onSnapshot(doc(db, 'settings', SETTINGS_DOC_ID), (docSnap) => {
     if (docSnap.exists()) {
       const data = docSnap.data() as OrgSettings;
       try {
@@ -190,6 +289,13 @@ export function subscribeToOrgSettings(callback: (settings: OrgSettings) => void
     }
     callback(defaultSettings);
   });
+
+  return () => {
+    unsubSnapshot();
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('hcrs_org_settings_updated', handleLocalUpdate);
+    }
+  };
 }
 
 export async function addGalleryItem(item: Omit<GalleryItem, 'id' | 'createdAt'>) {

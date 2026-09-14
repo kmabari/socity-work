@@ -43,7 +43,7 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
   // Form State
   const [razorpayEnabled, setRazorpayEnabled] = useState<boolean>(false);
   const [qrCodePaymentEnabled, setQrCodePaymentEnabled] = useState<boolean>(true);
-  const [upiId, setUpiId] = useState<string>('hcrs.kerala@okaxis');
+  const [upiId, setUpiId] = useState<string>('gpay-11261967768@okbizaxis');
   const [upiAccountName, setUpiAccountName] = useState<string>('HIGHRICH COMMUNITY REVIVAL SOCIETY');
   const [qrCodeImageUrl, setQrCodeImageUrl] = useState<string>('');
   const [bankName, setBankName] = useState<string>('State Bank of India (SBI)');
@@ -58,7 +58,16 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
 
   useEffect(() => {
     loadSettings();
-  }, []);
+    const handleRemoteUpdate = (e: any) => {
+      if (e && e.detail && !saving) {
+        const s = e.detail;
+        if (s.razorpayEnabled !== undefined) setRazorpayEnabled(s.razorpayEnabled);
+        if (s.qrCodePaymentEnabled !== undefined) setQrCodePaymentEnabled(s.qrCodePaymentEnabled);
+      }
+    };
+    window.addEventListener('hcrs_org_settings_updated', handleRemoteUpdate);
+    return () => window.removeEventListener('hcrs_org_settings_updated', handleRemoteUpdate);
+  }, [saving]);
 
   const loadSettings = async () => {
     setLoading(true);
@@ -66,7 +75,7 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
       const settings: OrgSettings = await getOrgSettings();
       setRazorpayEnabled(settings.razorpayEnabled ?? false);
       setQrCodePaymentEnabled(settings.qrCodePaymentEnabled ?? true);
-      setUpiId(settings.upiId || defaultSettings.upiId || 'hcrs.kerala@okaxis');
+      setUpiId(settings.upiId || defaultSettings.upiId || 'gpay-11261967768@okbizaxis');
       setUpiAccountName(settings.upiAccountName || defaultSettings.upiAccountName || 'HIGHRICH COMMUNITY REVIVAL SOCIETY');
       setQrCodeImageUrl(settings.qrCodeImageUrl || defaultSettings.qrCodeImageUrl || '');
       setBankName(settings.bankName || defaultSettings.bankName || 'State Bank of India (SBI)');
@@ -103,7 +112,7 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
     }
 
     setSaving(true);
-    const saveToast = toast.loading('Saving Payment Operations configuration to Firestore...');
+    const saveToast = toast.loading('Saving Payment Operations configuration to database...');
     try {
       const updateData: Partial<OrgSettings> = {
         razorpayEnabled,
@@ -122,10 +131,29 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
         razorpayStatusNote: razorpayStatusNote.trim()
       };
 
-      await saveOrgSettings(updateData);
+      console.log('[PaymentOperationsManager] Saving payment settings to database:', updateData);
+      const saved = await saveOrgSettings(updateData);
+
+      if (saved) {
+        setRazorpayEnabled(saved.razorpayEnabled ?? razorpayEnabled);
+        setQrCodePaymentEnabled(saved.qrCodePaymentEnabled ?? qrCodePaymentEnabled);
+        if (saved.upiId) setUpiId(saved.upiId);
+        if (saved.upiAccountName) setUpiAccountName(saved.upiAccountName);
+        if (saved.qrCodeImageUrl) setQrCodeImageUrl(saved.qrCodeImageUrl);
+        if (saved.bankName) setBankName(saved.bankName);
+        if (saved.accountNumber) setAccountNumber(saved.accountNumber);
+        if (saved.ifscCode) setIfscCode(saved.ifscCode);
+        if (saved.branchName) setBranchName(saved.branchName);
+        if (saved.qrInstructions) setQrInstructions(saved.qrInstructions);
+        if (saved.registrationFee) setRegistrationFee(saved.registrationFee);
+        if (saved.renewalFee) setRenewalFee(saved.renewalFee);
+        if (saved.razorpayKeyId) setRazorpayKeyId(saved.razorpayKeyId);
+        if (saved.razorpayStatusNote) setRazorpayStatusNote(saved.razorpayStatusNote);
+      }
+
       toast.success('Payment Operations settings updated successfully! (സെറ്റിങ്സ് വിജയകരമായി സേവ് ചെയ്തു)', { id: saveToast });
     } catch (e: any) {
-      console.error('Failed to save payment settings:', e);
+      console.error('[PaymentOperationsManager] Failed to save payment settings:', e);
       toast.error(e.message || 'Failed to save payment configuration', { id: saveToast });
     } finally {
       setSaving(false);
@@ -138,9 +166,9 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
 
     setRazorpayEnabled(false);
     setQrCodePaymentEnabled(true);
-    setUpiId('hcrs.kerala@okaxis');
+    setUpiId('gpay-11261967768@okbizaxis');
     setUpiAccountName('HIGHRICH COMMUNITY REVIVAL SOCIETY');
-    setQrCodeImageUrl('https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=hcrs.kerala@okaxis%26pn=HIGHRICH%20COMMUNITY%20REVIVAL%20SOCIETY%26cu=INR');
+    setQrCodeImageUrl('/hcrs-renewal-qr.svg');
     setBankName('State Bank of India (SBI)');
     setAccountNumber('41235678901');
     setIfscCode('SBIN0070123');
@@ -581,7 +609,7 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
                 <Input
                   value={upiId}
                   onChange={(e) => setUpiId(e.target.value)}
-                  placeholder="e.g. hcrs.kerala@okaxis"
+                  placeholder="e.g. gpay-11261967768@okbizaxis"
                   className="h-11 rounded-xl font-mono text-xs font-bold border-2 border-slate-200 focus:border-brand-magenta"
                 />
               </div>
@@ -925,6 +953,41 @@ export default function PaymentOperationsManager({ user }: PaymentOperationsMana
           </div>
         </CardContent>
       </Card>
+
+      {/* BOTTOM ACTION BAR FOR DIRECT SAVING */}
+      <div className="bg-slate-900 border-2 border-indigo-900/60 p-5 rounded-3xl shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4 text-white">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-amber-400">
+            <Sliders className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-black uppercase tracking-wider text-slate-200">
+              Active Mode: <span className="text-emerald-400">{mode.label}</span>
+            </p>
+            <p className="text-[11px] text-slate-400 font-medium">
+              തിരഞ്ഞെടുത്ത പേയ്‌മെന്റ് മോഡ് പെർസിസ്റ്റന്റ് ആയി സേവ് ചെയ്യാൻ "Save Settings" ക്ലിക്ക് ചെയ്യുക.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+          <Button
+            onClick={handleResetDefaults}
+            variant="outline"
+            disabled={saving}
+            className="h-11 px-4 rounded-xl border-slate-700 bg-slate-800/80 text-slate-300 hover:text-white hover:bg-slate-700 text-xs font-black uppercase tracking-wider cursor-pointer"
+          >
+            Reset Defaults
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="h-11 px-6 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-emerald-500/20 cursor-pointer"
+          >
+            {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            <span>{saving ? 'Saving...' : 'Save Settings (സേവ് ചെയ്യുക)'}</span>
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
