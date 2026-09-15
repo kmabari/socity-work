@@ -661,10 +661,17 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
                   <Button
                     type="submit"
                     disabled={isSubmittingQr || !qrTransactionId.trim()}
-                    className="w-full h-13 rounded-2xl font-black bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-xl shadow-emerald-500/20 text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-95 cursor-pointer disabled:opacity-50"
+                    className="w-full h-auto min-h-[58px] py-2.5 sm:py-3 px-4 rounded-2xl font-bold bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-xl shadow-emerald-950/30 flex flex-col items-center justify-center text-center transition-all hover:scale-[1.01] active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed whitespace-normal"
                   >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>{isSubmittingQr ? 'Submitting...' : `Submit Renewal (പുതുക്കൽ സമർപ്പിക്കുക - ₹${renewalFee})`}</span>
+                    <div className="flex items-center justify-center gap-1.5 text-white leading-tight">
+                      <CheckCircle2 className="w-4 h-4 shrink-0 text-white" />
+                      <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-white">
+                        {isSubmittingQr ? 'Submitting Renewal...' : 'Submit Renewal'}
+                      </span>
+                    </div>
+                    <span className="text-[11px] sm:text-xs font-bold text-white/95 leading-tight mt-1 normal-case tracking-normal">
+                      ({isSubmittingQr ? 'സമർപ്പിക്കുന്നു...' : `പുതുക്കൽ സമർപ്പിക്കുക - ₹${renewalFee}`})
+                    </span>
                   </Button>
                 </form>
               )}
