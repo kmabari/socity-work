@@ -469,30 +469,11 @@ export default function App() {
         console.warn("IndexedDB cache save notice:", idbErr);
       }
 
-      // AUTO-CLEANUP DUPLICATE LIFE MEMBER SERIAL NO 1
+      // AUDIT NOTE: Duplicate Life Member detection is logged only.
+      // No automatic deletion is performed to protect production data.
       const life1s = cleanList.filter(u => u.membership_type === 'LIFE_MEMBER' && u.serialNo === 1);
       if (life1s.length > 1) {
-        const sorted = [...life1s].sort((a, b) => {
-          const getTimeVal = (r: any) => {
-            if (!r) return 0;
-            if (typeof r.toDate === 'function') return r.toDate().getTime();
-            if (r.seconds) return r.seconds * 1000;
-            return new Date(r).getTime() || 0;
-          };
-          return getTimeVal(a.registrationDate) - getTimeVal(b.registrationDate);
-        });
-
-        const toDelete = sorted.slice(1);
-        for (const duplicateToKill of toDelete) {
-          try {
-            await deleteDoc(doc(db, 'users', duplicateToKill.uid));
-          } catch (delErr) {
-            console.error("Failed to delete duplicate life 1 member:", delErr);
-          }
-        }
-
-        const deletedUids = toDelete.map(u => u.uid);
-        cleanList = cleanList.filter(u => !deletedUids.includes(u.uid));
+        console.warn("Database Notice: Found duplicate Life Members with serialNo = 1. Manual review recommended:", life1s.map(l => l.uid));
       }
 
       setMembers(cleanList);
