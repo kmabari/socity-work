@@ -373,17 +373,11 @@ export function subscribeToGalleryCategories(callback: (categories: string[]) =>
   ];
 
   const collRef = collection(db, 'gallery_categories');
-  return onSnapshot(collRef, async (snapshot) => {
+  return onSnapshot(collRef, (snapshot) => {
     if (snapshot.empty) {
-      // Return defaults immediately to avoid UI stall
+      // Use in-memory defaults only. A realtime listener must never seed the
+      // production collection or create a snapshot -> write feedback loop.
       callback(DEFAULT_CATEGORIES);
-      try {
-        for (const cat of DEFAULT_CATEGORIES) {
-          await addDoc(collRef, { name: cat, createdAt: serverTimestamp() });
-        }
-      } catch (err) {
-        console.warn("Auto-seeding categories note:", err);
-      }
     } else {
       const categories: string[] = [];
       snapshot.docs.forEach(docSnap => {
@@ -782,19 +776,14 @@ const INITIAL_TEMPLATES: Omit<CampaignTemplate, 'id' | 'lastUpdated'>[] = [
 
 export function subscribeToCampaignTemplates(callback: (items: CampaignTemplate[]) => void) {
   const collRef = collection(db, 'campaign_templates');
-  return onSnapshot(collRef, async (snapshot) => {
+  return onSnapshot(collRef, (snapshot) => {
     if (snapshot.empty) {
-      // Seed initial templates
-      try {
-        for (const tmpl of INITIAL_TEMPLATES) {
-          await addDoc(collRef, {
-            ...tmpl,
-            lastUpdated: serverTimestamp()
-          });
-        }
-      } catch (err) {
-        console.error("Seeding campaign templates failed:", err);
-      }
+      // Keep the public campaign usable with read-only in-memory defaults.
+      // Persisting templates is an explicit admin action, never a listener side effect.
+      callback(INITIAL_TEMPLATES.map((template, index) => ({
+        ...template,
+        id: `default-template-${index + 1}`
+      })));
     } else {
       const items = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -831,6 +820,5 @@ export function subscribeToCampaignTemplates(callback: (items: CampaignTemplate[
 }
 
 export { normalizeImageUrl } from './imageUrlUtils';
-
 
 

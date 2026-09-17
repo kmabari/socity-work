@@ -11,8 +11,7 @@ import { collection, query, where, getDocs, doc, updateDoc, serverTimestamp, lim
 import { UserProfile } from './types';
 import Logo from './Logo';
 import { processRazorpayPayment } from './lib/razorpay';
-import { sendWARenewalMessage } from './lib/whatsapp';
-import { getOrgSettings, subscribeToOrgSettings, OrgSettings, defaultSettings } from './lib/cms';
+import { subscribeToOrgSettings, OrgSettings, defaultSettings } from './lib/cms';
 
 interface RenewalFormProps {
   onBack: () => void;
@@ -79,27 +78,11 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
 
       const now = new Date();
       
-      // Calculate extended expiry date (current expiry + 1 year, or today + 1 year)
-      let newExpiryDate = new Date();
-      if (foundMember.expiryDate) {
-        const expD = (foundMember.expiryDate as any).toDate ? (foundMember.expiryDate as any).toDate() : ((foundMember.expiryDate as any).seconds ? new Date((foundMember.expiryDate as any).seconds * 1000) : new Date(foundMember.expiryDate as any));
-        if (!isNaN(expD.getTime()) && expD.getTime() > Date.now()) {
-          newExpiryDate = new Date(expD);
-          newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
-        } else {
-          newExpiryDate.setFullYear(now.getFullYear() + 1);
-        }
-      } else {
-        newExpiryDate.setFullYear(now.getFullYear() + 1);
-      }
-
       const todayStr = now.toISOString().split('T')[0];
       const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
 
       const renewalData = {
-        status: 'active',
-        isApproved: true,
-        renewalPending: false,
+        renewalPending: true,
         renewalTransactionId: paymentDetails.paymentId,
         renewalDate: now,
         renewalPaymentDate: todayStr,
@@ -110,38 +93,16 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
         transactionId: paymentDetails.paymentId,
         paymentTime: paymentDetails.paymentTime,
         paymentMethod: 'Razorpay',
-        paymentStatus: 'Renewed',
-        receiptNumber: paymentDetails.receiptNumber,
-        expiryDate: newExpiryDate
+        paymentStatus: 'RENEWAL_AWAITING_APPROVAL',
+        receiptNumber: paymentDetails.receiptNumber
       };
 
-      toast.success('Membership Renewed Successfully! (അംഗത്വം വിജയകരമായി പുതുക്കി)', { id: loadingToast });
+      toast.success('Payment verified. Renewal is awaiting admin approval.', { id: loadingToast });
 
       const updatedMember: UserProfile = {
         ...foundMember,
-        ...renewalData,
-        expiryDate: newExpiryDate
+        ...renewalData
       } as UserProfile;
-
-      // Auto-trigger WhatsApp message if enabled
-      try {
-        const settings = await getOrgSettings();
-        if (settings.whatsappEnabled !== false && settings.whatsappRenewalEnabled !== false && settings.registrationMode !== 'bulk') {
-          setTimeout(() => {
-            sendWARenewalMessage({
-              name: foundMember.name,
-              mobile: foundMember.mobile,
-              uid: foundMember.uid,
-              membershipId: foundMember.membershipId,
-              transactionId: paymentDetails.paymentId,
-              amount: renewalFee,
-              expiryDate: newExpiryDate.toLocaleDateString('en-IN')
-            });
-          }, 600);
-        }
-      } catch (waErr) {
-        console.warn("WhatsApp renewal trigger error:", waErr);
-      }
 
       onSuccess(updatedMember);
     } catch (err: any) {
@@ -165,6 +126,15 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
     setIsSubmittingQr(true);
     const loadingToast = toast.loading('Submitting Renewal Request for Verification...');
     try {
+      const usersRef = collection(db, 'users');
+      const [renewalTxMatches, generalTxMatches] = await Promise.all([
+        getDocs(query(usersRef, where('renewalTransactionId', '==', cleanTxId), limit(1))),
+        getDocs(query(usersRef, where('transactionId', '==', cleanTxId), limit(1)))
+      ]);
+      if (!renewalTxMatches.empty || !generalTxMatches.empty) {
+        throw new Error('ഈ UTR / Transaction ID ഇതിനകം ഉപയോഗിച്ചിട്ടുണ്ട്. മറ്റൊരു സാധുവായ UTR നൽകുക. (This UTR / Transaction ID has already been used.)');
+      }
+
       const now = new Date();
       const todayStr = now.toISOString().split('T')[0];
       const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
