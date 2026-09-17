@@ -225,9 +225,10 @@ export default function EmailEditor({ config }: EmailEditorProps) {
   const [isMailBodyTruncated, setIsMailBodyTruncated] = useState(false);
 
   const isCampaignActive = config?.active !== false && config?.campaignStatus !== "disabled" && config?.campaignStatus !== "completed";
+  const isPhoneValid = /^\d{10}$/.test((phone || "").toString().replace(/\D/g, ""));
   const isFormValid = !!(
     (name || "").toString().trim() &&
-    (phone || "").toString().trim() &&
+    isPhoneValid &&
     (district || "").toString().trim() &&
     (place || "").toString().trim() &&
     (category || "").toString().trim()
@@ -754,7 +755,7 @@ export default function EmailEditor({ config }: EmailEditorProps) {
       if (!isFormValid) {
         const emptyFields = [];
         if (!(name || "").toString().trim()) emptyFields.push("മുഴുവൻ പേര് (Full Name)");
-        if (!(phone || "").toString().trim()) emptyFields.push("മൊബൈൽ നമ്പർ (Mobile Number)");
+        if (!isPhoneValid) emptyFields.push("സാധുവായ 10 അക്ക മൊബൈൽ നമ്പർ (Valid 10-digit Mobile Number)");
         if (!(district || "").toString().trim()) emptyFields.push("ജില്ല (District)");
         if (!(place || "").toString().trim()) emptyFields.push("സ്ഥലം (Place)");
         if (!(category || "").toString().trim()) emptyFields.push("വിഭാഗം (Category)");
@@ -1744,10 +1745,10 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                         </li>
                         {/* Check phone */}
                         <li className="flex items-center gap-2">
-                          <span className={`w-4.5 h-4.5 sm:w-5 sm:h-5 rounded-full flex items-center justify-center shrink-0 font-bold text-[10px] sm:text-xs ${phone.trim() ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                            {phone.trim() ? "✓" : "✗"}
+                          <span className={`w-4.5 h-4.5 sm:w-5 sm:h-5 rounded-full flex items-center justify-center shrink-0 font-bold text-[10px] sm:text-xs ${isPhoneValid ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                            {isPhoneValid ? "✓" : "✗"}
                           </span>
-                          <span className={phone.trim() ? "text-slate-400 line-through font-bold" : "text-slate-800"}>
+                          <span className={isPhoneValid ? "text-slate-400 line-through font-bold" : "text-slate-800"}>
                             സ്റ്റെപ്പ് 1: മൊബൈൽ നമ്പർ നൽകുക (Fill Mobile Number)
                           </span>
                         </li>
@@ -1846,6 +1847,8 @@ export default function EmailEditor({ config }: EmailEditorProps) {
                     
                     <motion.button
                       onClick={(e) => handleParticipateNow(e, "gmail")}
+                      disabled={!canSubmit}
+                      aria-disabled={!canSubmit}
                       className={`relative w-full flex items-center justify-center gap-2.5 sm:gap-3 font-black text-xs sm:text-sm md:text-base uppercase tracking-wider px-4 sm:px-6 py-3.5 sm:py-4.5 rounded-xl sm:rounded-2xl shadow-md border border-transparent transition-all duration-300 ${
                         canSubmit
                           ? "bg-gradient-to-r from-[#EA4335] via-[#E2345D] to-[#CF2585] text-white hover:shadow-lg cursor-pointer"

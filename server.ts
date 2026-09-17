@@ -1885,10 +1885,22 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
                           keySecret.length >= 8 &&
                           keySecret !== "VITE_RAZORPAY_KEY_ID";
 
+      if (!hasRealKeys) {
+        return res.status(503).json({
+          error: "Razorpay payment verification is unavailable because server credentials are not configured."
+        });
+      }
+
+      if (!razorpay_signature || razorpay_signature === 'demo_signature') {
+        return res.status(400).json({
+          error: "Security Violation: A valid Razorpay payment signature is required."
+        });
+      }
+
       let payment: any = null;
 
-      // Perform full signature and API verification if real keys exist
-      if (hasRealKeys && razorpay_signature && razorpay_signature !== 'demo_signature') {
+      // Every successful response must be backed by Razorpay signature and API verification.
+      {
         const expectedSignature = crypto
           .createHmac("sha256", keySecret)
           .update(`${razorpay_order_id}|${razorpay_payment_id}`)
@@ -1909,7 +1921,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
           key_secret: keySecret
         });
 
-        const payment = await razorpayInstance.payments.fetch(razorpay_payment_id);
+        payment = await razorpayInstance.payments.fetch(razorpay_payment_id);
         if (!payment) {
           return res.status(400).json({
             error: "Payment Verification Failure: Payment record not found on Razorpay server."
@@ -1950,7 +1962,13 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
       // 4. Record Verified Payment in Firestore and Activate Member
       let isAlreadyProcessed = false;
 
-      if (dbAdmin) {
+      if (!dbAdmin) {
+        return res.status(503).json({
+          error: "Payment was verified, but membership persistence is unavailable. Please contact support before retrying."
+        });
+      }
+
+      {
         try {
           const existingPayDoc = await dbAdmin.collection('payments').doc(razorpay_payment_id).get();
           if (existingPayDoc.exists && existingPayDoc.data()?.status === 'SUCCESS') {
@@ -1970,7 +1988,9 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
           }
 
           // Perform Server-Side Firestore Member Activation
-          if (paymentType === 'registration' && registrationData?.uid) {
+          // Do not repeat member mutations or create duplicate receipts when a verified
+          // payment callback is retried by the browser or payment provider.
+          if (!isAlreadyProcessed && paymentType === 'registration' && registrationData?.uid) {
             const userUid = registrationData.uid;
             const userRef = dbAdmin.collection('users').doc(userUid);
             const now = new Date();
@@ -2006,7 +2026,7 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
               createdAt: admin.firestore.FieldValue.serverTimestamp(),
               memberId: registrationData.membershipId || userUid
             });
-          } else if (paymentType === 'renewal' && memberId) {
+          } else if (!isAlreadyProcessed && paymentType === 'renewal' && memberId) {
             const userRef = dbAdmin.collection('users').doc(memberId);
             const userDoc = await userRef.get();
             if (userDoc.exists) {
@@ -2062,7 +2082,10 @@ A: ബാധിത കുടുംബങ്ങളെ പിന്തുണയ്
             }
           }
         } catch (dbAdminErr: any) {
-          console.warn("[Firebase Admin] Firestore write notice (continuing payment verification):", dbAdminErr?.message || dbAdminErr);
+          console.error("[Firebase Admin] Verified payment persistence failed:", dbAdminErr?.message || dbAdminErr);
+          return res.status(503).json({
+            error: "Payment was verified, but saving the membership update failed. Please contact support before retrying."
+          });
         }
       }
 

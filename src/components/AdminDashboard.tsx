@@ -2469,7 +2469,6 @@ export default function AdminDashboard({
             )}
           >
             <div className="flex items-center gap-3">
-                <RefreshCw className={cn("w-4 h-4 transition-transform group-hover:scale-105", activeTab === 'requests' && pendingRenewals.length > 0 ? 'text-white' : 'text-amber-500')} />
               <span>Pending Renewals (റിന്യൂവൽ)</span>
             </div>
             {pendingRenewals.length > 0 && (
@@ -2823,7 +2822,6 @@ export default function AdminDashboard({
                 )}
               >
                 <div className="flex items-center gap-3">
-                  <RefreshCw className="w-4 h-4 text-amber-500" />
                   <span>Pending Renewals (റിന്യൂവൽ)</span>
                 </div>
                 {pendingRenewals.length > 0 && <span className="px-1.5 py-0.5 rounded text-[8px] font-black bg-amber-500 text-white">{pendingRenewals.length}</span>}
@@ -3206,8 +3204,7 @@ export default function AdminDashboard({
                   : "text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/70"
               )}
             >
-              <RefreshCw className="w-3.5 h-3.5 text-amber-600" />
-              <span>🔄 Pending Renewals (റിന്യൂവൽ)</span>
+              <span>Pending Renewals (റിന്യൂവൽ)</span>
               <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-amber-500 text-white">
                 {pendingRenewals.length}
               </span>

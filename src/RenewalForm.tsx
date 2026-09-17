@@ -77,7 +77,6 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
 
       toast.loading('Saving renewal payment record to database...', { id: loadingToast });
 
-      const memberRef = doc(db, 'users', foundMember.uid);
       const now = new Date();
       
       // Calculate extended expiry date (current expiry + 1 year, or today + 1 year)
@@ -102,7 +101,7 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
         isApproved: true,
         renewalPending: false,
         renewalTransactionId: paymentDetails.paymentId,
-        renewalDate: serverTimestamp(),
+        renewalDate: now,
         renewalPaymentDate: todayStr,
         renewalPaymentTime: timeStr,
         paymentAmount: renewalFee,
@@ -115,31 +114,6 @@ export default function RenewalForm({ onBack, onSuccess, initialMobile }: Renewa
         receiptNumber: paymentDetails.receiptNumber,
         expiryDate: newExpiryDate
       };
-
-      await updateDoc(memberRef, renewalData);
-
-      // Save receipt to users/{uid}/receipts subcollection
-      try {
-        const receiptsRef = collection(db, 'users', foundMember.uid, 'receipts');
-        await addDoc(receiptsRef, {
-          receiptNo: paymentDetails.receiptNumber,
-          receiptType: 'Membership Renewal',
-          receiptLabel: 'Membership Renewal Receipt',
-          amount: renewalFee,
-          paymentId: paymentDetails.paymentId,
-          orderId: paymentDetails.orderId,
-          transactionId: paymentDetails.paymentId,
-          paymentTime: paymentDetails.paymentTime,
-          paymentMethod: 'Razorpay',
-          paymentStatus: 'Renewed',
-          status: 'Paid',
-          paymentDate: todayStr,
-          createdAt: serverTimestamp(),
-          memberId: foundMember.membershipId || foundMember.uid
-        });
-      } catch (rErr) {
-        console.warn("Notice saving renewal receipt document:", rErr);
-      }
 
       toast.success('Membership Renewed Successfully! (അംഗത്വം വിജയകരമായി പുതുക്കി)', { id: loadingToast });
 

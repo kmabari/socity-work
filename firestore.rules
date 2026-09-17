@@ -422,8 +422,7 @@ service cloud.firestore {
             'admin@hcrs.society',
             '9645934571@hcrs.society',
             'highrichcommunityrevivalsociet@gmail.com'
-          ] ||
-          request.auth.token.get('email', '').lower().matches('.*(hcrskerala|kmabarikiyafoods|mabarikiyafoods|hcrsindia|admin|eledger|highrich|9645934571|@hcrs).*')
+          ]
         )) ||
         (exists(/databases/$(database)/documents/eledger_users/$(request.auth.uid)) &&
          get(/databases/$(database)/documents/eledger_users/$(request.auth.uid)).data.get('role', '') in ['admin', 'Admin']) ||
@@ -455,8 +454,7 @@ service cloud.firestore {
             'hcrstreasurer@gmail.com',
             'treasurer.eledger@hcrs.org',
             'statetreasurer@hcrs.society'
-          ] ||
-          request.auth.token.get('email', '').lower().matches('.*(treasurer|hcrstreasurer|state_treasurer|statetreasurer).*')
+          ]
         ))
       );
     }

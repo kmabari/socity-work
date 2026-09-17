@@ -129,33 +129,24 @@ export const TREASURER_UIDS = [
   'NX2b63Hzu4RFhR4BCQP5OMpI4jw1',
 ];
 
+export const TREASURER_EMAILS = [
+  'treasurer@hcrs.society',
+  'hcrstreasurer@gmail.com',
+  'treasurer.eledger@hcrs.org',
+  'statetreasurer@hcrs.society',
+];
+
 export function isCentralAdminEmail(email?: string | null): boolean {
   if (!email) return false;
   const clean = email.trim().toLowerCase();
-  return (
-    CENTRAL_ADMIN_EMAILS.includes(clean) ||
-    clean.includes('hcrskerala') ||
-    clean.includes('mabarikiyafoods') ||
-    clean.includes('admin') ||
-    clean.includes('eledger') ||
-    clean.includes('admin_auth') ||
-    clean.includes('highrich') ||
-    clean.includes('hcrsindia') ||
-    clean.includes('9645934571') ||
-    clean.endsWith('@hcrs.society') ||
-    clean.endsWith('@hcrs.org')
-  );
+  return CENTRAL_ADMIN_EMAILS.includes(clean);
 }
 
 export function isTreasurerUser(fbUser?: FirebaseUser | null, email?: string | null): boolean {
   if (fbUser && TREASURER_UIDS.includes(fbUser.uid)) return true;
   if (!email) return false;
   const clean = email.trim().toLowerCase();
-  return (
-    clean.includes('treasurer') ||
-    clean.includes('hcrstreasurer') ||
-    clean.includes('state_treasurer')
-  );
+  return TREASURER_EMAILS.includes(clean);
 }
 
 /**
@@ -1632,4 +1623,3 @@ export async function submitMemberBillClaimInDb(
     invoiceRef: claim.invoiceRef,
   });
 }
-
