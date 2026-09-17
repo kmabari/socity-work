@@ -2288,9 +2288,51 @@ export default function AdminDashboard({
   }, [claims]);
 
   const pendingRenewals = useMemo(() => {
-    return members.filter(m => {
-      if (approvedRenewalUids.includes(m.uid)) return false;
-      if (!(m as any).renewalPending) return false;
+    const approvedSet = new Set(approvedRenewalUids);
+    const timestampOf = (value: any): number => {
+      if (!value) return 0;
+      try {
+        if (typeof value.toDate === 'function') return value.toDate().getTime();
+        if (value.seconds || value._seconds) return Number(value.seconds ?? value._seconds) * 1000;
+        const time = new Date(value).getTime();
+        return Number.isFinite(time) ? time : 0;
+      } catch {
+        return 0;
+      }
+    };
+    const renewalTimeOf = (m: UserProfile): number => Math.max(
+      timestampOf((m as any).renewalDate),
+      timestampOf((m as any).renewalPaymentDate),
+      timestampOf((m as any).updatedAt),
+      timestampOf((m as any).issueDate),
+      timestampOf((m as any).registrationDate)
+    );
+    const approvalTimeOf = (m: UserProfile): number => Math.max(
+      timestampOf((m as any).renewalApprovedAt),
+      (m as any).renewalPending === false ? timestampOf((m as any).renewalDate) : 0,
+      (m as any).renewalPending === false ? timestampOf((m as any).issueDate) : 0
+    );
+    const identityOf = (m: UserProfile): string => {
+      const mobile = getClean10DigitMobile(m.mobile);
+      // Never group solely by membershipId because legacy duplicate IDs exist.
+      return mobile.length === 10 ? `mobile:${mobile}` : `uid:${m.uid}`;
+    };
+
+    const latestApprovalByIdentity = new Map<string, number>();
+    for (const member of members) {
+      const identity = identityOf(member);
+      const approvedAt = approvedSet.has(member.uid) ? Date.now() : approvalTimeOf(member);
+      if (approvedAt > (latestApprovalByIdentity.get(identity) || 0)) {
+        latestApprovalByIdentity.set(identity, approvedAt);
+      }
+    }
+
+    const visiblePending = members.filter(m => {
+      if (approvedSet.has(m.uid) || !(m as any).renewalPending) return false;
+      const pendingAt = renewalTimeOf(m);
+      const approvedAt = latestApprovalByIdentity.get(identityOf(m)) || 0;
+      // An older legacy pending flag must not reappear after a newer approval.
+      if (approvedAt > 0 && approvedAt >= pendingAt) return false;
       
       const term = searchTerm.toLowerCase().trim();
       const resolved = resolvePendingRenewalMember(m, members);
@@ -2318,6 +2360,18 @@ export default function AdminDashboard({
       
       return matchesSearch && matchesDistrict && matchesSource;
     });
+
+    // Keep the exact UID/document owning the newest genuine pending request.
+    // Related records are used only by resolvePendingRenewalMember for display.
+    const latestPendingByIdentity = new Map<string, UserProfile>();
+    for (const pending of visiblePending) {
+      const identity = identityOf(pending);
+      const current = latestPendingByIdentity.get(identity);
+      if (!current || renewalTimeOf(pending) > renewalTimeOf(current)) {
+        latestPendingByIdentity.set(identity, pending);
+      }
+    }
+    return Array.from(latestPendingByIdentity.values());
   }, [members, searchTerm, districtFilter, sourceFilter, approvedRenewalUids]);
 
   const exportToExcel = () => {
